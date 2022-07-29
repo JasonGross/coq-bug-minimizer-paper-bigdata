@@ -1,0 +1,17 @@
+Comment author: @JasonGross
+
+It's annoying to have to type [all:admit. Qed.] and deal with unclosed braces/proof sections and evars and such.
+
+
+Comment author: @ppedrot
+
+The fact that tactics may create universe inconsistency is actually the real bug. The user should not have to check that some step was broken during the proof...
+
+
+Comment author: @ppedrot
+
+I think that contrarily to the Guarded case where there is a real need for a incremental check (some steps may be unguarded until later on, as in the coinduction case), the nature of universe consistency is different. Indeed, tactics should never produce an inconsistent set of constraints. This is the duty of tactics to preserve this invariant; hence I close this bug!
+
+(And well, you still have the workaround you mentioned).
+
+

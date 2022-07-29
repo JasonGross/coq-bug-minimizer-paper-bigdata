@@ -1,0 +1,48 @@
+Comment author: @JasonGross
+
+I expect this code to work:
+
+Unset Elimination Schemes.
+
+Inductive bool2 : Set := true | false.
+
+Scheme foo := Induction for bool2 Sort Prop.
+Scheme bar := Induction for bool2 Sort Set.
+Scheme baz := Induction for bool2 Sort Type.
+Scheme foo' := Minimality for bool2 Sort Prop.
+Scheme bar' := Minimality for bool2 Sort Set.
+Scheme baz' := Minimality for bool2 Sort Type.
+
+Goal bool2 -> bool2.
+  intro x.
+  induction x. (* Toplevel input, characters 0-11:
+Error: Cannot find the elimination combinator bool2_rec, the elimination of
+the inductive definition bool2 on sort Set is probably not allowed. *)
+  Undo.
+  elim x.
+
+
+Comment author: @JasonGross
+
+Additionally, it might be nice to have a vernacular that registered hand-defined terms with the relevant databases.
+
+
+Comment author: @mikeshulman
+
+Apparently `elim` also has this problem at least sometimes.  I had one instance where `elim` failed to find an induction principle but `destruct` succeeded.
+
+
+Comment author: @JasonGross
+
+Yes: [elim] and [induction] use named constants [destruct] and [case] use raw [match]es.
+
+
+Comment author: @silene
+
+I don't think it will ever be implanted, so I prefer to close it.
+
+The main reason actually stems from your example. You have two induction principles (bar and bar') defined for bool2 over sort Set; which one do you expect induction to chose? In fact, you even have four of them since baz and baz' have also suitable types.
+
+In other words, if you have only one scheme, give it the name induction expects. If you have several of them, explicitly use "induction using"; do not expect induction to chose one arbitrarily.
+
+

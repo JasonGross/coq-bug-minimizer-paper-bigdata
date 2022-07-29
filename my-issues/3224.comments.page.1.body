@@ -1,0 +1,30 @@
+Comment author: @JasonGross
+
+I want Tactic Notation to support whatever gets printed by [Print Grammar tactic] as tactic:orient; tactic:glob_constr_with_bindings; tactic:occurrences; prim:var.  I want to be able to give an alternate name for [rewrite] which takes the same kinds of arguments, using [Tactic Notation]
+
+
+Quoting myself from https://github.com/coq/coq/issues/11727#issuecomment-594046344 :
+I think the tactics should not have tricks that are not available to tactic notations / Ltac2 tactic notations. I don't think I would have to write OCaml just to wrap a tactic and preserve syntax and flexibility
+Maybe cc @ppedrot , I expect you to have opinions on this.
+
+(Note that my views on this are well-represented by the excellent talk [Growing a Language, by Guy Steele](https://www.youtube.com/watch?v=_ahvzDzKdB0).)
+By design, Ltac2 has no built-in notation, in the sense that all "primitive" tactics are defined by Ltac2 notations that could be performed the same by any development. There are built-in *notation scopes* but that doesn't prevent the user to use the data structures they generate.
+Ah, this sounds great.  So once all tactics are accessible in Ltac2, all the nice syntax for tactics will also be available for user-defined tactic notations?  So maybe once Ltac is firmly deprecated, or once Ltac2 supports all tactics and, e.g., the standard library has moved to Ltac2, we can close this issue.
+So, do I understand correctly that Ltac2 answers positively to the question raised by this PR by allowing e.g.:
+```
+Ltac2 Notation "myrewrite"
+  rw(list1(rewriting, ","))
+  cl(opt(clause))
+  tac(opt(seq("by", thunk(tactic)))) :=
+  rewrite0 false rw cl tac.
+```
+Also, if the internal `rewrite` is eventually extended, I guess, we shall introduce a `rewrite1` which supports the extra arguments.
+
+In particular, `orient` (called `rewriting`), `glob_constr_with_bindings` (obtained with `seq(constr, with_bindings)`), `occurrences` (called `occurrences`) are all already provided by `Ltac2` (using `$id` for Ltac2-level bindings).
+
+As far as I understand, for `var`, there is `ident` in Ltac2, though there is no distinction in Ltac2 between an identifier which is supposed to bind and an identifier which is supposed to be bound. (Ltac started to make such a difference, respectively using `ident` and `hyp`, but is not really "production"-quality, as shown e.g. in #11721. @ppedrot: Will you be non-angry if, possibly, Ltac continues to explore this direction - it cannot be worse as it is now anyways - until Ltac2 has a model to propose for binding/bound variables?)
+
+Additional question: @ppedrot, would it make sense to progressively remove lines from `g_tactic.mlg` to the benefit of `g_ltac2.mlg` and `Ltac2.Notations`?
+
+In any case, do we consider that Ltac2 is an answer to the original issue from 2014?
+WONTFIX, solved by Ltac2.

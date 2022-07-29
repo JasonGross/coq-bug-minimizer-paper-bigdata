@@ -1,0 +1,34 @@
+Comment author: @JasonGross
+```coq
+Set Printing All.
+Set Implicit Arguments.
+Record prod A B := pair { fst : A ; snd : B }.
+Goal forall x y : prod Set Set, @ fst _ _ x = @ fst _ _ y.
+  intros.
+  constr_eq (@ fst Set Set x) (fst (A := Set) (B := Set) x). (* success in 8.4, failure in trunk *)
+  progress change (@ fst Set Set x) with (fst (A := Set) (B := Set) x). (* Failed to progress in 8.4, success in trunk *)
+```
+Comment author: @JasonGross
+
+Note, furthermore, that `repeat progress change (@ fst Set Set x) with (fst (A := Set) (B := Set) x).` will loop forever.  This should not happen.
+
+
+Comment author: @mattam82
+
+This is fixed in trunk.
+
+
+Comment author: @mattam82
+
+This happens in `Set Universe Polymorphism` mode. 
+`constr_eq` fails because the universes are not syntactically equal.
+`progress` succeeds because the new term has equal universes that are not syntactically equal.
+
+Both should indeed be working up to equality of universes, so you would have the same behavior as 8.4 in both cases.
+
+
+Comment author: @maximedenes
+
+Seems fixed for good now, even with universe polymorphism.
+
+

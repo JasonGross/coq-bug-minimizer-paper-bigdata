@@ -1,0 +1,30 @@
+Comment author: @JasonGross
+
+As of a recent trunk, [Show] must be emitting the goals in the wrong format, because PG is putting it in the *response* buffer, making the *goals* buffer tiny and almost unusable.
+
+
+Comment author: @gares
+
+Oops... when I moved the goal printing in STM I forgot to move the decoration for PG.
+
+
+Comment author: @gares
+
+No, these is no decoration for the goal.  Actually I can't reproduce the bug here.
+
+Currently there is a "bug" affecting "Show" that makes it print the goals twice.
+But it does not seem what you are experiencing.  Right?
+
+Best,
+
+
+Comment author: @JasonGross
+
+It seems like PG is interpreting the second copy of the goal as a "response"?  On command line, I see [Goal True. Show.] print the goal twice on [Show.], and in emacs, I see one copy in *goals* and another copy in *response*.
+
+
+Comment author: @JasonGross
+
+Note: the misplaced goals-in-*response* also show up on backtracking, which is equally painful.
+
+

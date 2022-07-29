@@ -1,0 +1,81 @@
+Comment author: @JasonGross
+~~~coq
+(* version 9e6b28c04ad98369a012faf3bd4d630cf123a473 *)
+
+Record foo := { bar : Type }.
+Arguments bar / .
+Definition baz (x : Type) := x.
+Definition qux (x : Type) := x.
+Arguments baz / : simpl nomatch.
+Goal forall x, baz (bar x) = baz (bar x).
+Proof.
+  simpl; progress simpl. (** succceeds!? *)
+  Undo.
+  simpl. (* forall x : foo,
+   (fun x0 : Type => x0) (let (bar0) := x in bar0) =
+   (fun x0 : Type => x0) (let (bar0) := x in bar0) *)
+  simpl. (* forall x : foo, (let (bar0) := x in bar0) = (let (bar0) := x in bar0) *)
+~~~
+
+Comment author: @maximedenes
+
+It seems that (the first) simpl backtracks on the beta step due to the match that appears, but doesn't backtrack on the delta step.
+
+
+Comment author: @gares
+
+I think it is a bug in simpl, I even wrote a patch but it is not perfect and I think I've lost the code now and forgot to post here.
+
+The point is that simpl is coded like "strong simpl_whd".
+
+There you have "f (g x)", so globally (at the top level) simpl_whd does not unfold anything because it would result in exposing a match.  Then "strong" recursively traverses all terms, including the application's head.  And unfolds it, since it exposes no match.  Then the argument, it is unfolded to (but has no "no match" flag, so it is kept).
+
+My patch was using (for simpl) a version of strong that does not recurse on application's heads.  But some scripts in the stdlib break in ways I could not
+understand.
+
+Best,
+
+
+Comment author: @aspiwack
+
+I can't comment on whether there is a bug on simpl. But there is a bug in progress, which I have to fix.
+
+
+Comment author: @gares
+
+Are you talking about another bug?
+
+Because in the script jason provides progress works well.
+It is "simpl" and "simpl;simpl" that give different outputs, so there is some progress after the second call to simpl.
+
+
+Comment author: @aspiwack
+
+It would seem so. I had a conversation the other day about a bug with [progress simpl] which was caused to [progress]] (but which probably interacted with this bug though). Sorry for the noise…
+
+
+Comment author: @gares
+
+Looking back at this bug, I'm not so sure we should fix it now.
+It will imply extra regressions in beta2 w.r.t. beta1 (ans the ones I've experienced my self in the stdlib).
+
+I'll target it for trunk (even if the "major redesign" does not seem the right way to put it).
+
+
+Comment author: @gares
+
+Given the current hype on simpl/cbn I'm assigning that to Maxime.
+
+IIRC the issue is the way "strong" operates.
+
+IIRC I tried to change the behavior to avoid the problem (not that hard) and
+random scripts in the standard library failed in a way I was unable
+to fix.  Scripts written like that: simpl,  "wow, what a mess!",
+rewrite at 7, "I made it!".  And now it is more like: simple, "wow, what a different mess!", many attemps, "I've no idea how the old proof was going trough".  Not a game I wanted to play.
+
+
+Comment author: @JasonGross
+
+I expect this change would be deserving of a compatibility flag, in any case.
+
+

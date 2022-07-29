@@ -1,0 +1,48 @@
+Comment author: @JasonGross
+
+The type-annotated [exists] in the following code works, while the one without the annotation does not.  But Coq can guess the annotation, and thus the conversion, because it gives me the type in the error message "Refiner was given an argument "X" of type "T" instead of "U".".  This should not be.
+```coq
+Record PreCategory :=
+  { Object :> Type;
+    Morphism : Object -> Object -> Type }.
+
+Class IsIsomorphism {C : PreCategory} {s d} (m : Morphism C s d) :=
+  { Inverse : Morphism C d s;
+    Inverse_refl : Inverse = Inverse }.
+
+Class Isomorphic {C : PreCategory} s d :=
+  { IsomorphicMorphism : Morphism C s d;
+    Isomorphic_IsIsomorphism : IsIsomorphism IsomorphicMorphism }.
+
+Coercion Build_Isomorphic : IsIsomorphism >-> Isomorphic.
+Coercion IsomorphicMorphism : Isomorphic >-> Morphism.
+Coercion Isomorphic_IsIsomorphism : Isomorphic >-> IsIsomorphism.
+
+Existing Instance Isomorphic_IsIsomorphism.
+
+Class Symmetric A (R : A -> A -> Type) :=
+  symmetry : forall x y, R x y -> R y x.
+
+Global Instance isomorphic_sym C : @ Symmetric _ (@ Isomorphic C).
+repeat intro.
+exists (Inverse).
+exists (X : Morphism C x y).
+Undo.
+exists X.
+(* Toplevel input, characters 0-8:                                                                                                          
+Error: Refiner was given an argument "X" of type "Isomorphic x y" instead of                                                                
+ "Morphism C x y". *)
+```
+
+Comment author: @ppedrot
+
+This is fixed in trunk.
+
+
+Comment author: @silene
+
+This is not fixed in trunk: Unable to unify "Isomorphic x y" with "Morphism C x y".
+
+
+Still an issue in 8.15+alpha.
+Seems like a duplicate of https://github.com/coq/coq/issues/5669

@@ -1,0 +1,9 @@
+Comment author: @JasonGross
+
+Goal let x := 1 in x = 1.
+Proof.
+  intro x.
+  revert dependent x.
+  reflexivity. (* fails, but it should succeed *)
+
+

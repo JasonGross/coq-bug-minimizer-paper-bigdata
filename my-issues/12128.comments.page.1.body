@@ -1,0 +1,5 @@
+As I said to you on Gitter, this is not about Nix, this is about the documentation builds (they sometimes fail with such timeouts in any documentation build).
+
+There are two possibilities that I can see: remove this timeout entirely or have @coqbot restart the job automatically. The problems in both cases is that sometimes these timeouts are *not spurious*: if someone introduced a command in the reference manual that definitely takes too long to execute, or if someone forgot a trailing `.`
+@Zimmi48  Is this still an issue?
+I haven't seen such issues in a while. It probably means that our runners are more reliable and our timeout is long enough to avoid them. Can be reopened if this happens again.

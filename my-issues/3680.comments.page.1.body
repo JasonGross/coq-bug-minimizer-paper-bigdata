@@ -1,0 +1,10 @@
+Comment author: @JasonGross
+
+The message "Error: Conversion test raised an anomaly", e.g., on some [refine]s, is mostly useless.  It should mention which anomaly was raised.
+
+
+Comment author: @ppedrot
+
+I don't think so. It should not mention any anomaly at all, because this error should not appear. The true problem is that we should not feed ill-typed terms to functions from the kernel.
+
+

@@ -1,0 +1,20 @@
+cc @coq/extensible-syntax-maintainers
+> I might take a look at this if I get a chance, but I imagine it's just that we need to add an extra case for app nodes somewhere in the conversion.
+
+Feel free to (I'll review your PR). But if I were to fix this myself, I'd probably just improve the error message, considering how easy it is to workaround.
+"Improving" the error message by advising the use of a horrible work-around is not very nice.  But really, why does Number Notation require that the first qualid be a designator of an Inductive type?  Why can't it just be a Definition?  That's really what I want in some cases.  The use of an abbreviation (as suggested in the reference manual) is just another work-around.
+I believe that the workaround suggested by @JasonGross is effective only for parsing, not for printing.  Recall that the workaround is "make a Definition for the parameters (such as sum nat nat) and use that instead in the notation."  But when the pretty-printer encounters actual values, the types of those values will have had that Definition expanded (back into [sum nat nat]) and the pretty-printer will not invoke the Number Notation on such values.
+
+So it really seems necessary to handle the nested app nodes correctly.  By the way, the true use-case is not (aa), it's  (binary_float 24 128), where the nested app constructors are inside the integer constants 24 and 128.
+> But when the pretty-printer encounters actual values, the types of those values will have had that Definition expanded (back into [sum nat nat]) and the pretty-printer will not invoke the Number Notation on such values.
+
+Are you sure that this is the case?  (I haven't tested it.). IIRC, the inductive is only used to identify which constructors are entry-points into printing, and to type-constrain the parsing and printing functions, and so the syntactic form of the parameters should not matter.
+Yes, I'm pretty sure; I've tested it.  Tomorrow I hope to provide a whole working system that illustrates many of these points.
+Yes, this issue is a serious bug, and no, the workaround suggested in the original issue report is not useful.  The attached file (which works in Coq 8.13.2) explains.  
+[float_notations.txt](https://github.com/coq/coq/files/7060536/float_notations.txt)
+Just search for 14806 within the text, for explanations.
+
+I strongly suggest that the bug be fixed, i.e., to permit such things as Z literals as the arguments to parametrized inductive types.
+Thanks for your work, I acknowledge the bug should actually be fixed and I'm currently working on it.
+
+Note that it seems that your `rebuild_float` function can be replaced by `erase` that already exists in Flocq.

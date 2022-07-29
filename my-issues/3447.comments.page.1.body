@@ -1,0 +1,516 @@
+Comment author: @JasonGross
+
+(* -*- mode: coq; coq-prog-args: ("-emacs" "-indices-matter") -*- *)
+(* File reduced by coq-bug-finder from original input, then from 7372 lines to 539 lines, then from 532 lines to 505 lines *)
+Generalizable All Variables.
+Set Asymmetric Patterns.
+Set Universe Polymorphism.
+Axiom admit : forall {T}, T.
+Arguments projT1 {_ _} _.
+Definition relation (A : Type) := A -> A -> Type.
+Class Reflexive {A} (R : relation A) := reflexivity : forall x : A, R x x.
+Class Symmetric {A} (R : relation A) := symmetry : forall x y, R x y -> R y x.
+Notation "( x ; y )" := (existT _ x y) : fibration_scope.
+Open Scope fibration_scope.
+Notation pr1 := projT1.
+Notation "x .1" := (projT1 x) (at level 3) : fibration_scope.
+Notation "x .2" := (projT2 x) (at level 3) : fibration_scope.
+Definition compose' {A B C : Type} (g : B -> C) (f : A -> B) := fun x => g (f x).
+Notation "g 'o' f" := (compose' g f) (at level 40, left associativity) : function_scope.
+Open Scope function_scope.
+Inductive paths {A : Type} (a : A) : A -> Type := idpath : paths a a where "x = y" := (@ paths _ x y) : type_scope.
+Arguments idpath {A a} , [A] a.
+Instance reflexive_paths {A} : Reflexive (@ paths A) | 0 := @ idpath A.
+Delimit Scope path_scope with path.
+Local Open Scope path_scope.
+Definition concat {A : Type} {x y z : A} (p : x = y) (q : y = z) : x = z := match p, q with idpath, idpath => idpath end.
+Definition inverse {A : Type} {x y : A} (p : x = y) : y = x := match p with idpath => idpath end.
+Instance symmetric_paths {A} : Symmetric (@ paths A) | 0 := @ inverse A.
+Notation "1" := idpath : path_scope.
+Notation "p @  q" := (concat p q) (at level 20) : path_scope.
+Notation "p ^" := (inverse p) (at level 3) : path_scope.
+Definition transport {A : Type} (P : A -> Type) {x y : A} (p : x = y) (u : P x) : P y := match p with idpath => u end.
+Notation "p # x" := (transport _ p x) (right associativity, at level 65, only parsing) : path_scope.
+Definition ap {A B:Type} (f:A -> B) {x y:A} (p:x = y) : f x = f y := match p with idpath => idpath end.
+Definition pointwise_paths {A} {P:A->Type} (f g:forall x:A, P x) := forall x:A, f x = g x.
+Hint Unfold pointwise_paths : typeclass_instances.
+Definition apD {A:Type} {B:A->Type} (f:forall a:A, B a) {x y:A} (p:x=y): p # (f x) = f y
+  := match p with idpath => idpath end.
+Definition Sect {A B : Type} (s : A -> B) (r : B -> A) := forall x : A, r (s x) = x.
+Class IsEquiv {A B : Type} (f : A -> B) := BuildIsEquiv {
+                                               equiv_inv : B -> A ;
+                                               eisretr : Sect equiv_inv f;
+                                               eissect : Sect f equiv_inv;
+                                               eisadj : forall x : A, eisretr (f x) = ap f (eissect x)
+                                             }.
+Arguments eisretr {A B} f {_} _.
+Arguments eissect {A B} f {_} _.
+Arguments eisadj {A B} f {_} _.
+Record Equiv A B := BuildEquiv { equiv_fun :> A -> B ; equiv_isequiv :> IsEquiv equiv_fun }.
+Existing Instance equiv_isequiv.
+Notation "A <~> B" := (Equiv A B) (at level 85) : equiv_scope.
+Notation "f ^-1" := (@ equiv_inv _ _ f _) (at level 3) : equiv_scope.
+Class Contr_internal (A : Type) := BuildContr { center : A ; contr : (forall y : A, center = y) }.
+Inductive trunc_index : Type :=
+| minus_two : trunc_index
+| trunc_S : trunc_index -> trunc_index.
+Fixpoint nat_to_trunc_index (n : nat) : trunc_index
+  := match n with
+       | 0 => trunc_S (trunc_S minus_two)
+       | S n' => trunc_S (nat_to_trunc_index n')
+     end.
+Coercion nat_to_trunc_index : nat >-> trunc_index.
+Fixpoint IsTrunc_internal (n : trunc_index) (A : Type) : Type :=
+  match n with
+    | minus_two => Contr_internal A
+    | trunc_S n' => forall (x y : A), IsTrunc_internal n' (x = y)
+  end.
+Notation minus_one:=(trunc_S minus_two).
+Class IsTrunc (n : trunc_index) (A : Type) : Type := Trunc_is_trunc : IsTrunc_internal n A.
+Instance istrunc_paths (A : Type) n `{H : IsTrunc (trunc_S n) A} (x y : A) : IsTrunc n (x = y) := H x y.
+Notation Contr := (IsTrunc minus_two).
+Notation IsHProp := (IsTrunc minus_one).
+Notation IsHSet := (IsTrunc 0).
+Definition concat_p1 {A : Type} {x y : A} (p : x = y) : p @  1 = p
+  := match p with idpath => idpath end.
+
+Definition concat_1p {A : Type} {x y : A} (p : x = y) :
+  1 @  p = p
+  :=
+    match p with idpath => 1 end.
+
+Definition ap_pp {A B : Type} (f : A -> B) {x y z : A} (p : x = y) (q : y = z) :
+  ap f (p @  q) = (ap f p) @  (ap f q)
+  :=
+    match q with
+        idpath =>
+        match p with idpath => 1 end
+    end.
+
+Definition ap_compose {A B C : Type} (f : A -> B) (g : B -> C) {x y : A} (p : x = y) :
+  ap (g o f) p = ap g (ap f p)
+  :=
+    match p with idpath => 1 end.
+
+Definition concat_A1p {A : Type} {f : A -> A} (p : forall x, f x = x) {x y : A} (q : x = y) :
+  (ap f q) @  (p y) = (p x) @  q
+  :=
+    match q with
+      | idpath => concat_1p _ @  ((concat_p1 _) ^)
+    end.
+
+Axiom transport_compose : forall {A B} {x y : A} (P : B -> Type) (f : A -> B)
+                                 (p : x = y) (z : P (f x)),
+                            transport (fun x => P (f x)) p z  =  transport P (ap f p) z.
+
+Definition concat2 {A} {x y z : A} {p p' : x = y} {q q' : y = z} (h : p = p') (h' : q = q')
+: p @  q = p' @  q'
+  := match h, h' with idpath, idpath => 1 end.
+
+Notation "p @ @  q" := (concat2 p q)%path (at level 20) : path_scope.
+
+Definition whiskerL {A : Type} {x y z : A} (p : x = y)
+           {q r : y = z} (h : q = r) : p @  q = p @  r
+  := 1 @ @  h.
+
+Definition ap02 {A B : Type} (f:A->B) {x y:A} {p q:x=y} (r:p=q) : ap f p = ap f q
+  := match r with idpath => 1 end.
+Local Open Scope equiv_scope.
+
+Instance isequiv_compose `{IsEquiv A B f} `{IsEquiv B C g}
+: IsEquiv (compose' g f) | 1000
+  := BuildIsEquiv A C (compose' g f)
+                  (compose' f^-1 g^-1)
+                  (fun c => ap g (eisretr f (g^-1 c)) @  eisretr g c)
+                  (fun a => ap (f^-1) (eissect g (f a)) @  eissect f a)
+                  (fun a =>
+                     (whiskerL _ (eisadj g (f a))) @ 
+                                                   (ap_pp g _ _)^ @ 
+                                                                    ap02 g
+                                                                    ( (concat_A1p (eisretr f) (eissect g (f a)))^ @ 
+                                                                                                                    (ap_compose f^-1 f _ @ @  eisadj f a) @ 
+                                                                                                                    (ap_pp f _ _)^
+                                                                    ) @ 
+                                                                    (ap_compose f g _)^
+                  ).
+
+Section EquivInverse.
+
+  Context `{IsEquiv A B f}.
+
+  Global Instance isequiv_inverse : IsEquiv f^-1 | 10000
+    := BuildIsEquiv B A f^-1 f (eissect f) (eisretr f) admit.
+End EquivInverse.
+
+Axiom trunc_equiv : forall `(f : A -> B)
+                           `{IsTrunc n A} `{IsEquiv A B f},
+                      IsTrunc n B.
+
+Definition trunc_equiv' `(f : A <~> B) {n}
+: IsTrunc n B := admit.
+Definition path_sigma_uncurried {A : Type} (P : A -> Type) (u v : sigT P)
+           (pq : {p : u.1 = v.1 &  p # u.2 = v.2})
+: u = v
+  := match pq with
+       | existT p q =>
+         match u, v return (forall p0 : (u.1 = v.1), (p0 # u.2 = v.2) -> (u=v)) with
+           | (x;y), (x';y') => fun p1 q1 =>
+                                 match p1 in (_ = x'') return (forall y'', (p1 # y = y'') -> (x;y)=(x'';y'')) with
+                                   | idpath => fun y' q2 =>
+                                                 match q2 in (_ = y'') return (x;y) = (x;y'') with
+                                                   | idpath => 1
+                                                 end
+                                 end y' q1
+         end p q
+     end.
+
+Definition projT1_path `{P : A -> Type} {u v : sigT P} (p : u = v)
+: u.1 = v.1
+  :=
+    ap (@ projT1 _ _) p.
+
+Notation "p ..1" := (projT1_path p) (at level 3) : fibration_scope.
+
+Definition projT2_path `{P : A -> Type} {u v : sigT P} (p : u = v)
+: p..1 # u.2 = v.2
+  := (transport_compose P (@ projT1 _ _) p u.2)^
+     @  (@ apD {x:A & P x} _ (@ projT2 _ _) _ _ p).
+
+Notation "p ..2" := (projT2_path p) (at level 3) : fibration_scope.
+
+Axiom eta_path_sigma_uncurried : forall `{P : A -> Type} {u v : sigT P}
+                                        (p : u = v),
+                                   path_sigma_uncurried _ _ _ (p..1; p..2) = p.
+
+Instance isequiv_path_sigma `{P : A -> Type} {u v : sigT P}
+: IsEquiv (path_sigma_uncurried P u v) | 0.
+Admitted.
+
+Instance isequiv_pr1_contr {A} {P : A -> Type}
+         `{forall a, Contr (P a)}
+: IsEquiv (@ pr1 A P) | 100.
+Admitted.
+
+Definition path_sigma_hprop {A : Type} {P : A -> Type}
+           `{forall x, IsHProp (P x)}
+           (u v : sigT P)
+: u.1 = v.1 -> u = v
+  := path_sigma_uncurried P u v o pr1^-1.
+
+Definition equiv_path_sigma_hprop {A : Type} {P : A -> Type}
+           {HP : forall a, IsHProp (P a)} (u v : sigT P)
+: (u.1 = v.1) <~> (u = v)
+  := BuildEquiv _ _ (path_sigma_hprop _ _) _.
+Set Implicit Arguments.
+
+Delimit Scope morphism_scope with morphism.
+Delimit Scope category_scope with category.
+Delimit Scope object_scope with object.
+
+Record PreCategory :=
+  Build_PreCategory' {
+      object :> Type;
+      morphism : object -> object -> Type;
+
+      identity : forall x, morphism x x;
+      compose : forall s d d',
+                  morphism d d'
+                  -> morphism s d
+                  -> morphism s d'
+                              where "f 'o' g" := (compose f g);
+
+      associativity : forall x1 x2 x3 x4
+                             (m1 : morphism x1 x2)
+                             (m2 : morphism x2 x3)
+                             (m3 : morphism x3 x4),
+                        (m3 o m2) o m1 = m3 o (m2 o m1);
+
+      associativity_sym : forall x1 x2 x3 x4
+                                 (m1 : morphism x1 x2)
+                                 (m2 : morphism x2 x3)
+                                 (m3 : morphism x3 x4),
+                            m3 o (m2 o m1) = (m3 o m2) o m1;
+
+      left_identity : forall a b (f : morphism a b), identity b o f = f;
+      right_identity : forall a b (f : morphism a b), f o identity a = f;
+
+      identity_identity : forall x, identity x o identity x = identity x;
+
+      trunc_morphism : forall s d, IsHSet (morphism s d)
+    }.
+Bind Scope object_scope with object.
+Arguments identity [!C%category] x%object : rename.
+Arguments compose [!C%category s%object d%object d'%object] m1%morphism m2%morphism : rename.
+
+Local Infix "o" := compose : morphism_scope.
+
+Definition Build_PreCategory
+           object morphism compose identity
+           associativity left_identity right_identity
+  := @ Build_PreCategory'
+       object
+       morphism
+       compose
+       identity
+       associativity
+       (fun _ _ _ _ _ _ _ => symmetry _ _ (associativity _ _ _ _ _ _ _))
+       left_identity
+       right_identity
+       (fun _ => left_identity _ _ _).
+
+Local Open Scope category_scope.
+Local Open Scope morphism_scope.
+
+Class IsIsomorphism {C : PreCategory} {s d} (m : morphism C s d) :=
+  {
+    morphism_inverse : morphism C d s;
+    left_inverse : morphism_inverse o m = identity _;
+    right_inverse : m o morphism_inverse = identity _
+  }.
+
+Local Notation "m ^-1" := (morphism_inverse (m := m)) : morphism_scope.
+
+Class Isomorphic {C : PreCategory} s d :=
+  {
+    morphism_isomorphic :> morphism C s d;
+    isisomorphism_isomorphic :> IsIsomorphism morphism_isomorphic
+  }.
+
+Coercion morphism_isomorphic : Isomorphic >-> morphism.
+Coercion isisomorphism_isomorphic : Isomorphic >-> IsIsomorphism.
+
+Local Infix "<~=~>" := Isomorphic (at level 70, no associativity) : category_scope.
+
+Section iso_equiv_relation.
+  Variable C : PreCategory.
+
+  Global Instance isisomorphism_identity (x : C) : IsIsomorphism (identity x)
+    := {| morphism_inverse := identity x;
+          left_inverse := left_identity C x x (identity x);
+          right_inverse := right_identity C x x (identity x) |}.
+
+  Global Instance isomorphic_refl : Reflexive (@ Isomorphic C)
+    := fun x : C => {| morphism_isomorphic := identity x |}.
+
+  Definition idtoiso (x y : C) (H : x = y) : Isomorphic x y
+    := match H in (_ = y0) return (x <~=~> y0) with
+         | 1%path => reflexivity x
+       end.
+End iso_equiv_relation.
+
+Notation IsCategory C := (forall s d : object C, IsEquiv (@ idtoiso C s d)).
+
+Notation isotoid C s d := (@ equiv_inv _ _ (@ idtoiso C s d) _).
+
+Delimit Scope structure_scope with structure.
+Delimit Scope long_structure_scope with long_structure.
+Local Open Scope structure_scope.
+
+Record NotionOfStructure (X : PreCategory) :=
+  {
+    structure :> X -> Type;
+    is_structure_homomorphism : forall x y
+                                       (f : morphism X x y)
+                                       (a : structure x) (b : structure y),
+                                  Type;
+    istrunc_is_structure_homomorphism : forall x y a b f,
+                                          IsHProp (@ is_structure_homomorphism x y a b f);
+    is_structure_homomorphism_identity : forall x (a : structure x),
+                                           is_structure_homomorphism (identity x) a a;
+    is_structure_homomorphism_composition : forall x y z
+                                                   (a : structure x)
+                                                   (b : structure y)
+                                                   (c : structure z)
+                                                   (f : morphism X x y)
+                                                   (g : morphism X y z),
+                                              is_structure_homomorphism f a b
+                                              -> is_structure_homomorphism g b c
+                                              -> is_structure_homomorphism (g o f) a c
+  }.
+
+Local Notation "a <=_{ x } b" := (is_structure_homomorphism _ x x (identity x) a b) (at level 70, no associativity) : long_structure_scope.
+Local Notation "a <= b" := (a <=_{ _ } b)%long_structure : structure_scope.
+
+Class IsStandardNotionOfStructure X (P : NotionOfStructure X) :=
+  antisymmetry_structure : forall x (a b : P x),
+                             a <= b -> b <= a -> a = b.
+
+Global Instance istrunc_homomorphism_standard_notion_of_structure
+       X P `{@ IsStandardNotionOfStructure X P} x
+: IsHSet (P x).
+Admitted.
+
+Section precategory.
+
+  Variable X : PreCategory.
+  Variable P : NotionOfStructure X.
+
+  Local Notation object := { x : X & P x }.
+
+  Record morphism_s (xa yb : object) :=
+    { PS_f : morphism X xa.1 yb.1;
+      PS_h : is_structure_homomorphism _ _ _ PS_f xa.2 yb.2 }.
+
+  Axiom issig_morphism : forall (xa yb : object),
+                           { f : morphism X xa.1 yb.1
+                                          & is_structure_homomorphism _ _ _ f xa.2 yb.2 }
+                             <~> morphism_s xa yb.
+End precategory.
+
+Definition precategory_of_structures X (P : NotionOfStructure X) : PreCategory.
+Proof.
+  refine (@ Build_PreCategory
+            _
+            (@ morphism_s _ P)
+            (fun xa => {| PS_f := identity xa.1;
+                          PS_h := is_structure_homomorphism_identity _ _ xa.2 |})
+            (fun xa yb zc gi fh => {| PS_f := (PS_f gi) o (PS_f fh);
+                                      PS_h := is_structure_homomorphism_composition _ _ _ _ _ _ _ _ _ (PS_h fh) (PS_h gi) |})
+            _
+            _
+            _
+            (fun s d => trunc_equiv' (issig_morphism P s d)));
+  simpl; admit.
+Defined.
+
+Section sip.
+  Context `{IsCategory X}.
+  Context `{@ IsStandardNotionOfStructure X P}.
+
+  Let StrX := @ precategory_of_structures X P.
+
+  Definition sip_isotoid_helper (xa yb : StrX)
+             (f : xa <~=~> yb)
+  : xa.1 <~=~> yb.1.
+  Proof.
+    exists (PS_f (f : morphism _ _ _)).
+    exists (PS_f f^-1).
+    -
+      exact (ap (@ PS_f _ _ _ _) (@ left_inverse _ _ _ _ f)).
+    -
+      exact (ap (@ PS_f _ _ _ _) (@ right_inverse _ _ _ _ f)).
+  Defined.
+
+  Axiom sip_isotoid_helper_refl : forall (xa : StrX),
+                                    @ sip_isotoid_helper xa xa (reflexivity _) = reflexivity _.
+  Notation "A <--> B" := (prod (A -> B) (B -> A)) (at level 90).
+  Axiom sip_helper : forall x y (p : x = y) (a : P x) (b : P y),
+                       transport P p a = b
+                                           <--> (is_structure_homomorphism P _ _ (idtoiso X p) a b *
+                                                 is_structure_homomorphism P _ _ (idtoiso X p)^-1 b a).
+
+  Definition sip_isotoid (xa yb : StrX)
+             (f : xa <~=~> yb)
+  : xa = yb.
+  Proof.
+    refine (path_sigma_uncurried
+              _ _ _
+              (isotoid
+                 X
+                 xa.1
+                 yb.1
+                 (sip_isotoid_helper f);
+               _)).
+    apply sip_helper; simpl.
+    split;
+      lazymatch goal with
+    | [ |- appcontext[idtoiso ?X ((isotoid ?X ?x ?y) ?m)] ]
+      => pose proof (eisretr (@ idtoiso X x y) m) as H';
+        pattern (idtoiso X ((isotoid X x y) m))
+    end;
+    refine (transport _ H'^ _); clear H'; simpl;
+    apply PS_h.
+  Defined.
+
+  Lemma sip_isotoid_refl xa
+  : @ sip_isotoid xa xa (reflexivity _) = reflexivity _.
+  Proof.
+    refine (_ @  eta_path_sigma_uncurried _).
+    refine (ap (path_sigma_uncurried _ _ _) _).
+    apply equiv_path_sigma_hprop.
+    simpl.
+    refine (_ @  eisretr (isotoid X xa.1 xa.1) 1%path).
+    apply ap.
+    solve [ apply sip_isotoid_helper_refl ].
+  Timeout 5 Defined. (* Timeout!; 6.095 s in trunk, 0.6 s in HoTT/coq, 0.2 s in 8.4pl3 *)
+
+
+Comment author: @aspiwack
+
+I gather the problem won't show up with a [Qed] instead in the last line? Such a difference is be quite curious.
+
+
+Comment author: @JasonGross
+
+No, [Qed] is also slow, about the same speed as [Defined], in both interactive and non-interactive mode.  (My example file simply had [Defined] there.)  This is not the only place that Coq has gotten slower at proof-checking, but I figured it would be easier to minimize a file that went from 6s to 30s than to minimize a file that went from 30s to 2m.
+
+
+Comment author: @ppedrot
+
+It does not compile on my machine with the current trunk. I get the following error:
+
+Error: Unsatisfied constraints:
+bug.552 <= bug.571
+bug.552 <= Coq.Init.Specif.23
+bug.572 <= bug.571
+bug.572 <= Coq.Init.Specif.22
+ (maybe a bugged tactic).
+
+
+Comment author: @JasonGross
+
+That is https://coq.inria.fr/bugs/show_bug.cgi?id=3446.  You need to pass -indices-matter to get this to give the error I mentioned.  (Sorry for not saying that explicitly, and only noting it via "(* -*- mode: coq; coq-prog-args: ("-emacs" "-indices-matter") -*- *)".)
+
+
+Comment author: @ppedrot
+
+A bit of profiling indicates that most of the time is due to the hashconsing of terms.
+
+
+Comment author: @JasonGross
+
+Would it be useful to have another 2-3 examples of what might be the same slowness, to see if they come from ~the same place?  (I can give you ~10,000 line-long examples almost immediately, or ~500-2000 line examples if you give me a few days.)
+
+Do you have any ideas for improving this, or working around it?
+
+
+Comment author: @ppedrot
+
+I can at least check that this comes from the same place, but providing you with a patch, or even an explication is something else!
+
+
+Comment author: @JasonGross
+
+Created attachment 492
+File that also has slow defineds
+
+Is hashconsing slower when the original hashes come from multiple files?  For the next example I'm working, it takes half as much time to compile the file with all of its dependencies inlined than it does to compile when it's dependencies are all pre-compiled as separate files.
+
+Anyway, I've attached the example.  It's a bit long, at 7300 lines, and I doubt it'll compile with 8.4.  It needs -indices-matter for trunk.  I've annotated the lines that got slower (between HoTT/coq and trunk) with "(* FIXME: Got Slower: <HoTT/coq time> -> <trunk time> *)".  Though the times might not match with what you see, because things sped up by a factor of ~5 when I inlined the file-dependencies into the same file.
+
+> Attached file: [bug_exp_laws_4_functors_01.v](https://coq.inria.fr/bugfiles/attachment.cgi?id=492) (application/octet-stream, 288539 bytes)
+> Description:   File that also has slow defineds
+
+
+Comment author: @ppedrot
+
+Seems like most of the hashconsing is due to Vars.subst_univs_level_constr. I don't know if this is the real culprit though.
+
+
+Comment author: @mattam82
+
+A main part of the problem was due to a bug in eauto fixing some universe variables as globals when they should be local, making some lemmas in Structure/Core monomorphic when they ought to be polymorphic, and resulting in a more complex unification problem in the non-inlined code. Fixing this gives a factor of 2 improvement (fix is in trunk now). Another problem I spotted is that [refine] is doing something different in trunk, in particular applying a reduction tactic to the subgoals resulting from refinement (in hyps and concl), resulting in another slowdown because of additional conversions. That doesn't account for the whole blowup though. Profiling also indicates a huge allocation rate in conversion, probably due to hash-consing so I guess this might be the main culprit.
+
+
+Comment author: @ppedrot
+
+I insist on the fact that the cost is due to a heck of a lot of hashconsing triggered by kernel's reduction: Closure.ref_value_cache seems to call Vars.subst_univs_level_constr many times, in turn calling Univ.subst_fn which hashconses its result when the substitution actually did something.
+
+Hashconsing & related account for more than 40% of the time spent...
+
+
+Comment author: @mattam82
+
+Okay, that's it indeed, all the time is spent hconsing universe instances. The timings when we don't do that at substitution time but only when putting constrs in envs are, well, amazing. The patch is in trunk now. In HoTT, ProjectionFunctors becomes the slowest file at 20secs here.
+
+

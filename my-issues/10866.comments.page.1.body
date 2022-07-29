@@ -1,0 +1,23 @@
+Also, "Error: Syntax error: operator expected." is a horrible error message for "`type` is a reserved keyword" (or something like that) (and it shows up on characters 75-79 of the line `  }`).
+
+```
+{
+
+open Stdarg
+
+}
+
+DECLARE PLUGIN "foo"
+
+VERNAC COMMAND EXTEND Foo CLASSIFIED AS SIDEFF
+  | [ "Foo" constr(type) ] -> {
+    ()
+  }
+END
+```
+gives
+```
+File "src/Util/plugins/foo.mlg", line 12, characters 75-79:
+Error: Syntax error: operator expected.
+```
+The error is actually from ocamldep, coqpp produces a .ml file without complaint.

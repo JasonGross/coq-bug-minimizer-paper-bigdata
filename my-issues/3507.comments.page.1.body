@@ -1,0 +1,49 @@
+Comment author: @JasonGross
+
+It would be nice if the following succeeded, and posed the eta-expanded primitive projection
+
+Set Primitive Projections.
+Set Implicit Arguments.
+Record prod A B := pair { fst : A ; snd : B }.
+
+Goal forall x : prod Set Set, x = @ pair _ _ (fst x) (snd x).
+Proof.
+  intro x.
+  lazymatch goal with
+    | [ |- ?x = @ pair _ _ (?f ?x) (?g ?x) ] => pose f
+  end.
+
+It would also be nice if this succeeded:
+
+Set Primitive Projections.
+Set Implicit Arguments.
+Record prod A B := pair { fst : A ; snd : B }.
+
+Goal forall x : prod Set Set, x = @ pair _ _ (fst x) (snd x).
+Proof.
+  intro x.
+  lazymatch goal with
+    | [ |- ?x = @ pair _ _ (?f ?x) (?g ?x) ]
+    => match goal with
+         | [ |- x = @ pair _ _ (f x) (g x) ] => idtac
+       end
+  end.
+
+
+I realize these are a bit ... extreme, especially given that it seems the second would require a fundamental change in how Ltac does matching (that it be up to equivalence classes of symbols, rather than raw syntax).  But it'd be nice to have.
+
+(I also want a bug number to refer to this with.)
+
+
+Comment author: @ppedrot
+
+This seems to me a real duplicate of bug [BZ#3377](https://github.com/coq/coq/issues?q=is%3Aissue%20%22Original%20bug%20ID%3A%20BZ%233377%22), so I mark it as such. Reopen it if you consider this is not the case...
+
+*** This bug has been marked as a duplicate of bug [BZ#3377](https://github.com/coq/coq/issues?q=is%3Aissue%20%22Original%20bug%20ID%3A%20BZ%233377%22) ***
+
+
+Comment author: @JasonGross
+
+Oops.  I think I tried to find 3377, and couldn't find the right search terms to get the bug tracker to give it to me.  Thanks.
+
+

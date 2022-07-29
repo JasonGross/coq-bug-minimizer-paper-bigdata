@@ -1,0 +1,74 @@
+Comment author: @JasonGross
+
+$ ~/.local64/coq/coq-v8.5/bin/coqc -time foo.v
+Chars 0 - 30 [Require~Import~Coq.Lists.List....] 0.067 secs (0.044u,0.023s)
+Chars 31 - 79 [Require~Import~Coq.Numbers.Nat...] 0.028 secs (0.027u,0.s)
+Chars 80 - 132 [Require~Import~Coq.omega.Omega...] 0.167 secs (0.16u,0.008s)
+Chars 133 - 245 [Require~Export~Coq.Setoids.Set...] 0.017 secs (0.012u,0.004s)
+Chars 246 - 295 [Require~Export~Fiat.Common.Coq...] 0. secs (0.u,0.s)
+File "./foo.v", line 6, characters 15-48:
+Error: Cannot find a physical path bound to logical path matching suffix
+Fiat.Common.
+$ ~/.local64/coq/coq-trunk/bin/coqc -time foo.v
+Chars 0 - 30 [Require~Import~Coq.Lists.List....]
+0.063 secs (0.051u,0.012s)
+Chars 31 - 79 [Require~Import~Coq.Numbers.Nat...]
+0.028 secs (0.028u,0.s)
+Chars 80 - 132 [Require~Import~Coq.omega.Omega...]
+0.143 secs (0.128u,0.015s)
+Chars 133 - 245 [Require~Export~Coq.Setoids.Set...]
+0.016 secs (0.015u,0.s)
+Chars 246 - 295 [Require~Export~Fiat.Common.Coq...]
+0. secs (0.u,0.s)
+File "./foo.v", line 6, characters 15-48:
+Error: Cannot find a physical path bound to logical path matching suffix
+Fiat.Common.
+
+
+This format is harder to, e.g., automatically sort.  Also, information display shouldn't be spuriously changed for no reason.  (And there should be an output test in the test-suite that checks this.)
+
+
+Comment author: @ejgallego
+
+Hi Jason,
+
+I'll have a look, I should be familiar with that code.
+[This could be another instance of some Format commands not put inside boxes]
+
+
+Comment author: @ejgallego
+
+Ok got it, the Flags.time code in vernac.ml is sending two messages, one with the file information and another on VernacTime execution.
+
+IMHO the right fix is to send a unique one.
+
+
+Comment author: @ejgallego
+
+Note that sending two messages (one before interp and one at the end) seems already broken if the vernac_interp produces any output, isn't it?
+
+[I'm pointing this out as the fix won't be the most beautiful thing on Earth]
+
+
+Comment author: @ejgallego
+
+Ok, patch at https://github.com/coq/coq/pull/259
+
+It is not the holy grail but it should do the job. Let me know how it works.
+
+
+Comment author: @ejgallego
+
+Ups the patch is not right, I'll try a second take.
+
+
+Comment author: @ejgallego
+
+https://github.com/coq/coq/pull/260 should work.
+
+
+Comment author: @ppedrot
+
+Patch merged, thanks!
+
+

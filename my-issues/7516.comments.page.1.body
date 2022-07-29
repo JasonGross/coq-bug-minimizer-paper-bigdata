@@ -1,0 +1,2 @@
+Umm, in principle this looks like a `camlp5` feature request so I'm not sure we can do a lot from the Coq side, other than polluting the grammar a lot.
+I don't know what the appropriate feature request on camlp5 ought to be, since I know almost nothing about camlp5, and so I don't know what's reasonable to ask for.  Could someone else make the feature request on the camlp5 tracker, and link it from here?

@@ -1,0 +1,99 @@
+@gares this is the bug I was mentioning during the call.
+I imagine these coq are just compiled, not installed, and that you make COQBIN point to .../_build/install/default/bin right?
+FTR, the workaround I use is to export `OCAMLPATH` to `path-to-coq/_build/install/default/lib/`.
+> I imagine these coq are just compiled, not installed, and that you make COQBIN point to .../_build/install/default/bin right?
+
+No, I have a couple dozen versions of Coq installed to `~/.local/coq/coq-$version/`, plus some symlinks that make the version I'm currently using appear in PATH, and sometimes I want to build two projects with two different versions of Coq simultaneously.  I don't use opam for this because I don't want the space overhead of having the same version of OCaml existing a couple dozen times.
+Can you have coqc/coqdep/the Makefile set OCAMLPATH before invoking ocamlfind?
+Well, yes, but to what? In your setup, where are plugins installed now (the .cmxs)? Is ~/.local/coq/coq-$version/ the prefix?
+
+Your layout is clearly non standard / home made. I've nothing against it, but instead of a symlink called coqc, why don't you make shell script (named coqc) which also sets OCAMLPATH? How is this a blocker?
+> Is ~/.local/coq/coq-$version/ the prefix?
+
+Yes
+
+> Well, yes, but to what?
+
+Either to ../lib (or whatever the relative path is) or to the absolute path that the installation was configured with.
+
+> Your layout is clearly non standard / home made.
+
+Sure, but the thing I'm asking for is not.  If I `./configure` with`-prefix` and then install, running a binary from the installed location should Just Work, even if I don't set PATH / OCAMLPATH / whatever.  This is why I consider it a blocker: it means I can no longer use ProofGeneral with multiple versions of (normally-installed) Coq at the same time without hand-rolling scripts for each version of Coq I install.
+My problem is that looking for libs in ../lib does not work on all systems. On nix it does not, since ocaml stuff is in ../lib/ocaml/site-libs. It is differen in debian, and again in opam. It depends on the config of ocaml actually. In your usecase is not even that, since your prefix is not even the same of ocaml.
+
+btw, how just installing coq in that path make it show up in your PATH? why your symlink does not count as an extra step but the shellscript doing the export does?
+> My problem is that looking for libs in ../lib does not work on all systems.
+
+I'm fine with only looking in the absolute path that the libs were installed in, which should be known at configure time.
+
+> btw, how just installing coq in that path make it show up in your PATH? why your symlink does not count as an extra step but the shellscript doing the export does?
+
+The symlinks are a red herring.  My issue is that if I install Coq (via -prefix and make install) to a location not in OCAMLPATH, it's unusable.
+
+I have a system of symlinks set up so that by symlinking `~/.local/coq/coq` to `~/.local/coq/coq-$version`, everything appears in the correct location according to PATH and OCAMLPATH (I have symlinks from my actual bin, lib, etc to the corresponding files and folders under `~/.local/coq/coq/`.)  This all works fine.  What does not work is my ability to use any other version of Coq that I've installed by just setting COQBIN / pointing PG at the coqtop binary.
+> why your symlink does not count as an extra step but the shellscript doing the export does?
+
+The symlinks are set up once for all versions of Coq.  Changing the version of Coq is just changing one symlink.  Installing a new version of Coq does not involve doing anything other than configure, make, make install.  What you are proposing involves renaming all installed binaries for each new version of Coq and adding a new shell script for each, each time I make a new install of Coq
+You could have one shell script for coqc reading COQ_VERSION from the env (or COQBIN if you prefer) and have it call the right coqc and setting the right OCAMLPATH.
+You would need one shell script per tool in your path. If you -prefix and install in a consistent way, then it should work.
+
+ Or you can call just dune exec coqc from the build path and that will set OCAMLPATH for you (no need to install). This is what people do with worktrees/checkouts.
+
+About making coq's configure record a path for ocaml libs which is different from the one ocaml was configured for is not nice, it seems ad hoc to cover a non standard layout.
+
+Frankly I don't see how this use case (20 coq versions, one opam switch) would be needed by the userbase at large, and at the same time it is not blocking you since we came up with at leat 2 ways of skinning the cat, even if they may require exporting one extra variable, or writing a few shell scrpts.
+ I think we could make the -prefix thing work, even if the prefix is not the ocaml one. It can become equivalent to pass the right -I automatically at every invocation. That should help @JasonGross but maybe not @ppedrot 
+I mean use some value derived from Coq_config.prefix here : https://github.com/coq/coq/blob/f3f3989dc4a166c1653a9d0a129e3f5ddde82f42/sysinit/coqinit.ml#L156
+> I think we could make the -prefix thing work, even if the prefix is not the ocaml one. It can become equivalent to pass the right -I automatically at every invocation. That should help @JasonGross but maybe not @ppedrot
+
+If any Coq installed via `-prefix` worked without having to set `OCAMLPATH`, that'd be great, and I'd consider it an adequate fix for this issue.
+> If any Coq installed via `-prefix` worked without having to set `OCAMLPATH`, that'd be great, and I'd consider it an adequate fix for this issue.
+
+That's a bit tricky, as really Coq has no business messing with OCAMLPATH on its own, it is the responsibility of the person setting prefix to properly configure findlib as to take into account that; I'm afraid that Coq adding such an heuristic could actually break assumptions on other tools that really own OCAMLPATH.
+
+So after a bit of thinking, this is a (soft) NACK, as Coq should not overrive OCAMLPATH on its own as it doesn't own it, but the toolchain does. I feel the benefit / risk ratio is too low. However, it is also true that the use case is not great with current ocaml tooling, so I dunno, what config options does findlib allow ?
+I'm personally fine with closing this, I was just hoping for a simpler solution if it existed. If it doesn't, that's life.
+I haven't fully been keeping up with the new model.  Is `-I` in `_CoqProject` not a thing anymore?
+No, -I can also be used to add paths to findlib.
+I still think coqc configured with `-prefix` should add the relevant paths to COQPATH when invoking findlib as if they were passed with `-I`.  I am fine with having an extra flag that you can pass along with `-prefix` to disable this behavior, and I'm fine with having an extra flag that can be passed to `coqc` to disable this.  @ejgallego is there some design here that you'd be okay with?
+My question is: does setting a prefix which is not the same of ocaml/ocamlfind make sense? If it is the case, then we should ensure ocamlfind when run by coq honors it. If not, then we should detect prefix from the ocaml installation and remove the option.
+
+Given the complexity of the patch, which seems trivial, I lean toward the former (we already preseed ocamlfind with the -I, we can add one more oath there, if it is the same of ocaml it won't hurt.
+> My question is: does setting a prefix which is not the same of ocaml/ocamlfind make sense?
+
+This is absolutely required for my setup.  (I'm not willing to install a fresh copy of OCaml + libs for every different version of Coq I have installed, that would leave me without any harddisk space.). I think passing `-prefix` is also required for Debian/Ubuntu packaging, though I may be wrong (it may be the case that it used to be required and I still use it though it is no longer useful).
+> I think passing `-prefix` is also required for Debian/Ubuntu
+
+It is, but both ocaml, findlib and coq set it to `/usr`, this is how prefix is supposed to be used as far as I know.
+
+> This is absolutely required for my setup.
+
+So, IMO, the decision about this bug is to declare your setup supported or not. I think it can be supported, but does not look standard at all to me (I mean, I've never seen anything like this in unix, not without wrappers to set the environemnt, e.g. stuff that goes to /opt sets LD_LIBRARY_PATH to also include its local shared libs).
+
+Note that "not being supported" just mean you have to export an env var.
+Now that I think about it, in your setup, `coq_makefile` should install plugins in the right path (since it uses the path of `coq-core` to derive the others, I mean it honors the prefix you give to coq) but I'm not sure "dune install" would (without passing some explicit flag).
+> I still think coqc configured with `-prefix` should add the relevant paths to COQPATH when invoking findlib as if they were passed with `-I`. I am fine with having an extra flag that you can pass along with `-prefix` to disable this behavior, and I'm fine with having an extra flag that can be passed to `coqc` to disable this. @ejgallego is there some design here that you'd be okay with?
+
+I am always wary of flag proliferation, it is a recipe for bugs in my experience. Also, Coq is not expected to mess with ocamlfind setup, so doing that is IMO a recipe for future extremely hard to debug bugs, when someone is trying to figure out why Coq doesn't honor the ocamlfind configuration the user has provided.
+
+I think that we should support this setup, but I still fail to see why having the right layer to take care of it is a problem. That is to say, a wrapper for coqtop (for example the recent `dune coq top` will do the right thing (TM) (and once we fix a bug)) or your own `jason-coqtop.sh` which has the magic to detect your own installation scheme and setup OCAMLPATH.
+
+
+Moreover, when doing install to a custom prefix, there is some other stuff to take care of, for example `LD_LIBRARY_PATH` if you for example are using differente gtk versions of gmp, etc... so it is not that simple for Coq to take care of it.
+
+Is this still a blocker?
+@ppedrot Maybe we should bring it up in the call?
+Is there a way to get the location that plugins get installed to from `coqc` / `coq_makefile` / `ocamlfind`?  That is, if I want to detect what location `coq_makefile` will install plugins to, what command should I run?
+coq_makefile will put them in a sibling directory of `coqc -config | grep CORE`, ocamlfind will look for them according to `ocamlfind printconf`.
+Note that coqc will init findlib using all `-I path` as extra search paths (ad is OCAMLPATH=path was set).
+@JasonGross ping about the blocking status of this issue.
+For what is worth, I agree with @gares . The use case is worth supporting and the patch to do so should be trivial (i.e., passing `Coq_config.prefix / ...` to `Findlib.init`).
+I think we also want coq_makefile to call ocamlfind (the binary) setting the right OCAMLPATH (if you export the var yourself, then it is already OK, but if you don't...).
+EDIT: I mean, the makefile generated by coq_makefile shoud set....
+It's okay to make this nonblocking, but it would be really nice to have it supported
+> For what is worth, I agree with @gares . The use case is worth supporting and the patch to do so should be trivial (i.e., passing `Coq_config.prefix / ...` to `Findlib.init`).
+
+That's trickier than it looks, unless you want to ignore existing `OCAMLPATH`, which brings their own problems.
+
+Note that if you use this method, and you OCAMLPATH points to an existing Coq install, then findlib will complain about duplicated meta files.
+Tho, I guess it is fine for coq_makefile to read COQBIN and adjust OCAMLPATH

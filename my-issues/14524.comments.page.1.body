@@ -1,0 +1,30 @@
+There are quite a few vernac commands that are not highlighted. For example: 
+ * `Universe` is but `Universes` isn't.
+ * `Generalizable Variable(s)`.
+ * `Scheme`
+ * `Existing Instances`
+ * Weirdly formatting `Require Imports`. (Together with `From` also)
+ * Anything with `Cumulative`.
+
+And so on.
+
+I wonder if there is a systematic way to detect syntax that doesn't have highlighting support.
+
+Presumably the list that has support is at
+https://github.com/coq/coq/blob/97f093250f9ca19822d68aa191177db43fc880f1/ide/coqide/coq_commands.ml#L11-L227
+
+The full list is probably something like
+https://github.com/coq/coq/blob/d05e359713eec269948804d5b0eb58874aca5447/doc/tools/docgram/fullGrammar#L494-L710
+and
+https://github.com/coq/coq/blob/d05e359713eec269948804d5b0eb58874aca5447/doc/tools/docgram/fullGrammar#L790-L797
+
+I wonder if @jfehrle has a tool that's the equivalent of `Eval cbv [<nonterminal list>] in nonterminal` to inline relevant productions so we can see what the possible prefix strings are
+The list in `coq_commands.ml` is used to populate the Templates menu.  (Which, FWIW, doesn't seem too useful--I'd be interested in hearing from those feel otherwise.)
+
+Coq highlighting is done by the `GSourceView3` package.  `coq.lang` defines the highlighting in XML form using colors defined in `coq_style.xml`.  A cursory examination suggests that it is fairly powerful.  See the [tutorial](https://developer.gnome.org/gtksourceview/stable/lang-tutorial.html) and [reference manual](https://developer.gnome.org/gtksourceview/stable/lang-reference.html).
+
+Perhaps it's possible to generate some or all of this information automatically from the info `doc_grammar` has.  That would be a bit of a project.  It may be possible to improve it significantly by hand without too much trouble (e.g. add `<keyword>Declare</keyword>` just before `<keyword>Delimit</keyword>` for your example).
+
+As for the raw information, if you run `make doc_gram_rsts` locally, it creates two files `prodnCommands` and `prodnTactics` that give the syntax of all commands and tactics (including a very few Ltac-defined tactics) in alpha order.  Lines with no prefix are documented, lines with a `-` prefix are undocumented, lines with `+` are documented but don't exist in the code.  Including a few that don't begin with literal strings.  I generated these to facilitate updating the documentation.  `doc/tools/docgram/README.md` explains the tool.
+
+

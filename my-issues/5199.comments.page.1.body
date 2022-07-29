@@ -1,0 +1,247 @@
+Comment author: @JasonGross
+
+Not sure if 8.6beta2 is the right milestone for this...
+```coq
+(* -*- mode: coq; coq-prog-args: ("-emacs" "-boot" "-nois") -*- *)
+(* File reduced by coq-bug-finder from original input, then from 286 lines to 
+27 lines, then from 224 lines to 53 lines, then from 218 lines to 56 lines, 
+then from 269 lines to 180 lines, then from 132 lines to 48 lines, then from 
+253 lines to 65 lines, then from 79 lines to 65 lines *)
+(* coqc version 8.6.0 (November 2016) compiled on Nov 12 2016 14:43:52 with 
+OCaml 4.02.3
+   coqtop version jgross-Leopard-WS:/home/jgross/Downloads/coq/coq-v8.6,v8.6 
+(7e992fa784ee6fa48af8a2e461385c094985587d) *)
+Axiom admit : forall {T}, T.
+Set Printing Implicit.
+Inductive nat := O | S (_ : nat).
+Axiom f : forall (_ _ : nat), nat.
+Record ZLikeOps (e : nat)
+  := { LargeT : Type ; SmallT : Type ; CarryAdd : forall (_ _ : LargeT), LargeT 
+}.
+Axiom LargeT' : forall {e} {ops : ZLikeOps e}, Type.
+Axiom CarryAdd' : forall {e} {ops : ZLikeOps e} (_ _ : @ LargeT e ops), @ LargeT' 
+e ops.
+Record BarrettParameters :=
+  { b : nat ; k : nat ; ops : ZLikeOps (f b k) }.
+Axiom barrett_reduce_function_bundled : forall {params : BarrettParameters}
+                                               (_ : @ LargeT' _ (@ ops params)),
+    @ SmallT _ (@ ops params).
+Definition ZZLikeOps e : ZLikeOps (f (S O) e)
+  := {| LargeT := nat ; SmallT := nat ; CarryAdd x y := y |}.
+Definition SRep := nat.
+Definition x86_25519_Barrett : BarrettParameters
+  := {| b := S O ; k := O ; ops := ZZLikeOps O |}.
+Definition SRepAdd : forall (_ _ : SRep), SRep
+  := let v := (fun x y => @ barrett_reduce_function_bundled x86_25519_Barrett 
+(@ CarryAdd' _ _ x y)) in
+     v.
+Definition SRepAdd' : forall (_ _ : SRep), SRep
+  := (fun x y => @ barrett_reduce_function_bundled x86_25519_Barrett (@ CarryAdd' 
+_ _ x y)).
+(* Error: In environment
+x : SRep
+y : SRep
+The term "x" has type "SRep" while it is expected to have type "LargeT ?n ?z". 
+*)
+```
+Since `LargeT'` is an `Axiom`, there's a unique solution, and it falls in the 
+fragment of unification that's solved by "delay all unification problems 
+involving evars except ?e = T where T has no evars, in which case instantiate 
+?e with T"
+
+
+Comment author: @maximedenes
+
+I don't think we want any risky change in unification for 8.6 at this point, so tagging 8.7.
+
+
+Comment author: @herbelin
+
+A shorter example for this issue.
+
+```coq
+Record T := { dom : Type }.
+Definition t : T := {| dom := nat |}.
+Axiom P : T -> Type.
+Axiom ax1 : forall (t : T), dom t -> P t.
+Axiom ax2 : P t -> Prop.
+Check (fun x : ?[T] => ax2 (ax1 ?[t] x)). (* ok *)
+Check (fun x : nat => ax2 (ax1 ?[t] x)). (* fail *)
+```
+
+For the record, the two equations in "d2" are:
+
+1. `nat <= dom ?t`
+2. `P ?t <= P t`
+
+The two equations in "d1" are:
+
+1. `?T <= dom ?t`
+2. `P ?t <= P t`
+
+The equation 1. is tried first. In d1, it succeeds by setting "?T := dom ?t" and 2. is tried and succeeds.
+
+In d2, equation 1. fails (without postponing) what makes the whole problem fails.
+
+Note that equation 1. interacts with both coercions, canonical structures and order of type-checking.
+
+* Interaction with coercions *
+
+Consider:
+
+```coq
+Coercion g (b:bool) : dom t := if b then 0 else 1.
+Check (fun x : bool => ax2 (ax1 ?[t] x)).
+```
+
+This example shows that postponing is not an option w/o any change in the coercion algorithm, because we have to remember that the coercion g applies and after postponing, it is not anymore possible to add a coercion.
+
+* Interaction with canonical structures *
+
+Consider:
+
+```coq
+Record T := { dom : Type; a : dom }.
+Definition t : T := {| dom := nat; a := 0 |}.
+Canonical Structure t' := {| dom := nat; a := 1 |}.
+Axiom P : T -> Type.
+Axiom ax1 : forall (t : T), dom t -> P t.
+Axiom ax2 : P t -> Prop.
+Check (fun x : nat => ax2 (ax1 ?[t] x)).
+```
+
+This questions about how to use canonical structures not too early.
+
+* Interaction with order of type-checking.
+
+Consider:
+
+```coq
+Record T := { dom : Type }.
+Definition t : T := {| dom := nat |}.
+Axiom P : T -> Type.
+Axiom ax : forall (u : T) (U:Type), (P u -> (P t -> U) -> dom u) -> U.
+Check ax ?[t] nat (fun x f => f x).
+Check ax ?[t] ?[T] (fun x f => f x).
+```
+
+If I'm correct, this generates the same equations in the other order.
+
+My current feeling is that we should first change the coercion mechanism, so that coercion problems can be postponed until we have exploited all other information around.
+
+Any opinions?
+
+
+Comment author: @silene
+
+I am not sure to fully understand the issue, but I would just like to point out that the coercion mechanism is already clearly incomplete (and thus requires explicit coercions in some cases) and it does not seem that your suggestion makes it any worse. Or do you anticipate that a lot of existing developments that are currently pretyped properly would no longer be?
+
+
+Comment author: @herbelin
+
+(In reply to Guillaume Melquiond from comment [BZ#3](https://github.com/coq/coq/issues?q=is%3Aissue%20%22Original%20bug%20ID%3A%20BZ%233%22))
+> I am not sure to fully understand the issue, but I would just like to point
+> out that the coercion mechanism is already clearly incomplete (and thus
+> requires explicit coercions in some cases) and it does not seem that your
+> suggestion makes it any worse. Or do you anticipate that a lot of existing
+> developments that are currently pretyped properly would no longer be?
+
+I don't know what you call my suggestion.
+
+Anyway, I don't know if this answers your question, but one point is that if we start to postpone equations of the form "nat <= dom ?t", then, considering the way insertion of coercions is implemented today, this would bypass the possibility to insert a coercion forever (I made the experience of doing this postponing and about 10 files fail in the test-suite; at least one because of a coercion not being inserted any more).
+
+I don't know if other ideas exist around, but one solution I see to support postponing and at the same time improving the coercion mechanism, is to support special evars for coercions, and to insert such evars every time there is a subtyping not enough informative to know if a coercion would ever be needed in the future. Then, it is only after the first phase of extraction of all typing information available in the original term that coercions would be inserted if needed.
+
+This is a bit cumbersome and this why I'm hesitating to advocate for doing a step further. Consider for instance the infamous asymmetry of "true = 0 :> ?[T]" in the presence of a coercion "c" from bool to nat. Instead of turning the subtyping problem "bool <= ?T" into "?T := bool" as it is done now, one would elaborate the typing problem into:
+
+?c1 true = ?c2 0 :> ?[T]
+
+where
+
+?c1 : bool <= ?T
+?c2 : nat <= ?T
+
+Then, the "solve remaining problems" algorithm will try e.g. collect all lower bounds of ?T, see that there are inconsistent, and try to see if they can be linearly ordered using coercions, and finally found ?T:=nat, ?c1:=c and ?c2:=id, which would produce, after inlining of id, the term "c true = 0 :> nat".
+
+To take another example, like "(n:nat) (x:Z) |- n+n = z :> ?[B]" with "+" a notation for a polymorphic plus of type "forall A (T:PlusClass A), A -> A -> A", with instances of "PlusClass nat" and "PlusClass Z" around, as well as a coercion h from nat to Z. One would elaborate the expression into
+"plus ?A ?T (?c1 n) (?c2 n) = ?c3 z :> ?B" where
+
+?c1 : nat <= ?A
+?c2 : nat <= ?A
+?c3 : ?A <= ?B
+?c4 : Z <= ?B
+?T : PlusClass ?A
+
+Then, some backtracking on at the same time looking for a coercion and for an instance would produce the two solutions 
+
+?A:=nat, ?B:=Z, ?c1:=id, ?c2:=id, ?c3:=h, ?c4:=id
+?A:=Z, ?B:=Z, ?c1:=h, ?c2:=h, ?c3:=id, ?c4:=id
+
+Would it be worth or would it be too much burden?
+
+
+Comment author: @silene
+
+(In reply to Hugo Herbelin from comment [BZ#4](https://github.com/coq/coq/issues?q=is%3Aissue%20%22Original%20bug%20ID%3A%20BZ%234%22))
+> (In reply to Guillaume Melquiond from comment [BZ#3](https://github.com/coq/coq/issues?q=is%3Aissue%20%22Original%20bug%20ID%3A%20BZ%233%22))
+> > I am not sure to fully understand the issue, but I would just like to point
+> > out that the coercion mechanism is already clearly incomplete (and thus
+> > requires explicit coercions in some cases) and it does not seem that your
+> > suggestion makes it any worse. Or do you anticipate that a lot of existing
+> > developments that are currently pretyped properly would no longer be?
+> 
+> I don't know what you call my suggestion.
+
+I was referring to the idea of overhauling the coercion mechanism before fixing the bug described in this report.
+
+> I don't know if other ideas exist around, but one solution I see to support
+> postponing and at the same time improving the coercion mechanism, is to
+> support special evars for coercions, and to insert such evars every time
+> there is a subtyping not enough informative to know if a coercion would ever
+> be needed in the future. Then, it is only after the first phase of
+> extraction of all typing information available in the original term that
+> coercions would be inserted if needed.
+
+Don't you have to put such a special evar for almost each application in the term being typed then? For instance, "x :: y :: nil" would get turned into
+
+@ cons ?T1 (?C1 x) (?C2 (@ cons ?T2 (?C3 y) (?C4 (@ nil ?T3))))
+
+with the ?Cs being the special evars. By cleverly using the uniform inheritance condition, we should be able to prove that ?C2 and ?C4 are never needed. But for ?C1 and ?C3, I think I can find counter-examples if either of them is removed. So I feel that there might be a combinatorial explosion during pretyping if we try to improve the coercion mechanism.
+
+
+Comment author: @mattam82
+
+About the combinatorial explosion, that's a fear indeed, and could be alleviated by a more systematic use of bidirectional typechecking at applications (user driven, ideally), that would allow to know earlier if a coercion can be necessary.
+
+
+Here is another short example:
+```coq
+Axiom foo : forall b : bool, (if b then True else False) -> b = true -> True.
+Check @foo _ I (@eq_refl true). (* fails *)
+```
+Note that examples like this come up easily with the `rew [P] pf in v` notation, where even if I specify `P` and `pf`, sometimes the rewrite fails to typecheck because it cannot unify the type of `v` with `P ?y`, even though if it deferred the constraint it could pick it up from the type of `H`.
+
+I think it's quite unfortunate that Coq is still so sensitive to argument order in determining whether or not type inference succeeds.
+> ```coq
+> Record T := { dom : Type }.
+> Definition t : T := {| dom := nat |}.
+> Axiom P : T -> Type.
+> Axiom ax1 : forall (t : T), dom t -> P t.
+> Axiom ax2 : P t -> Prop.
+> Check (fun x : ?[T] => ax2 (ax1 ?[t] x)). (* ok *)
+> Check (fun x : nat => ax2 (ax1 ?[t] x)). 
+> ```
+
+This is easily solved by bidirectionality hints: just add `Arguments ax1 t & _.`.
+
+> ```coq
+> Axiom foo : forall b : bool, (if b then True else False) -> b = true -> True.
+> Check @foo _ I (@eq_refl true). (* fails *)
+> ```
+
+This one seems to require inverting functions in general, doesn't it?
+
+@JasonGross can we consider this issue as fixed by the introduction of bidirectionality hints?
+> This one seems to require inverting functions in general, doesn't it?
+
+What makes you say that?  Note that while I want `constr:(@foo _ I (@eq_refl true))` to succeed, I think `constr:(@foo _ I)` should fail with an unresolvable constraint, rather than succeeding by inverting the if statement.

@@ -1,0 +1,20 @@
+Comment author: @JasonGross
+
+Record foo (A : Type) := { x : Type }.
+Definition bar (A : Type) (y : foo A)
+  := match y with
+       | {| x := x' |} => x'
+     end. (* Toplevel input, characters 65-78:
+Error: The constructor Build_foo (in type foo) expects 2 arguments. *)
+
+
+Comment author: @silene
+
+Fixed by commit 6af9f64. Thanks for the report.
+
+
+Comment author: @JasonGross
+
+Great!  Should the test-suite get a test case?
+
+

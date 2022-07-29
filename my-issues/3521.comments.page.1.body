@@ -1,0 +1,10 @@
+Comment author: @JasonGross
+
+Apparently there's a variant of econstructor that applies a tactic to all subgoals, and only chooses a constructor on which the tactic will succeed on all subgoals.  This should be documented.
+
+
+Comment author: @ppedrot
+
+This tactic has been removed from trunk in commit 07a9afbdf, as it was never documented, and moreover the new constructor tactic allows to do it natively in Ltac: [econstructor tac] is the same as [once (econstructor; tac)].
+
+

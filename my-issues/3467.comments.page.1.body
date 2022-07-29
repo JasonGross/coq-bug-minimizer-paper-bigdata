@@ -1,0 +1,60 @@
+Comment author: @JasonGross
+
+Module foo.
+  Notation x := $(exact I)$.
+End foo.
+Module bar.
+  Include foo.
+  (* Toplevel input, characters 0-12:
+Anomaly: File "tactics/tacsubst.ml", line 31, characters 2-8: Assertion failed.
+Please report. *)
+End bar.
+
+
+Comment author: @maximedenes
+
+Backtrace:
+
+Anomaly: File "tactics/tacsubst.ml", line 31, characters 2-8: Assertion failed.
+Please report.
+frame @  file "toplevel/coqloop.ml", line 317, characters 4-39
+raise @  file "lib/exninfo.ml", line 63, characters 8-15
+frame @  file "toplevel/vernac.ml", line 247, characters 6-16
+frame @  file "stm/stm.ml", line 2307, characters 11-56
+raise @  file "lib/exninfo.ml", line 63, characters 8-15
+frame @  file "stm/stm.ml", line 2124, characters 10-59
+raise @  file "lib/exninfo.ml", line 63, characters 8-15
+frame @  file "stm/stm.ml", line 711, characters 6-10
+frame @  file "stm/stm.ml", line 2110, characters 12-30
+raise @  file "lib/exninfo.ml", line 63, characters 8-15
+frame @  file "stm/stm.ml", line 96, characters 15-71
+raise @  file "lib/exninfo.ml", line 63, characters 8-15
+frame @  file "lib/flags.ml", line 30, characters 14-17
+raise @  unknown
+frame @  file "toplevel/vernacentries.ml", line 2117, characters 10-335
+frame @  file "lib/flags.ml", line 136, characters 20-45
+raise @  file "lib/exninfo.ml", line 63, characters 8-15
+frame @  file "lib/flags.ml", line 30, characters 14-17
+raise @  file "lib/exninfo.ml", line 63, characters 8-15
+frame @  file "library/declaremods.ml", line 794, characters 6-10
+frame @  file "list.ml", line 73, characters 12-15
+frame @  file "library/declaremods.ml", line 782, characters 9-66
+frame @  file "library/lib.ml", line 211, characters 2-26
+raise @  unknown
+frame @  file "library/libobject.ml", line 121, characters 4-12
+frame @  file "library/declaremods.ml", line 288, characters 10-28
+frame @  file "lib/cList.ml", line 339, characters 15-18
+frame @  file "library/lib.ml", line 46, characters 15-39
+raise @  unknown
+frame @  file "library/libobject.ml", line 121, characters 4-12
+frame @  file "library/libobject.ml", line 86, characters 37-77
+frame @  file "interp/syntax_def.ml", line 61, characters 9-52
+frame @  file "interp/notation_ops.ml", line 486, characters 9-46
+frame @  file "interp/notation_ops.ml", line 475, characters 17-75
+frame @  file "lib/option.ml", line 103, characters 28-31
+frame @  file "interp/genintern.ml", line 54, characters 43-72
+frame @  file "tactics/tacsubst.ml", line 201, characters 39-59
+frame @  file "tactics/tacsubst.ml", line 137, characters 27-54
+raise @  file "tactics/tacsubst.ml", line 31, characters 2-28
+
+

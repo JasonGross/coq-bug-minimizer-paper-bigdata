@@ -1,0 +1,30 @@
+Comment author: @JasonGross
+
+Here is code that works in 8.4 but not trunk:
+
+Definition foo := nat.
+Tactic Notation "myunfold" reference(x) := unfold x.
+Goal foo.
+  myunfold foo. (* Error: Ltac variable x is bound to a value of type ref which cannot be
+coerced to an evaluable reference. *)
+  match goal with
+    | [ |- nat ] => idtac
+  end.
+
+Also, why does trunk say that "x is bound to a value of type intropattern" (intropattern?!) if I replace [reference] with [ident]?
+
+
+Comment author: @ppedrot
+
+As a general rule of thumb, do not rely on the (lack of) semantics of Tactic Notation. One day, it will be cleaned up (and the day after that, it'll be raining 100€ banknotes).
+
+About your legitimate question, Tactic Notation, as well as tactic internalization, lack any way to speak of true variables, making Ltac the only functional language with (kind of) closures but without variables. Together with application, that's two thirds of the mighty lambda-calculus, how could that be wrong? To work around this unbearable void, Ltac has to dynamically recognize things that look like variables, and it tends to use single-variable intro patterns to encode such objects. I suspect what you observe is a consequence of this fact.
+
+And yes, the right solution would be to use true variables, but this is actually rather convoluted and changes a quite big code base, surely implying more retro-incompatibility.
+
+
+Comment author: @silene
+
+It seems to be working now. Please reopen if not.
+
+

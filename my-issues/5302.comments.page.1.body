@@ -1,0 +1,29 @@
+Comment author: @JasonGross
+
+I'd like [nsatz] to handle things like [x^2], in cases where [ring] can handle 
+it.  Is there anything preventing this from happening?
+
+Require Import Coq.setoid_ring.Ring_tac Coq.nsatz.Nsatz.
+Require Import Coq.ZArith.ZArith.
+Open Scope Z_scope.
+Goal forall x y : Z, x * x = x ^ 2.
+  intros.
+  solve [ ring ].
+  Undo.
+  solve [ nsatz ]. (* fails *)
+
+
+Comment author: @JasonGross
+
+By the way, adding these instances fixes this for Z:
+
+Instance  reify_Zpow_Zpos
+ e1 lvar (t1 : Z) n
+ {_:reify e1 lvar t1}
+ : reify (Pos.iter (PEmul e1) (PEc 1) n) lvar (Z.pow t1 (Zpos n))|1.
+Instance  reify_Zpow_0
+ e1 lvar (t1 : Z)
+ {_:reify e1 lvar t1}
+ : reify (PEc 1) lvar (Z.pow t1 0)|1.
+
+

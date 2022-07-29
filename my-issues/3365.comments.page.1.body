@@ -1,0 +1,202 @@
+Comment author: @JasonGross
+
+$ git log -1 && git clean -xfd && ./configure -prefix "$(readlink -f ~/.local64/coq/coq-trunk)" -no-native
+-compiler && make -j16
+commit 289b2b9a1c3d3ebc3c1975663d16c04e88b6329b
+Author: Enrico Tassi <Enrico.Tassi@ inria.fr>
+Date:   Mon Jun 2 10:52:31 2014 +0200
+
+    Enforce a correct exception handling in declaration_hooks
+
+    This should finally get rid of the following class of bugs:
+    Qed fails, STM undoes to the beginning of the proof because the
+    exception is not annotated with the correct state, PG gets out of
+    sync because errors always refer to the last command in PGIP.
+You have GNU Make 3.81. Good!
+You have OCaml 4.01.0. Good!
+You have Camlp5 6.11. Good!
+You have native-code compilation. Good!
+LablGtk2 found (via ocamlfind), with native threads:
+=> native CoqIde will be built.
+
+  Architecture                : Linux
+  Coq VM bytecode link flags  : -dllib -lcoqrun -dllpath /afs/csail.mit.edu/u/j/jgross/.local64/coq/coq-trunk/lib/coq
+  Other bytecode link flags   :
+  OS dependent libraries      : -cclib -lunix
+  OCaml/Camlp4 version        : 4.01.0
+  OCaml/Camlp4 binaries in    : /afs/csail.mit.edu/u/j/jgross/.local64/bin
+  Camlp4 library in           : +camlp5
+  Native dynamic link support : true
+  Lablgtk2 library in         : +site-lib/lablgtk2
+  CoqIde                      : opt
+  Documentation               : All
+  Web browser                 : firefox -remote "OpenURL(%s,new-tab)" || firefox %s &
+  Coq web site                : http://coq.inria.fr/
+
+  Native compiler for conversion and normalization disabled
+
+  Paths for true installation:
+  - the Coq binaries will be copied in /afs/csail.mit.edu/u/j/jgross/.local64/coq/coq-trunk/bin
+  - the Coq library will be copied in /afs/csail.mit.edu/u/j/jgross/.local64/coq/coq-trunk/lib/coq
+  - the Coqide configuration files will be copied in /afs/csail.mit.edu/u/j/jgross/.local64/coq/coq-trunk/etc/xdg/coq
+  - the Coqide data files will be copied in /afs/csail.mit.edu/u/j/jgross/.local64/coq/coq-trunk/share/coq
+  - the Coq man pages will be copied in /afs/csail.mit.edu/u/j/jgross/.local64/coq/coq-trunk/share/man
+  - the Coq documentation will be copied in /afs/csail.mit.edu/u/j/jgross/.local64/coq/coq-trunk/share/doc/coq
+  - the Coq Emacs mode will be copied in /afs/csail.mit.edu/u/j/jgross/.local64/coq/coq-trunk/share/emacs/site-lisp
+  - the Coqdoc LaTeX files will be copied in /afs/csail.mit.edu/u/j/jgross/.local64/coq/coq-trunk/share/emacs/site-lisp
+
+If anything is wrong above, please restart './configure'.
+
+*Warning* To compile the system for a new architecture
+          don't forget to do a 'make clean' before './configure'.
+make --warn-undefined-variable --no-builtin-rules -f Makefile.build BUILDGRAMMAR=1 grammar/grammar.cma grammar/q_constr.cmo
+make[1]: Entering directory `/afs/csail.mit.edu/u/j/jgross/coq-trunk'
+...
+File "checker/declarations.ml", line 1:
+Error: The files checker/cic.cmi and checker/term.cmi
+       make inconsistent assumptions over interface Term
+make[1]: *** [checker/declarations.cmo] Error 2
+make[1]: *** Waiting for unfinished jobs....
+OCAMLC    checker/modops.mli
+OCAMLC    checker/inductive.mli
+File "checker/environ.ml", line 1:
+Error: The files checker/cic.cmi and checker/term.cmi
+       make inconsistent assumptions over interface Term
+make[1]: *** [checker/environ.cmo] Error 2
+File "checker/reduction.mli", line 1:
+Error: The files checker/cic.cmi and checker/term.cmi
+       make inconsistent assumptions over interface Term
+make[1]: *** [checker/reduction.cmi] Error 2
+File "checker/term.ml", line 1:
+Error: The files checker/cic.cmi and checker/term.cmi
+       make inconsistent assumptions over interface Term
+make[1]: *** [checker/term.cmo] Error 2
+theories/Classes
+theories/FSets
+theories/Init
+theories/Lists
+theories/Logic
+theories/MSets
+theories/NArith
+theories/Numbers
+theories/Numbers/Cyclic
+theories/Numbers/Cyclic/Abstract
+...
+theories/Numbers/Cyclic/Int31
+theories/Numbers/Cyclic/ZModulo
+theories/Numbers/Integer
+theories/Numbers/Integer/Abstract
+theories/Numbers/Integer/BigZ
+theories/Numbers/Integer/Binary
+theories/Numbers/Integer/NatPairs
+theories/Numbers/Integer/SpecViaZ
+theories/Numbers/NatInt
+theories/Numbers/Natural
+theories/Numbers/Natural/Abstract
+theories/Numbers/Natural/BigN
+theories/Numbers/Natural/Binary
+theories/Numbers/Natural/Peano
+theories/Numbers/Natural/SpecViaZ
+theories/Numbers/Rational
+theories/Numbers/Rational/BigQ
+theories/Numbers/Rational/SpecViaQ
+theories/PArith
+theories/Program
+theories/QArith
+theories/Reals
+theories/Relations
+theories/Setoids
+theories/Sets
+theories/Sorting
+theories/Strings
+theories/Structures
+theories/Unicode
+theories/Vectors
+theories/Wellfounded
+theories/ZArith
+Done
+make[1]: Leaving directory `/afs/csail.mit.edu/u/j/jgross/coq-trunk'
+make: *** [submake] Error 2
+
+
+Comment author: @gares
+
+It happened to me too, then a git clean -dfx fixed it.
+
+It is clearly a small bug in the Makefile, but I could not find it.
+
+Are you experiencing the bug on a clean source tree?
+
+
+Comment author: @gares
+
+Ops, I did not read your report fully.  You do have a clean source tree.
+
+
+Comment author: @gares
+
+Hum, it works here.  Can you try with -j1 instead?
+
+
+Comment author: @JasonGross
+
+That does not help.  If I run
+
+$ git log -1 && git clean -xfd && ./configure -prefix "$(readlink -f ~/.local64/coq/coq-trunk)" -no-native-compiler && make -j1
+
+I once again get
+
+commit 289b2b9a1c3d3ebc3c1975663d16c04e88b6329b
+Author: Enrico Tassi <Enrico.Tassi@ inria.fr>
+Date:   Mon Jun 2 10:52:31 2014 +0200
+
+    Enforce a correct exception handling in declaration_hooks
+
+    This should finally get rid of the following class of bugs:
+    Qed fails, STM undoes to the beginning of the proof because the
+    exception is not annotated with the correct state, PG gets out of
+    sync because errors always refer to the last command in PGIP.
+...
+OCAMLC -a -o parsing/highparsing.cma
+OCAMLC    tactics/extraargs.ml
+OCAMLC    tactics/class_tactics.ml
+OCAMLC    tactics/rewrite.ml
+OCAMLC    tactics/eqdecide.ml
+OCAMLC -a -o tactics/hightactics.cma
+COQMKTOP -o bin/coqtop.byte
+File "lib/lib.cma(Errors)", line 1:
+Warning 31: files lib/lib.cma(Errors) and /afs/csail.mit.edu/u/j/jgross/.local64/lib/ocaml/compiler-libs/ocamlbytecomp.cma(Errors) both define a module named Errors
+File "parsing/parsing.cma(Lexer)", line 1:
+Warning 31: files parsing/parsing.cma(Lexer) and /afs/csail.mit.edu/u/j/jgross/.local64/lib/ocaml/compiler-libs/ocamlcommon.cma(Lexer) both define a module named Lexer
+OCAMLC    checker/cic.mli
+OCAMLC    checker/term.mli
+OCAMLC    checker/term.ml
+File "checker/term.ml", line 1:
+Error: The files checker/cic.cmi and checker/term.cmi
+       make inconsistent assumptions over interface Term
+make[1]: *** [checker/term.cmo] Error 2
+make[1]: Leaving directory `/afs/csail.mit.edu/u/j/jgross/coq-trunk'
+make: *** [submake] Error 2
+
+
+Comment author: @ppedrot
+
+Should be fixed in trunk.
+
+
+Comment author: @JasonGross
+
+Indeed, thanks!
+
+Any chance you can fix
+
+make[1]: Entering directory `/afs/csail.mit.edu/u/j/jgross/coq-trunk'
+MD5SUM cic.mli
+CHECK revision
+Error: outdated checker/values.ml
+make[1]: *** [md5chk] Error 1
+
+
+While you're at it?
+
+

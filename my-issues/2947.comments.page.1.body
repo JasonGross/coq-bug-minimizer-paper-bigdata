@@ -1,0 +1,69 @@
+Comment author: @JasonGross
+
+The following code generates the error "Error: Tactic failure: anomaly: Find_at (level 97)." on "ring."
+
+Require Import ZArith.
+
+Goal exists x y, (x + y = 0)%Z.
+repeat esplit.
+ring.
+
+
+Comment author: @silene
+
+This is not specific to the ring tactic. Any pattern matching on existential variables fail.
+
+Goal exists n : nat, n = n.
+Proof.
+eexists.
+match goal with |- ?x = ?y => match x with y => split end end.
+Qed.
+
+
+Comment author: @aspiwack
+
+Would you have expected pattern-matching to do some unification here?
+
+It does not sound very reasonable, does it?
+
+
+Comment author: @JasonGross
+
+I think it's poor to see [anomaly] in the error message of [ring].
+
+I expect that if [constr_eq x y] succeeds, then so should [match x with y => idtac end].  This is not the case with existentials, apparently.
+
+
+Comment author: @silene
+
+Unification is not even involved here. We have an existential variable that is not equal to itself (hence the failure in ring). I don't think we want unification, but we should still acknowledge term equality.
+
+
+Comment author: @aspiwack
+
+Yes, right, sorry, I can't read.
+
+
+Comment author: @aspiwack
+
+So, there is no PEvar case in the [matches_core] function of pretyping/constrMatching.ml
+
+It may be a mistake or it may be deliberate (this function is used in other places). But in either case it is fairly easy to fix. Hugo, can you comment on what is the proper course of action?
+
+I'll conclude with a rant: the [matches_core] function is a fairly typical function of the form [match foo,bar with …] with only linearly many case interesting. In such cases it is mostly impossible to write all the cases explicitely, so the match always ends with catch-all case. Meaning we lose almost all benefit of the exhaustivity check of pattern matching (and things like that go unnoticed).
+
+
+Comment author: @zeldovich
+
+One unfortunate side-effect of this bug is that it makes it difficult to use [try ring] or [ring || othertactic] within proof automation tactics: the [fail 100 "anomaly: Find_at"] causes this anomaly error to bubble up all the way to the top, past other alternative tactics that I would have liked to execute if [ring] fails.
+
+Perhaps one (ugly) workaround is to wrap [ring] with 100 levels of match, so as to absorb the [fail 100]? :-)
+
+
+Comment author: @aspiwack
+
+There has been many modifications of the [constrMatching.ml] file during the summer. I don't know which one is responsible for this, but this bug is now fixed.
+
+Jason's example with the ring tactic now fails with a proper error message (at level 0 as appropriate). And Guillaume's example with pattern-matching on an existential variable succeeds as expected.
+
+

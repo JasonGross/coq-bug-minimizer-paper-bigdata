@@ -1,0 +1,16 @@
+Comment author: @JasonGross
+
+Require Import Coq.PArith.BinPos.
+Goal forall x y, {Pos.compare_cont Gt x y = Gt} + {Pos.compare_cont Gt x y <> 
+Gt}.
+  intros.
+  decide equality. (* Anomaly: Uncaught exception 
+Invalid_argument("List.fold_right2"). Please report at 
+http://coq.inria.fr/bugs/. *)
+
+
+Comment author: @maximedenes
+
+Hugo's fix merged in trunk. Thanks!
+
+

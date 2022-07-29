@@ -1,0 +1,20 @@
+Comment author: @JasonGross
+```coq
+Set Primitive Projections.
+Record prod A B := pair { fst : A ; snd : B }.
+Scheme Equality for prod. 
+(* Error: Unexpected error during scheme creation: 
+Anomaly: Uncaught exception Type_errors.TypeError(_, _). Please report at http://coq.inria.fr/bugs/. *)
+```
+Starting in Coq 8.11, this became a proper error message:
+```
+Error: Unexpected error during scheme creation: Pattern-matching expression on an object of inductive type foop
+has invalid information.
+```
+I thought it would be enough to replace the mkcase in auto_ind_decl by make_case_or_project, but after that there is still an error 
+`Unexpected error during scheme creation:  (in proof temporary_proof2): Attempt to save an incomplete proof`
+cf https://github.com/coq/coq/pull/13869
+Perhaps "Attempt to save an incomplete proof" should indicate what goals remain?  My guess is that there's some tactic wrapped in `try` here which is failing in the primitive case.
+It seems to rely on `prod_beq` simplifying to later apply `andb_prop` (the application being inside `repeat`)
+https://github.com/coq/coq/blob/954deda12f276441ad31475f83219ccc89b4bc96/vernac/auto_ind_decl.ml#L655-L661
+With primitive projects `prod_beq` is not simplified.

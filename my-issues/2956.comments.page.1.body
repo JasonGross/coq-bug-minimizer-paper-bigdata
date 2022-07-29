@@ -1,0 +1,136 @@
+Comment author: @JasonGross
+
+Created attachment 383
+file for recreating warning in context of a large development
+
+I got the warning "Warning: Invalid character '-' in identifier "_UNBOUND_REL_-1"." on a [setoid_rewrite @ lem in H.].  I haven't bothered to try to turn this into a minimal test case; if someone else wants to try to reproduce this, the warning can be triggered on line 259 of the attached file, which is meant to be dropped on top of commit 5c079da61018 https://JasonGross@ bitbucket.org/JasonGross/catdb.  The simple fix for this particular warning is to use a version of string_of_int which, e.g., replaces '-' with '_' in the rendering of negative numbers, or alternatively to check in various places that you don't get a negative ... deBrujin index?
+
+> Attached file: [WarningInvalidIdentifier.v](https://coq.inria.fr/bugfiles/attachment.cgi?id=383) (application/octet-stream, 32977 bytes)
+> Description:   file for recreating warning in context of a large development
+
+
+Comment author: @JasonGross
+
+Here's a smaller block of code which triggers the warning:
+
+  Require Import Setoid.
+
+  Set Implicit Arguments.
+
+  Definition focus' (A : Type) (_ : A) := True.
+  Goal forall (T : Type -> Type)
+     (T0 : forall obj : Type, T obj -> obj -> obj -> Type)
+     (m : forall (obj : Type) (C : T obj) (s d d' : obj),
+          T0 obj C d d' -> T0 obj C s d -> T0 obj C s d')
+     (m0 : forall (obj : Type) (C : T obj) (o : obj), T0 obj C o o),
+   (forall (obj : Type) (C : T obj) (a b : obj) (f : T0 obj C a b),
+    m obj C a a b f (m0 obj C a) = f) ->
+   focus'
+     (fun (objC : Type) (C : T objC) (a a' : objC) 
+        (m1 : T0 objC C a a') (x : {αβ : objC * unit & T0 objC C (fst αβ) a}) =>
+      existT (fun ab : objC * unit => T0 objC C (fst ab) a') 
+        (projT1 x)
+        (m objC C (fst (projT1 x)) a a' m1
+           (m objC C (fst (projT1 x)) (fst (projT1 x)) a 
+              (projT2 x) (m0 objC C (fst (projT1 x)))))) -> False.
+  intros ? ? ? ? H H0.
+  setoid_rewrite H in H0.
+
+
+Comment author: @JasonGross
+
+Here's a slightly shorter version:
+
+  Require Import Setoid.
+
+  Set Implicit Arguments.
+
+  Definition focus' (A : Type) (_ : A) := True.
+  Goal forall (T : Type -> Type)
+              (T0 : forall obj : Type, T obj -> obj -> obj -> Type)
+              (m : forall (obj : Type) (C : T obj) (s d d' : obj),
+                     T0 obj C d d' -> T0 obj C s d -> T0 obj C s d')
+              (m0 : forall (obj : Type) (C : T obj) (o : obj), T0 obj C o o),
+         (forall (obj : Type) (C : T obj) (a b : obj) (f : T0 obj C a b),
+            m obj C a a b f (m0 obj C a) = f) ->
+         focus
+           (fun (objC : Type) (C : T objC) (a _ : objC)
+                (x : {ab : objC & T0 objC C ab a}) =>
+              existT (fun ab : objC => T0 objC C ab a) (projT1 x)
+                     (m objC C (projT1 x) (projT1 x) a (projT2 x) (m0 objC C (projT1 x)))) ->
+         False.
+  intros.
+  setoid_rewrite H in H0.
+
+If you remove the [_] after [a] in [focus (fun (objC : Type) (C : T objC) (a _ : objC)], then instead you get a "Tactic failure:setoid rewrite failed: Unable to satisfy the rewriting constraints."
+
+
+By the way, the nicely named version of this example (what I use in my code) is:
+
+                  focus
+                    (fun (objC : Type) (C : SpecializedCategory objC) 
+                         (a a' : objC)
+                         (x : {ab : objC & Morphism C ab a}) =>
+                       existT (fun ab : objC => Morphism C ab a) 
+                              (projT1 x)
+                              (Compose (projT2 x) (Identity (projT1 x))))
+
+and [H] is then [RightIdentity].
+
+
+Comment author: @herbelin
+
+Comment on attachment 383
+file for recreating warning in context of a large development
+
+Hi Jason, your file depends on other files that are missing. Can you provide a full reproducible development, or, better, an as-short-as-possible example. Thanks in advance.
+
+
+Comment author: @herbelin
+
+Oups, sorry, did not read comments...
+
+
+Comment author: @herbelin
+
+It seems like the message that contains _UNBOUND_REL_NN names is a debugging message from setoid rewrite that is not intended to be displayed. I don't know how to resolve this though,
+
+
+Comment author: @letouzey
+
+
+So two separate questions:
+ - should we leave these debug prints in standard setoid_rewrite ?
+ - does the UNBOUND_REL_-1 indicates a underlying bug ?
+
+Matthieu ?
+
+
+Comment author: @mattam82
+
+This particular bug has been fixed in trunk (no unbound rel should not produced).
+Adding the following constraints, the setoid_rewrite even succeeds now:
+
+Require Import Logic.FunctionalExtensionality.
+  Set Implicit Arguments.
+(* Remove the less general instance defined in the standard library *)
+
+Remove Hints reflexive_eq_dom_reflexive : typeclass_instances.
+
+Instance reflexive_eq_dom_reflexive {A B} {R : relation A} {R' : relation B} :
+ subrelation R eq -> Reflexive R' -> Reflexive (R ==> R')%signature.
+Proof. simpl_relation. specialize (H x0 y H1). subst. reflexivity. Qed.
+
+Instance funext_eq_sub_rec (A B : Type) (R : relation B) :
+ subrelation R eq ->
+ subrelation (pointwise_relation A R) (@ eq (A -> B)).
+Proof. intros sub f g H. extensionality x. apply (sub (f x) (g x)). now apply H. Qed.
+
+Instance funext_forall_eq_sub_rec A (B : A -> Type) (f : forall x : A, relation (B x)) :
+ (forall x : A, subrelation (f x) eq) ->
+ subrelation (forall_relation f) (@ eq (forall x : A, B x)).
+Proof. intros sub x y H. extensionality t. apply (sub t (x t) (y t)). now apply H. Qed.
+
+This assumes functional extensionality to go under binders.
+
+

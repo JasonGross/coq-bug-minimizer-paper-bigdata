@@ -1,0 +1,20 @@
+Comment author: @JasonGross
+
+The documentation says
+
+"""
+13.1.1  Automatic declaration of schemes
+
+
+It is possible to deactivate the automatic declaration of the induction principles when defining a new inductive type with the Unset Elimination Schemes command. It may be reactivated at any time with Set Elimination Schemes. 
+You can also activate the automatic declaration of those boolean equalities (see the second variant of Scheme) with the Set Equality Schemes command. However you have to be careful with this option since Coq  may now reject well-defined inductive types because it cannot compute a boolean equality for them.
+"""
+
+This is wrong; Coq warns me "There is no option Equality Schemes."  The options are "Boolean Equality Schemes" and "Decidable Equality Schemes".
+
+
+Comment author: @herbelin
+
+Fixed in trunk and branch 8.4.
+
+

@@ -1,0 +1,52 @@
+Comment author: @JasonGross
+
+I'm trying to figure out why some lemma in bedrock isn't being processed asynchronously.  I turn on -debug, as instructed by bug [BZ#4125](https://github.com/coq/coq/issues?q=is%3Aissue%20%22Original%20bug%20ID%3A%20BZ%234125%22), and get:
+
+master:0] interpreting Lemma writeExp_correct_post :
+  forall e col pre,
+  wfExp ns e ->
+  In e es ->
+  (forall specs st,
+   interp specs (pre st) -> interp specs (winv col ns res st)) ->
+  forall specs st,
+  interp specs
+    (Postcondition (toCmd (writeExp col e) mn (im:=im) H ns res pre) st) ->
+  interp specs (winv col ns res st).
+master:0] setting cur id to 60
+master:0] reached: 60
+master:0] interpreting destruct e; wrap0.
+master:0] setting cur id to 61
+master:0] reached: 61
+master:0] Synchronous 66 Unknown Reason
+master:0] reaching: 65
+master:0] defining 65 (cache=N)
+master:0] reaching: 64
+master:0] defining 64 (cache=N)
+master:0] reaching: 63
+master:0] defining 63 (cache=N)
+master:0] reaching: 62
+master:0] defining 62 (cache=N)
+master:0] reaching: 61
+master:0] reached (cache)
+master:0] interpreting Proof  using
+Type.
+
+
+Any chance you can get rid of that catch-all case in string_of_reason?
+
+
+The relevant lemma is at https://github.com/JasonGross/bedrock/blob/trunk/Bedrock/Platform/RelDbInsert.v#L204, but my bug-minimizer is not yet up to the task of minimizing bugs from deep within bedrock (I was hoping to get everything to compile under -quick first, and then start fixing things in the proofs and reporting bugs.)
+
+
+Comment author: @JasonGross
+
+Ah, I see what my mistake was!  Still, "Unknown Reason" is not a very good description for "You accidentally put some tactics before your 'Proof using' statement".
+
+
+Comment author: @gares
+
+I merge it, since I plan to close 4125 by a better "debug" output in any case.
+
+*** This bug has been marked as a duplicate of bug [BZ#4125](https://github.com/coq/coq/issues?q=is%3Aissue%20%22Original%20bug%20ID%3A%20BZ%234125%22) ***
+
+

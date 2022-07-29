@@ -1,0 +1,50 @@
+Mmm… that was a while ago. I probably wrote the documentation, then realised something was wrong with `+` and “fixed” it.
+
+The other thing in this commit is the interaction between `+`-in-ltac and Ltac's error thing. I'm really not sure why I decided the goal needed to be independent. Maybe there was an interaction with Ltac's errors? Or maybe it was just for `+` to behave uniformly with `||`. Principle of least surprise?
+
+My preference is for no tactic to focus, and focusing be explicit. Though I'll admit that in the case of `||` and `+`, it gets a bit verbose. So maybe I just wanted to raise the usability of `+` to the casual Ltac user.
+Wouldn't this be too disruptive to change this now in Ltac1 and doesn't Ltac2 solves the issue?
+(in which case, this only becomes a documentation issue indeed)
+Indeed, Ltac2 fixes this issue.  I am not sure if it would be disruptive; I suspect the number of users who are (a) using `+` and (b) relying on its semantics of focusing are small (in part because so many tactics focus)
+
+However, I do see a possible issue: do I understand correctly that the following succeeds today but would fail if `+` did not have `tclINDEPENDENT`?
+```coq
+Goal True /\ 0 = 0.
+  split; (exact I + exact eq_refl).
+```
+
+Anyway, I have opened #9719 to request the variants of this and a couple other primitives which are non-focusing.
+@JasonGross IIRC, `exact` also focuses so it doesn't matter if you remove the `tclINDEPENDENT` from `+` in your example.
+If you want, you can always open a PR removing this tclINDEPENDENT and see what happens in the test-suite and the CI.
+@ppedrot I think you are mistaken about Ltac semantics here:
+```coq
+Require Import Ltac2.Ltac2.
+Require Import Ltac2.Control.
+Require Import Ltac2.Notations.
+
+Goal True /\ 0 = 0.
+  split; Control.plus (fun _ => exact I) (fun _ => exact eq_refl).
+  (* Error:
+The term "eq_refl" has type "?x = ?x" while it is expected to have type "True".
+ *)
+```
+I believe this is because even though `exact I` focuses, the multi-goal tactic `exact I` (equivalent to `[ > .. exact I ]`) fails on the two goals, and so we backtrack into the second tactic for all goals at once.
+
+This does break some things (pipeline [here](https://gitlab.com/coq/coq/pipelines/51163838)).  Perhaps this example should be added to the test-suite, if the test-suite (pipeline [here](https://gitlab.com/coq/coq/-/jobs/174975857)) is not currently broken by this change.
+@JasonGross You're right indeed, I was mistaken.
+
+Regarding `Tacticals.tclOR`, I think it is a very bad idea to have an ML definition that shares the same name and a compatible type with a different one (`Proofview.tclOR` namely) while not having the same semantics. I'd rather remove it altogether and inline the specific use cases where we rely on that one, while reusing directly the other one for Ltac.
+
+> I think it is a very bad idea to have an ML definition that shares the same name and a compatible type with a different one (Proofview.tclOR namely) while not having the same semantics.
+
+I agree
+
+> while reusing directly the other one for Ltac.
+
+Are you proposing now that Ltac's `+` should lose `tclINDEPENDENT`?  I've changed my mind on this, after seeing the behavior I mention above, and think that the Ltac default with `+` should be focusing.  (I do think there should be another tactical we have access to for the non-focusing version, but it's going to be a pain to track all the points where things are not focused and use `[ > tac.. ]`.  And I suspect it will confuse beginners.  I think having all focusing be explicit in Ltac2, modulo compatibility notations though, is probably fine.)
+> I've changed my mind on this, after seeing the behavior I mention above, and think that the Ltac default with + should be focusing.
+
+I don't have a particular preference for that, as long as there is a way to access the non-focussing one (or we drop Ltac1 altogether). My comment was assuming you were going to perform the change.
+I did perform the change, and it broke a bunch of things; see the CI for https://github.com/coq/coq/issues/9734 .  I am also pretty bad at naming things (my current leading name for the non-focusing one is an infix `g+`...).  I would prefer you or someone else submitting the PR.  I won't have time to make a decent PR for a couple of weeks, but I'll see if I can do it at the beginning of April if no-one else does before then.
+Hem, what about the distributivity law?
+Anyway, I propose tclCHOICE, for the non focusing one.

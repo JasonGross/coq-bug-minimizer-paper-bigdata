@@ -1,0 +1,17 @@
+I feel like instead of removing your assignment, you could have closed with "won't fix" @SkySkimmer. Spacing changes do not look like they deserve a changelog entry @JasonGross. If they break stuff because people do output tests, well, people will notice.
+Indeed it is pretty hard for us to support regressions against human-targeted output; on the other hand maybe a small section "changes on user-visible output" for the changelog wouldn't hurt. IMHO if someone wants to do a PR for that I'd be OK.
+IMHO we'd have to report *all* fixed bugs long before we start to report spacing changes.
+Umm, I'm not sure if all fixed bugs would be interesting, many would be not relevant for users? 
+Indeed, for many of them, this would just amount to noise. But technically, all are "user-visible". (There is no reason to distinguish those from spacing changes.)
+> Indeed, for many of them, this would just amount to noise. But technically, all are "user-visible". (There is no reason to distinguish those from spacing changes.)
+
+Not all bugs are user visible, for example CI failures, improvement in tooling, internal API changes, etc...
+OK, but I wasn't talking about those kinds of bugs.
+> OK, but I wasn't talking about those kinds of bugs.
+
+Ah OK, if we are talking about all _user visible_ bugs, then indeed it wouldn't be IMO a bad thing to have a list [maybe without description] of "all bugs fixed in a release"
+
+We'd need some kind of tag to determine that list tho.
+If the bugs are listed without a description, then it brings nothing compared to the milestone IMHO. Notice that I've added automation to @coqbot to add fixed bugs to the milestone, so it is, in fact, pretty complete.
+IMHO if we want to have a more complete changelog, then we need to make more efforts in structuring it. [For instance, each category could be subdivided into "Major changes and features", "Minor changes and enhancements", "Bug fixes".]
+FWIW, here's another user who just discovered that the `Print Assumptions` output format changed because his script processing the output failed. But using grep & git blame, I quickly found the commit that changed it, so I guess it's fine if it was decided to not spam the changelog with such details. (on the other hand, I wouldn't oppose a structured changelog like @Zimmi48 suggested)

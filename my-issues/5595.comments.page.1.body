@@ -1,0 +1,74 @@
+Comment author: @JasonGross
+
+This would be useful on travis
+
+
+Comment author: @JasonGross
+
+Oh, I see it does that on travis; I think it should group them by log name
+
+
+Comment author: @SkySkimmer
+
+>I think it should group them by log name
+
+What do you mean?
+
+
+@JasonGross ping
+I wonder why not to make the verbose mode the default. I have still to find myself in a case where the test suited failed but I didn't want the logs to be printed.
+Status quo bias.
+
+Gaëtan Gilbert
+
+On 01/04/2018 17:57, Emilio Jesús Gallego Arias wrote:
+> I wonder why not to make the verbose mode the default. I have still to 
+> find myself in a case where the test suited failed but I didn't want the 
+> logs to be printed.
+> 
+> —
+> You are receiving this because you were mentioned.
+> Reply to this email directly, view it on GitHub 
+> <https://github.com/coq/coq/issues/5595#issuecomment-377796440>, or mute 
+> the thread 
+> <https://github.com/notifications/unsubscribe-auth/ACWQ7NI-GkLT0DGGOhO5ZluDdeIn8VGjks5tkPjhgaJpZM4TB2Ad>.
+> 
+
+> Status quo bias.
+
+So you agree with the change?
+Yes
+
+Gaëtan Gilbert
+
+On 01/04/2018 18:16, Emilio Jesús Gallego Arias wrote:
+>     Status quo bias.
+> 
+> So you agree with the change?
+> 
+> —
+> You are receiving this because you were mentioned.
+> Reply to this email directly, view it on GitHub 
+> <https://github.com/coq/coq/issues/5595#issuecomment-377797636>, or mute 
+> the thread 
+> <https://github.com/notifications/unsubscribe-auth/ACWQ7BBc-Hlfe1SogpxzzApXJ7MzUbosks5tkP1JgaJpZM4TB2Ad>.
+> 
+
+So we can close this?
+Was it fixed after all?
+I am not sure, I don't recall now. Which PR toggled the default?
+The default is not toggled.
+
+Gaëtan Gilbert
+
+On 07/05/2018 11:48, Emilio Jesús Gallego Arias wrote:
+> I am not sure, I don't recall now. Which PR toggled the default?
+> 
+> —
+> You are receiving this because you modified the open/close state.
+> Reply to this email directly, view it on GitHub 
+> <https://github.com/coq/coq/issues/5595#issuecomment-387015509>, or mute 
+> the thread 
+> <https://github.com/notifications/unsubscribe-auth/ACWQ7LaFQNKsHwpTe7KmgZWAI54mlAhyks5twBhvgaJpZM4TB2Ad>.
+> 
+

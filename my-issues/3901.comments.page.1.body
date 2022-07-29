@@ -1,0 +1,18 @@
+Comment author: @JasonGross
+
+Interrupting a long tactic, such as [cbn] in some cases, can give me
+
+Anomaly: error with no safe_id attached:
+                                         User interrupt.. Please report.
+
+
+Comment author: @ppedrot
+
+If you don't have a reproducible example and/or if this bug seems to have disappeared, I'll close this report soon.
+
+
+Comment author: @JasonGross
+
+Sorry, I don't have a reproducible test case, nor even the code that originally gave me this.
+
+

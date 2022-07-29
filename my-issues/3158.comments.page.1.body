@@ -1,0 +1,5 @@
+Comment author: @JasonGross
+
+The list at http://coq.inria.fr/refman/Reference-Manual017.html#hevea_default827 does not include forall, which coqdoc turns that into ∀.  (At least whatever version of trunk HoTT/coq is based on.)  Apologies if this doesn't happen in 8.4, and the list would be updated anyway when 8.5 comes out.
+
+

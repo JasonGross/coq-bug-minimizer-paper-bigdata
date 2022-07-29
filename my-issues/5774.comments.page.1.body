@@ -1,0 +1,47 @@
+Comment author: @JasonGross
+
+Due to however Coq's configuration is set up on Windows, every single 
+invocation of coqc gives
+
+Warning: Directory gtksourceview-2.0 cannot be used as a Coq identifier
+(skipped) [cannot-use-directory,filesystem]
+Warning: Directory gtksourceview-2.0 cannot be used as a Coq identifier
+(skipped) [cannot-use-directory,filesystem]
+Warning: Directory gtksourceview-2.0 cannot be used as a Coq identifier
+(skipped) [cannot-use-directory,filesystem]
+Warning: Directory gtk-2.0-key cannot be used as a Coq identifier (skipped)
+[cannot-use-directory,filesystem]
+Warning: Directory gtk-2.0-key cannot be used as a Coq identifier (skipped)
+[cannot-use-directory,filesystem]
+Warning: Directory MS-Windows cannot be used as a Coq identifier (skipped)
+[cannot-use-directory,filesystem]
+Warning: Directory MS-Windows cannot be used as a Coq identifier (skipped)
+[cannot-use-directory,filesystem]
+Warning: Directory gtk-2.0 cannot be used as a Coq identifier (skipped)
+[cannot-use-directory,filesystem]
+
+I guess it decides somewhere to bind the root of the Coq installation on 
+Windows.
+
+
+Comment author: @maximedenes
+
+I believe this was fixed in a PR we forgot to merge in 8.7+beta2, sorry about that. The fix will be part of 8.7.0, though.
+
+
+Comment author: @Zimmi48
+
+I am surprised though to read that this is also about coqc. Can you give a small example on how you run into this issue?
+
+
+Comment author: @JasonGross
+
+I ran make in fiat-crypto.  Does this not show up in every invocation of coqc (at least under cygwin)?
+
+
+Comment author: @Zimmi48
+
+I don't know. It would be interesting to test further in which case it happens. Maybe I'll have a look tomorrow.
+
+
+This should be fixed in master, please reopen if the problem persists.

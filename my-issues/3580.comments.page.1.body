@@ -1,0 +1,22 @@
+Comment author: @JasonGross
+
+Using coq trunk 8287733d5df1bd673a38e92f23c47e95d1bb7a91 on Windows,
+
+$ PATH=""
+$ ./bin/coqide.exe
+/cygdrive/d/Downloads/coq/bin/coqide.exe: error while loading shared libraries: libgtksourceview-2.0-0.dll: cannot open shared object file: No such file or directory
+
+The same thing will happen if you don't have gtk installed and you try to start coqide without first running `. environ`.  What's the intended distribution mechanism?
+
+
+Comment author: @gares
+
+This is expected, coqide is not a statically linked binary.  One should ship it together with the various gtk dll that are found in the SDK.  I think I will try to have the NSIS based installer be buildable from the standard Makefile of Coq.
+
+
+Comment author: @gares
+
+I guess the installer is there.
+And if one want to run his build he has the SDK for that.
+
+

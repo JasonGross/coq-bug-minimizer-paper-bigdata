@@ -1,0 +1,292 @@
+Comment author: @JasonGross
+
+jgross@ cagnode17:~/HoTT/coqdoctest$ cat Overture.v
+jgross@ cagnode17:~/HoTT/coqdoctest$ cat HomFunctor2.v
+(** * Hom *)
+Require Import Overture.
+
+(** ** Definition of [hom : Cᵒᵖ × C → Set] as a functor *)
+jgross@ cagnode17:~/HoTT/coqdoctest$ rm *.css *.v.d *.vo *.html *.glob *.d; coq_makefile Overture.v HomFunctor2.v -R . HoTT | make -f -; coqdoc -utf8 -html -R . HoTT HomFunctor2.v; grep '<a name="lab2">' HoTT.HomFunctor2.html
+rm: cannot remove `HomFunctor2.v.d': No such file or directory
+rm: cannot remove `Overture.v.d': No such file or directory
+"coqdep" -c -R . HoTT "HomFunctor2.v" > "HomFunctor2.v.d" || ( RV=$?; rm -f "HomFunctor2.v.d"; exit ${RV} )
+"coqdep" -c -R . HoTT "Overture.v" > "Overture.v.d" || ( RV=$?; rm -f "Overture.v.d"; exit ${RV} )
+"coqc"  -q  -R . HoTT   Overture
+"coqc"  -q  -R . HoTT   HomFunctor2
+<a name="lab2"></a><h2 class="section">Definition of <span class="inlinecode"><span class="id" type="var">hom</span></span> <span class="inlinecode">:</span> <span class="inlinecode"><span class="id" type="var">C</span>ᵒᵖ</span> <span class="inlinecode"><span class="id" type="library">×</span></span> <span class="inlinecode"><span class="id" type="library">C</span></span> <span class="inlinecode"><span class="id" type="library">�</span>�</span> <span class="inlinecode"><span class="id" type="keyword">Set</span></span> as a functor</h2>
+jgross@ cagnode17:~/HoTT/coqdoctest$
+
+The "less" utility reveals that it is turning the unicode right arrow character into "<span class="inlinecode"><span class="id" type="library"><E2><86></span><92></span>".  Which characters this happens to changes when I change unrelated things, such as whether the bullet at the top is called "Hom" or is empty, and whether or not I remove the word "Definition".  It also disappears if I remove the [Require Overture.], even though [Overture.v] is empty.
+
+This occurs with both 8.4pl3, and trunk.
+
+
+Comment author: @herbelin
+
+Hi Jason, I tried in 8.4pl3 and trunk and it works for me. Can you check again? Hugo
+
+
+Comment author: @JasonGross
+
+The original example is at http://hott.github.io/HoTT/coqdoc-html/HoTT.categories.HomFunctor.html (using HoTT/coq); the log is at https://travis-ci.org/HoTT/HoTT/jobs/23686613, though it is not very helpful, other than maybe indicating the version of linux.  Let me see if I can make a script that reproduces it on Windows and linux.
+
+
+Comment author: @JasonGross
+
+Here is a script that generates the problem on Linux and Windows:
+
+#!/bin/bash
+
+set -x
+
+if [ -z "$COQC" ]; then
+    COQC="${COQBIN}coqc"
+fi
+if [ -z "$COQTOP" ]; then
+    COQTOP="${COQBIN}coqtop"
+fi
+if [ -z "$COQ_MAKEFILE" ]; then
+    COQ_MAKEFILE="${COQBIN}coq_makefile"
+fi
+if [ -z "$COQDOC" ]; then
+    COQDOC="${COQBIN}coqdoc"
+fi
+echo "COQBIN=$COQBIN"
+echo "COQTOP=$COQTOP"
+echo "COQC=$COQC"
+echo "COQ_MAKEFILE=$COQ_MAKEFILE"
+echo "COQDOC=$COQDOC"
+
+"$COQC" --version
+echo | "$COQTOP"
+
+rm -f *.css *.v.d *.vo *.html *.glob *.d Overture.v HomFunctor2.v
+touch Overture.v
+LANG=en_US.UTF-8
+echo "Ensure that this comes out as unicode, C^op \times C \to:"
+echo -e "c\xE1\xB5\x92\xE1\xB5\x96 \xC3\x97 C \xE2\x86\x92"
+cat > HomFunctor2.v <<EOF
+(** * Hom *)
+Require Import Overture.
+EOF
+echo -e "(** ** Definition of [hom : C\xE1\xB5\x92\xE1\xB5\x96 \xC3\x97 C \xE2\x86\x92 Set] as a functor *)" >> HomFunctor2.v
+echo >> HomFunctor2.v
+
+cat Overture.v
+cat HomFunctor2.v
+
+"$COQ_MAKEFILE" Overture.v HomFunctor2.v -R . HoTT | make -f -
+"$COQDOC" -utf8 -html -R . HoTT HomFunctor2.v
+
+grep '<a name="lab2">' HoTT.HomFunctor2.html
+grep --color='auto' -P -n "[\x80-\xFF]" HoTT.HomFunctor2.html
+
+------------------------------------------------------------------
+On linux, the output is:
++ '[' -z '' ']'
++ COQC=/afs/csail.mit.edu/u/j/jgross/.local64/coq/coq-8.4pl3/bin/coqc
++ '[' -z '' ']'
++ COQTOP=/afs/csail.mit.edu/u/j/jgross/.local64/coq/coq-8.4pl3/bin/coqtop
++ '[' -z '' ']'
++ COQ_MAKEFILE=/afs/csail.mit.edu/u/j/jgross/.local64/coq/coq-8.4pl3/bin/coq_makefile
++ '[' -z '' ']'
++ COQDOC=/afs/csail.mit.edu/u/j/jgross/.local64/coq/coq-8.4pl3/bin/coqdoc
++ echo COQBIN=/afs/csail.mit.edu/u/j/jgross/.local64/coq/coq-8.4pl3/bin/
+COQBIN=/afs/csail.mit.edu/u/j/jgross/.local64/coq/coq-8.4pl3/bin/
++ echo COQTOP=/afs/csail.mit.edu/u/j/jgross/.local64/coq/coq-8.4pl3/bin/coqtop
+COQTOP=/afs/csail.mit.edu/u/j/jgross/.local64/coq/coq-8.4pl3/bin/coqtop
++ echo COQC=/afs/csail.mit.edu/u/j/jgross/.local64/coq/coq-8.4pl3/bin/coqc
+COQC=/afs/csail.mit.edu/u/j/jgross/.local64/coq/coq-8.4pl3/bin/coqc
++ echo COQ_MAKEFILE=/afs/csail.mit.edu/u/j/jgross/.local64/coq/coq-8.4pl3/bin/coq_makefile
+COQ_MAKEFILE=/afs/csail.mit.edu/u/j/jgross/.local64/coq/coq-8.4pl3/bin/coq_makefile
++ echo COQDOC=/afs/csail.mit.edu/u/j/jgross/.local64/coq/coq-8.4pl3/bin/coqdoc
+COQDOC=/afs/csail.mit.edu/u/j/jgross/.local64/coq/coq-8.4pl3/bin/coqdoc
++ /afs/csail.mit.edu/u/j/jgross/.local64/coq/coq-8.4pl3/bin/coqc --version
+The Coq Proof Assistant, version 8.4pl3 (February 2014)
+compiled on Feb 25 2014 11:42:23 with OCaml 4.01.0
++ echo
++ /afs/csail.mit.edu/u/j/jgross/.local64/coq/coq-8.4pl3/bin/coqtop
+Welcome to Coq 8.4pl3 (February 2014)
+
+Coq < Coq <
++ rm -f coqdoc.css HomFunctor2.v.d Overture.v.d HomFunctor2.vo Overture.vo HoTT.HomFunctor2.html index.html HomFunctor2.glob Overture.
+glob HomFunctor2.v.d Overture.v.d Overture.v HomFunctor2.v
++ touch Overture.v
++ LANG=en_US.UTF-8
++ echo 'Ensure that this comes out as unicode, C^op \times C \to:'
+Ensure that this comes out as unicode, C^op \times C \to:
++ echo -e 'c\xE1\xB5\x92\xE1\xB5\x96 \xC3\x97 C \xE2\x86\x92'
++ echo
++ cat Overture.v
++ cat HomFunctor2.v
+(** * Hom *)
+Require Import Overture.
+(** ** Definition of [hom : Cᵒᵖ × C → Set] as a functor *)
+
++ /afs/csail.mit.edu/u/j/jgross/.local64/coq/coq-8.4pl3/bin/coq_makefile Overture.v HomFunctor2.v -R . HoTT
++ make -f -
+/afs/csail.mit.edu/u/j/jgross/.local64/coq/coq-8.4pl3/bin/coqdep -c -slash -R . HoTT "HomFunctor2.v" > "HomFunctor2.v.d" || ( RV=$?; rm -f "HomFunctor2.v.d"; exit ${RV} )
+/afs/csail.mit.edu/u/j/jgross/.local64/coq/coq-8.4pl3/bin/coqdep -c -slash -R . HoTT "Overture.v" > "Overture.v.d" || ( RV=$?; rm -f "Overture.v.d"; exit ${RV} )
+/afs/csail.mit.edu/u/j/jgross/.local64/coq/coq-8.4pl3/bin/coqc  -q  -R . HoTT   Overture
+/afs/csail.mit.edu/u/j/jgross/.local64/coq/coq-8.4pl3/bin/coqc  -q  -R . HoTT   HomFunctor2
++ /afs/csail.mit.edu/u/j/jgross/.local64/coq/coq-8.4pl3/bin/coqdoc -utf8 -html -R . HoTT HomFunctor2.v
++ grep '<a name="lab2">' HoTT.HomFunctor2.html
+<a name="lab2"></a><h2 class="section">Definition of <span class="inlinecode"><span class="id" type="var">hom</span></span> <span class="inlinecode">:</span> <span class="inlinecode"><span class="id" type="var">C</span>ᵒᵖ</span> <span class="inlinecode"><span class="id" type="library">×</span></span> <span class="inlinecode"><span class="id" type="library">C</span></span> <span class="inlinecode"><span class="id" type="library">�</span>�</span> <span class="inlinecode"><span class="id" type="keyword">Set</span></span> as a functor</h2>
++ grep --color=auto -P -n '[\x80-\xFF]' HoTT.HomFunctor2.html
+33:<a name="lab2"></a><h2 class="section">Definition of <span class="inlinecode"><span class="id" type="var">hom</span></span> <span class="inlinecode">:</span> <span class="inlinecode"><span class="id" type="var">C</span>������</span> <span class="inlinecode"><span class="id" type="library">��</span></span> <span class="inlinecode"><span class="id" type="library">C</span></span> <span class="inlinecode"><span class="id" type="library">��</span>�</span> <span class="inlinecode"><span class="id" type="keyword">Set</span></span> as a functor</h2>
+
+-------------------------------------------------------------------------
+On windows, the output is:
+
++ '[' -z '' ']'
++ COQC=coqc
++ '[' -z '' ']'
++ COQTOP=coqtop
++ '[' -z '' ']'
++ COQ_MAKEFILE=coq_makefile
++ '[' -z '' ']'
++ COQDOC=coqdoc
++ echo COQBIN=
+COQBIN=
++ echo COQTOP=coqtop
+COQTOP=coqtop
++ echo COQC=coqc
+COQC=coqc
++ echo COQ_MAKEFILE=coq_makefile
+COQ_MAKEFILE=coq_makefile
++ echo COQDOC=coqdoc
+COQDOC=coqdoc
++ coqc --version
+The Coq Proof Assistant, version 8.4pl3 (December 2013)
+compiled on Dec 17 2013 16:15:28 with OCaml 3.11.2
++ echo
++ coqtop
+Welcome to Coq 8.4pl3 (December 2013)
+
+Coq < Coq <
++ rm -f '*.css' ClosestPoints.v.d CommonDefinitions.v.d Tactics.v.d Tree.v.d VectorQuickSelect.v.d CommonDefinitions.vo Tactics.vo Tree.vo VectorQuickSelect.vo '*.html' CommonDefinitions.glob Tactics.glob Tree.glob VectorQuickSelect.glob ClosestPoints.v.d CommonDefinitions.v.d Tactics.v.d Tree.v.d VectorQuickSelect.v.d Overture.v HomFunctor2.v
++ touch Overture.v
++ LANG=en_US.UTF-8
++ echo 'Ensure that this comes out as unicode, C^op \times C \to:'
+Ensure that this comes out as unicode, C^op \times C \to:
++ echo -e 'c\xE1\xB5\x92\xE1\xB5\x96 \xC3\x97 C \xE2\x86\x92'
+cᵒᵖ × C →
++ cat
++ echo -e '(** ** Definition of [hom : C\xE1\xB5\x92\xE1\xB5\x96 \xC3\x97 C \xE2\x86\x92 Set] as a functor *)'
++ echo
++ cat Overture.v
++ cat HomFunctor2.v
+(** * Hom *)
+Require Import Overture.
+(** ** Definition of [hom : Cᵒᵖ × C → Set] as a functor *)
+
++ coq_makefile Overture.v HomFunctor2.v -R . HoTT
++ make -f -
+coqdep -c -slash -R . HoTT "HomFunctor2.v" > "HomFunctor2.v.d" || ( RV=$?; rm -f "HomFunctor2.v.d"; exit ${RV} )
+coqdep -c -slash -R . HoTT "Overture.v" > "Overture.v.d" || ( RV=$?; rm -f "Overture.v.d"; exit ${RV} )
+coqc  -q  -R . HoTT   Overture
+coqc  -q  -R . HoTT   HomFunctor2
++ coqdoc -utf8 -html -R . HoTT HomFunctor2.v
++ grep '<a name="lab2">' HoTT.HomFunctor2.html
+<a name="lab2"></a><h2 class="section">Definition of <span class="inlinecode"><span class="id" type="var">hom</span></span> <span class="inlinecode">:</span> <span class="inlinecode"><span class="id" type="var">C</span>ᵒᵖ</span> <span class="inlinecode"><span class="id" type="library">×</span></span> <span class="inlinecode"><span class="id" type="library">C</span></span> <span class="inlinecode"><span class="id" type="library">▒</span>▒</span> <span class="inlinecode"><span class="id" type="keyword">Set</span></span> as a functor</h2>
++ grep --color=auto -P -n '[\x80-\xFF]' HoTT.HomFunctor2.html
+33:<a name="lab2"></a><h2 class="section">Definition of <span class="inlinecode"><span class="id" type="var">hom</span></span> <span class="inlinecode">:</span> <span class="inlinecode"><span class="id" type="var">C</span>ᵒᵖ</span> <span class="inlinecode"><span class="id" type="library">×</span></span> <span class="inlinecode"><span class="id" type="library">C</span></span> <span class="inlinecode"><span class="id" type="library">▒</span>▒</span> <span class="inlinecode"><span class="id" type="keyword">Set</span></span> as a functor</h2>
+
+
+-------------------------------------------------------------------------
+
+The issue seems to be that it is splitting → (\xE2\x86\x92) into two spans, giving "<span class="inlinecode"><span class="id" type="library">\342\206</span>\222</span>"; combining them into a single span makes it render correctly.
+
+
+Comment author: @herbelin
+
+Still no problem with your test on my 8.4pl3 compiled with ocaml 3.11.2 on a linux platform.
+
+Your symptom is very strange. How robust is the failure wrt to small modifications, e.g. characters with utf8 representation close to →, or whether → is in a comment or not?
+
+
+Comment author: @JasonGross
+
+I am using Camlp5 version 6.11, ocaml 4.01.0, Linux cagnode17 2.6.32-5-xen-amd64 [BZ#1](https://github.com/coq/coq/issues?q=is%3Aissue%20%22Original%20bug%20ID%3A%20BZ%231%22) SMP Sun Sep 23 13:49:30 UTC 2012 x86_64 GNU/Linux.  Also the Coq 8.4pl3 Windows binary on the Coq website.  Both of my machines are little-endian, in case that matters (determined by http://stackoverflow.com/a/1001373/377022).
+
+It also occurs with Coq 8.3pl4 as packaged for precise.
+
+The failure is exceedingly fragile; removing the [Require] (of the empty file) makes it go away.  Removing the header comment (the comment in the file which this isn't a part of) changes which part gets split (it makes the ^op go wrong instead).  Removing the word "Definition" from the comment makes it go away.  Adding "n" to "Definition" makes the split be one character inside, two outside, rather than all outside.  Adding yet another "n" removes the <span class="id" type="library"> all-together, making the three characters be outside.  So my limited experimentation suggests it is robust to changes in which bytes are used in each unicode location and which characters are used in each non-unicode location, but very, very fragile to where the bytes are.  Perhaps there is a problem with endianness?  Or with coqdoc or camlp5 or ocaml assuming that all characters in UTF-8 are either one or two bytes?  Or something in the pipeline not knowing enough to deal with the variable-length encoding that is UTF-8?  But I'm just guessing here.
+
+Here is a way for you to play with it yourself: If you fork https://github.com/JasonGross/coqdoc-bug, make a free Travis-CI account at https://travis-ci.org/profile, and enable Travis for your fork of the repository, then any time you push a change, Travis will re-run coqdoc for you and create a log at https://travis-ci.org/<your github name>/coqdoc-bug within a few minutes.  The relevant files to edit are HomFunctor2.v and Overture.v at the top-level.  The .travis.yml file tells Travis what to do, so you can add lines to that to get more info about their system or configuration, or to build a different version of Coq or OCaml, etc.  (Be warned, there's a 50 minute limit to a build, which isn't enough time to build all of Coq from scratch.  It's enough to build the coqlight target, though.)
+
+Anyway, here is a complete build log: https://travis-ci.org/JasonGross/coqdoc-bug/builds/23881027; the relevant bit of info, at the bottom, is that there are three groups of unicode characters, and one of them (in this case, the third) is split between a span.
+
+
+Comment author: @herbelin
+
+The <span class="id" type="library"> </span> which is breaking the arrow is suspicious in your log (I don't get it when I try your script).
+
+This suggests that the .glob is broken or that locations found by coqdoc are not interpreted the same as locations produced by coqc.
+
+Can you show your HomFunctor2.glob?
+
+
+Comment author: @JasonGross
+
+jgross@ cagnode17:~/tmp$ coqc -v
+The Coq Proof Assistant, version 8.4pl3 (February 2014)
+compiled on Feb 25 2014 11:42:23 with OCaml 4.01.0
+jgross@ cagnode17:~/tmp$ echo | coqtop
+Welcome to Coq 8.4pl3 (February 2014)
+
+Coq < Coq <
+jgross@ cagnode17:~/tmp$ cat HomFunctor2.glob
+DIGEST 0d41004b83ce8e26eea80598d5bbc860
+FHoTT.HomFunctor2
+R28:35 HoTT.Overture <> <> lib
+jgross@ cagnode17:~/tmp$ cat Overture.glob
+DIGEST d41d8cd98f00b204e9800998ecf8427e
+FHoTT.Overture
+jgross@ cagnode17:~/tmp$ cat HomFunctor2.v
+(** * Hom *)
+Require Import Overture.
+(** ** Definition of [hom : Cᵒᵖ × C → Set] as a functor *)
+
+jgross@ cagnode17:~/tmp$ cat Overture.v
+jgross@ cagnode17:~/tmp$
+
+
+Comment author: @JasonGross
+
+And here is a log that includes the glob file cats, once it finishes: https://travis-ci.org/JasonGross/coqdoc-bug/builds/23888537
+
+
+Comment author: @herbelin
+
+Thanks Jason, I could fix the problem (interpretation of coq expressions within comments was not done with the correct absolute location, leading to accidental collisions with the locations in the glob file). I could not see the problem myself at first because I had removed the "-R . HoTT" option at coqc in my experiments, which was simpler because in a local archive.
+
+Fix is in trunk (8d3c142ec750612b7d02777ff2d6fd5286fb683d), v8.4 (997060ba5e7099c8362bc429d259c407ce503f34).
+
+
+Comment author: David M. Cooke &lt;<david.m.cooke@gmail.com>&gt;
+
+Created attachment 482
+Fix off-by-one error when generating .glob
+
+Here's a patch that fixes the splitting of multibyte characters in notations.
+I think this bug is the same one that I found :P
+
+The problem isn't in coqdoc, it's in the generated .glob file.
+With a notation like
+  Notation "%" := bar
+we would find lines like
+  R473:472 x <> ::'%' not
+in the .glob file -- which says the notation starts at position 473,
+and ends just before position 472. So the end of the notation off by one;
+for a multibyte notation, then, the last byte is not included, giving invalid characters when coqdoc puts markup between the first bytes and the last one.
+
+> Attached file: [off-by-one-in-glob.diff](https://coq.inria.fr/bugfiles/attachment.cgi?id=482) (text/plain, 1546 bytes)
+> Description:   Fix off-by-one error when generating .glob
+
+
+Comment author: @herbelin
+
+Hi David, there is indeed a problem introduced in the trunk. Some code factorization made in dumpglob.ml revealed that locs_of_notation was indeed not computing locations in standard format (i.e. with end position being the position of the next byte). Thanks for your patch that I used as support for the fix (committed 4e0e3022ca9e).
+
+

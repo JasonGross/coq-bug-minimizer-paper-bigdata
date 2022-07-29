@@ -1,0 +1,37 @@
+Comment author: @JasonGross
+
+This code worked a few days ago, and no longer does.  I suspect 
+6e847be2a6846ab11996d2774b6bc507a342a626, or possibly 
+7d4b8108bc8fa6951e605cb9b42580ff6f8e583f, though I haven't tested them.
+
+Require Import Coq.ZArith.ZArith Coq.micromega.Psatz.
+Open Scope Z_scope.
+Lemma opp_eq_0_iff a : -a = 0 <-> a = 0.
+Proof.
+  lia. (* In nested Ltac calls to "lia", "Lia.lia" and "xlia", last call failed.
+Error:
+In environment
+a : Z
+__arith : forall __x1 : Z, (- __x1 = 0 -> __x1 = 0) /\ (__x1 = 0 -> - __x1 = 0)
+Unable to unify "(- ?M2255 = 0 -> ?M2255 = 0) /\ (?M2255 = 0 -> - ?M2255 = 0)" 
+with
+ "- a = 0 <-> a = 0".
+ *)
+Qed.
+
+
+Comment author: @fajb
+
+Hi,
+
+Thanks for spotting it -- my regession tests are clearly not enough.
+
+Fixed by commit 9f56baf.
+
+The tactics now provides a more explicit proof term 
+exact (_arith P1 ... Pn X1 ... Xm) instead of apply (_arith P1 ... Pn) which would require some unfolding e.g negation or biconditionals.
+
+--
+Frédéric
+
+

@@ -1,0 +1,52 @@
+Comment author: @JasonGross
+
+Something seems wrong with the way [Defined] is checking things.  I have this 
+code in fiat-crypto:
+
+       (** Now we rely on the behavior of Coq's unifier to transform
+           the goal for us; we a goal like [let f' : A := ?f_evar in
+           B], and we want a goal like [A /\ B].  So we refine with a
+           hole named [pf] which is proof of [A /\ B], and then assert
+           that the second projection of the proof (which has type
+           [B]) actually has type [let f' : A := proj1 pf in B].  If
+           done naïvely, this would give a circlular type, which Coq
+           disallows.  However, Coq is happy to zeta-reduce away the
+           circlularity; happily, this is done after Coq unifies [let
+           f' : A := proj1 pf in B] with [let f' : A := ?f_evar in B],
+           hence filling [?f_evar] with the first projection of the
+           proof.  Since Coq instantiates the two existing evars
+           ([?f_evar] and the current goal, which is represented by an
+           evar under the hood) with projections of the new evar
+           (which becomes the new goal)---and let us hope that Coq
+           devs never decide both to turn on judgmental η (currently
+           controlled by primitive projections) for [and], and to
+           prefer η-expansion of evars before dropping context
+           variables (we might also be in trouble if someone adds a
+           [Canonical Structure] for [and])---we get the desired
+           behavior--for now. *)
+       lazymatch goal with
+       | [ |- let f' := _ in ?B ]
+         => refine (let pf := _ in (proj2 pf : let f' := proj1 pf in B))
+       end
+
+
+In the repo I will attach, in src/Specific/IntegrationTest.v, the [Defined] 
+does not finish in reasonable time with this [refine], but if it's replaced by 
+[idtac], then [Defined] is relatively fast.  What's going on?
+
+
+Comment author: @JasonGross
+
+Created attachment 828
+archive of fiat-crypto
+
+> Attached file: [slow_fiat_crypto_defined.zip](https://coq.inria.fr/bugfiles/attachment.cgi?id=828) (application/zip, 369360 bytes)
+> Description:   archive of fiat-crypto
+
+
+Comment author: @JasonGross
+
+I think this is related somehow to how [cbv in H] doesn't insert a cast node in 
+the proof tree.  Not sure how this interacts with evar unification, though.
+
+

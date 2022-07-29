@@ -1,0 +1,9 @@
+Comment author: @JasonGross
+
+I'm not sure if coqc should accept the -top option or not, but, either way, it should match the -help output.
+
+  coqc -top Top foo.v
+says
+  coqc: -top: no such file or directory
+
+

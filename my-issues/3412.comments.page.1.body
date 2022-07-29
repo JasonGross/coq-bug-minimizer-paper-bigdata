@@ -1,0 +1,16 @@
+Comment author: @JasonGross
+
+Goal exists x, x = 1.
+esplit.
+progress instantiate (1 := 1). (* success *)
+Undo.
+Fail let x := match goal with |- ?a = _ => constr:(a) end in
+progress unify x 1. (* The command has indeed failed with message:
+=> Error: Failed to progress. *)
+
+
+Comment author: @aspiwack
+
+Finally got to fix this one (f7b29094fe7cc13e). Progress is not perfect though: it will only compare focused goals, so if some evar that doesn't appear in any focused goal is updated, then progress will fail to see it.
+
+

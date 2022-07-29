@@ -1,0 +1,45 @@
+Comment author: @JasonGross
+
+The code
+
+Definition Foo (obj : Type) (Morphism' : obj -> obj -> Type)
+           (Identity' : forall o : obj, Morphism' o o)
+           (Compose' : forall s d d' : obj,
+                         Morphism' d d' -> Morphism' s d -> Morphism' s d') :
+  (forall (a b : obj) (f : Morphism' a b),
+     Compose' a b b (Identity' b) f = f)
+  -> True := fun _ => I.
+
+Set Printing All.
+Check (@ Foo Type
+            (fun s d => s -> d)
+            (fun _ => (fun x => x))
+            (fun _ _ _ f g => (fun x => f (g x)))
+            (fun _ _ f => eq_refl)).
+
+informs me that 
+
+Error: In environment
+T : Type
+T0 : Type
+f : T -> T0
+The term "@ eq_refl ?21 ?22" has type "@ eq ?21 ?22 ?22"
+ while it is expected to have type "@ eq (T -> T0) (fun x : T => f x) f".
+
+However, if the following [Check] goes through fine:
+
+Check (@ Foo Type
+            (fun s d => s -> d)
+            (fun _ => (fun x => x))
+            (fun _ _ _ f g => (fun x => f (g x)))
+            (fun _ _ f => eq_refl : (fun x => f x) = f)).
+
+
+It would be nice if, before giving an "the term $foo has type $bar while it is expected to have type $baz" error message, Coq first did the equivalent of trying to replace [$foo] with [$foo : $baz] (possibly only if [$baz] has no existentials, but preferably in all cases).  There might need to be a check to make sure that doing this didn't result in loops.
+
+
+Comment author: @pirbo
+
+Unification has been made much more eta compatible in trunk. Your example works there. But sorry, it won't be backport in v8.4.
+
+

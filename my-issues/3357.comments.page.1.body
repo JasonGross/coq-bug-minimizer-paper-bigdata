@@ -1,0 +1,59 @@
+Comment author: @JasonGross
+
+```coq
+Notation D1 := (forall {T : Type} ( x : T ) , Type).
+
+Definition DD1 ( A : forall {T : Type} (x : T), Type ) := A 1.
+Definition DD1' ( A : D1 ) := A 1. (* Toplevel input, characters 32-33:
+Error: In environment
+A : forall T : Type, T -> Type
+The term "1" has type "nat" while it is expected to have type 
+"Type".
+ *)
+
+```
+I expect DD1' to work, given that I just pasted in the body of D1 in DD1, which works.
+
+
+Comment author: @psteckler
+
+I sort of see what's happening here.
+
+There's a lookup to see what D1 is, in `search_syntactic_definition` in syntax_def.ml. 
+
+There, the call to KNmap.find returns:
+~~~coq
+pat: Notation_term.interpretation =
+  ([],
+   NProd (Names.Name.Name T, NSort (Misctypes.GType []),
+    NProd (Names.Name.Name x, NVar T, NSort (Misctypes.GType []))))
+~~~
+
+It looks like the first two arguments to the outer NProd represent T : Type, but there's nothing to indicate those were bracketed. I don't know whether there's a different way to build this term in `syntax_table' to get the right result.
+
+
+Comment author: @herbelin
+
+Hi Paul, it seems that you could indeed add a binding_kind to type notation_constr in the NLambda and NProd cases, so that the example works.
+
+
+Comment author: @psteckler
+
+(In reply to Hugo Herbelin from comment [BZ#2](https://github.com/coq/coq/issues?q=is%3Aissue%20%22Original%20bug%20ID%3A%20BZ%232%22))
+> Hi Paul, it seems that you could indeed add a binding_kind to type
+> notation_constr in the NLambda and NProd cases, so that the example works.
+
+Great, I'm trying that.
+
+The function `glob_constr_of_notation_constr_with_binders' takes NLambda and NProd instances and turns them into GLambda and GProd instances, always using Explicit as the binding_kind. If we allow the possibility of Implicit for NLambda and NProd, does that mean we'd allow that in GLambda and GProd?
+
+
+Comment author: @psteckler
+
+I'm testing a patch now, seems to work on Jason's example.
+
+
+Comment author: @psteckler
+
+PR #668 created
+Unfortunately #668 was orphaned, see the discussion there.

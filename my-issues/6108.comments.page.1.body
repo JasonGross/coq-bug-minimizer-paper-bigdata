@@ -1,0 +1,5 @@
+@mattam82 please update the milestone to reflect your current schedule on this.
+@mattam82 ping
+The milestone was never updated so removing it. @mattam82 please put one that reflects your schedule.
+@mattam82 Do you intend to address this in the foreseeable future? If not, please remove your assignment.
+It's more likely `repeat topdown (once (choice (hints foo) (hints bar)))` for some definition of once which applies the stragegy once and otherwise is the identity.

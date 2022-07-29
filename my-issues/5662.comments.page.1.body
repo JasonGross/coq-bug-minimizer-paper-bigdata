@@ -1,0 +1,62 @@
+Comment author: @JasonGross
+
+I'd like to see a version of [vm_compute] that also reduces type arguments.  
+For example, in:
+```coq
+Record HOLD T := hold { v : T }.
+Unset Printing Records.
+Definition nat' := nat.
+Goal True.
+  let v := constr:(@ hold nat' 5) in
+  let v' := (eval vm_compute in v) in
+  pose v'.
+```
+I want to see [hold nat 5 : HOLD nat], not [hold nat' 5 : HOLD nat'].  When 
+[nat'] is a massive term and [nat] is small, this can cause massive slowdowns 
+(10x or more) in printing, computing, evar-normalization, etc.  I lost about 10 
+hours of debugging time to tracking down this performance bottleneck.
+
+
+Comment author: @JasonGross
+
+For the historical record, the way that I noticed something was wrong was that 
+[let k := (eval vm_compute in (lem x)) in pose k as K] led to subsequent 
+commands (such as [let v := constr:(K) in idtac]) to have massively different 
+performance than they did when I did [let x' := (eval vm_compute in x) in let k 
+:= (eval vm_compute in (lem x')) in pose k as K].  It took me only a little 
+while to figure out that (and where) the vm wasn't fully normalizing its 
+arguments.
+
+
+Comment author: @ppedrot
+
+It doesn't make sense. The 'eval _ in _' command works at the term level, and doesn't really care about types. In particular, it return terms and there is no way to make them also carry their type without changing everything in the Ltac implementation.
+
+I'd therefore recommend closing with bug with a WONTFIX, but you may be unhappy about it...
+
+
+Comment author: @JasonGross
+
+What?  No, this is about reducing indices(?) of inductive constructors, which shows up as a difference in types. Perhaps I misnamed the bug title.  This is a request to make a variant of [eval vm_compute in] that returns the same term as [eval compute in] (assuming no opacity).
+
+
+Comment author: @ppedrot
+
+Ah, sorry, I misunderstood your report. It looks to me that this is due to the way we decompile VM objects, and in particular because we don't use the right type. Otherwise I don't understand why vm_compute would behave differently than eval vm_compute in. And in that case, there is still an issue linked to the lack of a proper value type which is impossible to work around. That said, I'll have a closer look at this.
+
+
+Comment author: @ppedrot
+
+OK, so I think the problem can be summarized as follows:
+
+First, VM normalization relies on the type of the expression to decompile the VM value into a Coq term.
+
+In particular, contrarily to the kernel representation, parameters are not arguments of the VM representation of constructors. Indeed, they are not needed, as they can be infered from the type of the expression.
+
+So your problem is the following: you take an applied constructor [c params args], known to live in type [I params indices]. You reduce it through the VM and get an abstract value. Then you reify the value in type [I params indices]. Alas, the type used for inference is not the one you'd be expecting, leading to the inference of parameters that you observe for the reified value.
+
+Unluckily, I don't think there is an easy way around. For instance, vm-normalizing the type beforehand looks like a no-no to me for efficiency reasons, and likewise, it doesn't seem reasonable to modify the VM representation.
+
+You can probably emulate the first solution Ltac-side, though.
+
+

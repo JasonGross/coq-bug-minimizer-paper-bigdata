@@ -1,0 +1,75 @@
+Comment author: @JasonGross
+
+If you clone https://github.com/JasonGross/HoTT/tree/ocaml.4.02.3+travis-fixes, 
+run
+$ ./autgen.sh
+$ ./configure COQBIN=/path/to/coq/trunk/bin/
+$ make theories/Basics/Notations.vo
+$ coqchk -coqlib ./coq -R theories/ HoTT HoTT.Basics.Notations -debug; echo $?
+Welcome to Chicken trunk (May 2017)
+[intern /home/jgross/Documents/repos/HoTT/theories/Basics/Notations.vo ... done]
+[intern /home/jgross/Documents/repos/HoTT/coq/theories/Init/Prelude.vo ... done]
+[intern /home/jgross/Documents/repos/HoTT/coq/theories/Init/Specif.vo ... done]
+[intern /home/jgross/Documents/repos/HoTT/coq/theories/Init/Datatypes.vo ... 
+done]
+[intern /home/jgross/Documents/repos/HoTT/coq/theories/Init/Logic.vo ... done]
+[intern /home/jgross/Documents/repos/HoTT/coq/theories/Init/Notations.vo ... 
+done]
+[intern /home/jgross/Documents/repos/HoTT/coq/theories/Init/Tactics.vo ... done]
+Raised at file "lib/loc.ml", line 71, characters 22-23
+Called from file "checker/univ.ml", line 547, characters 24-103
+Called from file "checker/univ.ml", line 742, characters 13-21
+Called from file "checker/univ.ml", line 115, characters 22-25
+Called from file "checker/univ.ml", line 119, characters 22-25
+Called from file "checker/univ.ml", line 772, characters 4-45
+Called from file "checker/univ.ml", line 796, characters 4-24
+Called from file "checker/indtypes.ml", line 185, characters 15-55
+Called from file "checker/indtypes.ml", line 236, characters 2-42
+Called from file "checker/indtypes.ml", line 257, characters 4-67
+Called from file "array.ml", line 77, characters 31-48
+Called from file "checker/indtypes.ml", line 549, characters 2-73
+Called from file "list.ml", line 84, characters 24-34
+Called from file "checker/mod_checking.ml", line 148, characters 20-111
+Called from file "checker/mod_checking.ml", line 86, characters 4-58
+Called from file "checker/safe_typing.ml", line 82, characters 2-143
+Called from file "checker/check.ml", line 122, characters 6-58
+Called from file "list.ml", line 73, characters 12-15
+Called from file "checker/check.ml", line 413, characters 2-40
+Called from file "checker/checker.ml", line 388, characters 4-20
+129
+
+
+Comment author: @ejgallego
+
+Lets wait for https://github.com/coq/coq/pull/898 to be merged and then we can check.
+
+
+Comment author: @ejgallego
+
+So this is not a flushing problem, indeed the exn printer is not printing anything, investigating more.
+
+
+Comment author: @ejgallego
+
+The non-printed exception is "Anomaly: Universe Var(0) undefined." and indeed it is CErrors.print who returns the empty printer for it.
+
+
+Comment author: @ejgallego
+
+So indeed the problem was that the checked did not register a feedback printer! I am surely the one to blame for this, I think indeed I had a branch cleaning up the use of Feedback/Printf in the checker but somehow it got lost from the main PRs :( :( [I think I couldn't decide what to use for the checker and this is why it got stuck]
+
+Pushed a fix at https://github.com/coq/coq/pull/901
+
+That should be good enough for 8.7.
+
+
+Comment author: @ejgallego
+
+*** Bug [BZ#5746](https://github.com/coq/coq/issues?q=is%3Aissue%20%22Original%20bug%20ID%3A%20BZ%235746%22) has been marked as a duplicate of this bug. ***
+
+
+Comment author: @ejgallego
+
+Fixed by https://github.com/coq/coq/pull/1075
+
+

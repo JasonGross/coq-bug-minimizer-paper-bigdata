@@ -1,0 +1,262 @@
+Comment author: @JasonGross
+
+My understanding is that [cut G] should be equivalent to [let H := fresh in assert (H : G); [ | revert H ]; <swap goals>].  Hence [cut G] should not fail when [assert H] succeeds.
+
+(* File reduced by coq-bug-finder from original input, then from 11678 lines to 11330 lines, then from 10721 lines to 9544 lines, then from 9549 lines to 794 lines, then from 810 lines to 785 lines, then from 810 lines to 724 lines, then from 592 lines to 362 lines, then from 327 lines to 255 lines, then from 254 lines to 243 lines *)
+(* coqc version trunk (August 2014) compiled on Aug 22 2014 4:17:28 with OCaml 4.01.0
+   coqtop version cagnode17:/afs/csail.mit.edu/u/j/jgross/coq-trunk,trunk (a67cc6941434124465f20b14a1256f2ede31a60e) *)
+
+Set Implicit Arguments.
+Local Set Primitive Projections.
+Record prod (A B : Type) := pair { fst : A ; snd : B }.
+Notation "x * y" := (prod x y) : type_scope.
+Notation "( x , y , .. , z )" := (pair .. (pair x y) .. z) : core_scope.
+Definition Type1 := Eval hnf in let U := Type in let gt := (Set : U) in U.
+Reserved Infix "o" (at level 40, left associativity).
+Inductive paths {A : Type} (a : A) : A -> Type := idpath : paths a a where "x = y" := (@ paths _ x y) : type_scope.
+Arguments idpath {A a} , [A] a.
+Delimit Scope path_scope with path.
+Local Open Scope path_scope.
+Notation "1" := idpath : path_scope.
+Definition transport {A : Type} (P : A -> Type) {x y : A} (p : x = y) (u : P x) : P y := match p with idpath => u end.
+Definition ap {A B:Type} (f:A -> B) {x y:A} (p:x = y) : f x = f y := match p with idpath => idpath end.
+Inductive Empty : Type1 := .
+Definition path_prod_uncurried {A B : Type} (z z' : A * B)
+           (pq : (fst z = fst z') * (snd z = snd z'))
+: (z = z')
+  := match fst pq in (_ = z'1), snd pq in (_ = z'2) return z = (z'1, z'2) with
+       | 1, 1 => 1
+     end.
+Definition path_prod {A B : Type} (z z' : A * B) :
+  (fst z = fst z') -> (snd z = snd z') -> (z = z')
+  := fun p q => path_prod_uncurried z z' (p,q).
+Module Export categories.
+  Module Export Category.
+    Module Export Core.
+
+      Delimit Scope morphism_scope with morphism.
+      Delimit Scope category_scope with category.
+      Delimit Scope object_scope with object.
+
+      Record PreCategory :=
+        Build_PreCategory' {
+            object :> Type;
+            morphism : object -> object -> Type;
+
+            identity : forall x, morphism x x;
+            compose : forall s d d',
+                        morphism d d'
+                        -> morphism s d
+                        -> morphism s d'
+            where "f 'o' g" := (compose f g)
+          }.
+
+      Bind Scope category_scope with PreCategory.
+      Arguments identity [!C%category] x%object : rename.
+
+      Definition Build_PreCategory
+                 object morphism compose identity
+
+        := @ Build_PreCategory'
+             object
+             morphism
+             compose
+             identity
+      .
+
+    End Core.
+
+  End Category.
+
+End categories.
+Module Export Category.
+  Module Export Sum.
+
+    Section internals.
+      Variable C : PreCategory.
+      Variable D : PreCategory.
+
+      Definition sum_morphism (s d : C + D) : Type
+        := match (s, d) with
+             | (inl s, inl d) => morphism C s d
+             | (inr s, inr d) => morphism D s d
+             | _ => Empty
+           end.
+
+      Definition sum_identity (x : C + D) : sum_morphism x x
+        := match x with
+             | inl x => identity x
+             | inr x => identity x
+           end.
+
+      Definition sum_compose (s d d' : C + D)
+                 (m1 : sum_morphism d d') (m2 : sum_morphism s d)
+      : sum_morphism s d'.
+        admit.
+      Defined.
+    End internals.
+
+    Definition sum (C D : PreCategory) : PreCategory.
+    Proof.
+      refine (@ Build_PreCategory
+                (C + D)%type
+                (sum_morphism C D)
+                (sum_identity C D)
+                (sum_compose C D)
+             ).
+    Defined.
+    Infix "+" := sum : category_scope.
+
+    Delimit Scope functor_scope with functor.
+
+    Section Functor.
+      Variable C : PreCategory.
+      Variable D : PreCategory.
+
+      Record Functor :=
+        {
+          object_of :> C -> D;
+          morphism_of : forall s d, morphism C s d
+                                    -> morphism D (object_of s) (object_of d);
+          identity_of : forall x, morphism_of _ _ (identity x)
+                                  = identity (object_of x)
+        }.
+    End Functor.
+    Arguments morphism_of [C%category] [D%category] F%functor [s%object d%object] m%morphism : rename, simpl nomatch.
+
+    Module Export HoTT_DOT_categories_DOT_Functor_DOT_Composition_DOT_Core.
+
+      Section composition.
+        Variable C : PreCategory.
+        Variable D : PreCategory.
+        Variable E : PreCategory.
+        Variable G : Functor D E.
+        Variable F : Functor C D.
+
+        Local Notation c_object_of c := (G (F c)) (only parsing).
+        Local Notation c_morphism_of m := (morphism_of G (morphism_of F m)) (only parsing).
+        Definition compose_identity_of x
+        : c_morphism_of (identity x) = identity (c_object_of x)
+          := transport (@ paths _ _)
+                       (identity_of G _)
+                       (ap (@ morphism_of _ _ G _ _) (identity_of F x)).
+
+        Definition composeF : Functor C E
+          := Build_Functor
+               C E
+               (fun c => G (F c))
+               (fun _ _ m => morphism_of G (morphism_of F m))
+               compose_identity_of.
+      End composition.
+      Infix "o" := composeF : functor_scope.
+
+      Local Notation type_inl := inl.
+      Local Notation type_inr := inr.
+
+      Section sum_functors.
+        Variable C : PreCategory.
+        Variable D : PreCategory.
+
+        Definition inl : Functor C (C + D)
+          := Build_Functor C (C + D)
+                           (@ inl _ _)
+                           (fun _ _ m => m)
+                           (fun _ => idpath).
+      End sum_functors.
+
+      Section sum.
+        Variable C : PreCategory.
+        Variable C' : PreCategory.
+        Variable D : PreCategory.
+
+        Definition sum (F : Functor C D) (F' : Functor C' D)
+        : Functor (C + C') D.
+        Proof.
+          refine (Build_Functor
+                    (C + C') D
+                    (fun cc'
+                     => match cc' with
+                          | type_inl c => F c
+                          | type_inr c' => F' c'
+                        end)
+                    (fun s d
+                     => match s, d with
+                          | type_inl cs, type_inl cd
+                            => morphism_of F (s := cs) (d := cd)
+                          | type_inr c's, type_inr c'd
+                            => morphism_of F' (s := c's) (d := c'd)
+                          | _, _ => fun m => match m with end
+                        end)
+                    _); admit.
+        Defined.
+      End sum.
+
+      Goal    forall (D C1 C2 : PreCategory) (fst1 : Functor C1 D)
+                     (snd1 : Functor C2 D) (fst0 : Functor C1 D) (snd0 : Functor C2 D)
+                     (x2 : object C1)
+                     (p0 : @ paths (Functor C1 D)
+                                  (@ composeF C1 (Category.Sum.sum C1 C2) D
+                                             ((@ sum C1 C2 D fst0 snd0))
+                                             (inl C1 C2)) fst0)
+                     (p2 : @ paths (Functor C1 D)
+                                  (@ composeF C1 (Category.Sum.sum C1 C2) D
+                                             ((@ sum C1 C2 D fst1 snd1))
+                                             (inl C1 C2)) fst1) (f : Functor C2 D)
+                     (p : @ paths (Functor C2 D) f snd0) (f0 : Functor C2 D)
+                     (p1 : @ paths (Functor C2 D) f0 snd1)
+                     (m : morphism D (@ object_of C1 D fst1 x2) (@ object_of C1 D fst0 x2)),
+                @ paths (morphism D (@ object_of C1 D fst1 x2) (@ object_of C1 D fst0 x2))
+                       (@ transport (prod (Functor C1 D) (Functor C2 D))
+                                   (fun x : prod (Functor C1 D) (Functor C2 D) =>
+                                      morphism D (@ object_of C1 D fst1 x2) (@ object_of C1 D (fst x) x2))
+                                   (@ pair (Functor C1 D) (Functor C2 D)
+                                          (@ composeF C1 (Category.Sum.sum C1 C2) D
+                                                     ((@ sum C1 C2 D fst0 snd0))
+                                                     (inl C1 C2)) f) (@ pair (Functor C1 D) (Functor C2 D) fst0 snd0)
+                                   (@ path_prod (Functor C1 D) (Functor C2 D)
+                                               (@ pair (Functor C1 D) (Functor C2 D)
+                                                      (@ composeF C1 (Category.Sum.sum C1 C2) D
+                                                                 ((@ sum C1 C2 D fst0 snd0))
+                                                                 (inl C1 C2)) f)
+                                               (@ pair (Functor C1 D) (Functor C2 D) fst0 snd0) p0 p)
+                                   (@ transport (prod (Functor C1 D) (Functor C2 D))
+                                               (fun x : prod (Functor C1 D) (Functor C2 D) =>
+                                                  morphism D (@ object_of C1 D (fst x) x2) (@ object_of C1 D fst0 x2))
+                                               (@ pair (Functor C1 D) (Functor C2 D)
+                                                      (@ composeF C1 (Category.Sum.sum C1 C2) D
+                                                                 ((@ sum C1 C2 D fst1 snd1))
+                                                                 (inl C1 C2)) f0)
+                                               (@ pair (Functor C1 D) (Functor C2 D) fst1 snd1)
+                                               (@ path_prod (Functor C1 D) (Functor C2 D)
+                                                           (@ pair (Functor C1 D) (Functor C2 D)
+                                                                  (@ composeF C1 (Category.Sum.sum C1 C2) D
+                                                                             ((@ sum C1 C2 D fst1 snd1))
+                                                                             (inl C1 C2)) f0)
+                                                           (@ pair (Functor C1 D) (Functor C2 D) fst1 snd1) p2 p1) m)) m.
+        intros.
+        match goal with
+          | |- context G[(sum ?fst1 ?snd1 o inl ?C1 ?C2)%functor]
+            => let G' := context G[fst1] in
+               assert G'
+        end.
+        Undo.
+        match goal with
+          | |- context G[(sum ?fst1 ?snd1 o inl ?C1 ?C2)%functor]
+            => let G' := context G[fst1] in
+               cut G'
+        end.
+(* Toplevel input, characters 197-204:
+In nested Ltac calls to "cut", last call failed.
+Error: Not a proposition or a type. *)
+
+
+Comment author: @ppedrot
+
+I think this is due to the fact that [assert] and [cut] do not use the same interpretation function for terms. Indeed, the [G] you recover is not really a constr, but a context. There must be a missing cast somewhere.
+
+
+Comment author: @ppedrot
+
+Now both versions fail on trunk with a type error before evaluating the tactic. The context operation was indeed producing an ill-typed term.
+
+

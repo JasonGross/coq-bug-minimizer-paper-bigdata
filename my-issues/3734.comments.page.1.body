@@ -1,0 +1,153 @@
+Comment author: @JasonGross
+
+(* -*- mode: coq; coq-prog-args: ("-emacs" "-indices-matter") -*- *)
+(* File reduced by coq-bug-finder from original input, then from 25856 lines to 19986 lines, then from 19167 lines to 15037 lines, then from 15051 lines to 14789 lines, then from 14803 lines to 12005 lines, then from 12019 lines to 12009 lines, then from 12023 lines to 924 lines, then from 918 lines to 448 lines, then from 435 lines to 364 lines, then from 261 lines to 198 lines *)
+(* coqc version trunk (October 2014) compiled on Oct 11 2014 1:13:41 with OCaml 4.01.0
+   coqtop version cagnode16:/afs/csail.mit.edu/u/j/jgross/coq-trunk,trunk (d65496f09c4b68fa318783e53f9cd6d5c18e1eb7) *)
+
+Set Universe Polymorphism.
+Set Primitive Projections.
+Reserved Infix "o" (at level 40, left associativity).
+Set Implicit Arguments.
+Delimit Scope morphism_scope with morphism.
+Delimit Scope category_scope with category.
+Delimit Scope object_scope with object.
+Record PreCategory :=
+  { object :> Type;
+    morphism : object -> object -> Type;
+    identity : forall x, morphism x x;
+    compose : forall s d d', morphism d d' -> morphism s d -> morphism s d' }.
+Bind Scope category_scope with PreCategory.
+Arguments identity {!C%category} / x%object : rename.
+Infix "o" := (@ compose _ _ _ _) : morphism_scope.
+Delimit Scope functor_scope with functor.
+Local Open Scope morphism_scope.
+Record Functor (C D : PreCategory) :=
+  { object_of :> C -> D;
+    morphism_of : forall s d, morphism C s d -> morphism D (object_of s) (object_of d) }.
+Bind Scope functor_scope with Functor.
+Arguments morphism_of [C%category] [D%category] F%functor [s%object d%object] m%morphism : rename, simpl nomatch.
+Class IsIsomorphism {C : PreCategory} {s d} (m : morphism C s d) := {}.
+Definition oppositeC (C : PreCategory) : PreCategory.
+  exact (@ Build_PreCategory
+           C
+           (fun s d => morphism C d s)
+           (identity (C := C))
+           (fun _ _ _ m1 m2 => m2 o m1)).
+Defined.
+Notation "C ^op" := (oppositeC C) (at level 3, format "C '^op'") : category_scope.
+Definition composeF C D E (G : Functor D E) (F : Functor C D) : Functor C E.
+  exact (Build_Functor
+           C E
+           (fun c => G (F c))
+           (fun _ _ m => morphism_of G (morphism_of F m))).
+Defined.
+Infix "o" := composeF : functor_scope.
+Record NaturalTransformation C D (F G : Functor C D)
+  := { components_of :> forall c, morphism D (F c) (G c) ; commutes : components_of = components_of }.
+Definition composeT C D (F F' F'' : Functor C D) (T' : NaturalTransformation F' F'') (T : NaturalTransformation F F')
+: NaturalTransformation F F''.
+  exact (@ Build_NaturalTransformation _ _ F F'' (fun c => T' c o T c) $(admit)$).
+Defined.
+Definition whisker_r C D E (F F' : Functor D E) (T : NaturalTransformation F F') (G : Functor C D)
+  := @ Build_NaturalTransformation
+       _ _
+       (F o G) (F' o G)
+       (fun c => T (G c))
+       $(admit)$.
+Infix "oR" := whisker_r (at level 40, left associativity) : natural_transformation_scope.
+Definition identityF C : Functor C C.
+  exact (Build_Functor C C
+                       (fun x => x)
+                       (fun _ _ x => x)).
+Defined.
+Notation "1" := (identityF _) : functor_scope.
+Axiom identityT : forall C D (F : Functor C D), NaturalTransformation F F.
+Definition functor_category (C D : PreCategory) : PreCategory.
+  exact (@ Build_PreCategory (Functor C D)
+                            (@ NaturalTransformation C D)
+                            (@ identityT C D)
+                            (@ composeT C D)).
+Defined.
+Notation "C -> D" := (functor_category C D) : category_scope.
+Axiom oppositeF : forall C D (F : Functor C D), Functor C^op D^op.
+Notation "F ^op" := (oppositeF F) (at level 3, format "F ^op") : functor_scope.
+Definition set_cat : PreCategory.
+  exact (@ Build_PreCategory Type
+                            (fun x y => x -> y)
+                            (fun _ x => x)
+                            (fun _ _ _ f g x => f (g x))).
+Defined.
+Local Open Scope natural_transformation_scope.
+Definition whiskerR_functor (C D E : PreCategory) (G : (C -> D)%category)
+: ((D -> E) -> (C -> E))%category.
+  exact (Build_Functor
+           (D -> E) (C -> E)
+           (fun F => F o G)%functor
+           (fun _ _ T => T oR G)).
+Defined.
+Definition compose_functor (C D E : PreCategory) : object ((C -> D) -> ((D -> E) -> (C -> E))).
+Proof.
+  refine (Build_Functor
+            (C -> D) ((D -> E) -> (C -> E))
+            (@ whiskerR_functor _ _ _)
+            $(admit)$).
+Defined.
+Definition isisomorphism_natural_transformation
+           C D F G (T : NaturalTransformation F G)
+           `{forall x, IsIsomorphism (T x)}
+: @ IsIsomorphism (C -> D) F G T.
+  admit.
+Defined.
+Local Open Scope functor_scope.
+Axiom coyoneda : forall A, Functor A^op (A -> set_cat).
+Axiom yoneda : forall A, Functor A (A^op -> set_cat).
+Definition coyoneda_functor (A : PreCategory)
+: Functor (A -> set_cat) (A -> set_cat).
+  exact ((compose_functor _ _ set_cat (coyoneda A)^op) o (yoneda (A -> set_cat))).
+Defined.
+Section nt.
+  Variable A : PreCategory.
+  Axiom coyoneda_natural_transformation_helper : forall F, morphism (_ -> _) (coyoneda_functor A F) F.
+  Definition coyoneda_natural_transformation
+  : morphism (_ -> _)
+             (coyoneda_functor A)
+             1.
+  Proof.
+    hnf.
+    simpl.
+    let F := match goal with |- NaturalTransformation ?F ?G => constr:(F) end in
+    let G := match goal with |- NaturalTransformation ?F ?G => constr:(G) end in
+    refine (@ Build_NaturalTransformation
+              _ _
+              F G
+              coyoneda_natural_transformation_helper
+              _).
+    simpl.
+    admit.
+  Defined.
+End nt.
+
+Definition coyoneda_lemma A
+: IsIsomorphism (coyoneda_natural_transformation A).
+Proof.
+  eapply isisomorphism_natural_transformation.
+  simpl.
+(* Toplevel input, characters 15-20:
+Error:
+In environment
+A : PreCategory
+The term "?X112" has type
+ "forall x : Functor A set_cat,
+  IsIsomorphism (coyoneda_natural_transformation_helper x)"
+while it is expected to have type
+ "forall x : (A -> set_cat)%category,
+  IsIsomorphism ((coyoneda_natural_transformation A) x)".
+ *)
+
+
+Comment author: @mattam82
+
+Fixed in 8.5
+
+

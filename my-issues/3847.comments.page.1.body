@@ -1,0 +1,22 @@
+Comment author: @JasonGross
+
+Require Foo.
+
+Extraction "Foo" Foo.
+(* Error: Extraction of file Foo.v as a module is asked.
+Monolithic Extraction cannot deal with this situation.
+Please extract some objects of this module or
+use (Recursive) Extraction Library instead. *)
+
+
+This can't be hard to implement, though, because the following works fine:
+
+Require Foo.
+
+Module Bar.
+  Include Foo.
+End Bar.
+
+Extraction "Foo" Bar.
+
+

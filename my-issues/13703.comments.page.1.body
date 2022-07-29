@@ -1,0 +1,15 @@
+Here are a couple more strategies that I want:
+- cbv/vm_compute ordering of computation (including recursing under lambdas last) --- that is, I want a version of `cbv` where, in addition to deciding whether or not to have `beta`, `iota`, `zeta`, I can also replace the `delta` steps with any `rewrite_strat` strategy
+- lazy ordering of computation (including recursing under lambdas last); same as above, but with the strategy of `lazy`
+- the ability to have fine-grained control over order of subterm recursion based on the head constant and/or the types of the arguments.  That is, I want a simplified version of `match` with pointers, where I can write something like
+```coq
+rewrite_strat
+  fix F goal.
+    match goal with
+    | nat_rect ?P _ _ ?n ?arg => try (F n; F arg; F goal)
+    | nat_rect ?P _ _ ?n => try (F n; F goal)
+    | nat_rect ?P _ _ O => eval unfold nat_rect at 1; eval cbv beta iota; F goal
+    | nat_rect ?P ?Z_case ?S_case (S ?n) => eval change (S_case n (nat_rect P Z_case S_case n); F goal
+    | _ => some_strat
+    end.
+```

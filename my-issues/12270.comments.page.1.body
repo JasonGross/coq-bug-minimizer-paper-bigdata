@@ -1,0 +1,22 @@
+Ah, my performance analysis cannot be (entirely) right, as `Record` is quadratic even when I `Set Primitive Projections`:
+![image](https://user-images.githubusercontent.com/396076/81248170-c5fc0000-8fe9-11ea-8985-9d4498576ac7.png)
+does it still define compatibility constants?
+Yes, but if I'm reading https://github.com/coq/coq/blob/325a644b3f5a5f8c1a86191004576e7c763ae9f3/vernac/record.ml#L337-L349 and https://github.com/coq/coq/blob/325a644b3f5a5f8c1a86191004576e7c763ae9f3/kernel/names.ml#L758-L768 correctly, the "compatibility constants" are just definitions which are `fun x => primproj x`, and thus should take constant time per projection to build and define.  (But @mattam82 probably has the definitive answer here; I might be reading the code wrong.)
+Record definition is largely dominated by term hashconsing. As you conjecture, the outliers correspond to garbage collection, which explains the reproducibility.
+Huh.  And I guess hashconsing is linear in the size of the term being hashconsed.
+
+@ppedrot That doesn't explain the quadratic factor in primitive record definition.  What dominates there?
+For the primitive record definition, the major contributor is the function `Constrintern.extract_ids` which builds the set of identifiers from the environment in O(n). Since it's performed n times, this results in O(n²).
+Note that #9710 is likely to fix the non-primitive quadratic cost, or at least seriously mitigate it. For the primitive case, I don't know how to fix this in a reasonable way, but the timings seem reasonable to me. It's not common to build record types with several thousand fields...
+Sure, fixing this quadratic factor is not high priority, and #9710 seems pretty great.
+
+Would you be willing to explain the primitive code path a bit more?  Why is `Constrintern.extract_ids` called `n` times on an environment of size `n`?  Is it extracting all the ids from the global environment?  Or, oh, is this in order to typecheck the types of the fields of the record, it needs to extract the names and types of the previous fields?  It seems like this should be doable in an incremental way....
+> Or, oh, is this in order to typecheck the types of the fields of the record, it needs to extract the names and types of the previous fields?
+
+Indeed.
+
+>  It seems like this should be doable in an incremental way....
+
+I also believe that this should be done that way, but unfortunately the API doesn't let you do that. It would require exporting a function even more low-level than the one considered "low-level" part of the API. This is not impossible, but it'd be a bit ugly.
+
+Ah, okay.  Maybe someday?

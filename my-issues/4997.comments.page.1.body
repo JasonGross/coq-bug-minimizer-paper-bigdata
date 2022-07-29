@@ -1,0 +1,20 @@
+Comment author: @JasonGross
+
+Goal True.
+  match constr:(fun x => x + x) with
+  | (fun y : ?T => ?f) => let c := constr:(fun (y : Type) => f + f) in pose c
+  end.
+  constructor.
+Qed. (* Error: Illegal application: 
+The term "Nat.add" of type "nat -> nat -> nat"
+cannot be applied to the terms
+ "x" : "Type"
+ "x" : "Type"
+The 1st term has type "Type" which should be coercible to "nat". *)
+
+
+I like that using open terms does not incur extra type-checking, but I think 
+this should only be the case when they are interpreted in uconstr-scope; in 
+constr-scope, the types of the binders should be checked to match.
+
+

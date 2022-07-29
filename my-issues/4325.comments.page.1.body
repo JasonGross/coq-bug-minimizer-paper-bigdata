@@ -1,0 +1,19 @@
+Comment author: @JasonGross
+
+Here is code that works in 8.4, but fails in 8.5beta2 with a unification error:
+
+Goal (forall a b : nat, Set = (a = b)) -> Set.
+Proof.
+  clear.
+  intro H.
+  erewrite (fun H' => H _ H'). (* Toplevel input, characters 22-23:
+Error: In environment
+H : forall a b : nat, Set = (a = b)
+Unable to unify "?n@ {H':=?M2134}" with "?n@ {H':=?H'}". *)
+
+
+Comment author: @ppedrot
+
+Seems to be fixed as of 3664fd9f0.
+
+

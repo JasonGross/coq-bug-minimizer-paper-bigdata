@@ -1,0 +1,28 @@
+Comment author: @JasonGross
+
+Goal True.
+  unify 1 1 with H.
+(* Anomaly: Uncaught exception Not_found. Please report. *)
+
+This should be a proper error message, like '"H" is not a hint database with transparency information' or something.
+
+
+Comment author: @ppedrot
+
+Should it be caught by the tactic monad, or should it fail at toplevel?
+
+
+Comment author: @JasonGross
+
+If I'm defining a tactic, I want
+
+Ltac foo := idtac; unify 1 1 with H.
+
+to be an invalid tactic (to fail at definition time).  I think hint databases should be bound early, unless they're being passed as arguments.
+
+
+Comment author: @ppedrot
+
+I have fixed it in trunk with the reversed semantics, that is, it fails with a catchable exception in the tactic monad. I assume it is the job of the internalization to forbid such invalid calls to nonexistent tactics...
+
+

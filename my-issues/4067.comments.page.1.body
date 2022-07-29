@@ -1,0 +1,17 @@
+Comment author: @JasonGross
+
+$ coq_makefile -Q .. "" foo.v >/dev/null
+Warning: in options -R, . and .. overlap
+Warning: install rule assumes that -R/-Q . _ is the only -R/-Q optionWarning: install rule assumes that -R/-Q . _ is the only -R/-Q optionWarning: -Q options don't have a correct common prefix,
+ install-doc will put anything in $INSTALLDEFAULTROOT
+
+
+
+I did not pass any -R options
+
+
+Comment author: @maximedenes
+
+Fixed in v8.5 branch.
+
+

@@ -1,0 +1,84 @@
+Comment author: @JasonGross
+
+The clean target should be
+  clean::
+not
+  clean:
+
+so that if I -include the makefile into another one, I can add to the clean rule, and not just overwrite it.
+
+
+Comment author: @silene
+
+Implemented by commit f4d7d60.
+
+
+Comment author: @pirbo
+
+When I wanted to add something to the clean target it used to be easy, I wrote :
+
+-extra-phony clean-test "" "-rm -f  $(TESTVOFILES) $(TESTVFILES:.v=.glob) $(TESTVFILES:.v=.v.d)"
+-extra-phony clean clean-test ""
+
+in my _CoqProject file
+
+It now fails with the error :
+Makefile:360: *** target file `clean' has both : and :: entries.  Stop.
+
+How could I do ?
+
+
+Comment author: @silene
+
+Presumably, your coq_makefile binary is not up-to-date. This issue was fixed by commit 0da6029.
+
+
+Comment author: @pirbo
+
+I must be extremely unclear, today !
+
+My point is precisely "using a recent coq_makefile, Container from the contribs repository does not compile anymore" !
+
+Do ```touch Make``` to force the Makefile generation and here you are
+Makefile:360: *** target file `clean' has both : and :: entries.  Stop.
+
+So How could I make ```make clean``` execute
+rm -f  $(TESTVOFILES) $(TESTVFILES:.v=.glob) $(TESTVFILES:.v=.v.d)
+
+in your new setting ?
+
+
+Comment author: @JasonGross
+
+I think the solution to this is to make the --extra-phony check if it's argument is one of the clean targets, and insert a double-colon if it is.
+
+
+Comment author: @JasonGross
+
+(That is, coq_makefile.ml should be updated to do this, if it doesn't currently.)
+
+
+Comment author: @silene
+
+Pierre, I just tried compiling Containers from the contribs, it works just fine. (For some relative definition of "fine", since it fails when compiling src/generate.ml4, but at least the Makefile is correct.)
+
+Jason, if you take a look at commit 0da6029 (which I mentioned earlier), you will notice that it is exactly what this commit implements.
+
+let double_colon = ["clean"; "cleanall"; "archclean"]
+let custom sps =
+  let pr_path (file,dependencies,is_phony,com) =
+    print file;
+    print (if List.mem file double_colon then ":: " else ": ");
+    print dependencies; print "\n";
+
+
+Comment author: @JasonGross
+
+Ah, ok, sorry for not checking that first.
+
+
+Comment author: @pirbo
+
+Sorry too. I am up to date but I'm trunk !!!
+
+

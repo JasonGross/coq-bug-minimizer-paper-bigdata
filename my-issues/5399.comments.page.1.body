@@ -1,0 +1,163 @@
+Comment author: @JasonGross
+
+I'd like the ability to make  "Error: Ltac variable ts is not bound to an 
+identifier. It cannot be used in a binder." uncatchable in the way that 
+anomalies are uncatchable; this is one of the more annoying changes to track 
+down from 8.4 to 8.5, and it would be nice to get some help from Coq in 
+noticing when this happens.  (These should actually be definition-time errors, 
+not running-time errors, but this seems useful while I'm waiting for Ltac 2.)
+
+
+Comment author: @ejgallego
+
+Well you could always modify pretyping.ml and replace anomaly by user_err. The backtrace should give you more info to do the proper refinement.
+
+Do you have a test case at hand?
+
+
+Comment author: @JasonGross
+
+It's not that it's hard to fix or produce or anything:
+
+Ltac silly :=
+  let ts := constr:(1) in
+  let f := constr:(fun ts : Type => ts) in
+  pose f; pose ts.
+
+The fix is to replace the second and third "ts" with "ts'".  The issue is that, e.g., when compiling Bedrock, the bad code can be very deep in nested tactic invocations, and so I might not realize why it's doing the wrong thing.  I might recompile a patched version of Coq the next time I'm working on porting Bedrock...
+
+> Well you could always modify pretyping.ml and replace anomaly by user_err.
+
+Huh?  Do you mean "replace user_err with anomaly", rather than the other way around?
+
+
+Comment author: @ppedrot
+
+Would you be happy with just a tactic "panic" that takes a message and throws an unrecoverable exception? You could then use something like 'tac || panic "foo"' to achieve what you want then, couldn't you?
+
+
+Comment author: @ejgallego
+
+Sorry Jason, indeed I meant "replace A for B".
+
+I am sorry about the example too, but I don't really know how to write LTAC tactics beyond the basic ";" and "||".
+
+I was trying to find the exact spot in the code where the error is masked, so what I was looking is for an example where the error is masked.
+
+How can we combine silly with another tactic such that the error is masked?
+
+
+Comment author: @ejgallego
+
+Hi Jason,
+
+have a look to this tree: https://github.com/ejgallego/coq/tree/ltac%2Bexn_noignore
+
+
+Comment author: @ejgallego
+
+Indeed it is not clear to me why all UserErr are masked here, that seems a bit fishy, doesn't it folks?
+
+I've just pushed a tree disabling this masking to my personal Travis to see if anything breaks.
+
+
+Comment author: @JasonGross
+
+To mask the error, run [try silly].  It's masked in the same way that [try 
+congruence] succeeds and (correctly) masks the error of [congruence].
+
+
+Comment author: @ejgallego
+
+Hey Jason, yeah I figured out myself, I think indeed my patch does what you want.
+
+(I tested with silly || idtac).
+
+
+Comment author: @ejgallego
+
+It is indeed trivial to backport to 8.5, I've put a tree in my github.
+
+
+Comment author: @ejgallego
+
+Just tested again, `try silly` is not masked anymore.
+
+
+Comment author: @ejgallego
+
+> Indeed it is not clear to me why all UserErr are masked here, that seems a bit fishy, doesn't it folks?
+>
+> I've just pushed a tree disabling this masking to my personal Travis to see if anything breaks.
+
+Well, that was a naïve thing to try, it seems the idiom of using UserErr as a recoverable error in tactics is all over the place.
+
+Would we gain anything from making the distinction between UserErr and tactic-catchable errors?
+
+
+Comment author: @JasonGross
+
+> Well, that was a naïve thing to try, it seems the idiom of using UserErr as a recoverable error in tactics is all over the place.
+
+I'd be curious to know if not masking this particular error breaks any code you're testing on Travis.  If so, I suspect that there was already a bug, or that the code was previously dead.
+
+> Would we gain anything from making the distinction between UserErr and tactic-catchable errors?
+
+I think this is what PMP was proposing with [panic] (which would indeed be useful, I believe, though not for this particular case).
+
+
+Comment author: @ppedrot
+
+FWIW, you can already make an exception uncatchable by the tactic layer by wrapping it inside Logic_monad.Exception (or use the primitive Proofview.NonLogical.raise if you're already in the monad). I'm pretty sure it'll break unrelated stuff if you start replacing catchable exceptions by uncatchable ones, so this should only be done on a debug-case basis.
+
+
+Comment author: @ejgallego
+
+(In reply to Pierre-Marie Pédrot from comment [BZ#13](https://github.com/coq/coq/issues?q=is%3Aissue%20%22Original%20bug%20ID%3A%20BZ%2313%22))
+> FWIW, you can already make an exception uncatchable by the tactic layer by
+> wrapping it inside Logic_monad.Exception (or use the primitive
+> Proofview.NonLogical.raise if you're already in the monad). I'm pretty sure
+> it'll break unrelated stuff if you start replacing catchable exceptions by
+> uncatchable ones, so this should only be done on a debug-case basis.
+
+I see, thanks Pierre-Marie. However what I am wondering is that currently, all the calls to user_err are being catched, is this really what we want?
+
+It seems to me that this could potentially catch too many errors, ins't it?
+
+
+Comment author: @ppedrot
+
+(In reply to Emilio J. Gallego Arias from comment [BZ#14](https://github.com/coq/coq/issues?q=is%3Aissue%20%22Original%20bug%20ID%3A%20BZ%2314%22))
+> I see, thanks Pierre-Marie. However what I am wondering is that currently,
+> all the calls to user_err are being catched, is this really what we want?
+
+Short answer: history. There is a mix of exception-raising and monadic style, even in the new engine, so that we need to catch exceptions here and there. I've been advocating against the use of exceptions in Coq except for fatal errors, but the code base is not ready for this yet.
+
+
+Comment author: @ejgallego
+
+(In reply to Pierre-Marie Pédrot from comment [BZ#15](https://github.com/coq/coq/issues?q=is%3Aissue%20%22Original%20bug%20ID%3A%20BZ%2315%22))
+>
+> Short answer: history. There is a mix of exception-raising and monadic
+> style, even in the new engine, so that we need to catch exceptions here and
+> there. I've been advocating against the use of exceptions in Coq except for
+> fatal errors, but the code base is not ready for this yet.
+
+I see, thanks. However, a quick "grep user_err|error" makes me think that a refinement on error exception could be possible.
+
+But first, I think we want to finish the removal of duplicate error entry functions so we get a better view.
+
+
+Comment author: @ejgallego
+
+By the way, unmasking Jason's error did break no travis CI, I wonder if this should be made the default.
+
+https://travis-ci.org/ejgallego/coq/builds/211330621
+
+
+Comment author: @Zimmi48
+
+I did not read the conversation in full detail. Has Jason wish been granted? Otherwise, since it is a feature request I'm moving this to 8.8.
+
+
+This is implemented in Ltac2.

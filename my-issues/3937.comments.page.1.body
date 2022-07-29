@@ -1,0 +1,20 @@
+Comment author: @JasonGross
+
+The code at https://github.com/JasonGross/bedrock/blob/bug-idtac-rewrite/src/SepHeap.v#L502 prints on the first matching goal, then prints nothing for the rest of the computation of the tactic.  Once the tactic is finished running, it prints everything it should have printed during running the tactic.  (In Proof General.)
+
+
+Comment author: @aspiwack
+
+You'll have to be more specific and/or to provide more reproduceable examples because I'm afraid I don't understand what is happening.
+
+
+Comment author: @JasonGross
+
+Sorry, my bug minimizer is not yet up to the task of handling bedrock.  I'll see if I can get travis to reproduce it, or improve my bug minimizer.
+
+
+Comment author: @ppedrot
+
+Without further information, I'll close this bug. Reopen it if you come up with a reproducible example.
+
+

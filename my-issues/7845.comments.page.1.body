@@ -1,0 +1,14 @@
+Ah, the issue is apparently more subtle.  When there exists a `-R` flag, the `-R . Top` flag is correctly added to the beginning of the list.  However, when there are only `-Q` flags, the `-R . Top` flag takes precedence.  I'll open a new issue with the more general form of this problem.  In any case, here are test-cases:
+
+The following works:
+```bash
+mkdir -p theories; touch a.v theories/b.v; (echo 'Require Import Foo.b.' > a.v)
+coq_makefile -R theories Foo a.v theories/b.v -o Makefile
+make clean && make
+```
+The following should work, but does not:
+```bash
+mkdir -p theories; touch a.v theories/b.v; (echo 'Require Import Foo.b.' > a.v)
+coq_makefile -Q theories Foo a.v theories/b.v -o Makefile
+make clean && make
+```

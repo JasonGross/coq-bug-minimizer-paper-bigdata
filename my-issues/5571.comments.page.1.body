@@ -1,0 +1,22 @@
+Comment author: @JasonGross
+
+Apologies if this already exists, but I can't find it: I want to know what 
+interpretation scopes a constant will be interpreted in.
+
+
+Comment author: @ejgallego
+
+I assume `Print Scopes` doesn't do what you want, right?
+
+
+Comment author: @ejgallego
+
+Ok, you may be looking for `Print Visibility`.
+
+
+Comment author: @JasonGross
+
+Ah, yes, Print Visibility is what I want; thanks!  I guess I didn't look at the 
+doc closely enough.
+
+

@@ -1,0 +1,41 @@
+Comment author: @JasonGross
+
+The reference manual lists the syntax for Notation at 
+https://coq.inria.fr/refman/Reference-Manual014.html :
+modifiers	::=	ident , … , ident at level natural
+ 	|	ident , … , ident at next level
+ 	|	at level natural
+ 	|	left associativity
+ 	|	right associativity
+ 	|	no associativity
+ 	|	ident ident
+ 	|	ident binder
+ 	|	ident closed binder
+ 	|	ident global
+ 	|	ident bigint
+ 	|	only parsing
+ 	|	only printing
+ 	|	format string
+
+However, the page doesn't seem to document what it means to say "x ident", "x 
+global", nor "x bigint"; what do these mean?  (They should also be documented.)
+
+
+Comment author: @herbelin
+
+I don't know if they are very useful (there is no use in the standard library).
+
+The type bigint is to parse (arbitrary long) integers. The type global is to parse possibly-qualified reference.
+
+Examples:
+```
+Notation "# x" := (S x) (x bigint, at level 0).
+Check # 9. (* 10 *)
+Check # (S O). (* parsing error *)
+
+Notation "## x" := (x,x) (x global, at level 0).
+Check ## Datatypes.S. (* ok *)
+Check ## S. (* ok *)
+Check ## (S O). (* parsing error *)
+```
+It seems like @herbelin has shared what he knows here, so this is up for anyone who wants to put this info in the manual.

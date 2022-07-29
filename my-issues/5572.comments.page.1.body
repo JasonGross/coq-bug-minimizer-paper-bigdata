@@ -1,0 +1,57 @@
+Comment author: @JasonGross
+
+Consider this code:
+Module A.
+  Inductive nat := O | S (_ : nat).
+
+  Definition zero := O.
+  Definition one := Eval compute in S zero.
+  Definition two := Eval compute in S one.
+
+  SearchPattern nat.
+End A.
+SearchPattern A.nat.
+
+In v8.6, we get:
+  two: nat
+  one: nat
+  zero: nat
+  O: nat
+  S: nat -> nat
+for the first and
+  A.O: A.nat
+  A.S: A.nat -> A.nat
+  A.zero: A.nat
+  A.one: A.nat
+  A.two: A.nat
+for the second
+
+In trunk, we get
+  O: nat
+  one: nat
+  zero: nat
+  two: nat
+  S: nat -> nat
+for the first and
+  A.two: A.nat
+  A.one: A.nat
+  A.zero: A.nat
+  A.O: A.nat
+  A.S: A.nat -> A.nat
+for the second.
+
+I don't understand why the list is reversed in 8.6, and why the lists in trunk 
+are so different in order.
+
+
+Comment author: @aspiwack
+
+The cause seems to be the same in v8.6 and trunk: the stream is reversed depending whether Search is called from inside the module or outside.
+
+In trunk and additional sorting occurs, but doesn't re-order things of the same type, so we can observe the reversal in each type (each priority, to be more precise) but not globally.
+
+Maybe it's best to sort search result in a way that is more independent of streaming order (the main requirement for streaming is speed, and we do very much not want to rely on ordering there, if I understand correctly). I'm not sure what is best. One thing I never got around to think about more carefully was if it was possible to group the value of a given type together (so we would have something like `O,one,two,zero: nat` and such in your example). Maybe that could be used to solve this problem as well? At least to some degree.
+
+Though how much does the ordering of `Search` matters?
+
+

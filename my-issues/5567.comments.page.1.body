@@ -1,0 +1,38 @@
+Comment author: @JasonGross
+```coq
+Notation "x / y" := (x, y).
+Notation "x / y" := (y, x) (only printing). (* Toplevel input, characters 
+19662-19705:
+ Warning: Notation _ / _ was already used [notation-overridden,parsing] *)
+```
+This is wrong.  At least, it should be a different warning, so that it can be 
+suppressed separately.
+
+
+Comment author: @psteckler
+
+What should the semantics of the two statements be here? 
+
+Should (1) the second Notation entirely override the first one, and remove its effect on parsing, or (2) just override its printing, leaving the parsing bit intact?
+
+To me, the warning reads like (1) is what occurs.
+
+
+Comment author: @psteckler
+
+Is the bug here that the warning should indicate that the parsing notation has been removed, rather than overridden with another parsing notation?
+
+
+Comment author: @JasonGross
+
+Sorry, here's a clearer example which I think displays the same behavior, though I haven't tested it specifically:
+```coq
+Notation "x / y" := (x, y) (only printing).
+Notation "x / y" := (y, x) (only printing).
+```
+
+Comment author: @JasonGross
+
+Are you sure that (1) is what happens?  That in itself seems like a bug, if it is what happens.  I think that when only one of parsing or printing notations are overridden, Coq should emit different warnings depending on which was overridden.
+
+

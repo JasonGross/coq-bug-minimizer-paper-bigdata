@@ -1,0 +1,69 @@
+Random thought: could that come from the pattern-matching compilation algorithm? Otherwise I don't see what in tactics-in-term could produce that...
+Is there a way to trace pattern matching compilation?
+Oh, this is fascinating.  This prints "fail" twice:
+```coq
+Ltac foo _ :=
+  idtac "begin";
+    try (let v := constr:(match (1+1)%nat with
+                          | _ => ltac:(idtac "fail";
+                                       let f := constr:(I : I) in
+                                       exact True)
+                          | _ => True
+                          end) in
+         pose v);
+        idtac "end".
+Goal True.
+  foo ().
+```
+while this:
+```coq
+Ltac foo _ :=
+  idtac "begin";
+    try (let v := constr:(match (1+1)%nat with
+                          | _ => True
+                          | _ => ltac:(idtac "fail";
+                                       let f := constr:(I : I) in
+                                       exact True)
+                          end) in
+         pose v);
+        idtac "end".
+Goal True.
+  foo ().
+```
+raises the uncatchable error "This clause is redundant."
+This looks like a likely candidate:
+https://github.com/coq/coq/blob/8d176db01baf9fb4a5e07decb9500ef4a8717e93/pretyping/cases.ml#L1530-L1549
+And, indeed, we have
+https://github.com/coq/coq/blob/8d176db01baf9fb4a5e07decb9500ef4a8717e93/pretyping/pretype_errors.ml#L64-L67
+which seems to match pretty well with which errors are which
+The magic of control by side-effect.
+Sorry for late answer, I did not realize it was about `match`.
+
+Indeed, the algorithm for pattern-matching compilation is potentially "exponential" in that it may try two different forms of return clauses. If you give the return clause explicitly, it will write "fail" only once:
+```coq
+Definition a x := match x return Prop with
+                          | O => ltac:(idtac "fail";
+                                       let f := constr:(I : I) in
+                                       exact True)
+                          | S _ => True
+                          end.
+```
+
+There were some attemps to unify the two attempts into one but the unification was not strong enough to handle the both forms into one.
+
+There is another source of backtrack which is the one you highlighted (in `compile_alias`) but it is not in play in your example. Here is an example where it shows up:
+```coq
+Definition a x := match x  with
+                          | S (S y as z) => ltac:(idtac "fail";
+                                       let f := constr:(I : I) in
+                                       exact True)
+                          | _ => True
+                          end.
+(* "fail" printed four times *)
+```
+For this second source of backtrack, it would be good to do something too.
+
+@herbelin Thanks!  Indeed, adding `return _` fixes my issue.
+
+This is fairly surprising though, I think.  I think the default behavior should be that tactics in terms in matches get run only once.  It might be the case that being able to interleave tactic backtracking and pattern match compilation backtracking is useful (but I'm dubious).  At the very least, the user should have to explicitly specify that they want this behavior, at the site of pattern match compilation / tactic usage, to get it.
+@JasonGross Is it still high priority?

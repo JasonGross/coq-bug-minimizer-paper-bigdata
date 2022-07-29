@@ -1,0 +1,135 @@
+Comment author: @JasonGross
+
+Here is code that works fine in Coq 8.4, and does not work in Coq 8.5:
+
+Set Implicit Arguments.
+Set Asymmetric Patterns.
+Require Coq.Vectors.Vector.
+
+Section ilist.
+
+  (* Lists of elements whose types depend on an indexing set (CPDT's hlists).
+     These lists are a convenient way to implement finite maps
+     whose elements depend on their keys. The data structures used
+     by our ADT notations uses these to implement notation-friendly
+     method lookups.  *)
+
+  Import Coq.Vectors.VectorDef.VectorNotations.
+
+  Context {A : Type}. (* The indexing type. *)
+  Context {B : A -> Type}. (* The type of indexed elements. *)
+
+  Fixpoint ilist {n} (l : Vector.t A n) : Type :=
+    match l with
+      | [] => unit
+      | a :: l => @ prod (B a) (ilist l)
+    end.
+
+  Definition icons
+             (a : A)
+             {n}
+             {l : Vector.t A n}
+             (b : B a)
+             (il : ilist l)
+  : ilist (a :: l)
+    := pair b il.
+
+  Axiom ilist_hd : forall {n} {As : Vector.t A n} (il : ilist As),
+    match As return ilist As -> Type with
+      | a :: As' => fun il => B a
+      | [] => fun _ => unit
+    end il.
+
+  Axiom ilist_tl : forall {n} {As : Vector.t A n} (il : ilist As),
+    match As return ilist As -> Type with
+      | a :: As' => fun il => ilist As'
+      | [] => fun _ => unit
+    end il.
+
+  Definition ith_body
+             (ith : forall
+                      {m : nat}
+                      {As : Vector.t A m}
+                      (il : ilist As)
+                      (n : Fin.t m),
+                      B (Vector.nth As n))
+             {m : nat}
+             {As : Vector.t A m}
+             (il : ilist As)
+             (n : Fin.t m)
+  : B (Vector.nth As n)
+    := Eval cbv beta iota zeta delta [Vector.caseS] in
+        match n in Fin.t m return
+              forall (As : Vector.t A m),
+                ilist As
+                -> B (Vector.nth As n) with
+          | Fin.F1 k =>
+            fun As =>
+              Vector.caseS (fun n As => ilist As
+                                        -> B (Vector.nth As (@ Fin.F1 n)))
+                           (fun h n t => ilist_hd) As
+          | Fin.FS k n' =>
+            fun As =>
+              Vector.caseS (fun n As => forall n',
+                                          ilist As
+                                          -> B (Vector.nth As (@ Fin.FS n n')))
+                           (fun h n t m il => @ ith _ _ (ilist_tl il) m)
+                           As n'
+        end As il.
+
+  Fixpoint ith
+           {m : nat}
+           {As : Vector.t A m}
+           (il : ilist As)
+           (n : Fin.t m)
+           {struct n}
+    : B (Vector.nth As n) :=
+    @ ith_body (@ ith) m As il n.
+
+I'm going to tentatively assign this to Maxime, though I'm not sure if that's right.
+
+
+Comment author: @ppedrot
+
+Maxime, any comment on that one?
+
+
+Comment author: @maximedenes
+
+Yes, this is an instance of the stricter guard condition of 8.5. The problem is that Vector.caseS uses a commutative cut with a pattern matching in the return predicate which has itselft a dependent return predicate (!).
+
+In most cases I've seen so far (including the standard library), caseS is anyway overkill because it generalizes both the vector and the size in the predicate P, when generalizing the vector only is often enough. When this is the case, one should use the new caseS' combinator in Vector.
+
+In this example, ith_body can be rewritten:
+
+  Definition ith_body
+             (ith : forall
+                      {m : nat}
+                      {As : Vector.t A m}
+                      (il : ilist As)
+                      (n : Fin.t m),
+                      B (Vector.nth As n))
+             {m : nat}
+             {As : Vector.t A m}
+             (il : ilist As)
+             (n : Fin.t m)
+  : B (Vector.nth As n)
+    := Eval cbv beta iota zeta delta [Vector.caseS] in
+        match n in Fin.t m return
+              forall (As : Vector.t A m),
+                ilist As
+                -> B (Vector.nth As n) with
+          | Fin.F1 k =>
+            fun As =>
+              Vector.caseS' As (fun As => ilist As
+                                        -> B (Vector.nth As (@ Fin.F1 k)))
+                               (fun h t => ilist_hd)
+          | Fin.FS k n' =>
+            fun As =>
+              Vector.caseS' As (fun As => ilist As -> B (Vector.nth As (@ Fin.FS k n')))
+                               (fun h t il => @ ith _ _ (ilist_tl il) n')
+        end As il.
+
+This new definition makes the guard checker happy. Please double check I haven't introduced any error, though :)
+
+

@@ -1,0 +1,86 @@
+Comment author: @JasonGross
+``` coq
+
+Goal forall A B (x y : A) (f : A -> B) (p : f x = f y), f y = f x.
+  intros.
+  refine (@ eq_rect _ _ _ (@ eq_refl _ (f x)) _ p).
+  Fail intros; exact nat.  (* The command has indeed failed with message:
+=> Error:
+In environment
+A : Type
+B : Type
+x : A
+y : A
+f : A -> B
+p : f x = f y
+Unable to unify "f x = f x" with "(fun X : B => ?Goal0) (f x)". *)
+  Fail exact_no_check (fun b => b = b). (* The command has indeed failed with message:
+=> Error:
+In environment
+A : Type
+B : Type
+x, y : A
+f : A -> B
+p : f x = f y
+Unable to unify "?T0 (f y)" with "f y = f x". *)
+  intro b. admit.
+Defined. (* Toplevel input, characters 15-23:
+Error: Illegal application:
+The term "eq_rect" of type
+ "forall (A : Type) (x : A) (P : A -> Type),
+  P x -> forall y : A, x = y -> P y"
+cannot be applied to the terms
+ "B" : "Type"
+ "f x" : "B"
+ "fun _ : B => match proof_admitted return Type with
+               end" : "B -> Type"
+ "eq_refl" : "f x = f x"
+ "f y" : "B"
+ "p" : "f x = f y"
+The 4th term has type "f x = f x" which should be coercible to
+ "(fun _ : B => match proof_admitted return Type with
+                end) (f x)". *)
+
+
+```
+Comment author: @JasonGross
+
+Note: This works:
+```coq
+
+Goal forall A B (x y : A) (f : A -> B) (p : f x = f y), f y = f x.
+  intros.
+  refine (@ eq_rect _ _ _ (@ eq_refl _ (f x)) _ p).
+  intro b.
+  Fail exact (b = f x).
+  refine (b = f x).
+Defined.
+
+```
+Why does [exact] fail here?
+
+
+Comment author: @aspiwack
+
+Exact is not (yet) implemented as a refine. So it may be that it does not do type inference/unification in quite the same way. But I don't have any fine analysis to provide.
+
+I guess that the success of refine is not faulty but it leaves a conversion problem in the environment which you have to respect (and is, unfortunately, not printed). The buggy tactics here seems to be admit which ignores the conversion problems. There are probably other tactic which can do that.
+
+
+Comment author: @JasonGross
+
+[assumption] also ignores the unification problem.  I think the buggy tactic is the initial [refine], which leaves you with a goal that is actually completely solvable (or at least very constrained) by unification, an no notice that this is the case.
+
+
+Comment author: @aspiwack
+
+Well there are two (equally valid) views there. You could say that refine should solve the constrained goals (or fail), or you could say that goal printing should print the conversion problems if there are some left.
+
+Hugo has also proposed a middle-ground where the internal concept of "candidates" (a list of possible solutions to some of the goals) should be exposed, but not the other conversion problems.
+
+I must say that I have no strong opinion about that. Keeping the unification problems is "more complete", but it's also more complex.
+
+
+> I think the buggy tactic is the initial [refine]
+
+The initial refine fails in 8.7.

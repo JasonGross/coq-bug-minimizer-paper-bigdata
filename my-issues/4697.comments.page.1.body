@@ -1,0 +1,162 @@
+Comment author: @JasonGross
+
+Here is a proof script that works in Coq 8.4 and fails in Coq 8.5.
+
+Goal exists e, e = Some 0 /\ option_map (fun x => x) e = Some 0.
+  eexists.
+  split; (instantiate; simpl; 
+          match goal with
+            | [ |- ?e = _ ] => is_evar e; reflexivity
+            | [ |- ?x = ?x ] => reflexivity
+          end).
+Qed.
+
+
+Wrapping the parenthesized tactic in "[ tac .. ]" or "[ > tac .. ]" both make it work.
+
+I think that [a; b] should first run [a], and then run (all of) [b] on each subgoal that [a] generates, backtracking across subgoals as necessary.  Instead each atomic step of [b] is run on every subgoal, before running the next atomic step of [b].  It's as if the semantics of 8.4 Ltac was "a tactic is a thing that updates the goals" (goals are global, tactics are run on them), while the semantics of 8.5 Ltac is "a tactic is a thing that gets some goals and returns some new goals" (goals are local to tactics, and the "global" state is a fiction).
+
+
+Comment author: @ppedrot
+
+If I were you, I would not rely on the (lack of) semantics of Ltac in 8.4. Clearly, the one of 8.5 is not perfect, but we can still give equations about the basic control blocks. That is, the effects can be nasty, but they are (somehow) predictible.
+
+As for your example, it is true that there is something fishy in there (notwithstanding the fact it uses the "instantiate" tactic, which is known to be broken w.r.t. the new tactic engine). I'll have a look.
+
+
+Comment author: @ppedrot
+
+Actually, the example you provided has the expected behaviour. So, the quintessential-fundamental-look-me-in-the-eyes specification of the ";" operator is that it is **ASSOCIATIVE**. Which was indeed not the case in 8.4, and thus, a bug.
+
+Here, you can explain what you observe because "simpl" is not fired the moment you expect, precisely because of associativity. So, here we go, after the eexists, the global state looks like:
+
+(Goals := [?e = Some 0 /\ option_map (fun x => x) ?e = Some 0, evars := ...)
+
+→ split →
+
+(Goals := [?e = Some 0; option_map (fun x => x) ?e = Some 0, evars := ...)
+
+→ instantiate (does nothing) →
+→ simpl →
+
+(Goals := [?e = Some 0; option_map (fun x => x) ?e = Some 0, evars := ...)
+
+→ match goal ... (introduces a backtracking point & focus) →
+
+  { focus 1.
+
+  (Goals := [?e = Some 0], evars := ...)
+
+  → [on pattern 1] is_evar e; reflexivity
+
+  (Goals := [Some 0 = Some 0], evars := (e := Some 0), ...)
+
+    focus 2.
+
+  (Goals := [option_map (fun x => x) Some 0 = Some 0], evars := (e := Some 0), ...)
+
+  → [on pattern 1] is_evar e; reflexivity → FAIL, GOTO NEXT
+  → [pattern 2 fails] 
+
+  }
+
+Fail.
+
+
+Comment author: @ppedrot
+
+Sorry, "Goals := [Some 0 = Some 0]" should obviously read "Goals := []".
+
+
+Comment author: @ppedrot
+
+Just in case you did not read it already, a relevant, shameless advertisement for a blog post of mine: http://coqhott.gforge.inria.fr/blog/coq-tactic-engine/
+
+
+Comment author: @JasonGross
+
+Semicolon is not quite associative in Coq 8.5.  It's not even the case that "some tactics" is the same as "(some tactics)":
+
+Goal (True /\ True) /\ (True /\ True).
+  split; (split; idtac; [ | ]).
+  Undo.
+  Fail split; (split; (idtac; [ | ])).
+  Fail split; split; idtac; [ | ].
+  Fail (split; split); idtac; [ | ].
+
+Is this a separate bug report?  (Is it a valid bug?  It's consistent between 8.4 and 8.5...)
+
+
+Comment author: @JasonGross
+
+So it seems that Ltac is associative for the order of evaluation, but is left-associative for the number of subgoals passed to tactics?
+
+
+Comment author: @ppedrot
+
+If I'm not wrong, the subtle point you raise here is that "· ; ·" is not the same thing as "· ; [ ... ]" even though they look syntactically the same. The latter is a proper construct distinct from the former (AFAIR).
+
+
+Comment author: @JasonGross
+
+So the issue is that ". ; ." binds more tightly than ". ; [ . ]"?  And ";" is associative while ". ; [ . ]" is left associative and violates referential transparency?
+
+I think [instantiate] needs to be implemented in 8.5 as a synchronization point (does "[ > idtac.. ]" have the right semantics for this?)
+
+
+Comment author: @ppedrot
+
+(In reply to Jason Gross from comment [BZ#8](https://github.com/coq/coq/issues?q=is%3Aissue%20%22Original%20bug%20ID%3A%20BZ%238%22))
+> So the issue is that ". ; ." binds more tightly than ". ; [ . ]"?  And ";"
+> is associative while ". ; [ . ]" is left associative and violates
+> referential transparency?
+
+I just checked, and indeed ";" does bind more tightly than "; []" and the latter is left-associative. I do not know what you mean by "referential transparency" as Ltac is an effectful language, so that virtually no construction is pure.
+
+> I think [instantiate] needs to be implemented in 8.5 as a synchronization
+> point (does "[ > idtac.. ]" have the right semantics for this?)
+
+Currently, and rightly, instantiate is more or less a no-op. What do you call a synchronization point? Can you describe it by means of an equation?
+
+
+Comment author: @JasonGross
+
+Sorry, I was mistaken about referential transparency.  The issue is again with associativity of parsing; substituting the definition of "b" in "a ; b." is not a no-op unless you wrap the definition in parentheses: if we have
+  Ltac foo := idtac; [ | ].
+then
+  "split; foo."
+and
+  "split; idtac; [ | ]."
+have different semantics.
+
+Ignore my statement about synchronization points; I was confusing 8.4 and 8.5.
+
+I think I am satisfied, and have updated my model of Ltac: ". ; ." is associative, and its semantics are that each tactic is run on all goals that it will be run on before the next tactic is run (unlike in 8.4, where ". ; ." was left-associative *and* forced the subsequent tactic to be run on each goal individually, in sequence); by contrast, ". ; [ . ]" is left-associative and binds more loosely than ". ; .".  I suspect people will be confused by this in the future.
+
+
+Comment author: @ppedrot
+
+(In reply to Jason Gross from comment [BZ#10](https://github.com/coq/coq/issues?q=is%3Aissue%20%22Original%20bug%20ID%3A%20BZ%2310%22))
+> I suspect people will be confused by this in the future.
+
+Undoubtedly, but you know, backward compatibility...
+
+
+Comment author: @JasonGross
+
+> Undoubtedly, but you know, backward compatibility...
+
+Yeah.  Thanks for the explanations!
+
+
+Comment author: @herbelin
+
+> Undoubtedly, but you know, backward compatibility...
+
+As a general remark, I don't think we should take backward compatibility so lightly. There are a lot of large developments here and there that crucially rely on Coq and which seriously need a form of stability.
+
+There are different strategies possible to ensure some form of stability while still "as objectively as possible" improving a system which encountered success before being "satisfactorily cleaned" (whatever subjectivity this expression contains), but as a general rule, we should make an effort in motivating incompatible changes, in providing migration policy, in tracing the changes. Not only it will be useful for the users, but I think it will be useful for the developers as well, so as to better understand the underlying room for manoeuver in designing the different components of Coq.
+
+As for the associativity of ";", we had long discussions with Arnaud. Considering that in the vast majority of cases, the change of semantics of ";" between 8.4 and 8.5 was not breaking scripts (one or two cases in our test-suite of user contributions iirc), we agreed on keeping the same notation ";" for the non-associative pre-8.5 ";" and for the more primitive associative ";" of 8.5, even if a change of habits for people used to the LCF model, who, strictly speaking, would indeed now have to write "tac ; [> tac' .. ]" to emulate the 8.4 ";".
+
+

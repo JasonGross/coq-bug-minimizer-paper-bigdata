@@ -1,0 +1,5 @@
+At the moment `rewrite_strat` works only in the goal? Is there a workaround for rewriting in hypotheses?
+You can revert your hypotheses, rewrite, then introduce them.  I believe this is how ssr's rewrite works, though I'm not sure.
+I'd love to see this fixed!
+I don't think it's that difficult but I've little time right now, would someone like to try? I can provide hints for sure.
+I had a quick look and essentially it means adapting Equality.general_rewrite_clause to rewrite_strat/setoid_rewrite 

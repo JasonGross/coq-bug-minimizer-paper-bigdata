@@ -1,0 +1,92 @@
+Comment author: @JasonGross
+
+Created attachment 727
+example of slow eapply in src/Parsers/Refinement/SharpenedJavaScriptAssignmentExpression.v
+
+[eapply] got significantly slower in Coq 8.5.  See the attached development, which should build in both 8.4 and 8.5 (except the two demo files, src/Parsers/Refinement/SharpenedJavaScriptAssignmentExpression.v and src/Parsers/Refinement/SharpenedJSON.v, which only build part of the way though).  If you want an example that runs in under two hours, look at src/Parsers/Refinement/SharpenedJSON.v (the slow [eapply]s are about 12 s in 8.4, and about 1 minute in 8.5).
+
+What's taking so much time here?
+
+> Attached file: [slow_fiat_eapply_example (1).zip](https://coq.inria.fr/bugfiles/attachment.cgi?id=727) (application/x-zip-compressed, 498143 bytes)
+> Description:   example of slow eapply in src/Parsers/Refinement/SharpenedJavaScriptAssignmentExpression.v
+
+
+Comment author: @ppedrot
+
+The problem has been identified and is due to the handling of fixpoint refolding in the Reductionops machine. With a proper patch over 8.5, the apply you describe are actually about four times quicker than in 8.4 (~3s vs. 60s without patch).
+
+With Matthieu, we're currently discussing the integration of this fix in 8.5, because it is not innocuous. It does change some reductions, even though no contribs were broken. Two tests are broken by the patch. Bug [BZ#3424](https://github.com/coq/coq/issues?q=is%3Aissue%20%22Original%20bug%20ID%3A%20BZ%233424%22) is reactivated, but after closer inspection, we found out that this was not a bug, rather merely an insufficiently specified "(e)apply" tactic. A printing test fails because a fixpoint is not refolded by the unification, as expected actually.
+
+(I can provide you with the 4-line patch if you wish to test it on your more involved examples.)
+
+
+Comment author: @JasonGross
+
+Thanks!  This is actually the full development that I'm working on at the moment: the more involved example is in src/Parsers/Refinement/SharpenedJavaScriptAssignmentExpression.v.  What's the timing of the various [eapply]s in that with this patch?
+
+I'm confused how Bug [BZ#3424](https://github.com/coq/coq/issues?q=is%3Aissue%20%22Original%20bug%20ID%3A%20BZ%233424%22) is an insufficiently specified "(e)apply"; can you elaborate?
+
+Is the change strictly more compatible with 8.4, or is there breakage against both 8.4 and 8.5?
+
+Note that the development attached here should also build with trunk, so it might be better to note that this is an incompatibility, specify how to work around it, and only apply it to 8.6.
+
+
+Comment author: @ppedrot
+
+> I'm confused how Bug [BZ#3424](https://github.com/coq/coq/issues?q=is%3Aissue%20%22Original%20bug%20ID%3A%20BZ%233424%22) is an insufficiently specified "(e)apply"; can you elaborate?
+
+Well, the question is to decide when apply should decide to instantiate a forall quantification in the type of the lemma you gave to it. The aforementioned bug amounts to the following situation:
+
+H : match tt with tt => forall x : nat, x = x end ⊢ forall x : nat, x = x
+
+where it applies a iota rule (in bug [BZ#3424](https://github.com/coq/coq/issues?q=is%3Aissue%20%22Original%20bug%20ID%3A%20BZ%233424%22), this is a fixpoint rather than a match, but that is about the same) before looking for the shape of the goal, and thus ends up instantiating x with an evar (and eventually failing). Thus specifying the reduction "apply" should perform on the type of its argument changes the above behaviour. It is not currently specified, and turns out to be quite involved.
+
+> Is the change strictly more compatible with 8.4, or is there breakage against both 8.4 and 8.5?
+
+AFAIU, it makes Coq's behaviour closer to 8.4.
+
+> Note that the development attached here should also build with trunk, so it might be better to note that this is an incompatibility, specify how to work around it, and only apply it to 8.6.
+
+We were thinking about this approach actually.
+
+
+Comment author: @JasonGross
+
+I still don't understand how bug [BZ#3424](https://github.com/coq/coq/issues?q=is%3Aissue%20%22Original%20bug%20ID%3A%20BZ%233424%22) can be not a bug... can't you just backtrack across the decision about which binders to instantiate with evars, a la `rapply` in the standard library?  Or is discovering how many binders the goal has too expensive or something?
+
+
+Comment author: @ppedrot
+
+(In reply to Jason Gross from comment [BZ#4](https://github.com/coq/coq/issues?q=is%3Aissue%20%22Original%20bug%20ID%3A%20BZ%234%22))
+> I still don't understand how bug [BZ#3424](https://github.com/coq/coq/issues?q=is%3Aissue%20%22Original%20bug%20ID%3A%20BZ%233424%22) can be not a bug... can't you just
+> backtrack across the decision about which binders to instantiate with evars,
+> a la `rapply` in the standard library?  Or is discovering how many binders
+> the goal has too expensive or something?
+
+I think that it is difficult to change the behaviour of apply without breaking many previous uses, or creating complexity issues. So we have to ponder the tradeoff between fixing the current quite unusual issue and leaving things as is. If only we had a specification of apply...
+
+
+Comment author: @JasonGross
+
+Indeed, we are missing a specification of [apply], and I don't have a good idea of what one should be.  However, here is one tactic (let's call it [fast_(e)apply]) which I want:
+  repeat:
+    attempt to do syntactic unification on the type of the hypothesis and the goal: do not do any reduction, ignore failed syntactic equalities when the term under consideration contains evars, and instantiate evars where they show up alone on one side of the unification problem (this should ignore identical subterms by hashconsing, and should be very fast; faster than walking the term to do an occurance check, probably)
+    if the type of the hypothesis has no evars not also in the goal:
+      try (e)exact on the hypothesis (full conversion, but maybe nothing higher-order on remaining evars)
+    else:
+      undo the syntactic unification
+    if there is no exposed binder:
+      fail "Could not recognize the goal as" (type of hypothesis)
+    instantiate the first binder with a fresh evar
+
+
+As I understand it, the above algorithm should be fast (as fast as [exact], potentially).  And in any case where the above algorithm succeeds, I expect [apply] to succeed as well.  (I have similar issues with [rewrite], where the purely syntactic method of filling in evars would succeed, but [rewrite] fails to find the subterm  because it things it needs to do higher order unification when it doesn't, or it things it needs to reason modulo unification when really it just needs to postpone the conversion problem and then later reason modulo evar-free conversion.)
+
+I think this is the basic building block underneath [apply].  The question, in terms of higher-level tactics, is what unfolding do we do when looking for binders, and what unification heuristics we try when attempting to instantiate evars.  I think these should be user-controllable, and we should lets users pick what kind of [apply] they want.  Does this seem like a plausible splitting / plausible spec?
+
+
+Comment author: @ppedrot
+
+Fixed by 7a3ef81.
+
+

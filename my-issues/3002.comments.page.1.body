@@ -1,0 +1,66 @@
+Comment author: @JasonGross
+
+I am very surprised by the following behavior, and suspect that it is a bug.  At the very least if it's not a bug, I think the documentation should explain the behavior of [context] when the head is a hole.
+
+Goal 1 + 2 = 3.
+match goal with
+  | [ |- context[_ 2] ] => pose 0 (* succeeds *)
+end.
+
+Goal 1 + (id 2) = 3.
+match goal with
+  | [ |- context[_ (id 2)] ] => pose 0 (* fails *)
+end.
+
+
+This bug is based on a question by Dmitry Grebeniuk to the coq-club mailing list.
+
+
+Comment author: @ppedrot
+
+The problem is not related to the head being a hole, but instead of the difference between "context" and "appcontext".
+
+As far as I am concerned, I would introduce backward incompatibilities by setting "appcontext" as the default one, but this require assentiment of the others Coq devs and users.
+
+
+Comment author: @JasonGross
+
+Are you sure about that?  I get the same behavior in each case if I replace [context] with [appcontext] (that is, the first one still succeeds, and the latter still fails, if I replace [context] with [appcontext].)  I was surprised by this.
+
+
+Comment author: @ppedrot
+
+I don't have a v8.4 version right there to test this, but it was maybe related to bug [BZ#2230](https://github.com/coq/coq/issues?q=is%3Aissue%20%22Original%20bug%20ID%3A%20BZ%232230%22), which was fixed in trunk not that long ago. The handling of applied metavariable was actually messy when it was a hole.
+
+Now, in trunk, replacing context by appcontext does the trick. Maybe this bug is fixed too?
+
+
+Comment author: @JasonGross
+
+I'm still rather confused.  Replacing the hole with a [?a] gives the behavior you claim in trunk.  I thought appcontext vs context is about whether or not the term as a whole is fully applied in the goal.  The documentation http://coq.inria.fr/refman/Reference-Manual011.html#hevea_default746 does not talk about whether or not variables are fully applied.  I am surprised, for example, by the following behavior:
+
+Goal 1 + (id 2) = 3.
+match goal with
+  | [ |- 1 + (?a 2) = 3 ] => pose 0 (* succeeds*)
+end.
+
+Goal 1 + (id 2) = 3.
+match goal with
+  | [ |- context[1 + (?a 2) = 3] ] => pose 0 (* fails *)
+end.
+
+I find it surprising that an expression can match the entire goal, and yet not match inside a context.
+
+
+Comment author: @ppedrot
+
+Still, it works replacing context with appcontext.
+
+Context matching is, for historical reasons, quite buggy, and I am in favour of replacing it by appcontext, which is much more predictable than it ancestor, as you're currently witnessing.
+
+
+Comment author: @ppedrot
+
+Now appcontext replaced context, so I close this bug.
+
+

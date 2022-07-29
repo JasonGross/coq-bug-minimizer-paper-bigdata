@@ -1,0 +1,7 @@
+You may not have a binder which depending on how you fill free variables (`b` in the example) becomes relevant or irrelevant.
+
+(Unless you `Set Cumulative StrictProp`, in which case proof irrelevance will be under detected.)
+
+There are no plans to change this.
+
+

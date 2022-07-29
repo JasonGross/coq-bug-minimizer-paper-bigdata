@@ -1,0 +1,98 @@
+Comment author: @JasonGross
+
+Here is a case where [Qed] takes 0.617s in e8726550e01e51ef3ccf8602f2ecbe2b3737cca3 (Sept 19), but 4.593 s with ab1e5d1f9180daa64924b0b398300cd311611045 (Dec 13), and [End <section>] takes 0.181 s in e8726550e01e51ef3ccf8602f2ecbe2b3737cca3, but 2.244 s in ab1e5d1f9180daa64924b0b398300cd311611045.
+
+
+Comment author: @JasonGross
+
+Created attachment 527
+slow file
+
+> Attached file: [bug_factorization_slow_end_07_admitted.v](https://coq.inria.fr/bugfiles/attachment.cgi?id=527) (text/plain, 13275 bytes)
+> Description:   slow file
+
+
+Comment author: @ppedrot
+
+Tracing the program shows that it passes most of its time in term hashconsing. I do not know what changed since then...
+
+
+Comment author: @JasonGross
+
+Hashconsing is the majority of the time in both the [End] section and the [Qed]?
+
+Is there a good reason for hashconsing inside of opaque terms?  (It's assumed to speed up the type-checking part of [Qed]?)
+
+Does hashconsing somehow explain bug [BZ#3870](https://github.com/coq/coq/issues?q=is%3Aissue%20%22Original%20bug%20ID%3A%20BZ%233870%22), too?
+
+
+Comment author: @JasonGross
+
+Also, why does the time it takes to hashcons things differ depending on whether or not primitive projections is turned on?
+
+
+Comment author: @gares
+
+No, unfortunately type checking takes no advantage of hashconsing,
+proof terms are maximally shared only to lower their memory consumption.
+
+The commit changes the way some terms are manipulated, maybe they grow in size of get unshared.  I guess Matthieu knows better.
+
+
+Comment author: @JasonGross
+
+I should note that I haven't bisected this, and there are a few months of commits between the tests.  Shall I go try to bisect this?  (I worry that the fact that the conversion algorithm has changed will get in the way...  I suppose that shouldn't impact the time it takes to end a section?)
+
+
+Comment author: @gares
+
+If you report a bug saying "after commit X" I suppose X is the culprit... if it is not then yes, please bisect.
+
+
+Comment author: @JasonGross
+
+Sorry about that.
+
+Bisecting says the first bad commit is between 84544396cbbf34848be2240acf181b4d5f1f42d2 and 92a183f4ada641c0ab73dd0479e98df36eeeb365.  In particular, it says:
+
+There are only 'skip'ped commits left to test.
+The first bad commit could be any of:
+8c32ecc205aebaf9a4da95e24463286aee1a571d
+02b66da78e766a0eb8a1ec82a03ec9ce5418a0f0
+2dfeec2d73b1fce0d3a461d2215b1a3f65881c9b
+0f17c70288662bf8abd1bae59d32a94054481f26
+b6e39ade125862ba41ca17b06b8e35726b9b0d7d
+3ca949d4069308cf71c8f22b8dfc89e95a3834c1
+84544396cbbf34848be2240acf181b4d5f1f42d2
+92a183f4ada641c0ab73dd0479e98df36eeeb365
+We cannot bisect more!
+bisect run cannot continue any more
+
+This is the series of commits that distinguished between folding and unfolded projections so that [cbv delta; cbv beta; cbv iota] works as expected, and you don't need to do [cbv delta beta iota].
+
+
+Comment author: @JasonGross
+
+Created attachment 529
+slow file that works with 8454439 and 0efba04
+
+The first bad commit is 84544396cbbf34848be2240acf181b4d5f1f42d2.  With the attached file, I get 
+
+jgross@ cagnode13:~/coq-bisect$ ~/.local64/coq/coq-0efba04/bin/coqc -nois example.v
+Identifier 'o' now a keyword
+Finished transaction in 0.443 secs (0.444u,0.s) (successful)
+Finished transaction in 0.146 secs (0.148u,0.s) (successful)
+jgross@ cagnode13:~/coq-bisect$ ~/.local64/coq/coq-8454439/bin/coqc -nois example.v
+Identifier 'o' now a keyword
+Finished transaction in 4.05 secs (4.036u,0.012s) (successful)
+Finished transaction in 1.818 secs (1.812u,0.004s) (successful)
+
+> Attached file: [example.v](https://coq.inria.fr/bugfiles/attachment.cgi?id=529) (text/plain, 13403 bytes)
+> Description:   slow file that works with 8454439 and 0efba04
+
+
+Comment author: @mattam82
+
+Thank you very much for tracking this down, it was all due to failure of hashconsing projections properly when I added the boolean for the folding status. Timings are now much, much better.
+
+

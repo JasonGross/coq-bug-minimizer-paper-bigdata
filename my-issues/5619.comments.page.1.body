@@ -1,0 +1,13 @@
+Comment author: @JasonGross
+
+/usr/bin/time always gives 0.00 or 0.01 for user time, which is the only time 
+make TIMED=1 reports.  I'd suggest a formating string more like "$* (real: %e, 
+user: %U, sys: %S, mem: %M ko)"
+
+
+Comment author: @JasonGross
+
+https://github.com/coq/coq/pull/844
+
+
+Closed by https://github.com/coq/coq/pull/844

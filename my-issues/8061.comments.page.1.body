@@ -1,0 +1,26 @@
+I tried building coq-8.9.0 using OPAM 1.x (to put it into coq/released), and if I'm not mistaken this is causing OPAM to abort and undo the install process.
+
+```
+[ERROR] Installation of coq.8.9.0 failed
+[coq: rm] Command started
+[coq: rm] Command started
+```
+And then at the end:
+```
+#=== ERROR while installing coq.8.9.0 =========================================#
+Some files in ~/.opam/coq89/install/coq.install couldn't be installed:
+```
+No idea about what is going on with the Makefiles in 8.9.0, sorry.
+This may preclude coq 8.9.0 from being packaged, so I would suggest increasing the priority. Besides, I'd expect this to be easy to fix for someone who knows what's going on in the Makefiles. Who might that be?
+@chdoc can you give a full log?
+The original issue is probably related to insufficient cleaning by make after https://github.com/coq/coq/pull/7998 (2 days after the merge, error message looks related)
+So it's probably separate from the more recent opam issue.
+@chdoc I suppose you had naively ported 8.8.2's opam file to build 8.9.0 like I did and then opam failed because bin/gallina (in files/coq.install) is not installed anymore. I managed to get a working opam 1.2 package fixing that here, feel free to try it out on your end! https://github.com/coq/opam-coq-archive/pull/556 
+Related to #9418 then.
+Has this issue gotten solved?
+I tried compiling coq-8.9.0 and got the same errors.
+
+install: cannot stat 'coqpp/coqpp_lex.cmx': No such file or directory                                                                                                                                       
+install: cannot stat 'coqpp/coqpp_main.cmx': No such file or directory                                                                                                                                      
+install: cannot stat 'coqpp/coqpp_parse.cmx': No such file or directory                                                                                                                                     
+install: cannot stat 'topbin/coqtop_byte_bin.cmx': No such file or directory 

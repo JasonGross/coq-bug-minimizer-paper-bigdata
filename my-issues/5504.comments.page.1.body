@@ -1,0 +1,25 @@
+Comment author: @JasonGross
+
+This code works in 8.4pl6 (the instantiate fails), but behaves incorrectly in 
+8.5, 8.6, and trunk; if you take out the `Fail`, `pattern` gives:
+`Error: The abstracted term fun _ : Type -> Type -> Type => id k = id k
+is not well typed.
+No such section variable or assumption: k.`
+
+in these newer versions.
+
+```coq
+Goal exists n : nat, n = 5 /\ n = n.
+Proof.
+  clear; eexists.
+  split.
+  set (k := 5).
+  change k with (id k).
+  Fail lazymatch goal with
+       | [ |- _ = ?X ] => instantiate (1 := X); reflexivity
+       end.
+  pattern (fun x y : Type => x).
+Admitted.
+```
+
+Duplicate of #5378.

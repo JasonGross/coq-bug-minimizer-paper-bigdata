@@ -1,0 +1,185 @@
+Comment author: @JasonGross
+
+I expect [setoid_rewrite] to be able to infer the argument [P] in the following 
+code, because there is a unique solution, and the solution is given by 
+[pattern]:
+
+Require Import Coq.Setoids.Setoid.
+Axiom foo : forall T (P : T -> Prop), (exists a : T, forall f, P (f a)) <-> 
+True.
+Goal forall T, (exists a : T, forall f : T -> T, f a = f a) <-> True.
+Proof.
+  intros.
+  setoid_rewrite (foo _ (fun fa => fa = fa)).
+  Undo.
+  setoid_rewrite (@ foo T). (* Error: Tactic failure: setoid rewrite failed: 
+Nothing to rewrite. *)
+
+
+If I [Set Debug Tactic Unification], the problem seems to be here:
+Debug: ?X35@ {__:=T} (f a) ~= f a = f a
+Debug: ?X35@ {__:=T} ~= eq (f a)
+Debug: Leaving unification with failure
+
+Similarly, if I do [apply (@ foo T)], I get:
+Error: In environment
+T : Type
+Unable to unify
+ "((exists a : T, forall f : T -> T, ?M553 (f a)) -> True) /\
+  (True -> exists a : T, forall f : T -> T, ?M553 (f a))" with
+ "((exists a : T, forall f : T -> T, f a = f a) -> True) /\
+  (True -> exists a : T, forall f : T -> T, f a = f a)".
+
+and if I do [refine (@ foo T _)], I am left with the constraints:
+
+unification constraints:
+ (a : T) (f : T -> T) |- ?Goal (f a) == f a = f a
+ (a : T) (f : T -> T) |- ?Goal (f a) == f a = f a
+
+
+The full log for setoid_rewrite:
+Debug: Starting unification
+Debug:
+exists a : T, forall f : T -> T, ?X41@ {__:=T} (f a) ~= (exists a : T, forall f 
+: T -> T, f a = f a) <->
+                                                       True
+Debug: ex ~= iff
+Debug:
+exists a : T, forall f : T -> T, ?X41@ {__:=T} (f a) ~= ((exists a : T, forall f 
+: T -> T, f a = f a) ->
+                                                        True) /\
+                                                       (True ->
+                                                        exists a : T, forall f 
+: T -> T, f a = f a)
+Debug: ex ~= and
+Debug: Leaving unification with failure
+Debug: Starting unification
+Debug: exists a : T, forall f : T -> T, ?X43@ {__:=T} (f a) ~= iff
+Debug: exists a : T, forall f : T -> T, ?X43@ {__:=T} (f a) ~= fun A B : Prop => 
+(A -> B) /\ (B -> A)
+Debug:
+(exists a : T, forall f : T -> T, ?X43@ {__:=T} (f a)) A ~= fun B : Prop => (A 
+-> B) /\ (B -> A)
+Debug: (exists a : T, forall f : T -> T, ?X43@ {__:=T} (f a)) A B ~= (A -> B) /\ 
+(B -> A)
+Debug: exists a : T, forall f : T -> T, ?X43@ {__:=T} (f a) ~= and
+Debug: Leaving unification with failure
+Debug: Starting unification
+Debug:
+exists a : T, forall f : T -> T, ?X44@ {__:=T} (f a) ~= exists a : T, forall f : 
+T -> T, f a = f a
+Debug: ex ~= ex
+Debug: T ~= T
+Debug:
+fun a : T => forall f : T -> T, ?X44@ {__:=T} (f a) ~= fun a : T => forall f : T 
+-> T, f a = f a
+Debug: T ~= T
+Debug: forall f : T -> T, ?X44@ {__:=T} (f a) ~= forall f : T -> T, f a = f a
+Debug: T -> T ~= T -> T
+Debug: T ~= T
+Debug: T ~= T
+Debug: ?X44@ {__:=T} (f a) ~= f a = f a
+Debug: ?X44@ {__:=T} ~= eq (f a)
+Debug: Leaving unification with failure
+Debug: Starting unification
+Debug: exists a : T, forall f : T -> T, ?X46@ {__:=T} (f a) ~= ex
+Debug: Leaving unification with failure
+Debug: Starting unification
+Debug: exists a : T, forall f : T -> T, ?X47@ {__:=T} (f a) ~= T
+Debug: Leaving unification with failure
+Debug: Starting unification
+Debug:
+exists a : T, forall f : T -> T, ?X48@ {__:=T} (f a) ~= fun a : T => forall f : 
+T -> T, f a = f a
+Debug: (exists a : T, forall f : T -> T, ?X48@ {__:=T} (f a)) a ~= forall f : T 
+-> T, f a = f a
+Debug: Leaving unification with failure
+Debug: Starting unification
+Debug: exists a0 : T, forall f : T -> T, ?X49@ {__:=T; __:=a} (f a0) ~= forall f 
+: T -> T, f a = f a
+Debug: Leaving unification with failure
+Debug: Starting unification
+Debug: exists a0 : T, forall f : T -> T, ?X51@ {__:=T; __:=a} (f a0) ~= all
+Debug:
+exists a0 : T, forall f : T -> T, ?X51@ {__:=T; __:=a} (f a0) ~= fun (A : Type) 
+(P : A -> Prop) =>
+                                                                forall x : A, P 
+x
+Debug:
+(exists a0 : T, forall f : T -> T, ?X51@ {__:=T; __:=a} (f a0)) A ~= fun P : A 
+-> Prop =>
+                                                                    forall x : 
+A, P x
+Debug: (exists a0 : T, forall f : T -> T, ?X51@ {__:=T; __:=a} (f a0)) A P ~= 
+forall x : A, P x
+Debug: Leaving unification with failure
+Debug: Starting unification
+Debug: exists a0 : T, forall f : T -> T, ?X52@ {__:=T; __:=a} (f a0) ~= T -> T
+Debug: Leaving unification with failure
+Debug: Starting unification
+Debug: exists a0 : T, forall f : T -> T, ?X54@ {__:=T; __:=a} (f a0) ~= 
+Basics.arrow
+Debug: exists a0 : T, forall f : T -> T, ?X54@ {__:=T; __:=a} (f a0) ~= fun A B 
+: Type => A -> B
+Debug: (exists a0 : T, forall f : T -> T, ?X54@ {__:=T; __:=a} (f a0)) A ~= fun 
+B : Type => A -> B
+Debug: (exists a0 : T, forall f : T -> T, ?X54@ {__:=T; __:=a} (f a0)) A B ~= A 
+-> B
+Debug: Leaving unification with failure
+Debug: Starting unification
+Debug: exists a0 : T, forall f : T -> T, ?X55@ {__:=T; __:=a} (f a0) ~= T
+Debug: Leaving unification with failure
+Debug: Starting unification
+Debug: exists a0 : T, forall f : T -> T, ?X56@ {__:=T; __:=a} (f a0) ~= T
+Debug: Leaving unification with failure
+Debug: Starting unification
+Debug: exists a0 : T, forall f : T -> T, ?X57@ {__:=T; __:=a} (f a0) ~= fun f : 
+T -> T => f a = f a
+Debug: (exists a0 : T, forall f : T -> T, ?X57@ {__:=T; __:=a} (f a0)) f ~= f a 
+= f a
+Debug: ex ~= @ eq
+Debug: Leaving unification with failure
+Debug: Starting unification
+Debug: exists a0 : T, forall f0 : T -> T, ?X58@ {__:=T; __:=a; __:=f} (f0 a0) ~= 
+f a = f a
+Debug: ex ~= eq
+Debug: Leaving unification with failure
+Debug: Starting unification
+Debug: exists a0 : T, forall f0 : T -> T, ?X60@ {__:=T; __:=a; __:=f} (f0 a0) ~= 
+@ eq
+Debug: Leaving unification with failure
+Debug: Starting unification
+Debug: exists a0 : T, forall f0 : T -> T, ?X61@ {__:=T; __:=a; __:=f} (f0 a0) ~= 
+T
+Debug: Leaving unification with failure
+Debug: Starting unification
+Debug: exists a0 : T, forall f0 : T -> T, ?X62@ {__:=T; __:=a; __:=f} (f0 a0) ~= 
+f a
+Debug: ex (A:=T) ~= f
+Debug: Leaving unification with failure
+Debug: Starting unification
+Debug: exists a0 : T, forall f0 : T -> T, ?X64@ {__:=T; __:=a; __:=f} (f0 a0) ~= 
+f
+Debug: Leaving unification with failure
+Debug: Starting unification
+Debug: exists a0 : T, forall f0 : T -> T, ?X65@ {__:=T; __:=a; __:=f} (f0 a0) ~= 
+a
+Debug: Leaving unification with failure
+Debug: Starting unification
+Debug: exists a0 : T, forall f0 : T -> T, ?X66@ {__:=T; __:=a; __:=f} (f0 a0) ~= 
+f a
+Debug: ex (A:=T) ~= f
+Debug: Leaving unification with failure
+Debug: Starting unification
+Debug: exists a0 : T, forall f0 : T -> T, ?X68@ {__:=T; __:=a; __:=f} (f0 a0) ~= 
+f
+Debug: Leaving unification with failure
+Debug: Starting unification
+Debug: exists a0 : T, forall f0 : T -> T, ?X69@ {__:=T; __:=a; __:=f} (f0 a0) ~= 
+a
+Debug: Leaving unification with failure
+Debug: Starting unification
+Debug: exists a : T, forall f : T -> T, ?X70@ {__:=T} (f a) ~= True
+Debug: Leaving unification with failure
+
+

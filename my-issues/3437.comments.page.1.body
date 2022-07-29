@@ -1,0 +1,48 @@
+Comment author: @JasonGross
+
+(* File reduced by coq-bug-finder from original input, then from 3419 lines to 51 lines, then from 69 lines to 14 lines *)
+Set Primitive Projections.
+Set Implicit Arguments.
+Generalizable All Variables.
+Record sigT {A} (P : A -> Type) := existT { projT1 : A ; projT2 : P projT1 }.
+Notation "( x ; y )" := (existT _ x y).
+Notation "x .1" := (projT1 x) (at level 3).
+Notation "x .2" := (projT2 x) (at level 3).
+Notation "{ x : A & P }" := (sigT (fun x:A => P)) : type_scope.
+Set Printing All.
+Definition f `(Q : { a : A & P a } -> Type) (apq : sigT Q) : {a : A & {p : P a & Q (a;p)}} := (apq.1.1; (apq.1.2; apq.2)).
+(* Toplevel input, characters 109-136:
+Error:
+In environment
+A : Type
+P : forall _ : A, Type
+Q : forall _ : @ sigT A (fun a : A => P a), Type
+apq : @ sigT (@ sigT A (fun a : A => P a)) Q
+The term
+ "@ existT A
+    (fun a : A =>
+     @ sigT (P a) (fun p : P a => Q (@ existT A (fun a0 : A => P a0) a p)))
+    (projT1 (projT1 apq))
+    (@ existT (P (projT1 (projT1 apq)))
+       (fun p : P (projT1 (projT1 apq)) =>
+        Q (@ existT A (fun a : A => P a) (projT1 (projT1 apq)) p))
+       (projT2 (projT1 apq)) (projT2 apq))" has type
+ "@ sigT A
+    (fun a : A =>
+     @ sigT (P a) (fun p : P a => Q (@ existT A (fun a0 : A => P a0) a p)))"
+while it is expected to have type
+ "@ sigT A
+    (fun a : A =>
+     @ sigT (P a) (fun p : P a => Q (@ existT A (fun a0 : A => P a0) a p)))"
+(cannot unify "Q (projT1 apq)" and
+"(fun p : P (projT1 (projT1 apq)) =>
+  Q (@ existT A (fun a : A => P a) (projT1 (projT1 apq)) p))
+   (projT2 (projT1 apq))").
+ *)
+
+
+Comment author: @mattam82
+
+Fixed in trunk
+
+

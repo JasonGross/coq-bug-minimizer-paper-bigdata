@@ -1,0 +1,39 @@
+Comment author: @JasonGross
+
+Record lattice' T (carrier := T) := { top' : T ; bottom' : T }.
+Scheme Equality for lattice'.
+
+
+Comment author: @psteckler
+
+I've worked out that the List.fold_left2 in question is at toplevel/auto_ind_decl.ml, around line 149 in 8.6.
+
+I'll see if I can learn more.
+
+
+Comment author: @psteckler
+
+As the OCaml docs state, fold_left2 will raise Invalid_argument if the two lists are of unequal length.
+
+Using the example given, the list `eqs_type' is of length 1, while `lnamesparrec` has length 2.
+
+
+Comment author: @JasonGross
+
+Here's a slightly simpler example:
+
+Inductive A' (T := unit) := B' (_ : unit).
+Scheme Equality for A'.
+
+
+Comment author: @psteckler
+
+The call 
+
+  let ext_rel_list = Context.Rel.to_extended_list 0 lnamesparrec
+
+seems problematic here. The list `eqs_typ' is obtained by a mapping over that list, so it has the same length. But `ext_rel_list' can be shorter than `lnamesparrec', which causes the fold_left2 to fail.
+
+It can be shorter when `lnamesparrec' contains a LocalDef, which does not get a representative in the resulting list. This is in kernel/context.ml. A LocalAssum does get such a representative.
+
+

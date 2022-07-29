@@ -1,0 +1,56 @@
+Comment author: @JasonGross
+
+I don't expect to need to add underscores to make [rewrite] go through.
+
+(* File reduced by coq-bug-finder from 925 lines to 118 lines, then from 100 lines to 76 lines. *)
+Require Export Setoid RelationClasses Morphisms.
+
+Global Set Implicit Arguments.
+
+Class Context := { }.
+
+Inductive Comp `{ctx : Context} : Type -> Type :=
+| Bind : forall A B, Comp A -> (A -> Comp B) -> Comp B
+| Pick : forall A, (A -> Prop) -> Comp A.
+
+Axiom refine : forall {A} {oldCtx newCtx : Context}
+                      (old : @ Comp oldCtx A)
+                      (new : @ Comp newCtx A), Prop.
+
+Definition refineEquiv {A}
+           {oldCtx newCtx : Context}
+           (old : @ Comp oldCtx A)
+           (new : @ Comp newCtx A) : Prop
+  := refine old new /\ refine new old.
+
+Global Instance refineEquiv_Equivalence A `{Context} : Equivalence (@ refineEquiv A _ _).
+Admitted.
+
+Add Parametric Morphism `{Context} A B
+: (@ Bind _ A B)
+    with signature
+    (@ refineEquiv A _ _)
+      ==> (pointwise_relation _ (@ refineEquiv B _ _))
+      ==> (@ refineEquiv B _ _)
+      as refineEquiv_bind.
+admit.
+Defined.
+
+Axiom refineEquiv_pick_pick : forall A {ctx1 ctx2} (P1 P2 : A -> Prop),
+                                @ refineEquiv _ ctx1 ctx2 (Pick P1) (Pick P2).
+
+Goal forall (ctx2 : Context) (A B : Type) (P : A -> Prop) (f : A -> B) H H'',
+       @ refineEquiv B ctx2 ctx2
+                    (Bind (Pick P) H'')
+                    H.
+intros.
+erewrite (@ refineEquiv_pick_pick _ _ _).
+Undo.
+Set Printing All.
+erewrite (@ refineEquiv_pick_pick _ _).
+(* Toplevel input, characters 15-52:
+Error:
+Found no subterm matching "@ refine ?140 ?141 ?469 (@ Pick ?141 ?140 ?470)
+                             (@ Pick ?469 ?140 ?471)" in the current goal. *)
+
+

@@ -1,0 +1,52 @@
+Comment author: @JasonGross
+
+`opam install coq.8.4.dev` fails with
+```
+# install -d "/home/Jason/.opam/system"/states
+# install -m 644  states/*.coq "/home/Jason/.opam/system"/states
+# install -d "/home/Jason/.opam/system"/user-contrib
+# install -m 644  kernel/byterun/dllcoqrun.dll "/home/Jason/.opam/system"
+# Makefile.build:640: recipe for target 'install-library' failed
+# make[1]: Leaving directory '/home/Jason/.opam/system/build/coq.8.4.dev'
+# Makefile:139: recipe for target 'install' failed
+### stderr ###
+# ...[truncated]
+# Warning 3: deprecated feature: operator (or); you should use (||) instead
+# File "plugins/micromega/sos.ml", line 972, characters 13-15:
+# Warning 3: deprecated feature: operator (or); you should use (||) instead
+# File "plugins/micromega/sos.ml", line 1056, characters 33-34:
+# Warning 3: deprecated feature: operator (&); you should use (&&) instead
+# File "plugins/micromega/sos.ml", line 1443, characters 13-15:
+# Warning 3: deprecated feature: operator (or); you should use (||) instead
+# install: cannot stat ‘kernel/byterun/dllcoqrun.dll’: No such file or directory
+# make[1]: *** [install-library] Error 1
+# make: *** [install] Error 2
+```
+
+This is simply a problem with the dll/so heuristic used by configure / the 
+makefile; dllcoqrun.so exists, but dllcoqrun.dll does not.  (I haven't tested 
+if installing 8.5dev works.)
+Comment author: @gares
+
+opam on windows is not supported (byt the opam authors).
+Wasn't that the result of the discussion on coqdev?
+
+
+Comment author: @JasonGross
+
+Opam on Windows is not supported, but I would like to see if I can make it work.  This is currently the blocking issue, and it is something that needs to be fixed on the Coq side.  See bug #3843.
+
+I maintain that the correct solution would be to compile a test file and check the resulting extension, but Xavier's patch would be good enough for this case.
+
+
+Comment author: @herbelin
+
+Port of #3843 done in branch v8.4. Tell us if you can get it working. That would be great.
+
+
+Comment author: @ppedrot
+
+Is this still relevant or should we close this bug?
+
+
+We can consider this bug stale.

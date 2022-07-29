@@ -1,0 +1,12 @@
+Related: #5436
+Copying my comment from #10967:
+> I am inclined to mark this as "not a bug". Or at most, it is likely a duplicate of some existing request regarding printing round-trip.
+> 
+> Print is for human use, so it is normal that in the default mode doesn't have the round-trip property. If you intend to cut and paste then it is not unreasonable to use Set Printing All before the print.
+>
+> There are many heuristics we could use as such, but on the other hand would make printing quite expensive.
+I suppose I should copy my reply, then, and move discussion here:
+I agree that `Set Printing All` is not unreasonable (though there are [other](https://github.com/coq/coq/issues/9716) [bugs](https://github.com/coq/coq/issues/6613) that mean that even with `Set Printing All`, `Print Ltac` does not round-trip).  However, I don't think the time overhead in `Print Ltac` is significant.  Even if it takes a full second to print my complicated tactic, that's fine, because `Print Ltac` is not a bottleneck in most compile-edit-debug cycles.  (Goal printing time, on the other hand, is absolutely a bottleneck in many cases.)
+> there are [other](https://github.com/coq/coq/issues/9716) [bugs](https://github.com/coq/coq/issues/6613) that mean
+
+The Coq quotation system has to be improved indeed.

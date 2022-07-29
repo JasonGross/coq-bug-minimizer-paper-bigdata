@@ -1,0 +1,145 @@
+Comment author: @JasonGross
+
+(* File reduced by coq-bug-finder from original input, then from 10759 lines to 120 lines, then from 119 lines to 38 lines *)
+(* coqc version trunk (October 2014) compiled on Oct 8 2014 13:38:17 with OCaml 4.01.0
+   coqtop version cagnode16:/afs/csail.mit.edu/u/j/jgross/coq-trunk,trunk (335cf2860bfd9e714d14228d75a52fd2c88db386) *)
+Definition relation (A : Type) := A -> A -> Type.
+Axiom concat : forall {A : Type} {x y z : A} (p : x = y) (q : y = z), x = z.
+Axiom transport : forall {A : Type} (P : A -> Type) {x y : A} (p : x = y) (u : P x), P y.
+Axiom transport_const : forall {A B : Type} {x1 x2 : A} (p : x1 = x2) (y : B), transport (fun x => B) p y = y.
+Inductive quotient {A} (R : relation A) : Type := class_of : A -> quotient R.
+Axiom related_classes_eq : forall {A R} {x y : A}, R x y -> class_of R x = class_of R y.
+Module NonPrim.
+  Unset Keyed Unification.
+  Unset Primitive Projections.
+  Record hProp := hp { hproptype :> Type }.
+  Goal forall (A : Type) (R : relation A)
+              (x y : A) (H0 : R x y),
+         transport (fun _ : quotient R => A -> hProp) (@ related_classes_eq A R _ _ H0)
+                   (fun b : A => {| hproptype := R x b |}) =
+         (fun b : A => {| hproptype := R y b |}).
+    intros.
+    eapply concat.
+    apply transport_const.
+    admit.
+  Defined.
+End NonPrim.
+Module Prim.
+  Set Primitive Projections.
+  Record hProp := hp { hproptype :> Type }.
+  Goal forall (A : Type) (R : relation A)
+              (x y : A) (H0 : R x y),
+         transport (fun _ : quotient R => A -> hProp) (@ related_classes_eq A R _ _ H0)
+                   (fun b : A => {| hproptype := R x b |}) =
+         (fun b : A => {| hproptype := R y b |}).
+    intros.
+    eapply concat.
+    apply transport_const.
+(* Toplevel input, characters 21-36:
+Error:
+In environment
+A : Type
+R : relation A
+x : A
+y : A
+H0 : R x y
+b : A
+Unable to unify "?y b" with "{| hproptype := R x b |}".
+ *)
+    admit.
+  Defined.
+End Prim.
+
+
+Comment author: @JasonGross
+
+Here's a shorter version:
+
+(* File reduced by coq-bug-finder from original input, then from 10759 lines to 120 lines, then from 119 lines to 38 lines *)
+(* coqc version trunk (October 2014) compiled on Oct 28 2014 14:33:38 with OCaml 4.01.0
+   coqtop version cagnode16:/afs/csail.mit.edu/u/j/jgross/coq-trunk,trunk (53bfe9cf58a3c40e6eb7120d25c1633a9cea3126) *)
+Module NonPrim.
+  Unset Primitive Projections.
+  Record hProp := hp { hproptype :> Type }.
+  Goal forall (h : (Type -> hProp) -> (Type -> hProp)) k f,
+         (forall y, h y = y) ->
+         h (fun b : Type => {| hproptype := f b |}) = k.
+  Proof.
+    intros h k f H.
+    etransitivity.
+    apply H.
+    admit.
+  Defined.
+End NonPrim.
+Module Prim.
+  Set Primitive Projections.
+  Record hProp := hp { hproptype :> Type }.
+  Goal forall (h : (Type -> hProp) -> (Type -> hProp)) k f,
+         (forall y, h y = y) ->
+         h (fun b : Type => {| hproptype := f b |}) = k.
+  Proof.
+    intros h k f H.
+    etransitivity.
+    apply H. (* Toplevel input, characters 21-22:
+Error:
+In environment
+h : (Type -> hProp) -> Type -> hProp
+k : Type -> hProp
+f : Type -> Type
+H : forall y : Type -> hProp, h y = y
+b : Type
+Unable to unify "?y b" with "{| hproptype := f b |}". *)
+    admit.
+  Defined.
+End Prim.
+
+If I remove the [f], the unification goes through.  If I [Set Debug Tactic Unification], I get 
+
+Debug:
+h ?M196 = ?M196 ~= h (fun b : Type => {| hproptype := f b |}) =
+                   ?X15@ {A:=h; A:=k; A:=f; A:=H}
+Debug: @ eq ~= @ eq
+Debug: Type -> hProp ~= Type -> hProp
+Debug: Type ~= Type
+Debug: hProp ~= hProp
+Debug: h ?M196 ~= h (fun b : Type => {| hproptype := f b |})
+Debug: h ~= h
+Debug: ?M196 ~= fun b : Type => {| hproptype := f b |}
+Debug: ?M196 ~= ?X15@ {A:=h; A:=k; A:=f; A:=H}
+Debug: ?X15@ {A:=h; A:=k; A:=f; A:=H} b ~= {| hproptype := f b |}
+Debug: hproptype (?X15@ {A:=h; A:=k; A:=f; A:=H} b) ~= f b
+Debug: hproptype ~= f
+Debug: hproptype (?X15@ {A:=h; A:=k; A:=f; A:=H} b) ~= f b
+Debug: ?X15@ {A:=h; A:=k; A:=f; A:=H} ~= hp
+Debug: b ~= f b
+
+
+
+The debug log for non-primitive projections is
+Debug:
+h ?M196 = ?M196 ~= h (fun b : Type => {| hproptype := f b |}) =
+                   ?X15@ {A:=h; A:=k; A:=f; A:=H}
+Debug: @ eq ~= @ eq
+Debug: Type -> hProp ~= Type -> hProp
+Debug: Type ~= Type
+Debug: hProp ~= hProp
+Debug: h ?M196 ~= h (fun b : Type => {| hproptype := f b |})
+Debug: h ~= h
+Debug: ?M196 ~= fun b : Type => {| hproptype := f b |}
+Debug: ?M196 ~= ?X15@ {A:=h; A:=k; A:=f; A:=H}
+Debug: ?X15@ {A:=h; A:=k; A:=f; A:=H} b ~= {| hproptype := f b |}
+
+
+Do you have a diagnosis of what's going on here?  Any chance this can be fixed before 8.5?  (This is one of the bugs blocking HoTT from turning on [Set Primitive Projections] everywhere, once we have Keyed Unification.)
+
+
+Comment author: @mattam82
+
+Clearly it's trying eta in the primitive case while the other one succeeds, using pattern-unification I suppose.
+
+
+Comment author: @mattam82
+
+Yes, it was eta failing but not backtracking on pattern-unification in tactic unification. Fixed, pushing asap.
+
+

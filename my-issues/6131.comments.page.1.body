@@ -1,0 +1,6 @@
+Indeed. Could rather be `Reflexive R -> Reflexive (Forall2 R)`.
+
+By the way, @mattam82, what about moving the basic definitions about equivalence relations earlier, maybe as soon as the initial state, so that we can use them more pervasively whenever needed, and e.g. that such lemma as `Forall2_refl`, once reformulated, could be used by `reflexivity`?
+
+Also, is there possibly something to share with `math-comp` here?
+

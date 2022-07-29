@@ -1,0 +1,12 @@
+Comment author: @JasonGross
+
+http://coq.inria.fr/distrib/8.4/refman/Reference-Manual022.html#hevea_default874 says:
+
+19.6.3  Existing Instance ident
+
+
+This commands adds an arbitrary constant whose type ends with an applied type class to the instance database. It can be used for redeclaring instances at the end of sections, or declaring structure projections as instances. This is almost equivalent to Hint Resolve ident : typeclass_instances.
+
+It would be nice to know what the differences are, even if only in a footnote.
+
+

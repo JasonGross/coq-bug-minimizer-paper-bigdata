@@ -1,0 +1,213 @@
+The manual says:
+
+> Set Printing All includes the effects of the commands Set Printing Implicit, Set Printing Coercions, Set Printing Synth, Unset Printing Projections and Unset Printing Notations.
+
+Is it a bit odd that it does some `Set`s and some `Unset`s?  Why does it not include `Set Printing Universes`?
+
+The description seems to leave open the possibility of other, unspecified effects. Which other things do you see that don't have their own option?
+
+The operation of `Set Printing All` is a bit curious. It sets `Flags.raw_print`, rather than the flags associated with the other mentioned print options. That flag is examined directly at places in the code, so its operation can't be expressed as just the combination of other options.
+
+Would it make more sense to have the `All` option work on those other flags, which would make its operation just the composition of those flags?
+> Would it make more sense to have the All option work on those other flags, which would make its operation just the composition of those flags?
+
+Yes, I think this is better.  And anything that currently doesn't have a special flag should get one.
+OK, it's a bit tricky. In many cases, the `raw_print` flag is used as a surrogate for the other flags in a boolean expression along with the other flags, so it can be just removed.
+
+Sometimes, it's used on its own:
+
+  https://github.com/coq/coq/blob/master/interp/constrextern.ml#L395
+
+so it's not clear which flags it's shadowing (or if it's some other unspecified behavior).
+
+Here's another tricky bit:
+
+  https://github.com/coq/coq/blob/master/toplevel/coqtop.ml#L848
+
+where the `raw_print` is temporarily set to `true`, some printing is done, then the old value is restored. With the modified setup, to do that correctly, you'd have to store and reset each of the component flags that `raw_print` represents. That can be done, of course, but it makes a grotty special case in the code.
+We could gather printing flags in a record.
+ie
+```ocaml
+(* flags.mli *)
+type printing_flags = { print_universes : bool; print_implicits : bool; ... }
+val printing_flags : printing_flags ref
+```
+Then we could easily save and restore the whole value.
+OTOH I don't know how to make `Set Printing All` work by setting the other flags without losing `Unset Printing All`.
+A couple of other options seem to be controlled by `raw_print`, but not mentioned in the manual: `Set Printing Factorizable Match Patterns` and `Set Printing Allow Match Default Clause`.
+
+@SkySkimmer So `Unset Printing All` would not work acceptably by reversing the effect of `Set Printing All`? Yes, that's different than the current behavior, where the flags that are meant to be subsumed by that option are in fact unaffected by the option. Maybe that's a deal-breaker.
+
+Having `Set Printing All` set/unset some flags, and `Unset Printing All` exactly reverse those flags, is not acceptable? 
+
+Should `Unset Printing All` use some other configuration of those flags? A perhaps-silly possibility: `Set Printing All` saves the current values of the flags, `Unset ...` restores them.
+> Having Set Printing All set/unset some flags, and Unset Printing All exactly reverse those flags, is not acceptable?
+> 
+> Should Unset Printing All use some other configuration of those flags? A perhaps-silly possibility: Set Printing All saves the current values of the flags, Unset ... restores them.
+
+I don't know if we can just patch the current mechanism. Maybe it is time for a revision of the printing option system, doing something nice, as was done for warnings (with an intermediate "category" level?).
+
+I guess that `All` should mean all, this is otherwise counterintuitive (see #5303, #5630, ...)
+
+This is also the usual duality between interactive use (asynchronous, we don't care about restoring a previous setting, configurable from a menu, a key binding, or a configuration box) vs part of document (reversible action, written in document, synchronous with backtracking in the document). Both are needed and various protocols for the interaction of both semantics are possible (there were discussions here and there, especially with @Matafou).
+
+> A couple of other options seem to be controlled by raw_print, but not mentioned in the manual: Set Printing Factorizable Match Patterns and Set Printing Allow Match Default Clause.
+
+I guess you are looking to the 8.7 online version rather than to the trunk version.
+
+> We could gather printing flags in a record.
+
+This would indeed allow a better overview of what is available. Maybe the complexity of the system would be worth to have a table to registering printing flags? It looks to me that there are here opportunities for a cool new API.
+Here's what `Print Options` shows for boolean printing flags:
+```
+  Printing Allow Match Default Clause: on
+  Printing Coercions: off
+  Printing Compact Contexts: off
+  Printing Dependent Evars Line: off
+  Printing Existential Instances: off
+  Printing Factorizable Match Patterns: on
+  Printing Goal Names: off
+  Printing Goal Tags: off
+  Printing Implicit: off
+  Printing Implicit Defensive: on
+  Printing Matching: on
+  Printing Notations: on
+  Printing Primitive Projection Compatibility: off
+  Printing Primitive Projection Parameters: off
+  Printing Projections: off
+  Printing Records: on
+  Printing Synth: on
+  Printing Unfocused: off
+  Printing Universes: off
+  Printing Wildcard: on
+```
+We could have something like:
+```
+  Add Printing implicits,wildcards,universes
+```
+to turn on a list of flags, and `Remove` to turn them off.  These could be lumped into groups, or categories, including an `all` category.  Each of the options above would get a nice name for this purpose. 
+
+There are already three `Add Printing` commands, and corresponding `Remove Printing` ones, so this syntax is already familiar.
+
+There could be `Reset Printing Defaults` to get the default flag settings.
+
+Does this sound reasonable?
+If my suggestion is acceptable, I can implement it.
+Hi @psteckler, `Add` is for table of constants. What about adding a special treatment in `Goptions.declare_bool_option` to register options starting with `Printing` (or, better, if we are not afraid of API incompatibilities, to have a dedicated `declare_printing_option`, or maybe even better, a label `~category` to `declare_bool_option`), so that `Set Printing All` sets them all at the same time, `Unset Printing All` unsets them all at the same time. Then, we could also have, say, a subcategory `Printing`/`Match` with new `Set Printing Match All`/`Unset Printing Match All` which would set/unset all printing options related to `match`, etc. Opinions of users about that?
+
+BTW, I would not set `Set Printing Goal Names`, `Set Printing Goal Tags`, `Set Printing Dependent Evars Line`, `Set Printing Unfocused` in the category of term printing. We would rather need another category of goal printing.
+
+But, basically, the primary idea would be to have flags organized with more structure, i.e. to extend `declare_bool_option` to register categories and subcategories of options.
+
+On the IDE side, the ideal I have in mind would be to have a window with checkboxes, and `all`/`none` buttons, maybe `invert` buttons, and so on... Do you see what I mean?
+@herbelin Having `Set Printing All` set a particular set of flags is what I started to implement, although in a slightly different way. I think @SkySkimmer was concerned that `Unset Printing All` clearing flags was too different than the current behavior, because currently the flag for `All` is separate from the others. Users who rely on it would have to make some changes.
+
+We wouldn't have to restrict the set-of-flags option to printing. Maybe it could be `declare_bool_set_option`. The API for that could be a list of boolean flags, each with a list of categories it belongs to.
+
+For the IDE support, the `SetOptions` and `GetOptions` commands would be extended to work with a flag set. The IDE could do something like you suggest in that case.
+
+
+> Having Set Printing All set a particular set of flags is what I started to implement, although in a slightly different way. I think @SkySkimmer was concerned that Unset Printing All clearing flags was too different than the current behavior, because currently the flag for All is separate from the others. Users who rely on it would have to make some changes.
+
+But, then, this means that we renounce to address the initial request in this PR, which, iiuc, was that `All` followed by some `SomePrintingFlag` activates all but this some printing flag?
+
+> We wouldn't have to restrict the set-of-flags option to printing. Maybe it could be declare_bool_set_option. The API for that could be a list of boolean flags, each with a list of categories it belongs to.
+
+You mean `declare_bool_set_option` is like `declare_bool_option` but it additionally declares a list of category for the option? Or you probably rather mean that `declare_bool_set_option` is like a variant of `declare_bool_option` which additionally declares a list of category for the option, and which even more additionally supports declaring several such options at once?
+
+I'm more of the opinion that I would first refactor the printers to take a `print_opts` record, that may be not be easy indeed but would provide a bit more consistency with regards to which parts are using what.
+
+Options shuffling can be done then in a 2nd stage.
+> But, then, this means that we renounce to address the initial request in this PR, which, iiuc, was that All followed by some SomePrintingFlag activates all but this some printing flag?
+
+Right, the question is whether we should make the change to enable the initial request, at the price of maybe surprising existing users.
+
+`declare_bool_set_option` could work with existing boolean options; the purpose would be to associate the categories for each option. Or, it could be used to declare the options and their categories. Not sure which is better.
+
+Update: on reflection, it's better to do the declaration and categorization all in one place.
+
+> I would first refactor the printers to take an opt record
+
+It would be an improvement just to put the options in a single place. Right now, the options are scattered in the code.
+
+
+
+
+
+
+
+I started coding up something fancy, a generic mechanism you declare boolean options with a list of categories. There were some snags, so I backed off. If all we want to do is deal with printing, something much simpler should work.
+
+Instead, I created a record type with the printing flags of interest. There's a ref with the current values of the flags. When the options are declared, the reader obtains that record, picks out the field of interest. The writer rewrites the current options with the field updated. That's a bit slower than the current mechanism of updating a lone boolean ref at a time. The boolean refs scattered over the code disappear.
+
+As for the categories, again you create a boolean option, where the writer updates several fields in the current print option record. The reader returns the conjunction of the relevant fields. With this mechanism, "All" is just another category. There's no separate flag for that category.
+
+Save and restore of the "All" category is just saving, restoring the record.
+
+I'll create a PR when this is all working.
+
+
+
+
+
+
+
+
+
+@psteckler that's a good approach, but even better, make all the printing functions take the record in a functional way. This will recover some of the speed.
+
+Also, you may want to split "printing" options from "detyping" [or re-sugaring] options, as the former can be easily exposed on a rich document [thus removing these options altogether!] whereas for the second much more work will be needed.
+
+Of course you still want to store the record in a reference, such that the callers of printing can access it, not the printing system itself.
+Which of the printing options are specifically for "detyping"? 
+
+In the file `detyping.ml`, there are many printing options declared:
+```
+Printing Wildcard
+Printing Synth
+Printing Matching
+Printing Primitive Projection Parameters
+Printing Primitive Projection Compatibility
+Printing Factorizable Match Patterns
+Printing Allow Match Default Clause
+```
+Is it exactly this set of options?
+
+Is your suggestion, then, that `Set Printing All` should not affect these options? And maybe should there be another command `Set Detype Printing All` (and a corresponding record) for these?
+
+Another thing to consider: `Set Printing All` should not be synchronous with the STM state. If it's `false` at a particular state, because one or more of the flags it represents is `false`, then you don't want to `Unset Printing All` when going to that state, because that would set all of the flags it represents to `false`.
+
+Is there a way to disable the synch mechanism for a particular option? If not, there could just be Vernacular syntax for `Un/Set Printing All` (and other printing categories), without tying it to the option machinery.
+Organizing the options is tricky, as you can see.
+
+I think that document-settable options should be always synchronous. Indeed, depending on how you implement things you may want to do some hacks, but I think that collecting all options in a record would avoid any problem with the option system. [Just use `Summary.ref` to declare it]
+Right, the components of the printing record are just ordinary options, which will maintain their synchronization. I was concerned about creating an option for `Set Printing All`, which *is* an option in the current setup. That should not be an option in itself, because unsetting it for a synch will unset all the options in the record (if it's synched after the member options).
+
+Creating a separate command for `All` would not be a hack, I think, just a bit subtle.
+@ejgallego What about the detyping printing in my earlier comment?
+So far options can use custom setter / getters so that should be doable without too much of a problem.
+
+Regarding Detyping and printing options in general the first step is to wait for @herbelin 's feedback, I have some additional comments that will go in the general printing issue once I manage to tame my backlog back.
+I've implemented the record-of-printing-flags idea, not yet passing the record. There's something causing an assert failure in the `funind` plugin, though, which I'll try to track down.
+Hi,
+
+I looked at 19f7187f9 and at the new semantics of `Set Printing All`. This looks nice and clean to me.
+
+I agree with the distinction between `Defaults` and `All`. Formerly, `Unset Printing All` was basically going back to the default (in the absence of other `Set`/`Unset` in the meantime). So the new `Set Printing Defaults` is good. What should be the meaning of `Unset Printing All`? Now, it activates all sugaring strategies, even those which are not on by defaults (namely `Implicits Defensive` and `Projections`). I would need time to understand whether this is an intuitive terminology.
+
+I also have the following local remarks:
+- The `printing_record` field does not seem to be used. If related to the change in `pr_mutual_inductive_body`, I believe it is good like you did. There was a time where we thought at records as alias for inductive types, but I think that they now have a proper status as records (@mattam82, @aspiwack?) and that they should remain printed as records even when `Set Printing All` is on.
+- The "enabled" value of synth is wrong I think, it should be "false"
+- It seems that `REVERTCast` printing as well as the type of let-in (in detyping.ml) was governed only by `Set Printing All `and by no other individual option. What about adding a dedicated option for the both of them (say `Set Printing Hidden Casts`???) so as to control them individually too.
+- I believe that the `printing_all` protecting the `synth_type` should go away (since only the option `synth_type` shall now govern the corresponding line).
+
+Wondering what others think.
+Created #6698.
+@herbelin Wow, that was fast, even before I submitted the PR! I'll look at your remarks and make appropriate edits.
+@herbelin Maybe a better name for `Unset Printing All` would be `Set Printing None`.
+@herbelin The lack of uses of `printing_records` was an oversight; it should have replaced the ref `record_print`; I'll fix that.
+
+I'll wait for feedback on the possible hidden casts option.
+@herbelin Looking again at your remark about records, are you suggesting that `Set Printing All` should have no effect on record printing (which I did accidentally), that the option `Set Printing Records` should be independent of that?
+
+For now, I changed it so `Set Printing All` and `Set Printing Defaults` enables record printing. But I can change that, if you think that's wise.

@@ -1,0 +1,24 @@
+Comment author: @JasonGross
+
+Either all of the following checks should succeed, or they should all fail (with an appropriate warning on the record declaration).  This should be tested in the test-suite.
+
+Set Primitive Projections.
+Record unit : Set := tt {}.
+Check fun x : unit => eq_refl : tt = x.
+Check fun x : unit => eq_refl : x = tt.
+Check fun x y : unit => (eq_refl : x = tt) : x = y.
+Check fun x y : unit => eq_refl : x = y. (* Toplevel input, characters 24-31:
+Error:
+In environment
+x : unit
+y : unit
+The term "eq_refl" has type "x = x" while it is expected to have type
+"x = y" (cannot unify "x" and "y"). *)
+
+
+Comment author: @mattam82
+
+Indeed, they should not be defined as primitive and I was missing a field count.
+Fixed in trunk.
+
+

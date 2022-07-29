@@ -1,0 +1,10 @@
+Comment author: @JasonGross
+
+It seems poor that `coqtop -help` can exit abnormally when `coqtop` will run just fine.
+
+
+Comment author: @silene
+
+I cannot reproduce this issue (that is, removing the toploop directory and getting coqtop -help to behave badly). And I don't see anything that could cause the code to go wrong when toploop is missing. (On the contrary, when toploop is missing, no dynamic library will be loaded, so there isn't any imported bug.) Please reopen if you are still able to reproduce it.
+
+

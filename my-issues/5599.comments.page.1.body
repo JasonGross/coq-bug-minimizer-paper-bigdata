@@ -1,0 +1,79 @@
+Comment author: @JasonGross
+
+This is a suspicious error message:
+
+The term "and" has type "Prop -> Prop -> Prop" while it is expected to have 
+type "Prop -> Prop -> Prop" (cannot satisfy constraint
+"True" == "(fun _ : flat_type ?base_type_code => Prop) ()%ctype").
+
+The invalid constraint is an accurate rendition of what's wrong, but the type 
+error is wrong.  Example code coming soon.
+
+
+Comment author: @JasonGross
+
+Example:
+```coq
+(* -*- mode: coq; coq-prog-args: ("-emacs" "-R" "src" "Crypto" "-R" "Bedrock" 
+"Bedrock" "-R" "coqprime/Coqprime" "Coqprime" "-top" "ArithmeticSimplifierWf") 
+-*- *)
+(* File reduced by coq-bug-finder from original input, then from 425 lines to 
+28 lines, then from 581 lines to 38 lines, then from 218 lines to 65 lines, 
+then from 222 lines to 86 lines, then from 202 lines to 87 lines, then from 447 
+lines to 107 lines, then from 221 lines to 142 lines, then from 335 lines to 
+195 lines, then from 350 lines to 195 lines, then from 217 lines to 196 lines, 
+then from 144 lines to 60 lines, then from 76 lines to 60 lines, then from 53 
+lines to 36 lines, then from 52 lines to 37 lines *)
+(* coqc version 8.6 (June 2017) compiled on Jun 12 2017 14:31:24 with OCaml 
+4.02.3
+   coqtop version jgross-Leopard-WS:/home/jgross/Downloads/coq/coq-v8.6,(HEAD 
+detached from 7e992fa) (ce1e1dba837ad6e2c79ff7e531b5e3adea3cd327) *)
+
+Context (base_type_code : Type).
+Inductive flat_type := Tbase (T : base_type_code) | Unit | Prod (A B : 
+flat_type).
+Section flat_type.
+  Context (interp_base_type : base_type_code -> Type).
+  Fixpoint interp_flat_type (t : flat_type) :=
+    match t with
+    | Tbase t => interp_base_type t
+    | Unit => unit
+    | Prod x y => prod (interp_flat_type x) (interp_flat_type y)
+    end.
+End flat_type.
+Fixpoint smart_interp_flat_map2 {f1 f2 g}
+         (h : forall x, f1 x -> f2 x -> g (Tbase x))
+         (tt : g Unit)
+         (pair : forall A B, g A -> g B -> g (Prod A B))
+         {t}
+  : interp_flat_type f1 t -> interp_flat_type f2 t -> g t
+  := match t return interp_flat_type f1 t -> interp_flat_type f2 t -> g t with
+     | Tbase _ => h _
+     | Unit => fun _ _ => tt
+     | Prod A B => fun (v1 : interp_flat_type _ A * interp_flat_type _ B)
+                       (v2 : interp_flat_type _ A * interp_flat_type _ B)
+                   => pair _ _
+                           (@ smart_interp_flat_map2 f1 f2 g h tt pair A (fst 
+v1) (fst v2))
+                           (@ smart_interp_flat_map2 f1 f2 g h tt pair B (snd 
+v1) (snd v2))
+     end.
+Definition wff_as_expr_or_const {t}
+  : interp_flat_type (fun _ => nat) t
+    -> interp_flat_type (fun _ => nat) t
+    -> Prop
+  := smart_interp_flat_map2
+       (fun t z1 z2 => False)
+       I
+       (fun _ _ => and).
+(* Error:
+In environment
+t : flat_type
+f : flat_type
+f0 : flat_type
+The term "and" has type "Prop -> Prop -> Prop" while it is expected to have 
+type "Prop -> Prop -> Prop" (cannot satisfy constraint
+"True" == "(fun _ : flat_type => Prop) Unit"). *)
+```
+
+Duplicate of https://github.com/coq/coq/issues/11475

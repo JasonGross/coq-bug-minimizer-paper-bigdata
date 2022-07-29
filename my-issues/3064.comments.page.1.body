@@ -1,0 +1,47 @@
+Comment author: @JasonGross
+
+I would like to be able to define tactic notations where holes in the passed term are not required to be immediately determined.  For example, I would like the tactic [refine2] in the following to behave like [refine]:
+
+Tactic Notation "refine2" constr_pattern(foo) := refine foo.
+Goal (1 = 1).
+  refine (eq_trans _ _).
+  refine2 (eq_trans _ _). (* currently, if I replace constr_pattern with constr, I get:
+Toplevel input, characters 9-17:
+Error: Cannot infer the implicit parameter A of eq_trans. *)
+
+Similarly, I'd like to be able to implement the one-argument variant of [change] as
+
+Tactic Notation "change2" constr_pattern(foo) := refine (_ : foo).
+
+so that [change2] and [change] behave the same way (when only passed one argument).
+
+
+Comment author: @ppedrot
+
+I assume that it should behave like you suggest, and I can indeed fix it easily.
+
+Yet, you can already do this by replacing [constr_pattern] with [open_constr] in your tactic notation.
+
+
+Comment author: @JasonGross
+
+When was [open_constr] added?  Is it new since 8.4?  I do not see it in the table nor grammar at http://coq.inria.fr/doc/Reference-Manual014.html#hevea_default800.  Are there any other options missing from there?
+
+
+Comment author: @ppedrot
+
+The grammar entry seems to be there since 2002 at least. I do not have such an old rooster around to test it now, but I suspect it has been working since then.
+
+Actually, you're poiting out the itchy point: the lack of documentation. I am currently trying to clean this particular part of the code, so it is maybe premature to document everything now. Nonetheless, I believe you may safely use this very feature, as I won't mess with it (it is central, and quite well named).
+
+
+Comment author: @JasonGross
+
+Should I open a new issue about the lack of documentation?
+
+
+Comment author: @ppedrot
+
+This cannot harm.
+
+

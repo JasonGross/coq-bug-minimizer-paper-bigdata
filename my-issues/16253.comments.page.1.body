@@ -1,0 +1,5 @@
+You want `stdlib-html`, if you need to be backwards compatible we could probably add a `doc-stdlib-html` target that does the same thing.
+Backwards compatibility not necessary, thanks!
+Keep in mind @JasonGross that the location of the docs artifacts have changed too.
+
+The build setup for the docs has also changed, for example we now support building docs from an installed Coq and a few other things, please don't hesitate to ping us in Zulip if you have any question.

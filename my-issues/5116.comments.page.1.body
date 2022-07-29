@@ -1,0 +1,14 @@
+Comment author: @JasonGross
+
+This is not a particularly useful way of printing strategies:
+
+    Ltac test := rewrite_strat topdown hints core.
+    Print Ltac test.
+    (* Ltac test := rewrite_strat <strategy> *)
+
+
+Comment author: @ppedrot
+
+Fixed by 472914e.
+
+

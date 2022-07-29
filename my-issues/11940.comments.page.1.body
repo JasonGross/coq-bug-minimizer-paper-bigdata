@@ -1,0 +1,28 @@
+#11809 may fix this I think , unfortunately the PR has been waiting for attention for more than 2 weeks.
+Can you try @JasonGross ? I'm surprised this happens in old Ubuntu versions, but works in new ones; if the root issue is the same than #11809 I'd expect the reverse to happen.
+It's rather hard for me to try this.  I can have a go at creating a fresh repo with just a build script for Coq that tries to recreate the build environment of the ppa builders on travis, but I might not get a chance to do this for a while.  (And it's non-trivial to try to get launchpad to run this test for me.)
+Another thing of note is that precise, trusty, and xenial are precisely the distributions where I had to backport OCaml 4.05.0 to get Coq to build; newer distributions have 4.05.0 (or newer) by default.  So it's possible that there's some other change in how the packages are set up, or that the devs assumed a newer version of libc or something...
+Could be indeed some problem with the flags detected by OCaml configure; but I had the same exact error in OCaml master so I'd suggest we try first.
+
+> It's rather hard for me to try this.
+
+Can't you point the packages to a branch? Alternatively, it is very easy to add a patch to a Debian package, here the patch is a one liner.
+I tried to locate the source code for you `debian` folder but I'm afraid without success. https://code.launchpad.net/coq
+I suggest you use `dh_quilt_patch` see the man page for help, it is straightforward.
+https://github.com/JasonGross/coq-packaging/tree/master-coqide-no/debian
+Ah, it's on github, thanks!
+Your packaging setup already has support for quilt patching so it is just a matter of adding the patch and trying.
+Well, I've just now merged #11809, so I'll just go trigger a fetch and a new build, and see what happens
+Currently waiting for the build to finish at https://code.launchpad.net/~jgross-h/+recipe/coq-master-daily-coqide-no
+@ejgallego Indeed, #11809 seems to have fixed the issue.  I have no idea why this would be the case, though...
+> @ejgallego Indeed, #11809 seems to have fixed the issue. I have no idea why this would be the case, though...
+
+You have more info in the discussion linked in the PR; it turns out that some C `sig_*` family of types are a POSIX level higher than what `--std=c99` does require. Thus if you force compliance they go out of scope. `--std=gnu99` which OCaml uses, does include the right POSIX functions.
+
+In a sense we where accidentally overriding the default set of OCaml flags with a more restrictive one.
+
+(*) technically OCaml is using a range of `>= --std=gnu99` as it uses the gcc default which for more modern versions is as high as `gnu11` etc...
+Saw this in the bench https://ci.inria.fr/coq/job/benchmark-part-of-the-branch/899/console
+(based on commit before merge of #11809) 
+Why didn't we see it before though?
+Different compilers / libc versions likely.

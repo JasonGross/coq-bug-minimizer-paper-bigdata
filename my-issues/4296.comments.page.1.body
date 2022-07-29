@@ -1,0 +1,50 @@
+Comment author: @JasonGross
+
+$ D:/Coq-8.5beta2/bin/coqtop.exe -config
+LOCAL=0
+COQLIB=D:\Coq-8.5beta2/lib/
+DOCDIR=.//share/doc/coq/
+OCAMLDEP=ocamldep.opt
+OCAMLC=ocamlc
+OCAMLOPT=ocamlopt.opt
+OCAMLDOC=ocamldoc.opt
+CAMLBIN=C:\CoqSDK-85-1\bin/
+CAMLLIB=C:/CoqSDK-85-1/lib/
+CAMLP4=camlp5
+CAMLP4O=C:\CoqSDK-85-1\bin/camlp5o.exe
+CAMLP4BIN=C:\CoqSDK-85-1\bin/
+CAMLP4LIB=C:/CoqSDK-85-1/lib/camlp5
+CAMLP4OPTIONS=-loc loc
+HASNATDYNLINK=true
+
+If I do not source the environ file from the sdk, I get:
+
+$ make COQBIN="D:/Coq-8.5beta2/bin/"
+make -f Makefile.coq
+make[1]: Entering directory '/cygdrive/d/Documents/GitHub/template-coq'
+ocamldep.opt -slash -I "src" -pp 'C:\CoqSDK-85-1\bin/camlp5o.exe -I /usr/lib/ocaml/ -I /usr/lib/ocaml/threads/ -I "D:\Coq-8.5beta2/lib/kernel" -I "D:\Coq-8.5beta2/lib/lib" -I "D:\Coq-8.5beta2/lib/library" -I "D:\Coq-8.5beta2/lib/parsing" -I "D:\Coq-8.5beta2/lib/pretyping" -I "D:\Coq-8.5beta2/lib/interp" -I "D:\Coq-8.5beta2/lib/printing" -I "D:\Coq-8.5beta2/lib/intf" -I "D:\Coq-8.5beta2/lib/proofs" -I "D:\Coq-8.5beta2/lib/tactics" -I "D:\Coq-8.5beta2/lib/tools" -I "D:\Coq-8.5beta2/lib/toplevel" -I "D:\Coq-8.5beta2/lib/stm" -I "D:\Coq-8.5beta2/lib/grammar" -I "D:\Coq-8.5beta2/lib/config" -I "D:\Coq-8.5beta2/lib//plugins/btauto" -I "D:\Coq-8.5beta2/lib//plugins/cc" -I "D:\Coq-8.5beta2/lib//plugins/decl_mode" -I "D:\Coq-8.5beta2/lib//plugins/derive" -I "D:\Coq-8.5beta2/lib//plugins/extraction" -I "D:\Coq-8.5beta2/lib//plugins/firstorder" -I "D:\Coq-8.5beta2/lib//plugins/fourier" -I "D:\Coq-8.5beta2/lib//plugins/funind" -I "D:\Coq-8.5beta2/lib//plugins/micromega" -I "D:\Coq-8.5beta2/lib//plugins/nsatz" -I "D:\Coq-8.5beta2/lib//plugins/omega" -I "D:\Coq-8.5beta2/lib//plugins/quote" -I "D:\Coq-8.5beta2/lib//plugins/romega" -I "D:\Coq-8.5beta2/lib//plugins/rtauto" -I "D:\Coq-8.5beta2/lib//plugins/setoid_ring" -I "D:\Coq-8.5beta2/lib//plugins/syntax" -I "D:\Coq-8.5beta2/lib//plugins/xml" compat5.cmo pa_extend.cmo q_MLast.cmo pa_macro.cmo unix.cma threads.cma grammar.cma -loc loc -impl' -impl "src/reify.ml4" > "src/reify.ml4.d" || ( RV=$?; rm -f "src/reify.ml4.d"; exit ${RV} )
+sh: C:CoqSDK-85-1bin/camlp5o.exe: No such file or directory
+
+Is this expected?
+
+
+Comment author: @silene
+
+It looks like an issue with backslashes: "coqtop -config" should only outputs paths that the make tool and the shell can parse. As to why sourcing the environ file works around the issue, I have no idea.
+
+
+Comment author: @maximedenes
+
+Is this fixed with the new SDK?
+
+
+Comment author: @gares
+
+The SDK is intended to be used this way: you source the environ file.
+
+Indeed such file sets up environment variables that make ocamlc and company find files.
+
+The new SDK has a README in the top folder telling users what to do.
+I don't recall if the old one had such a documentation.
+
+

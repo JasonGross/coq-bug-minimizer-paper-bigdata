@@ -1,0 +1,20 @@
+Comment author: @JasonGross
+
+Maybe the way tactic notations got internally named got messed up?
+
+(* coqc version 8.5beta1 (February 2015) compiled on Feb 9 2015 18:55:5 with 
+OCaml 4.01.0
+   coqtop version cagnode15:/afs/csail.mit.edu/u/j/jgross/coq-8.5,v8.5 
+(b41a9a4bdff0be6ebef07b44a8fbffd4c0766053) *)
+
+Tactic Notation "transparent" "assert" "(" ident(name) ":" constr(type) ")" :=
+  idtac.
+
+Tactic Notation "transparent" "assert" "(" ident(name) ":" constr(type) ")" 
+"by" tactic3(tac) :=
+  let name := fresh "H" in transparent assert (name : type).
+
+Goal True.
+  Timeout 1 transparent assert (e : Type). (* Timeout! *)
+
+

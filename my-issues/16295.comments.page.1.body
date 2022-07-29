@@ -1,0 +1,54 @@
+As a minimal, you will need to pass `-coqlib` (or use env var `COQLIB`) that points to a directory containing `theories/Init/Prelude.vo`. Doesn't have to be the real thing, just needs to exist.
+
+cc @ejgallego
+@JasonGross Can you provide some more information about how you ran into this? AFAICT this only happens if `./configure` never gets run or `theories/Init/Prelude.vo` cannot be found. Both of which are difficult to do in practice. I would be interested to know about your use case.
+I believe the issue was that I ran `./configure` but not `make dunestrap`
+But the config printout should occur before the error checking
+Indeed this can be improved, as of today the code that detects coqlib is still in bad shape, despite our attempts to fix it.
+
+If it doesn't find coqlib it will just make Coq crash, and the `-config` flag attemps to find the real coqlib.
+
+I have some ideas on how to improve this, but I lack manpower.
+@ejgallego Could you open an issue detailing your ideas then? I also had a look at this today, but I concluded that the issue stems from more fundamental design flaws with how coqlib is detected, passed around etc. It is not an easy fix.
+Yes, it is not an easy fix. Not worth opening an issue IMO, some ideas are:
+- forbid calling `Env.init` more than once per execution, once you get the env, pass it around to users.
+- reflect failure in types, and callers handle the errors
+- phase split, in the sense of `Env.config` returning the values Coq understands by default, however, that would mean a few functions having to fail later on, for example, when asking for `Env.tool`.
+
+So indeed, maybe we could just remove the "I cannot find stlib" error at all, and just have errors happen for example for prelude at import time: "I cannot find `foo/Init/Prelude.vo`.
+>forbid calling Env.init more than once per execution, once you get the env, pass it around to users.
+
+This is in effect, how it works today. If you call Env.Init after it has already been initialized, it detects the reference being set and just passes the already set one.
+
+>reflect failure in types, and callers handle the errors
+
+This should be doable.
+
+>So indeed, maybe we could just remove the "I cannot find stlib" error at all, and just have errors happen for example for prelude at import time: "I cannot find foo/Init/Prelude.vo.
+
+Sounds good.
+
+> This is in effect, how it works today. If you call Env.Init after it has already been initialized, it detects the reference being set and just passes the already set one.
+
+What I mean is that you get an anomaly if you call it a second time, not the reference result.
+
+This way, users of the API are forced to call the API in a central place, from there we can enforce a better discipline w.r.t. env initialization and argument parsing.
+
+@ejgallego I tried it and building the main library didn't trigger anything.
+That's good, but indeed we build stdlib with -boot (which is actually our goal medium term), so it is normal Env.init is never called.
+
+I'm more curious about regular developments, for example, doing a `git grep Env.init` I can see a few extra calls that we'd have to refactor:
+```
+kernel/nativelib.ml:68:                  let env = Boot.Env.init () in
+lib/envars.ml:171:                       let env = Boot.Env.init () in
+plugins/micromega/coq_micromega.ml:2189: let env = Boot.Env.init () in
+sysinit/coqargs.ml:449:                  let coqenv = Boot.Env.init () in
+sysinit/coqinit.ml:92:                   let env = Boot.Env.init () in
+toplevel/coqloop.ml:517:                 let env = Boot.Env.init () in
+toplevel/coqtop.ml:22:                   let env = Boot.Env.init () in
+
+```
+Once we have that, we can make `Env.init` take some arguments and do less guessing.
+
+That would solve this bug actually as for example the one in `lib/envars` would go away.
+Don't know if it is related, but recently, I started to need to pass an explicit `-coqlib` to `coqtop` in `coqdev-ocamldebug` for emacs (otherwise I get the "cannot guess ..." message).

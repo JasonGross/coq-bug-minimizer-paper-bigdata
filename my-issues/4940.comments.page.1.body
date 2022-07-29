@@ -1,0 +1,16 @@
+Comment author: @JasonGross
+
+Ltac foo x := fail.
+    Tactic Notation "*" "bar" "more" "interesting" "words" constr(x) := foo x.
+    Ltac baz := * bar more interesting words 0.
+    Goal True.
+      baz. (* In nested Ltac calls to "baz", "*" and "foo", last call failed. *)
+
+"*" is a very uninformative name
+
+
+Comment author: @ppedrot
+
+Fixed by 0d3c319.
+
+

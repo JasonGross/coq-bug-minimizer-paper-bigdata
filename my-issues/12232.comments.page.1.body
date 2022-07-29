@@ -1,0 +1,16 @@
+I think this rather means c) your packaging / build system is broken.
+No, this can easily happen if you upgrade ocaml without upgrading manually installed versions of Coq, or if you are running from absolute paths without doing `opam switch`, or you forgot to run `eval $(opam env)`
+> No, this can easily happen if you upgrade ocaml without upgrading manually installed versions of Coq, or if you are running from absolute paths without doing `opam switch`, or you forgot to run `eval $(opam env)`
+
+Which means "c) your packaging system is broken"
+Okay, sure, but I think error messages should be resilient to common failure modes in packaging systems.
+To put it the other way, perhaps package systems would do a better job here if the need for rebuilding coq every time ocaml is rebuilt was documented :). Not everyone has given up on being able to upgrade a highly-depended-on package without replacing everything downstream. I don't think that decision by itself qualifies as broken, it's just a different trade-off between cost of updates on the user and default levels of engineering sanity (and often effort) expected from the software being packaged. And it seems entirely plausible to me that Coq package maintainers, while overall qualified for the task, have just never happened to run into this issue. Yes, one could guess that plugins are ocaml under the hood and thus likely need coq to match to compiler version, but the point of documentation is to let people get things right without guessing.
+The specific error message should not be documented since it is not a Coq error message but rather an OCaml one. However, it makes sense to answer the request of @andres-erbsen, and for this reason I opened #12243. Let me know what you think.
+I dunno, the message is a bit incomplete in the sense that not only the OCaml version has to be the same, but depending libraries, etc...
+> I think this rather means c) your packaging / build system is broken.
+
+@ejgallego I hit a variant of this in Coq's CI (https://github.com/coq/coq/issues/12400); is the CI build system broken?
+> @ejgallego I hit a variant of this in Coq's CI (#12400); is the CI build system broken?
+
+No idea, here we have 3 build systems involved, the one in Coq's kernel, fiat-crypto's, and CI. One of them is doing something wrong indeed.
+It's not fiat-crypto's, I'm pretty sure; we're just compiling a Coq file that issues a call to `Eval native_compute`.  I suspect there's a fourth "build system" that you're missing here, which is the CI setup

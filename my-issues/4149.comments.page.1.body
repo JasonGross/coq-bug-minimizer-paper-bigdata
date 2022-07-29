@@ -1,0 +1,14 @@
+Comment author: @JasonGross
+
+Here is code that worked in 8.4, but does not work in 8.5:
+
+Goal forall A, A -> Type.
+  intros; eauto.
+Qed.
+
+
+Comment author: @ppedrot
+
+Fixed as of 30efd8d.
+
+

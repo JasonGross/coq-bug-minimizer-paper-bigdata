@@ -1,0 +1,28 @@
+Comment author: @JasonGross
+
+(* -*- mode: coq; coq-prog-args: ("-emacs" "-R" "src" "Crypto" "-R" "Bedrock" 
+"Bedrock" "-top" "RewriteAddToAdc") -*- *)
+(* File reduced by coq-bug-finder from original input, then from 102 lines to 8 
+lines, then from 193 lines to 32 lines, then from 161 lines to 32 lines, then 
+from 46 lines to 33 lines *)
+(* coqc version 8.6 (May 2017) compiled on May 11 2017 12:23:39 with OCaml 
+4.02.3
+   coqtop version jgross-Leopard-WS:/home/jgross/Downloads/coq/coq-v8.6,(HEAD 
+detached from 7e992fa) (3b6d89acf4f233d0ed33f89c4e60bcd68e0e2820) *)
+
+Reserved Notation "'dlet' x .. y := A 'in' b"
+(at level 200, x binder, y binder, b at level 200, format "'dlet'  x .. y  :=  
+A  'in' '//' b").
+Definition Let_In {A P} (x : A) (f : forall a : A, P a) : P x := let y := x in 
+f y.
+Notation "'dlet' x .. y := v 'in' f" := (Let_In (P:=fun _ => _) v (fun x => .. 
+(fun y => f) .. )).
+Check dlet '((x, y)%core : _ * _) := _ in _. (* Anomaly: free_vars_of_pat. 
+Please report at http://coq.inria.fr/bugs/. *)
+
+
+Comment author: @maximedenes
+
+Fixed in 8.6 branch by Hugo's PR#635. Thanks for reporting!
+
+

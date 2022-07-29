@@ -1,0 +1,43 @@
+Comment author: @JasonGross
+
+$ coq_makefile -Q .. "" -Q . "" foo.v >/dev/null
+Warning: install target will copy files at the first level of the coq contributions installation directory; option -R or -Q with non trivial logical root is recommended
+Warning: in option -R, .. is not a subdirectory of the current directory
+Warning: in options -R, .. and . overlap
+Warning: install rule assumes that -R/-Q . _ is the only -R/-Q optionWarning: install rule assumes that -R/-Q . _ is the only -R/-Q optionWarning: -Q options don't have a correct common prefix,
+ install-doc will put anything in $INSTALLDEFAULTROOT
+
+
+Comment author: @maximedenes
+
+Fixed in branch v8.5.
+
+
+Comment author: @fblanqui
+
+Speaking of  "Warning: in option -R, .. is not a subdirectory of the current directory" only, why such a warning is displayed? What's the problem? It is quite common to refer to libraries developed in another directory.
+
+
+Comment author: @pirbo
+
+the -R (and the -Q option) option of coq_makefile lists the directories of the current development. It is strange (but not forbidden, so a warning) when a single development is not done in a single subtree of the file system.
+
+Now if your development B use an other development A, you should install A before developing B and not wrongly -R ../../../somewhere/adir A it.
+
+
+Comment author: @fblanqui
+
+I am not convinced by your argument at all. I find this warning useless and painful. I don't see why you find this strange. The way directories and files are organized should not concerned Coq. You suggest to install A before but what if A and B are both developed at the same time, so that A cannot be installed?
+
+
+Comment author: @pirbo
+
+This is a very very ...  very long discussion that goes for (at the very least) more than a year. There must be a warning because there are things coq_makefile tries to do that it cannot do if there is a -R/-Q starting by ..
+The "how to codevelop libraries in Coq" mega issue is out the scope of this bug !
+
+
+Comment author: @fblanqui
+
+Right, but I also get this warning when I give a path that starts with "~" which, syntactically, is not a path that starts with "..".
+
+

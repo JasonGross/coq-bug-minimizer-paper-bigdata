@@ -1,0 +1,28 @@
+Do you have a complete example I could test out fixes with?
+
+Update: Never mind ... I made my own.
+I was able to do this much.
+
+For this code:
+```
+Module Foo.
+
+Ltac blah arg1 arg2 arg3 := 42.
+
+End Foo.
+
+Goal True.
+  Foo.blah 13.
+```
+the error message is:
+
+```
+Error:
+The Ltac tactic "Top.Foo.blah" was not fully applied:
+There are missing arguments for variables arg2 and
+arg3; arguments were provided for variable arg1.
+```
+If this is satisfactory, I can make this into a PR. (I didn't see a ready way to print the given values bound to the formals.)
+
+Yes, that looks good, thanks.
+My laptop power supply died, so it may be a few days before I can create the PR.

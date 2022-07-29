@@ -1,0 +1,1 @@
+I don't think you can properly test uconstrs for equality, you have to evaluate them first to get a normal form. That's the whole point about uconstrs.

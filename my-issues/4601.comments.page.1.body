@@ -1,0 +1,12 @@
+Comment author: @JasonGross
+
+It'd help in reproducing bugs if CoqIDE automatically generated a fake_ide script as you interacted with it (possibly only if you enable some option, if it's expensive), and gave you the ability to dump it on demand to a file (as well as, perhaps, dumping it automatically whenever it crashed or ran into a particular sort of error).  I might even be able to extend my bug-minimizer script to minimize CoqIDE bugs, then.
+
+
+Comment author: @JasonGross
+
+
+
+*** This bug has been marked as a duplicate of bug [BZ#4600](https://github.com/coq/coq/issues?q=is%3Aissue%20%22Original%20bug%20ID%3A%20BZ%234600%22) ***
+
+

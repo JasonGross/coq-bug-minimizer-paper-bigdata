@@ -1,0 +1,44 @@
+I've seen a similar problem: `repeat` doesn't work correctly when using `terms`, but does when using `choice` — if `hints` reused code from `terms`, that might relate to this bug.
+
+It's as if `terms` used mutable state that isn't reset correctly inside a single `rewrite_strat` call.
+I was quite surprised by the issue but finally pinned it down: the result of `rewrite_strat` is beta normalized (for compatibility with rewrite/setoid_rewrite), but this does not happen during the tactic run (by default). So, after the first topdown run, the fold_right is reduced, but produces beta-redexes that prevent the other rewrites by fst_pair to trigger. 
+To resolve the problem, one must use `rewrite_strat (topdown ((hints mydb) ; eval cbv beta)` or a similar strategy that reduces the beta redexes right away. Note that `rewrite_strat` has special support for reductions: they won't appear in proof terms. E.g.
+```coq
+Goal forall x, (fun x y => x + y) x 0 = 0.
+intros x.
+rewrite_strat (topdown (progress (eval cbv beta))).
+```
+This simplifies the goal without leaving a trace in the proof term. `eval` always succeeds so it must be guarded by a `progress` here.
+It is up for debate if the confusing compatibility strategy should be kept for `rewrite_strat`. I think a flag could be useful there.
+
+
+> I've seen a similar problem: `repeat` doesn't work correctly when using `terms`, but does when using `choice` — if `hints` reused code from `terms`, that might relate to this bug.
+> 
+> It's as if `terms` used mutable state that isn't reset correctly inside a single `rewrite_strat` call.
+
+The implementation of terms actually has a state (to count occcurrencecs) but that should only be used and visible when calling rewrite_strat through `setoid_rewrite/rewrite` (i.e the state is used to pass information for a single rewrite rule only). Can you check if the behavior you're seeing is due to beta-normalization or not?
+👍 on the flag, but the current behavior should be deprecated since this issue seems pretty important.
+
+> Can you check if the behavior you're seeing is due to beta-normalization or not?
+
+It seems yes. But it's still unclear why that's only needed for `terms` but not when using `choice one_term one_term` — does `one_term` (defined as in the [manual](https://coq.github.io/doc/v8.12/refman/addendum/generalized-rewriting.html#coq:tacn.rewrite-strat)) implicitly force beta-reduction?
+
+Equivalent calls (sorry this isn't minimized):
+```coq
+rewrite_strat (topdown (choice except_0_exist (choice except_0_and except_0_idemp))).
+rewrite_strat (topdown (terms except_0_exist except_0_and except_0_idemp; eval cbv beta)).
+repeat rewrite_strat (topdown (terms except_0_exist except_0_and except_0_idemp)).
+```
+
+Not equivalent (does only one rewrite):
+```coq
+rewrite_strat (topdown (terms except_0_exist except_0_and except_0_idemp)).
+```
+I agree that a flag would be useful, and I think perhaps we should take it a step further: add a flag for always reducing and beta redexes that appear in the immediate output of rewriting (if it's non-trivial to only reduce new beta redexes, it's fine to beta reduce the whole term).  I think this should be the default behavior (almost everything in Coq is modulo beta anyway), but it should be possible to turn off.
+
+Also, the explicit reductions don't always work, see https://github.com/coq/coq/issues/10923
+Also,
+
+> eval always succeeds so it must be guarded by a progress here.
+
+Why is this the case?  Why doesn't progress commute with topdown on strategies that always succeed?

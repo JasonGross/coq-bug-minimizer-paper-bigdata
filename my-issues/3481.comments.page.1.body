@@ -1,0 +1,106 @@
+Comment author: @JasonGross
+
+The eliminators for records with eta should just be defined as function application or the identity function, not using pattern matching.  (The current eliminators are convertible with the ones I want, but Coq doesn't seem to know that unless I jump through contortions.)
+
+Set Implicit Arguments.
+
+Require Import Logic.
+
+Global Set Universe Polymorphism.
+Global Set Asymmetric Patterns.
+Local Set Record Elimination Schemes.
+Local Set Primitive Projections.
+
+Record prod (A B : Type) : Type :=
+  pair { fst : A; snd : B }.
+
+Print prod_rect.
+(** prod_rect =
+fun (A B : Type) (P : prod A B -> Type)
+  (f : forall (fst : A) (snd : B), P {| fst := fst; snd := snd |})
+  (p : prod A B) =>
+match p as p0 return (P p0) with
+| {| fst := x; snd := x0 |} => f x x0
+end
+     : forall (A B : Type) (P : prod A B -> Type),
+       (forall (fst : A) (snd : B), P {| fst := fst; snd := snd |}) ->
+       forall p : prod A B, P p
+
+Arguments A, B are implicit
+Argument scopes are [type_scope type_scope _ _ _]
+ *)
+
+(* What I really want: *)
+Definition prod_rect' A B (P : prod A B -> Type) (u : forall (fst : A) (snd : B), P (pair fst snd))
+           (p : prod A B) : P p
+  := u (fst p) (snd p).
+
+Definition conv : @ prod_rect = @ prod_rect'.
+Proof.
+  unfold prod_rect, prod_rect'.
+  simpl.
+  set (f0 := (fun A B P f (p : prod A B) => match p as p0 return P p0 with
+                              | {| fst := x ; snd := x0 |} => f x x0
+                            end)).
+  replace f0 with (fun A B P f p => f0 A B P f (@ pair A B (fst p) (snd p))) by (clearbody f0; abstract reflexivity).
+  Undo.
+  replace f0 with (fun A B P f p => f0 A B P f (@ pair A B (fst p) (snd p))) by (clearbody f0; reflexivity).
+  subst f0.
+  simpl.
+  reflexivity.
+Defined.
+
+Eval compute in conv. (* = eq_refl
+     : prod_rect = prod_rect' *)
+
+Check eq_refl : @ prod_rect = @ prod_rect'. (* Toplevel input, characters 6-13:
+Error:
+The term "eq_refl" has type "prod_rect = prod_rect"
+while it is expected to have type "prod_rect = prod_rect'"
+(cannot unify "prod_rect" and "prod_rect'"). *)
+
+
+Comment author: @JasonGross
+
+Does anything go wrong if you tell the conversion/normalization machinery that whenever you have a [match] whose only branch is the constructor of a primitive record, you should eta-expand the discriminee (and beta/iota reduce the match)?
+
+
+Comment author: @mattam82
+
+In practice it should be doable but a simpler solution not introducing yet another reduction rule would be to disallow matches on primitive records and define the eliminators as applications of projections.
+
+
+Comment author: @JasonGross
+
+I like the conceptual simplicity of having [match] (or [fix], I guess, in the recursive case) be the one primitive way of doing all destructuring.  It also seems cleaner from a metatheoretical standpoint, where eta and primitive projections don't have to be tied.  But, *shrugs*, you're the one implementing this.
+
+Are you thinking of desugaring explicit [match]es and the destructuring let into usage of projections (for compatibility if nothing else)?  (I have a very strong preference for destructuring let sticking around, because the issig tactics depend on having a way to destructure records without knowing the name of the constructor ahead of time, and without knowing whether or not the record is primitive.)  I guess you'd also make destruct, case, elim, etc. make use of projections?
+
+By the way, what's the reason that you tied eta to primitive projections?
+
+
+Comment author: @mattam82
+
+eta-conversion was tied to primitive projections as it is a case where we have easily recognizable canonical forms. Basically eta is implemented using the conversion rules:
+[c = mkFoo params x -> mkFoo params c.(p) = mkFoo params x -> c.(p) = x]. You're right that we could have eta with non-primitive projections as well using
+[c = mkFoo params x -> mkFoo params (p params c) = mkFoo params x -> p params c = x], although the conversions would be a bit more involved due to the [match x with Foo y => y end] encoding of non-primitive projections.
+
+One reason to separate match and projections is that they are different ways of observing, as shown by Abel et al.'s work on copatterns. If coinductive types become projection-based in the future, they shouldn't come with the [case] construct that makes Coq lose subject reduction right now.
+
+I can easily make the let (x, ... ) notation desugar to projections, and indeed, destruct/case/elim should use projections too.
+
+
+Comment author: @JasonGross
+
+If it makes the code simpler and is easier to write and maintain, then, by all means, please implement it, and don't let my grumbling stop you here.
+
+I think half (or more) of my reason for wanting match to be _the_ primitive thing is that learning Coq with [match] as primitive taught me some things that I don't think I'd've learned otherwise, so it seems like a nice thing to keep.  But, then again, I'm sure I'd've learned some things that I don't know now if I had learned Coq when inductives were impredicativity encoded, and I'm certainly not against native inductives.
+
+Separately, the match-based conversion rule is just "if we have [match x with mkFoo args => k args end] and [k args] doesn't unify with any of the [args], then replace it with [k (proj args x)]", right?
+
+
+Comment author: @mattam82
+
+You get the right induction principle now, and case/destruct/... use projections as well. "let (x, y) := r in t" works as well, adding let-ins for the separate projections.
+
+

@@ -1,0 +1,31 @@
+Comment author: @JasonGross
+
+It should either be a warning that can be disabled (cc'ing Maxime about this), 
+or should only be printed interactively, or only printed when -debug is on, I 
+think.
+
+
+Comment author: @ejgallego
+
+This is due to a use of idtac, which in turns calls:
+
+https://github.com/coq/coq/blob/v8.6/ltac/tacinterp.ml#L1201
+
+calling Nonlogical.print_info which is in turn prints in stdout.
+
+Changing it to debug priority could be a solution but would break existing semantics.
+
+
+Comment author: @ppedrot
+
+This is fishy. That line should not be reached, because it means that the goal has been mangled but the tactic is not going to succeed (correct me if I'm wrong). I believe it is a bug of the nsatz tactic rather than anything else.
+
+
+Comment author: @JasonGross
+
+Oh, it's possible that this is because we're using our own wrapper around 
+nsatz_compute that leaves over nonzero side conditions it can't solve.  Would 
+that do it?
+
+
+This bug is probably invalid because end-users are messing with internal tactics. I am closing it.

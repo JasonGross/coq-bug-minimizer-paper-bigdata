@@ -1,0 +1,45 @@
+Comment author: @JasonGross
+
+I want to see which lemmas were rewritten with, not `<unknown>;<unknown>`.  Is 
+this because [autorewrite] isn't yet in the tactic monad?
+
+
+Comment author: @ppedrot
+
+Do you have a reproducible example so we can test?
+
+
+Comment author: @JasonGross
+
+I have yet to find any example where [Info n autorewrite] can tell me anything more than the number of rewrites that were applied.  I don't recall if it's [Info 1] or 2 or 3 that gives me the unknowns.  Throw some hints in a database and then use autorewrite and you should get this behavior.  But if you show me a case where you get useful info, I'll boggle, and give you a bad case when I'm next at a computer.
+
+
+Comment author: @herbelin
+
+Matthieu started a branch to put rewrite in the monad. As a side effect, Info will become (much) more useful.
+
+Actually, I also started a branch to make Info working, but Matthieu was more courageous and addressed the question of getting rid also of the ad hoc kind of evars called "Meta", which will help to base the code on better invariants.
+
+
+Comment author: @JasonGross
+
+Here is a test-case:
+```coq
+Axiom a b c : Set.
+Axiom H : a = b.
+Axiom H' : b = c.
+Hint Rewrite H H' : foo.
+Axiom G : True -> a = b.
+Axiom G' : True -> b = c.
+Hint Rewrite G G' using constructor : bar.
+Goal a = c.
+  Info 0 autorewrite with foo. (* autorewrite with foo *)
+  Undo. Info 1 autorewrite with foo. (* <unknown>;<unknown> *)
+  Undo. Info 2 autorewrite with foo. (* <unknown>;<unknown> *)
+  Undo. Info 0 autorewrite with bar. (* autorewrite with bar *)
+  Undo. Info 1 autorewrite with bar. (* <unknown>;[>  | constructor ];<unknown>;[>  | constructor ] *)
+  Undo. Info 2 autorewrite with bar. (* <unknown>;[>  | refine ?Goal0;<unknown> ];<unknown>;[>  | refine ?Goal0;<unknown> ] *)
+  Undo. Info 3 autorewrite with bar. (* <unknown>;[>  | refine ?Goal0;<unknown> ];<unknown>;[>  | refine ?Goal0;<unknown> ] *)
+
+```
+This is still an issue, and still quite annoying.

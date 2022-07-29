@@ -1,0 +1,5 @@
+Btw, can `Load` emit something to the glob file as well indicating the path where the file is taken from?
+Bug fixed in #15511 and hyperlink to the file granted in #15513.
+Ah, how are `.glob` files used?  They look somewhat interesting.  Is it a standard format (i.e. from outside of Coq)?  Is it by the browser, emacs or what?  The doc says almost nothing about them.
+As far as I know, the format is unique to Coq.  glob stands for "globalization", as the file records the global location of each construct in Coq.  coqdoc uses it to know where hyperlinks should point to, and I use it in the bug minimizer to locate dependencies, inline files, and transform some identifiers across inlining.
+@jfehrle see #14966 

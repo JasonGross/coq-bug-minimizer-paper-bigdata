@@ -1,0 +1,5 @@
+Comment author: @JasonGross
+
+Neither the table nor the grammar at http://coq.inria.fr/doc/Reference-Manual014.html#hevea_default800 mentions [open_constr].  They should mention [open_constr], at the very least, if not be better documented in general.  (For example, I have yet to figure out how to effectively use foo_list (e.g., constr_list).  I think all the argument types should have at least one example involving them.)
+
+

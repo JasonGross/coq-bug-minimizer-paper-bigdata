@@ -1,0 +1,17 @@
+Comment author: @JasonGross
+
+This would be useful for diagnosing bugs in -quick mode, such as a bug that I will hopefully soon be reporting, on when
+
+The value you are asking for is not available in this process. If you really
+need this, pass the "-async-proofs off" option to CoqIDE to disable
+asynchronous script
+processing.
+
+is given by coqc -quick on a module [Include].
+
+
+Comment author: @gares
+
+will push soon
+
+

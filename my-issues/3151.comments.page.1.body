@@ -1,0 +1,27 @@
+Comment author: @JasonGross
+
+On line 339, replace
+  MAKEVERSION=`$MAKE -v | head -1 | cut -d" " -f3`
+with
+  MAKEVERSION=`$MAKE -v | tr '\r' '\n' | head -1 | cut -d" " -f3`
+
+(or with 
+  MAKEVERSION=`"$MAKE" -v | tr '\r' '\n' | head -1 | cut -d" " -f3`
+if you're also fixing the quoting bug at the same time)
+
+
+Comment author: @JasonGross
+
+To match with the rest of the stripping trailing \r, it should probably be tr -d '\r' (and perhaps after the head -1), rather than tr '\r' '\n'
+
+
+Comment author: @JasonGross
+
+Pull request to fix this bug at https://github.com/coq/coq/pull/3
+
+
+Comment author: @letouzey
+
+Thanks. Applied to trunk (commit 71bd17b). I'll apply it to 8.4 shortly...
+
+

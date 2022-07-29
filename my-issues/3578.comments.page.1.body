@@ -1,0 +1,42 @@
+Comment author: @JasonGross
+
+Using coq trunk 8287733d5df1bd673a38e92f23c47e95d1bb7a91 on Windows 8,
+
+$ cat foo.v
+Ltac loop := loop.
+Goal True.
+Proof using.
+  Timeout 5 loop.
+Qed.
+
+afsd
+$ time ./bin/coqc foo.v -no-native-compiler
+
+real    0m0.027s
+user    0m0.000s
+sys     0m0.015s
+
+$ File ".\foo.v", line 4, characters 2-17:
+Timeout!
+
+
+
+
+This is a severe problem, because it breaks the makefile interaction; the makefile will believe that a target is finished and continue on to subsequent targets before the .vo files are actually written.
+
+
+Comment author: @ppedrot
+
+What is your exact installation? Cygwin or the native Windows compiler?
+
+
+Comment author: @JasonGross
+
+This is using cygwin.  I can't recall if it's with the Coq SDK or with the cygwin-bundled version of OCaml.  If you can't reproduce it, I'll see if it still happens; if I recall correctly, this was a problem at the specified commit, but may since have been fixed.
+
+
+Comment author: @gares
+
+The bug is not there anymore.
+
+

@@ -1,0 +1,29 @@
+Comment author: @JasonGross
+
+This is fast:
+```
+  Goal True.
+    Time do 150 (let x := fresh in evar (x : Prop)). (* 0.05 s *)
+```
+but this is slow, and it should not be:
+```
+  Require Import Coq.ZArith.ZArith.
+  Existing Class True.
+  Existing  Instance I.
+  Definition big := (Z.div_eucl, Z.div_eucl, Z.div_eucl, Z.div_eucl, 
+Z.div_eucl, Z.div_eucl, Z.div_eucl).
+  Notation hide := (_, _).
+  Goal exists P, P.
+    eexists.
+    pose big as b1.
+    pose big as b2.
+    vm_compute in b1, b2.
+    Time do 150 (let x := fresh in evar (x : Prop)). (* 4.188 s *)
+```
+
+Comment author: @ppedrot
+
+See https://github.com/coq/coq/pull/893.
+
+
+Fixed by #893.

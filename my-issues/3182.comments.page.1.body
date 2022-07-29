@@ -1,0 +1,87 @@
+Comment author: @JasonGross
+
+I would like this
+
+Goal { f : nat -> nat | f O = O }.
+  esplit.
+  reflexivity.
+
+to heuristically infer that [f] should be [fun _ => 1].  I think this should be a straightforward heuristic to program.
+
+
+Comment author: @JasonGross
+
+To be explicit, the algorithm should be to unify the evar with (fun .... => <new evar here>), and then unify the new evar with the other term.
+
+So for unifying [?1 O] and [O], it would first unify [?1] with [(fun x => ?2)] where ?2 inherits the environment of ?1, together with binders for all of the variables passed to ?1; and then try to unify [?2] with [O].
+
+
+Comment author: @gares
+
+The unification algorithm of Coq, well the two unification algorithm of Coq, could be clearly smarter.
+But higher order unification does not admit most general unifiers.  What should Coq infer in your case? (fun x => x) or (fun _ => 0)? 
+
+I can tell you what other systems like Matita or HOL light do, but it is just an arbitrary choice.  An the one of Coq, failing, is a possible one (not my favorite but certainly reasonable).
+
+Cheers
+
+
+Comment author: @JasonGross
+
+I was thinking that it should be [fun _ => 0].  Alternatively, perhaps it should try one, and if that fails, backtrack and try the other one.
+
+
+Comment author: @gares
+
+There are infinitely many unifiers in the general case.
+Google for "higher order unification Huet" and you'll find the whole story.  
+
+One could enumerate all "reasonable" unifiers in a lazy stream, and backtrack if the wrong choice was made.  This is what Isabelle does.  But Isabelle has no delta and iota rules, i.e. no real computation to be taken into account when comparing terms.
+
+In Coq testing all combinations of possible unifiers would be impractical.
+Comparing *closed* term is already complex, and no good-enough solution is known.  According to recent bug activity you have hit that problem yourself, when Qed/Defined hangs, it is usually a term comparison taking too long.
+If you add to that complexity some extra backtracking... well, ^C
+
+Ciao
+
+
+Comment author: @JasonGross
+
+Here is a systematic algorithm that would take care of many cases that give me trouble with setoid_rewriting:
+
+Tactic Notation "not" tactic(tac) :=
+  first [ tac; fail 1
+        | idtac ].
+
+Ltac unify_head_evar x y :=
+  match y with
+    | ?g ?y'
+      => is_evar g; (not has_evar x);
+         match eval pattern y' in x with
+           | ?f ?x' => unify_head_evar f g
+         end
+    | _
+      => has_evar x; (not has_evar y);
+         first [ unify_head_evar y x
+               | fail 1 ]
+    | _ => unify x y
+  end.
+
+Goal { f : nat -> nat | f O = 1 }.
+  esplit.
+  lazymatch goal with |- ?x = ?y => unify_head_evar x y end.
+  (* fun n => S n *)
+
+
+Note that this unification algorithm should _only_ trigger with open terms/evars (and only when there is an evar in one of the head positions); so I expect it to add little to no overhead to Qed/Defined, where there should be no evars left.  Furthermore, I don't care about it handling cases where [pattern] fails (at least not yet), that is, I only care about "obvious" cases.  For example, the current case I'm hitting is that if [x] is a variable/hypothesis, then it should be possible for [reflexivity] to solve [?n x = x].
+
+But it seems that this is already possible in trunk, and simply not in 8.4. 
+
+Alternatively, I would like a way to declare unification hints, so that I can say "for this next type-class resolution, try this whenever standard unification fails".
+
+
+Comment author: @pirbo
+
+Trunk unification algorithms will try to go further in pattern unification/eta expansion indeed but v8.4 will never, Sorry.
+
+

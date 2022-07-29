@@ -1,0 +1,10 @@
+Comment author: @JasonGross
+
+Currently, at http://coq.inria.fr/refman/Reference-Manual017.html, there is a line that says "You can get a description of the arguments by the command \char045 coq_makefile --help."
+
+
+Comment author: @herbelin
+
+Seems ok now.
+
+

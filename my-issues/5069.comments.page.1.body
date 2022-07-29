@@ -1,0 +1,17 @@
+Comment author: @JasonGross
+
+Section symbolic.
+  Context (SConstT : Type).
+
+  Inductive symbolic_expr : Type :=
+  | SConst : SConstT -> symbolic_expr.
+  Scheme Equality for symbolic_expr. (* Error: Unexpected error during scheme 
+creation: Anomaly: Uncaught exception Type_errors.TypeError(_, _).
+                                                Please report. *)
+
+
+Comment author: @ppedrot
+
+Fixed by 527d352.
+
+

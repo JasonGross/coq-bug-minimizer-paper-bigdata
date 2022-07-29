@@ -1,0 +1,5 @@
+This is an OCaml limitation I'm afraid; serializers do not use boxes as to avoid this problem. Usual workaround is to set `max_boxes` to `max_int`.
+
+
+We could have it so `Unset` sets to max_int instead of default.
+You can also hook to the `Pp.t` type and render it yourself, as this limitation is specific to the `Format` backend. 

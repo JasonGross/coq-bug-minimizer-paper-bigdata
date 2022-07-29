@@ -1,0 +1,23 @@
+Comment author: @JasonGross
+
+Delimit Scope foo_scope with foo.
+Open Scope foo_scope.
+Notation "a -> y" := (a + y) (only printing, at level 99, right associativity, 
+y at level 200, format "a   ->    y") : foo_scope.
+Check (1 + 2). (* 1 -> 2 *)
+
+
+I expect to see more spaces.  Similarly, if I do 
+
+Notation "a -> y" := (a + y) (only printing, at level 99, right associativity, 
+y at level 200, format "a -> y") : foo_scope.
+
+I expect to see no spaces.
+
+
+Comment author: @herbelin
+
+Looks like there is a more general problem in silently doing nothing when giving modifiers for existing notations...
+
+
+This is fixed in 8.12, presumably by #10832.

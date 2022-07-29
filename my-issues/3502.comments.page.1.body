@@ -1,0 +1,10 @@
+Comment author: @JasonGross
+
+For example, the documentation should probably explain why the behavior is the way it is in https://coq.inria.fr/bugs/show_bug.cgi?id=3498.
+
+
+Comment author: @RalfJung
+
+Just adding a paragraph with <https://coq.inria.fr/bugs/show_bug.cgi?id=3530#c1> would already be immensely helpful.
+
+

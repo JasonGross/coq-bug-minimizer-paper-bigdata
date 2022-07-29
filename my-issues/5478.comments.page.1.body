@@ -1,0 +1,73 @@
+Comment author: @JasonGross
+
+(* -*- coq-prog-args: ("-emacs" "-time") -*- *)
+Module Type SynUnifier.
+End SynUnifier.
+Module Type SepHeap.
+End SepHeap.
+Module Make (U : SynUnifier) (SH : SepHeap). (* Error: U already exists *)
+End Make.
+
+This is a bogus error message.  I'd like to see this fixed in Coq v8.4, because 
+some of the files in Bedrock are 2x slower in 8.5 than in 8.4, and I can't 
+easily figure out where the bottlenecks are and what the issues are if I can't 
+get a log of how long each statement takes.
+
+
+Comment author: @JasonGross
+
+Here is code that results in "Anomaly: Uncaught exception Not_found. Please 
+report."
+
+Module Type SepExpr.
+  Record predicate := PSig { }.
+End SepExpr.
+
+Module SepExprFacts (SE : SepExpr).
+
+
+Comment author: @ppedrot
+
+We could probably backport 79b6291, but your usecase is very specific. I think we could rather try to wrap the printer to catch all errors and display a dummy command if so.
+
+I'm not sure we still push to 8.4 though. Would you be happy with one debug branch that does the job?
+
+
+Comment author: @JasonGross
+
+Sure, a debug branch would work (though it's a bit unfortunate that I'll be needing one debug branch for ltac batch debug, one for cbv debug, and one for this... Maybe if you give me a debug branch, I'll try to merge these three things)
+
+
+Comment author: @ppedrot
+
+I can push a trivial patch to 8.4 if you really need it.
+
+
+Comment author: @JasonGross
+
+I would appreciate that.  I'm still working on porting bedrock, and the trivial patch will be very useful for tracking down timing differences.  (I'd also love to see Hugo's [Set Ltac Batch Debug] make it into v8.4, v8.5, v8.6, and trunk.)
+
+
+Comment author: @herbelin
+
+(In reply to Jason Gross from comment [BZ#5](https://github.com/coq/coq/issues?q=is%3Aissue%20%22Original%20bug%20ID%3A%20BZ%235%22))
+> I would appreciate that.  I'm still working on porting bedrock, and the
+> trivial patch will be very useful for tracking down timing differences. 
+> (I'd also love to see Hugo's [Set Ltac Batch Debug] make it into v8.4, v8.5,
+> v8.6, and trunk.)
+
+It happened that I got to need [Set Ltac Batch Debug] for my own debugging purposes too. So, that seems to be a good sign that it should be committed for standard use.
+
+I'll try to do that one of these days (and if you have comments in the meantime on the design of the feature, don't hesitate to tell).
+
+
+Comment author: @ppedrot
+
+Fixed by e4b9f9a03.
+
+
+Comment author: @JasonGross
+
+Thanks!
+
+

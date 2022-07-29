@@ -1,0 +1,40 @@
+Comment author: @JasonGross
+
+Arguments id {_}. (* success *)
+Arguments id {_} : assert. (* success *)
+
+This is d6a18782919367006ab1cee0a5577ed9b3028682
+
+
+Comment author: @maximedenes
+
+Fixed in 8.6 branch.
+
+
+Comment author: @JasonGross
+
+I see that [: assert] is fixed, but in 8.5, the following failed:
+
+Axiom f : forall a b c d e : nat, nat.
+Arguments f {_}.
+
+
+I think failing is correct, when you give at least one argument, but not all of 
+them.
+
+
+Comment author: @maximedenes
+
+This change is documented. The exception for accepting "/" with no argument was a bug, which turned out to be widely used. So I cleaned the code and made it accept any prefix of the argument list, unless "assert" is specified. If you want it to fail when not providing all the arguments, use the assert flag.
+
+
+Comment author: @JasonGross
+
+Ah, okay.  Oops.  And thanks!
+
+
+Comment author: @JasonGross
+
+Ugh, [: assert] is invalid in 8.4.  Would it be possible to get an option restoring the 8.5 behavior (treat it as [: assert] when there is at least one argument)?  Then I could set it without breaking 8.4 compatibility, and still have 8.6 make sure I'm not forgetting arguments.
+
+

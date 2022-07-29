@@ -1,0 +1,112 @@
+Comment author: @JasonGross
+
+Universe inconsistency errors involve cycles in the graph Coq keeps of consistency checks on universe variables.  The current error message, even with [Set Printing Universes], is something like "(cannot enforce Category.2 <= Top.3)", and is not very helpful.  It would be nice to also see the line of code where each of the universe variables was introduced (so that I know what "Category.2" and "Top.3" are) and also see the first line of code where these two variables became related.
+
+Alternatively (perhaps more usefully), it would be nice to be able to give [Print Universes] some extra arguments to tell it to include the line number & file name of every edge it prints out, and to restrict its output to only inequalities involving certain variables.  So, for example, I might want
+```
+[Print Universes "Category.2" "Top.3".]
+to give me something like
+Category.2 introduced on line 8 of Category.v:
+  Morphism : Object -> Object -> Type (* Category.2 *);
+Top.3 introduced on line 10 of (the current file):
+  SMorphism : SObject -> SObject -> Type (* Top.3 *);
+Top.3 < Category.2  (introduced on line a of file b)
+      < Top.31  (introduced on line c of file d)
+      <= Category.3  (introduced on line e of file f)
+      <= Coq.Init.Logic.17  (introduced on line g of file h)
+```
+Comment author: @jwiegley
+
++1.  I was just bitten by this today, when a module hierarchy contained a universe inconsistency somewhere, but I had no clue where, except to know which modules might be involved from the Set Printing Universes option.
+
+If there were a way to have Coq print each completed definition as it processes a file (as Common Lisp does, for example), this would provide a workaround to this bug for the time being.
+
+
+Comment author: @jwiegley
+
+Scratch the second part, these are already completed definitions involved.  I second Jason's approach.
+
+
+I tried making something at https://github.com/SkySkimmer/coq/tree/auto-name-univs to give names to universes of monomorphic constants automatically based on #890, but it feels too hacky to use.
+With it,
+```coq
+Require Bool.
+Print Universes.
+```
+prints
+https://gist.github.com/SkySkimmer/e0b9e1b11ad0856ee14a946053825ee9
+sample
+```
+identity_rect_r.0 <= Coq.Init.Logic_Type.2
+                  <= identity.0
+identity_rec_r.0 <= Coq.Init.Logic_Type.2
+                 <= identity.0
+identity_ind_r.0 <= Coq.Init.Logic_Type.2
+                 <= identity.0
+Coq.Init.Logic_Type.2 <= identity.0
+CompSpec2Type.0 <= CompSpecT.0
+                <= CompSpec.0
+app.0 <= list.0
+length.0 <= list.0
+prod_curry.1 <= prod.1
+prod_curry.0 <= prod.0
+prod_uncurry.1 <= prod.1
+prod_uncurry.0 <= prod.0
+injective_projections.1 <= Coq.Init.Datatypes.28
+                        <= prod.1
+                        <= eq_ind_r.0
+                        <= eq.0
+injective_projections.0 <= Coq.Init.Datatypes.27
+                        <= prod.0
+                        <= eq_ind_r.0
+                        <= eq.0
+surjective_pairing.1 <= Coq.Init.Datatypes.28
+                     <= prod.1
+                     <= eq.0
+surjective_pairing.0 <= Coq.Init.Datatypes.27
+                     <= prod.0
+                     <= eq.0
+Coq.Init.Datatypes.28 <= prod.1
+Coq.Init.Datatypes.27 <= prod.0
+option_map.1 <= option.0
+option_map.0 <= option.0
+Coq.Init.Specif.426 <= option.0
+rew_sig2.1 <= Coq.Init.Specif.21
+           <= sig_of_sig2.0
+           <= Coq.Init.Specif.16
+           <= sig2.0
+           <= Coq.Init.Logic.9
+           <= eq.0
+rew_sig2.0 <= eq.0
+eq_sig2_nondep.0 <= eq_sig2.0
+                 <= Coq.Init.Specif.21
+                 <= sig_of_sig2.0
+                 <= Coq.Init.Specif.16
+                 <= sig2.0
+                 <= rew_const.0
+                 <= eq.0
+eq_sig2_hprop_iff.0 <= eq_sig2_hprop.0
+                    <= sig_of_sig2.0
+                    <= sig2.0
+                    <= sig.0
+                    <= Coq.Init.Logic.10
+                    <= eq.0
+eq_sig2_ind.0 <= eq_sig2_rec.0
+              <= sig2.0
+              <= eq.0
+eq_sig2_rec.0 <= eq_sig2_rect.0
+              <= sig2.0
+              <= eq.0
+eq_sig2_rect.0 <= eq_sig2.0
+               <= proj3_sig_eq.0
+               <= proj2_sig_of_sig2_eq.0
+               <= proj1_sig_of_sig2_eq.0
+               <= Coq.Init.Specif.21
+```
+Why do you say "too hacky"? To me it looks wonderful. At worst, maybe just the `<=` could be aligned.
+I mean the implementation. Anything which does `Id.of_string_soft` is iffy.
+If the generated names were of the form `prod.u0`, `prod.u1`, ... or otherwise maybe `prod.u`, `prod.v`, ... could you then avoid `Id.of_string_soft`?
+I tried something like that but it ended up erroring with "universe already exists" on the Qed for Init/Logic eq_ex2_uncurried. I don't quite understand why.
+>I tried making something at https://github.com/SkySkimmer/coq/tree/auto-name-univs to give names to universes of monomorphic constants automatically based on #890, but it feels too hacky to use.
+
+See #8760

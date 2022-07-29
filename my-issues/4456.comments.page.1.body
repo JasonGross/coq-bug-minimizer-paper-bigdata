@@ -1,0 +1,27 @@
+Comment author: @JasonGross
+
+Created attachment 638
+buggy file
+
+This is in Coq 8.5beta3.  Not sure if it's the same as [BZ#4453](https://github.com/coq/coq/issues?q=is%3Aissue%20%22Original%20bug%20ID%3A%20BZ%234453%22), and I don't yet have a version of 8.5.dev around to test.
+
+> Attached file: [bug_bool_rec_min_anomaly_univ_08.v](https://coq.inria.fr/bugfiles/attachment.cgi?id=638) (application/octet-stream, 24890 bytes)
+> Description:   buggy file
+
+
+Comment author: @JasonGross
+
+Created attachment 644
+buggy file
+
+On 8.5.dev (b2eaecf0e748e3c286e1ef337f72cee6d3475162), this still fails with an anomly.  Here's a slightly reduced test-case.  Note that removing the [abstract] on the last line in the proof makes the anomaly go away.
+
+> Attached file: [bug_bool_rec_min_anomaly_univ_08 (1).v](https://coq.inria.fr/bugfiles/attachment.cgi?id=644) (application/octet-stream, 24216 bytes)
+> Description:   buggy file
+
+
+Comment author: @mattam82
+
+Thanks for the reduced test-case. I spotted the error in handle_side_effects. The last tactic uses a rewrite <- Hlen which introduces a new constant by side-effect for dependent rewriting, whose universe was not registered properly when typechecking the whole proof. Fix on the way.
+
+

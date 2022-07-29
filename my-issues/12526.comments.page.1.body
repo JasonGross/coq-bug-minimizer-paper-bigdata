@@ -1,0 +1,25 @@
+Let me refine my post. In Matita the type is a bit more sophisticated:
+
+https://github.com/LPCIC/matita/blob/794ed25e6e608b2136ce7fa2963bca4115c7e175/matita/components/ng_kernel/nCic.ml#L28-L35
+
+```ocaml
+type lc_kind = Irl of int | Ctx of term list
+
+and local_context = int * lc_kind             (* shift (0 -> no shift), 
+                                                 subst (Irl n means id of
+						 length n) *) 
+and term =
+ | Rel      of int                            (* DeBruijn index, 1 based    *)
+ | Meta     of int * local_context
+...
+```
+You have 2 integers, one for the length and one for the lift, so that compact metas stay compact when you lift them. For some reasons we were calling "local context" what is usually called "local substitution", and `Meta` means `Evar` in Coq's slang
+That sounds like the identity of length `n` is `Rel 1; ... Rel n`, but in Coq it's some arbitrary `Var` list depending on the evar.
+We can do a similar thing in Coq, I am envisioning a type of evar substitutions defined as
+```ocaml
+type subst = constr list * int
+```
+where the integer signals the length of the prefix of the substitution that is canonically generated from the evar context.
+
+But this doesn't change the fact this requires a lot of changes to the API and that you need to preserve a quotient.
+@SkySkimmer if we *forbid* clearing of section hyps, then their names are fixed and an integer can represent a prefix of that list

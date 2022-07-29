@@ -1,0 +1,116 @@
+Comment author: @JasonGross
+
+Fixpoint exp (n : nat) (T : Set)
+  := match n with
+       | 0 => T
+       | S n' => exp n' (T * T)
+     end.
+Definition big := Eval compute in exp 19 nat.
+Module NonPrim.
+  Unset Primitive Projections.
+  Record sigT {A} (P : A -> Type) := existT { projT1 : A ; projT2 : P projT1 }.
+  Definition x : sigT (fun x => x).
+  Proof.
+    exists big; admit.
+  Defined.
+  Goal True.
+    pose ((fun y => y = y) (projT1 _ x)) as y.
+    Time cbv beta in y. (* 0s *)
+    admit.
+  Defined.
+End NonPrim.
+Module Prim.
+  Set Primitive Projections.
+  Record sigT {A} (P : A -> Type) := existT { projT1 : A ; projT2 : P projT1 }.
+  Definition x : sigT (fun x => x).
+  Proof.
+    exists big; admit.
+  Defined.
+  Goal True.
+    pose ((fun y => y = y) (projT1 _ x)) as y.
+    Timeout 1 cbv beta in y. (* takes around 2s.  Grows with the value passed to [exp] above *)
+    admit.
+  Defined.
+End Prim.
+
+
+Comment author: @mattam82
+
+It's not exactly cbv beta, it's the fact that results of cbv etc... are checked using kernel conversion (with full reduction/unfolding) which currently uses a strategy where constants are always unfolded before projections in projection vs constant problems. That's a quite deep problem, and it seems to become even worse with eta-conversion. For example, if I change the strategy to do more "first-order" unification of p.c1 and p.c2, starting with the comparison of c1 and c2 instead of reducing one or the other projection application (which in this example results in x appearing at the head and being expanded) then we get a different explosion in Comma/Dual.v. Even if we avoided the check at each cbv/simpl etc, no doubt we would still get the same problem at Qed time. I'll write up what the current strategy exactly is w.r.t. projections and eta so we can see if we could modify it/parameterize it. Of course, reduction is confluent so in the end it is just the time and space behavior of conversion that can change.
+
+
+Comment author: @JasonGross
+
+Why aren't beta-redexes checked before unfolding?  (How does doing first-order unification help here?)
+
+Also, both Comma/Dual.v and hit/V.v were reasonably fast with trunk from a month ago (and now V.v takes > 20 hours if I turn on primitive projections).
+
+I'll bisect the following script with https://github.com/JasonGross/coq-bisect to see if I can figure out what changed things:
+
+(* -*- coq-prog-args: ("-emacs" "-nois" "-boot") -*- *)
+Axiom admit : forall {T}, T.
+Inductive nat := O | S (_ : nat).
+Record prod A B := pair { fst : A ; snd : B }.
+Fixpoint exp (n : nat) (T : Set) := match n with O => T | S n' => exp n' (prod T T) end.
+Reserved Notation "x = y" (at level 70, no associativity).
+Inductive eq {A} (x : A) : forall _ : A, Prop := eq_refl : x = x where "x = y" := (@ eq _ x y).
+Definition plus_nine n := S (S (S (S (S (S (S (S (S n)))))))).
+Definition big := Eval compute in exp (plus_nine (plus_nine (S O))) nat.
+Module NonPrim.
+  Unset Primitive Projections.
+  Record sigT {A} (P : forall _ : A, Type) := existT { projT1 : A ; projT2 : P projT1 }.
+  Definition x : sigT (fun x => x) := existT _ _ big admit.
+  Goal Set.
+    pose ((fun y => y = y) (projT1 _ x)) as y.
+    Time cbv beta in y. (* 0s *)
+    exact admit.
+  Defined.
+End NonPrim.
+Module Prim.
+  Set Primitive Projections.
+  Record sigT {A} (P : forall _ : A, Type) := existT { projT1 : A ; projT2 : P projT1 }.
+  Definition x : sigT (fun x => x) := existT _ _ big admit.
+  Goal Set.
+    pose ((fun y => y = y) (projT1 _ x)) as y.
+    Timeout 1 cbv beta in y. (* takes around 2s.  Grows with the value passed to [exp] above *)
+    exact admit.
+  Defined.
+End Prim.
+
+
+Comment author: @JasonGross
+
+git bisect says:
+
+1556c6b8f77d16814ff1c53fb14fc9b06574ec4b is the first bad commit
+commit 1556c6b8f77d16814ff1c53fb14fc9b06574ec4b
+Author: Matthieu Sozeau <matthieu.sozeau@ inria.fr>
+Date:   Fri Oct 24 17:35:05 2014 +0200
+
+    Remove an ununsed pattern and commented code in the kernel.
+    Reestablish completeness in conversion when Opaque primitive
+    projections are used.
+
+:040000 040000 47a8ece84bcde7124180137c527451f7db0f4658 ab7e9a5fa57c5613f6fe0213b2402e2da0a82234 M      kernel
+
+
+Comment author: @JasonGross
+
+I'm confused by 1556c6b8f77d16814ff1c53fb14fc9b06574ec4b being the cause, and have a few questions:
+(1) The code you added should never be triggered in this case, right, because first both terms are put in whnf, at which point they should both be syntactically equal, and a constant should never be compared against a projection
+
+(2) What is FFlex?
+
+(3) Is there a way to get a debug trace on the unification algorithm when [cbv beta] is called?
+
+
+Comment author: @JasonGross
+
+I've checked manually, and it's definitely 1556c6b8f77d16814ff1c53fb14fc9b06574ec4b.
+
+
+Comment author: @mattam82
+
+This particular behavior is fixed, avoiding unfolding of constants as much as possible, still a documentation of the reduction rules with their priority is in order.
+
+

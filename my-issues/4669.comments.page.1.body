@@ -1,0 +1,27 @@
+Comment author: @JasonGross
+
+echo "Goal True. do 500 (evar (x : Set); clear x)." | coqtop -emacs
+
+Coq should do line-wrapping of the dependent evars line.  (To do otherwise causes performance problems in PG when there are a few dozen thousand evars.)
+
+
+Comment author: @ejgallego
+
+I'd bet this could be some missing "@ [@ ]" format wrapping as in:
+https://github.com/ejgallego/coq/commit/93eb110509ccbd4b41c81029591fb12e1801660d
+
+[Note that the above patch won't solve this issue thou]
+
+
+Comment author: @ejgallego
+
+I'd vote for marking this WONTFIX. New protocols for Proof General should use their own efficient query method, using line-wrapping is too fragile to work well.
+
+
+Comment author: @psteckler
+
+Just tried this example in PG/xml.
+
+The evar printout does not show up in the XML (PG is not querying for evars, though it could). There are 500 shelved subgoals that do show up.
+
+

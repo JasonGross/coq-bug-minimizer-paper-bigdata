@@ -1,0 +1,3 @@
+Peak memory is just below current workers limits so you could try to enable them in a PR and see what happens.
+
+If that's not enough, we would need to setup a worker with enough memory and use gitlab CI tags so the memory-hungry jobs are only ran in that special runner.

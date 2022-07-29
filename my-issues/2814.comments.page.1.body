@@ -1,0 +1,42 @@
+Comment author: @JasonGross
+
+The code
+
+Require Import Program.
+
+Goal forall (x : Type) (f g : Type -> Type) (H : f x ~= g x), False.
+  intros.
+  induction H.
+
+gives 
+
+Toplevel input, characters 0-11:
+Anomaly: Uncaught exception Option.IsNone. Please report.
+
+on [induction H], using Coq 8.4beta2
+
+
+Comment author: @pirbo
+
+induction asks for an induction lemma in a very constrained form.
+JMeq canonical induction principle has type
+forall A (a: A) (P: forall X (x: X), Type) (H: P A a) B (b: B), P B b.
+       -------- -------------------------- ---------- --------
+        params          predicate            branch     args
+
+but JMeq_ind is filled by hand with a term of type :
+forall A (a: A) (P: forall X (x: X), Type) (H: P A a) (b: A), P B b.
+                                                      ------
+                                                  a missing arg !!!!
+
+This means that
+Goal forall (x : Type) (f g : Type -> Type) (H : f x ~= g x), False.
+  intros.
+  induction H using JMeq_ind.
+
+would make checks and fails gently but because we've called it JMeq_ind, 
+induction H. uses it without sanity check and fails badly.
+
+This is the case in v8.2 v8.3 and v8.4, An hand_made JMeq_ind is older than v8 syntax, I did not try but I'm not sure it has ever worked.
+
+

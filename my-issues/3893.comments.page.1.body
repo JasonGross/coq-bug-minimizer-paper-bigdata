@@ -1,0 +1,18 @@
+Comment author: @JasonGross
+
+Ltac barL := let x := match goal with |- ?G => constr:G end in pose x.
+Tactic Notation "barN" := let x := match goal with |- ?G => constr:G end in pose x.
+Goal True.
+  let tac := barL in exfalso; tac. (* P := True *)
+  match eval unfold P in P with True => idtac end.
+  clear; assert True.
+  let tac := barN in exfalso; tac. (* P := False *)
+  match eval unfold P in P with False => idtac end.
+
+
+The documentation should make this distinction clear.  It currently says, about tactic notations, "A tactic notation Tactic Notation tactic_level [production_item  …  production_item] := tactic extends the parser and pretty-printer of tactics with a new rule made of the list of production items. It then evaluates into the tactic expression tactic."  About Ltac, it says: """Basically, Ltac toplevel definitions are made as follows:
+
+Ltac ident ident1 ... identn := expr
+This defines a new Ltac function that can be used in any tactic script or new Ltac toplevel definition."""
+
+

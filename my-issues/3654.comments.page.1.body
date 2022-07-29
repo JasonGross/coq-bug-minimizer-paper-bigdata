@@ -1,0 +1,69 @@
+Comment author: @JasonGross
+
+Ltac foo1 := simpl in *.
+Tactic Notation "simpl" "rewrite" := idtac.
+Ltac foo2 := simpl in *.
+Tactic Notation "simpl" "erewrite" := idtac.
+Ltac foo3 := simpl in *. (* Toplevel input, characters 34-36:
+Syntax error: 'erewrite' or 'rewrite' expected after 'simpl' (in [tactic:simple_tactic]). *)
+
+
+Comment author: @herbelin
+
+We are here dependent of the underlying parsing tool (camlp4/5). Maybe some more robust way to make syntax extensions will be possible but currently, doing syntax extensions remains somehow adventurous.
+
+As far as I'm concerned, I can't propose a solution for this kind of problem.
+
+
+Comment author: @JasonGross
+
+Is it possible to make all of the variants of [simpl] expressible via [Tactic Notation], so that [simpl in] can be defined by [Tactic Notation]?  For example, this works:
+
+Tactic Notation "simpl" "in" "*" := simpl in *.
+Ltac foo1 := simpl in *.
+Tactic Notation "simpl" "rewrite" := idtac.
+Ltac foo2 := simpl in *.
+Tactic Notation "simpl" "erewrite" := idtac.
+Ltac foo3 := simpl in *.
+
+But since I can't pass things like hyp_list to Ltac, I can't, even in principle, do more than, e.g.,
+
+Ltac simpl_star := simpl in *.
+Tactic Notation "simpl" "in" ne_hyp_list(hyps) := simpl in hyps.
+Tactic Notation "simpl" "in" "*" := simpl_star.
+Ltac foo1 := simpl in *.
+Tactic Notation "simpl" "rewrite" := idtac.
+Ltac foo2 := simpl in *.
+Tactic Notation "simpl" "erewrite" := idtac.
+Ltac foo3 := simpl in *.
+
+because, e.g., I can declare either of these two, but not both:
+
+Tactic Notation "simpl" "in" ne_hyp_list(hyps) "|-" := simpl in hyps |- .
+Tactic Notation "simpl" "in" ne_hyp_list(hyps) := simpl in hyps.
+
+But these don't work anyway, because [simpl] doesn't accept hyp_list, as shown by 
+
+Tactic Notation "simpl" "in" ne_hyp_list(hyps) := simpl in hyps.
+Goal True -> True -> True.
+  intros H0 H1.
+  simpl in H0 H1. (* Toplevel input, characters 0-14:
+Error: Ltac variable hyps is bound to a value of type genarg list which
+cannot be coerced to a variable. *)
+
+
+Comment author: @herbelin
+
+I just added support for list of hypotheses in Tactic Notation.
+
+
+Comment author: @ppedrot
+
+I am not really in favour of adding more pile of hacks to the tactic notation mechanism, which is flawed to the point of non-return... Optimally, we should not be using the weak CAMLP4/5 system but a parser accepting ambiguous grammars, like dypgen. But that's a long term goal!
+
+
+Comment author: @silene
+
+Fixed by commit 668c2ed. Thanks for the report.
+
+

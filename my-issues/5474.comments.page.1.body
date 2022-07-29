@@ -1,0 +1,27 @@
+Comment author: @JasonGross
+
+This is code that works (correctly, IMO) in 8.5pl3, but fails in 8.6:
+```coq
+
+Set Universe Polymorphism.
+Record sigT {A} (P : A -> Type) := existT { projT1 : A ; projT2 : P projT1 }.
+Notation "{ x : A & P }" := (sigT (A:=A) (fun x => P)) : type_scope.
+
+Monomorphic Universe su sp u p.
+Inductive A : Type@{u} := a.
+Inductive P (x : A) : Type@{p} := p.
+
+Set Printing Universes.
+Set Printing All.
+
+Definition foo@{} : { A : _ & A }.
+ (* Error in 8.6: Error: Universes {Top.16 
+Top.15} are unbound. *)
+Proof. refine (@existT@{su u} Type@{u} (fun A => A) A a). Defined.
+```
+
+
+@JasonGross 
+This was introduced in 25ffe7f97a907d3508848c81c3e8dcc89559aadd for #4527.
+See especially https://github.com/coq/coq/issues/4527#issuecomment-337539365:
+>That one's not easy, the additional universe is in the type and gets minimized at the end of the proof. Due to the vi (and vi2vo) compilation (which compiles the type separately), I don't think I can do anything else than throw an error about the unbound universe at the time the type of the Lemma/Definition is type-checked, after minimizing the universes. This might break a lot of other code for which minimization this early becomes too strict. At the same time this could allow parallel processing of universe polymorphic proofs.

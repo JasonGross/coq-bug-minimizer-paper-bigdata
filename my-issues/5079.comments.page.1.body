@@ -1,0 +1,23 @@
+Comment author: @JasonGross
+
+Require Coq.ZArith.BinInt.
+Ltac sleep := let sleep := (eval vm_compute in Coq.ZArith.BinInt.Z.div_eucl) in idtac.
+Ltac foo := sleep; sleep.
+Ltac bar := sleep; sleep.
+Goal True.
+  Set Ltac Profiling.
+  foo.
+  Show Ltac Profile.
+  Reset Ltac Profile.
+  Show Ltac Profile. (* should be empty; it's not *)
+  bar.
+  Show Ltac Profile. (* should show only [bar]; it also shows [foo] *)
+  constructor.
+Qed.
+
+
+Comment author: @gares
+
+Commit coming shortly
+
+

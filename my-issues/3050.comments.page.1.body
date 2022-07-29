@@ -1,0 +1,25 @@
+Comment author: @JasonGross
+
+It seems counter-intuitive to me that the [Check] below works, and interpret [*] in [type_scope], but the tactic fails, because it interprets [*] in [nat_scope].
+
+Set Printing All.
+Check (_ : _ * _).
+Goal True * True -> True.
+intro.
+match goal with
+  | [ H : _ * _ |- _ ] => destruct H
+end.
+
+I know that Ltac is, in general, untyped, and thus that most notations need to be explicitly scoped.  It would be nice, however, to have it infer [type_scope] where it can.
+
+
+Note that the following does not work, so it seems like inferring [: _ * _] to be in [nat_scope] is never useful.
+
+Coercion foo (x : nat) : Type := True.
+Goal (1 * 1)%nat -> True.
+intro.
+match goal with
+  | [ H : (_ * _)%nat |- _ ] => idtac H
+end.
+
+

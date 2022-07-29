@@ -1,0 +1,55 @@
+Comment author: @JasonGross
+
+Commit f9695eb4bc5b377a02f49ee485d7fe9be122c183 broke Bedrock and Fiat by making [apply with] weaker.  This is 
+
+Fixing [BZ#4782](https://github.com/coq/coq/issues?q=is%3Aissue%20%22Original%20bug%20ID%3A%20BZ%234782%22) (a typing error not captured when dealing with bindings).
+Trying to now catch all unification errors, but without a clear view
+at whether some errors could be tolerated at the point of checking the
+type of the binding.
+
+Here's an example of valid code that is no longer accepted:
+
+Record ProverT := { Facts : Type }.
+Record ProverT_correct (P : ProverT) :=  { Valid : Facts P -> Prop ; Valid_weaken : Valid = Valid }.
+Definition reflexivityValid (_ : unit) := True.
+Definition reflexivityProver_correct : ProverT_correct {| Facts := unit |}.
+Proof.
+  eapply Build_ProverT_correct with (Valid := reflexivityValid). (* Error: The term "reflexivityValid" has type "unit -> Prop" while it is expected to have type "Facts ?P -> Prop". *)
+
+
+The only type errors that should be caught are ones where the types are known to be not convertible, not simply types that the unification engine can't unify.
+
+
+Comment author: @silene
+
+This is strange. There is indeed a regression, but it seems like "apply with" is just exhibiting an old issue in the pretyper. For instance, I would expect the following declaration to go through, since there is an obvious (and unique) way to fill the hole and, once the hole is filled with (BT unit), H is well-typed as an argument.
+
+Record T := BT { t : Set }.
+Record U (x : T) := BU { u : t x -> Prop }.
+Definition A (H : unit -> Prop) : U (BT unit) := BU _ H.
+
+
+Comment author: @herbelin
+
+To Jason: new fix for both [BZ#4782](https://github.com/coq/coq/issues?q=is%3Aissue%20%22Original%20bug%20ID%3A%20BZ%234782%22) and [BZ#4813](https://github.com/coq/coq/issues?q=is%3Aissue%20%22Original%20bug%20ID%3A%20BZ%234813%22).
+
+To Guillaume: yes, one would certainly like to have this example eventually working.
+
+
+Comment author: @JasonGross
+
+Thanks!
+
+Should my example go into the test-suite?
+
+
+Comment author: @herbelin
+
+It is.
+
+
+Comment author: @mattam82
+
+Note that the BU example goes through if you enable bidirectional typechecking (e.g. using Program). It's a bit late to enable it by default for 8.6, but I could still make a flag for it (note that the solution is canonical only up to conversion, which could be a big compatibility issue, with a change this deep in the pretyping algorithm). I think an Arguments flag to drive the unification at applications (to use information from the typing constraint) would be a useful generalization too, as currently what Program does is limited to constructors of inductive types.
+
+

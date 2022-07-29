@@ -1,0 +1,5 @@
+Comment author: @JasonGross
+
+It'd be nice to be able to create new inductive types on the fly, just like [fix] lets you create new fixpoints on the fly, and Ltac can handle [match] statements in a mostly uniform way.
+
+

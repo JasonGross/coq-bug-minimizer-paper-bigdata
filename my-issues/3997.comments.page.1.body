@@ -1,0 +1,118 @@
+Comment author: @JasonGross
+
+```coq
+
+Global Set Primitive Projections.
+Class IsEquiv {A B : Type} (f : A -> B) := { equiv_inv : B -> A }.
+Record Equiv A B := { equiv_fun : A -> B ; equiv_isequiv : IsEquiv equiv_fun }.
+Coercion equiv_fun : Equiv >-> Funclass.
+Global Existing Instance equiv_isequiv.
+Axiom equiv_sum_assoc : forall (A B C : Type), Equiv ((A + B) + C) (A + (B + C)).
+Goal True.
+  try pose ((fun g f x => g (f x)) (@ equiv_inv _ _ (equiv_sum_assoc _ _ _) _) (equiv_sum_assoc _ _ _)). (* success... wtf, given next line? *)
+  Fail pose ((fun g f x => g (f x)) (@ equiv_inv _ _ (equiv_sum_assoc _ _ _) _) (equiv_sum_assoc _ _ _)). (* stack overflow *)
+  exact I.
+Defined.
+
+
+```
+Comment author: @aspiwack
+
+Actually, [try] doesn't catch stack overflows (they are marked as critical, thus not normally caught):
+
+Goal False.
+  Fail try
+   (let rec f x := f x in
+    let h := f () in idtac).
+
+
+Also, replacing [pose …] by [refine (let x := … in _)] the error is left uncaught as well:
+
+Global Set Primitive Projections.
+Class IsEquiv {A B : Type} (f : A -> B) := { equiv_inv : B -> A }.
+Record Equiv A B := { equiv_fun : A -> B ; equiv_isequiv : IsEquiv equiv_fun }.
+Coercion equiv_fun : Equiv >-> Funclass.
+Global Existing Instance equiv_isequiv.
+Axiom equiv_sum_assoc : forall (A B C : Type), Equiv ((A + B) + C) (A + (B + C)).
+Goal True.
+  Fail try refine (let x := ((fun g f x => g (f x)) (@ equiv_inv _ _ (equiv_sum_assoc _ _ _) _) (equiv_sum_assoc _ _ _)) in _ ).
+
+
+So signs seem to point to [pose] as the culprit for this one…
+
+
+Comment author: @herbelin
+
+Nothing to do with pose either.
+
+There is a "normal" error about an implicit argument not being solved. I suspect then the printer for the error to raise a Stack_overflow (and this remains to be investigated).
+
+The try correctly catches the unresolved implicit argument error and does not try to print the message, so, no stack overflow.
+
+A secondary question is why Fail captures Stack_overflow when writing:
+
+Fail Check (((fun g f x => g (f x)) (@ equiv_inv _ _ (equiv_sum_assoc _ _ _) _)) (equiv_sum_assoc _ _ _)).
+(*
+The command has indeed failed with message:
+=> Stack overflow.
+*)
+
+while it does not when writing:
+
+Fail pose ((fun g f x => g (f x)) (@ equiv_inv _ _ (equiv_sum_assoc _ _ _) _) (equiv_sum_assoc _ _ _)). 
+(*
+Stack overflow.
+*)
+
+
+Comment author: @JasonGross
+
+Perhaps [Check] tries to create the message itself, failing with a stack overflow, which [Fail] catches, but [pose] does not create the message, and hence it is [Fail] that tries to create the message, which itself fails with a stack overflow?
+
+
+Comment author: @herbelin
+
+State of investigation:
+
+In a unification context simplified as follows:
+
+|- ?A:Type 
+g:?A |- ?B:Type
+?C:?A
+
+we have to unify ?A=?B[g:=?C]:Type. Coq does ?A:=?B[g:=?C] leading to the type of ?C depending on itself.
+
+Something is wrong but where exactly? Should ?B be restricted so as not to depend from g as a consequence of the equation ?A=?B[g:=?C:?A]? Is this a necessary condition? Can a term have a subterm whose type contains the term?
+
+
+Comment author: @JasonGross
+
+I will note that removing the [Set Primitive Projections] makes the [pose] give a normal error message.  What is special about the [Set Primitive Projections] path that makes the unifier loop?
+
+
+Comment author: @herbelin
+
+Good remark, it helps. With primitive projections, the occur check has to be changed.
+
+In ?n := proj ?n t with t:I ?n, the dependency of ?n in itself stops being detected when proj is a primitive projection, since ?n is absent of the projection.
+
+So, I presume that the function Evarsolve.noccur_evar has to be modified to treat primitive projections specifically. I'll see with Matthieu.
+
+[With respect to my own previous question, I still don't know if a constraint of the form ?A:=?B[g:=?C] with ?C:?A can be generated (even w/o primitive projections). I was able to generate one but if ever it can be generated, it will have to be rejected.]
+
+
+Comment author: @herbelin
+
+[I meant: I was _unable_ to generate one.]
+
+
+Comment author: @silene
+
+See bug [BZ#4062](https://github.com/coq/coq/issues?q=is%3Aissue%20%22Original%20bug%20ID%3A%20BZ%234062%22) for a way to generate such (incorrect) constraints.
+
+
+Comment author: @ppedrot
+
+I believe that this bug in itself is fixed. If somebody wants a lengthier discussion on a precise question amongst those that were raised here, he should open a new dedicated bug...
+
+

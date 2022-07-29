@@ -1,0 +1,78 @@
+Comment author: @JasonGross
+```coq
+Set Primitive Projections.
+Set Implicit Arguments.
+Record prod A B := pair { fst : A ; snd : B }.
+
+Goal forall x y : prod Set Set, fst x = fst y.
+  intros.
+  Show. (* 1 subgoals
+, subgoal 1 (ID 8)
+
+  x : prod Set Set
+  y : prod Set Set
+  ============================
+   fst x = fst y
+(dependent evars:) *)
+  change (fst x) with (@ fst Set Set x).
+  change (fst y) with (@ fst Set Set y).
+  Show. (* 1 subgoals
+, subgoal 1 (ID 10)
+
+  x : prod Set Set
+  y : prod Set Set
+  ============================
+   fst x = fst y
+(dependent evars:) *)
+  progress unfold fst. (* success *)
+```
+Comment author: @mattam82
+
+Should we print @ fst Set Set x in this case then, knowing that the primitive projections application would print as fst x? This compatibility mode is really complicated... but I don't see any other way to accept [fst x] for primitive applications.
+
+
+Comment author: @JasonGross
+
+Add an only parsing notation/alias eta_fst for each of the eta-expanded projections, and have a mode that adds the notation as printing as well?  (The compatibility mode does seem to be uncomfortably complicated, but the clean alternative of "projections are really primitive and there's no way to pretend they're not" seems worse.)
+
+
+Comment author: @JasonGross
+
+Here's another possibility, which I think I've suggested before, but I can't recall if/why you said it wouldn't work: banish any representation of terms where eta-expanded primitive projections are applied to arguments.  Make App a "smart-constructor" that beta-reduces arguments as needed (and, if you need it, have a function that goes the other way and turns a primitive projection into a the eta-expanded constant applied to arguments, for the user-facing side).  This might allow you to present the UI of primitive projections not being special, but still getting their benefit in term comparisons and term building and typechecking, perhaps.
+
+
+Comment author: @mattam82
+
+Ok, I've added that to the trunk, it seems sensible. I'll implement a flag that disallows this application parsing for projections as well to make it cleaner but less retro-compatible. I'll document the semantics of parsing/printing asap.
+Making App do beta would break too many things. Doing eta-expansion at printing would not solve the problem of [apply fst], you'd still need to represent the eta-expanded forms. Also there's no reason why primitive projections should be eta-expanded at printing time in general, I for one don't want that.
+
+
+Comment author: @mattam82
+
+I'm not sure I understand your suggestion of banishing the [@ eta_fst A B] case. That would make the eta-expanded forms useless, as they're precisely there to represent partially applied projections and to allow notations that specify parameters.
+
+
+Comment author: @JasonGross
+
+Thanks.
+
+Why would making App do beta break things?, if it only does beta on eta-expanded primitive projections (i.e., it'll only beta reduce (@ fst A B x) to x.(fst), or, alternatively, will beta reduce things like ((fun A B (x : A * B) => x.(fst)) A), but not beta reduce when the head under binders isn't a primitive projection.  If you do this, then you can, perhaps, present the user with the illusion that primitive projections are not special.
+
+Separately: When I was talking to Adam about this, he suggested having primitive projections unfold to the old (match-based) version, and having some iterators (e.g., the ones to do ltac pattern matching) use the unfolded versions, and have other iterators (the kernel term comparison ones) use the folded, argumentless/primitive versions.  I seem to recall you mentioning that this would end up being too slow and lose all the benefits of having primitive projections in the first place.  Can you remind me why this is?
+
+
+Comment author: @mattam82
+
+--
+Why would making App do beta break things?, if it only does beta on eta-expanded primitive projections (i.e., it'll only beta reduce (@ fst A B x) to x.(fst), or, alternatively, will beta reduce things like ((fun A B (x : A * B) => x.(fst)) A), but not beta reduce when the head under binders isn't a primitive projection.  If you do this, then you can, perhaps, present the user with the illusion that primitive projections are not special.
+-- 
+It sounds very hackish, and from an implementation perspective, App takes two terms and return a new term, there's no way to recognize a non-primitive projection there as the environment is not passed around. Similarly for λ ... x.(fst), that would require looking into the "function term", and this solution would not be stable by beta-reduction, i.e if you have λ ... b being beta-convertible to λ .... x.(fst). This opens another can of worms.
+--
+Separately: When I was talking to Adam about this, he suggested having primitive projections unfold to the old (match-based) version, and having some iterators (e.g., the ones to do ltac pattern matching) use the unfolded versions, and have other iterators (the kernel term comparison ones) use the folded, argumentless/primitive versions.  I seem to recall you mentioning that this would end up being too slow and lose all the benefits of having primitive projections in the first place.  Can you remind me why this is?
+
+There's no way to infer the arguments without retyping the projection application, and that would be necessary to "unfold to a match-based version". This would make Ltac pattern-matching, and other places where you expand always slow. I have a development using primitive projections where I never need to use the expanded forms/parameters, i.e. their primitive status do fit perfectly, even inside Ltac patterns. The compatibility mode is just that, for compatibility with existing developments, it shouldn't get in the way of new use cases benefiting from the extension.
+Also it's not so clear when you should look at one or the other presentation, e.g. during unification, which one would you consider? There's also calls to syntactic comparison in unification/pattern-matching and you'd need to be careful to be consistent, if that is at all possible.
+
+I really prefer the current mode, where r.(p) is the primitive version, the kernel is uncluttered, and we just have a (soon to be optional) parsing/printing compatibility layer _outside_ to make p r parse as r.(p) and print as p r, and a few special cases in matching for making the eta-expanded versions match syntactically with the primitive ones.
+
+

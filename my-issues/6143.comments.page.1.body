@@ -1,0 +1,45 @@
+Sorry, I will propose to mark this WONTFIX, as this is a deficiency of UIs not of Coq.
+
+UIs [including old-style proof general] should use a sane model where _they_ initiate goal printing with the proper parameters.
+That could be a feature request for CoqIDE though, couldn't it?
+And BTW, even if I agree with your point of view, we have continued adding printing options for proof general in 8.7 (option for printing unfocused subgoals).
+
+Tagging @matafou and @psteckler who might have an opinion on the issue.
+Yeah we are using significant more time in supporting the current mess than we would have wasted in switching to a model were PG asks Coq to print the goals.
+With regards to CoqIDE I'm afraid that the protocol may be too weak to effectively implement that, and extending the protocol given the current infrastructure is not worth the pain for me at least. That being said, would someone want to implement a better query request system in the XML protocol please go ahead.
+
+SerAPI does plan to support goal filtering / selection.
+In the XML protocol, you only get goals if they're requested. For PG/xml, that happens when all queued statements have been sent. Not sure how CoqIDE does it. But the `Goal` command takes no parameters, so you always get all subgoals, shelved goals, etc. Adding parameters could be done in a backwards-compatible way.
+
+In vanilla PG, there's no request made, I believe.
+
+Maybe the Vernac command could be `Set Print Goal Limit nnnn`, coupled with `Unset Print Goal Limit` to disable the limit.
+
+
+
+> But the Goal command takes no parameters, so you always get all subgoals, shelved goals, etc. Adding parameters could be done in a backwards-compatible way.
+
+As I said I'd be cool defining a richer API here. Similarly to document handling, we could import from bits already present in SerAPI as to extend the "get goals" API. For example, filtering, limiting, and grouping would be cool to have. Numeric selection tends to be less useful, but no problem in adding that.
+
+> In vanilla PG, there's no request made, I believe.
+
+No, so it is a very fragile system where Coq randomly print the goals and PG tries to do its best. Really, it should be changed to a model where the explicit display of goals is requested.
+
+> Maybe the Vernac command could be Set Print Goal Limit nnnn, coupled with Unset Print Goal Limit to disable the limit.
+
+Again, I will oppose this, due to reasons outlined many times along many threads. It is not maintainable. I will be happy to support a `Show Goals With Limit 10` etc... thou.
+> As I said I'd be cool defining a richer API here. Similarly to document handling, we could import from bits already present in SerAPI as to extend the "get goals" API. For example, filtering, limiting, and grouping would be cool to have. Numeric selection tends to be less useful, but no problem in adding that.
+
+Indeed, it would be good that the "recommended" way of doing things is supported by the current "official" protocol.
+Hi,
+this takes us to the real question: when will SerAPI be the official protocol :-)?
+P.
+> this takes us to the real question: when will SerAPI be the official protocol :-)?
+
+A very large roadblock for now is that the ppx ecosystem is unusable in OCaml >= 4.05.0 , so not looking good in the short term. Also SerAPI is fairly immature.
+
+On the other hand, SerAPI should end being nothing but a thin RPC layer, we are tying to improve the API upstream in all cases, so you do the same calls in SEXP or in ML. So indeed some improvements could be already used by the XML protocol or the text-based one.
+
+I am not against extending / reifying the XML protocol, but I see it as loss of time and would rather prefer a PPX to care of it.
+So, we are leaving Jason to suffer?
+@JasonGross Isn't your slowness issue mostly fixed by the integration of lazy printing in 8.8?

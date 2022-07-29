@@ -1,0 +1,9 @@
+This seems to be an issue only on Windows
+@JasonGross , does the below PR fix this issue? [You can download an installer artifact from the actions tab]
+
+[Similarly for the other issues]
+
+https://github.com/coq/coq/pull/14873
+Altenatively, do you find any difference between these two artifacts?
+- https://github.com/coq/coq/suites/3725561051/artifacts/91197841 ["vanilla" build]
+- https://github.com/coq/coq/suites/3733471199/artifacts/91471593 ["fixed" build]

@@ -1,0 +1,15 @@
+Umm, `fatal_error` does indeed print a newline:
+```ocaml
+let fatal_error info anomaly =
+  flush_all (); Format.eprintf "@[Fatal Error: @[%a@]@]@\n%!" Pp.pp_with info; flush_all ();
+  exit (if anomaly then 129 else 1)
+```
+Maybe I'm misunderstanding you?
+
+Anyways, it should be a matter of tweaking the above function.
+Instead of modifying the core error code, I suggest you use the verbose flag.
+
+It should already provide you with information about the `.vo` file (see `check_one_lib`). Similarly, `check_constant_declaration` will print the name of the checked definition.
+
+So I am leaning towards "works for me", unless you can be more specific as to why `-verbose` is not enough in this case.
+`-verbose` is not a valid option, but I see now that if I don't pass `-silent` (as the `validate` target does), then the last line of `checking cst:` does indeed print the name of the function.  I'll open a separate issue for newlines

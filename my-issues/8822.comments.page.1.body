@@ -1,0 +1,16 @@
+Note that only about half the time of `setoid_rewrite` is spent looking for `Proper` lemmas; if I do
+```coq
+  pose proof (fun A B f => @app_Let_In_nd A (list B) _ (cons f)) as H; cbv beta in H.
+  pose proof (_ : forall x, Proper (pointwise_relation nat eq ==> _) (@Let_In nat (fun _ : nat => list nat) x)).
+  pose proof (_ : forall A, Proper (eq ==> _ ==> Basics.flip Basics.impl) (@eq A)).
+  pose proof (_ : forall A v, ProperProxy (@eq A) v).
+  pose proof (_ : forall A n, Proper (eq ==> _) (@cons A n)).
+```
+before `repeat setoid_rewrite`, that brings the time down to 5.482 secs (5.476u,0.008s) (and having just the last `Proper` lemma for `cons`, without the earlier ones, already cuts the time to 6.42 secs (6.408u,0.011s)).
+This looks like some algorithmic issue in the creation of evar instances. I have a patch that makes the topdown and setoid_rewrite on par, and divides by two the bottomup one.
+@JasonGross merging #8841 has solved part of the problem. Should we leave this bug open or reopen one?
+I think we should have some bug open.  Feel free to either open a new one or leave this one open.  (It would also be nice to figure out why setoid_rewrite is so slow so maybe this bug should be renamed to be about setoid_rewrite and rewrite_strat being slow?)
+> It would also be nice to figure out why setoid_rewrite is so slow
+
+Evar creation is definitely responsible for an important (most?) part of the slowness of the rewriting algorithm. Generating a named context from a rel context is often superlinear in the size of this context, and we keep generating evars all over the place while pushing rels in rewrite, so...
+It seems like evars are persistently one of the slowest parts of Coq?  EConstr was good for removing useless normalization.  Is there a similar systematic fix that can be done around this sort of problem?

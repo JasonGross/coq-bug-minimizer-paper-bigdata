@@ -1,0 +1,12 @@
+Comment author: @JasonGross
+
+This should not happen:
+
+Notation foo := (fun x : Type => x).
+Goal True.
+  lazymatch goal with
+  | [ |- ?x ] => pose foo (* Error: Ltac variable x is not bound to an 
+identifier. It cannot be used in a binder. *)
+  end.
+
+

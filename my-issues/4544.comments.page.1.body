@@ -1,0 +1,107 @@
+Comment author: @JasonGross
+
+Created attachment 661
+file displaying the significantly slower rewrite
+
+> Attached file: [bug_oog_looping_rewrite_02.v](https://coq.inria.fr/bugfiles/attachment.cgi?id=661) (text/plain, 29462 bytes)
+> Description:   file displaying the significantly slower rewrite
+
+
+Comment author: @JasonGross
+
+This is, I believe, the only bug blocking the HoTT/HoTT library from upgrading to v8.5 from 8.5beta2.
+
+
+Comment author: @JasonGross
+
+Perhaps unsurprisingly, my coq-bisect script (https://github.com/JasonGross/coq-bisect) finds that
+
+4841b790bbe517deefac11e8df1a7a1494d56bec is the first bad commit
+commit 4841b790bbe517deefac11e8df1a7a1494d56bec
+Author: Matthieu Sozeau <mattam@ mattam.org>
+Date:   Tue Jan 12 17:02:09 2016 +0100
+
+    Fix essential bug in new Keyed Unification mode reported by R. Krebbers.
+    
+    [rewrite] was calling find_suterm using the wrong unification flags, not
+    allowing full delta in unification of terms with the right keys as desired.
+
+:040000 040000 0fb4ebb78c6eb2050672d3fba33cd1de228c27df 08fb137edae412f32c29bc8938dbd0901c36e40e M      pretyping
+:040000 040000 985cea6954db50b7984051084fce809d28ec1a3f ff89629583224376ab11038c44b6548237319ffd M      tactics
+
+I suspect this is also behind bug [BZ#4533](https://github.com/coq/coq/issues?q=is%3Aissue%20%22Original%20bug%20ID%3A%20BZ%234533%22) (though I haven't tested this).  Turning on keyed unification seems to be permitting everything to be unfolded, rather than just the keys?
+
+
+Comment author: @mattam82
+
+Yes indeed, it does allow full conversion on terms containing evars after matching the keys now. The culprit is not delta here but full betaiota reduction during unification, which is making a failed unification take all the time in this example. I can backtrack on it.
+
+
+Comment author: @mattam82
+
+
+> Yes indeed, it does allow full conversion on terms containing evars after
+> matching the keys now. The culprit is not delta here but full betaiota
+> reduction during unification, which is making a failed unification take all
+> the time in this example. I can backtrack on it.
+
+Then in situations like 4533 the rewrite will find the (p2 @  (p0 @  p1)) subterm (because it won't iota reduce after unfolding eissect and find a match that did not appear "syntactically"), but you lose rewrites with beta-unifiable implicit arguments, including the ability to work with Canonical Structures like this (example from R. Krebbers):
+
+Require Import Arith List Omega.
+
+Definition G {A} (f : A -> A -> A) (x : A) := f x x.
+
+Lemma list_foo A (l : list A) : G (@ app A) (l ++ nil) = G (@ app A) l.
+Proof. unfold G; rewrite app_nil_r; reflexivity. Qed.
+
+(* Bundled version of a magma *)
+Structure magma := Magma { b_car :> Type; op : b_car -> b_car -> b_car }.
+Arguments op {_} _ _.
+
+(* Instance for lists *)
+Canonical Structure list_magma A := Magma (list A) (@ app A).
+
+(* Basically like list_foo, but now uses the op projection instead of app for
+the argument of G *)
+Lemma test1 A (l : list A) : G op (l ++ nil) = G op l.
+
+(* Ensure that conversion of terms with evars is allowed once a keyed candidate unifier is found *)
+rewrite -> list_foo.
+reflexivity.
+Qed.
+
+The ssreflect rewrite handles both these cases as it does a first unification without conversion... It's easy to make Keyed Unification do the same: first search for a subterm without beta-delta-iota, then with it. I think we should rather go in that direction.
+
+
+Comment author: @JasonGross
+
+> The ssreflect rewrite handles both these cases as it does a first unification
+> without conversion... It's easy to make Keyed Unification do the same: first
+> search for a subterm without beta-delta-iota, then with it. I think we should
+> rather go in that direction.
+
+I like the sound of this.  A question: Replacing `rewrite loops_functor_group.` with `rewrite !loops_functor_group.` in this example would result in a file that's still significantly slower, right?
+
+
+Comment author: @mattam82
+
+Yes, that's my only concern: I think for repeated rewrites and automation in general you need a more strict mode where you fire a unification not only on a key but a more complex pattern to avoid this. This can be programmed with something like rewrite_strat ... (pattern foo ; lemma bar) I think.
+
+
+Comment author: @JasonGross
+
+That makes sense.
+
+Would it make sense to have an easy way of saying "all occurrences of a given identifier are to be treated as keys" (i.e., if the lemma is "p @  (q @  r) = ...", and you say that [concat] should be a multi-location key, then the pattern is automatically set to be "_ @  (_ @  _)")?
+
+
+Comment author: @JasonGross
+
+Also, the HoTT stdlib doesn't have setoids, so we can't actually use rewrite_strat.
+
+
+Comment author: @mattam82
+
+I fixed the strategy used by keyed unification to allow fast matching at first (conversion only on closed subterms, no betaiotadelta on open terms). So HoTT still suffers from rewrite !loops_functor_group, but do 3 rewrite loops_functor_group is faster with Keyed Unification on. I don't have the tools to time HoTT with this version (I just know it all compiles fairly quickly), I'd be curious to know if anything changed.
+
+

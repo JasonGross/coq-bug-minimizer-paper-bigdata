@@ -1,0 +1,86 @@
+Comment author: @JasonGross
+
+Goal True.
+Ltac foo := idtac.
+(* print out happens twice:
+foo is defined
+foo is defined
+
+... that's fishy *)
+Back 1.
+Ltac foo := idtac.
+(* Anomaly: Backtrack.backto to a state with no vcs_backup. Please report. *)
+
+
+Comment author: @gares
+
+Got the fix, I'll push it tomorrow.  But:
+1) Using vernacular commands in the middle of a proof is BAD
+2) Using coqtop+undo or putting Undo/Back/Reset in a .v is BAD
+
+really, don't do that.
+
+
+Comment author: @JasonGross
+
+Incremental compilation is useful.  I triggered this anomaly using "evaluate to cursor" in PG, and did not realize that I was in the middle of a proof.  My completed .v files use neither of these features, but I expect them to work interactively.  (The explicit "Undo" was just so I could paste a proof script without manual instructions.)  Perhaps Undo will be superseded by parallel processing, but until ProofGeneral uses this feature, or until CoqIDE has a runs-over-ssh-without--X mode, I'll continue using the moral equivalent of Undo.
+
+
+Comment author: @ppedrot
+
+What do you mean by "run over ssh"?
+
+Because actually I was thinking to do a version of CoqIDE that can have remote coq processes on other machines. It should be quite straightforward to do now, because it already uses unix socket interface... Is that what you want?
+
+
+Comment author: @gares
+
+Sorry to hijack the bug report.  Run over ssh is a very good idea, and I'd love to have it too.  Time permitting I would even code it.  
+
+In case you decide to work on that I think that the best
+is to make Spawn/Spawned more general and a bit more flexible.  For example right now the master expects the slave to connect back and it opens 2 channels.
+One can be a pipe (via ssh stdin/out), but the other (the control channel) is a socket.  Via ssh you may need to ask ssh to forward local ports to deal with that (the ip may not be public or be firewalled).  Or simply make the control channel Spawn uses optional (something that may also help the other GUIs).  Right now the control channel is just there to send a death sentence or ask for Gc stats.
+
+Cheers
+
+
+Comment author: @JasonGross
+
+I meant "have a terminal/console mode".  In particular, I want to run it on a university server, over mosh (http://mosh.mit.edu/), which doesn't have X11 forwarding (or support for fancier things, I suspect).  The main impediment to running it locally is that building on Windows is a bit of a pain.
+
+Remote Coq processes on other machines would be interesting (especially if there's capacity for interrupted connections), but not what I had in mind.
+
+
+Comment author: @pirbo
+
+Enrico, it seems not fixed ...
+
+
+Comment author: @gares
+
+closed in 5b39c3535f7b3383d89d7b844537244a4e7c0eca
+
+
+Comment author: @gares
+
+The resulting dag (internal document representation) is pretty ugly but is now correct.
+
+JFTR, the double print "foo is defined" is correct.  At that stage there are
+two open branches: the proof one and the master one.  Given that "Ltac..." is not a proof step but a global side effect, the command is executed on both branches.
+This means that foo is an available tactic on both the proof branch (that may be executed in another process) and the main branch (i.e. all that could follow the qed).  The resulting dag in attachment.
+
+
+Comment author: @gares
+
+Created attachment 452
+correct dag
+
+> Attached file: [stm_master1.pdf](https://coq.inria.fr/bugfiles/attachment.cgi?id=452) (application/pdf, 13934 bytes)
+> Description:   correct dag
+
+
+Comment author: @JasonGross
+
+Pull request for regression test at https://github.com/coq/coq/pull/11
+
+

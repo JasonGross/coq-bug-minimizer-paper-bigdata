@@ -1,0 +1,6 @@
+cc @jfehrle @ppedrot 
+Turns out this restriction is even [documented](https://coq.inria.fr/refman/proof-engine/ltac2.html#match-over-goals):
+
+> Hypotheses have the form `name (:= termbinder)? : type`. Currently Ltac2 doesn't allow matching on or capturing the value of `termbinder`. It only supports matching on the name and the type, for example `n : ?t`.
+
+Is there something tricky that prevented it from being implemented at first?

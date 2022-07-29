@@ -1,0 +1,14 @@
+Comment author: @JasonGross
+
+Goal True.
+  Info 1 refine I. (* refine I;<unknown>;shelve_unifiable *)
+  Undo. Info 1 simple refine I. (* refine I *)
+  Undo. Info 1 simple refine (let x := _ in _). (* refine (let x := ?Goal0 in ?Goal1) *)
+  Undo. Info 1 refine (let x := _ in _). (* refine (let x := ?Goal0 in ?Goal1);<unknown>;shelve_unifiable *)
+
+
+Comment author: @ppedrot
+
+Seems to have been fixed in trunk.
+
+

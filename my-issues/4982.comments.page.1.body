@@ -1,0 +1,6 @@
+Comment author: @JasonGross
+
+[dependent destruction] will frequently use [JMeq_eq] when it suffices to use 
+UIP_dec and decide equality, or when it's not needed at all
+
+

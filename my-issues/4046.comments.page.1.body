@@ -1,0 +1,20 @@
+Comment author: @JasonGross
+
+Module Import Foo.
+  Class Foo := { foo : Type }.
+End Foo.
+
+Instance f : Foo := { foo := nat }. (* works fine *)
+Instance f' : Foo := { Foo.foo := nat }. (* Error: Only local structures are handled *)
+
+
+A better error message, in this case, would be something like "Error: Defining instance bodies with single braces requires unqualified field names.  Foo.foo is not an unqualified field name."
+
+A better solution would be to remove this restriction.  What's the reason for it?
+
+
+Comment author: @mattam82
+
+Not much reason indeed, fixed now.
+
+

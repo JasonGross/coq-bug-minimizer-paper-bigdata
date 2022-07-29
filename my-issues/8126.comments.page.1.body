@@ -1,0 +1,15 @@
+Fixed in #8133.
+
+For the record, note that there is a special treatment of toplevel `@` in notations. Assume that `f` has implicit arguments `x`, `y` and an other argument `z`. If I do `Notation g := @f`, then `g t` shall be interpreted as `(@f) t` (*), i.e. with the implicit arguments `x` of `f` deactivated. If I do `Notation g := (@f t)`, then `g u` shall be interpreted instead as `f (x:=t) u` (**) with `u` taking the place of `z`, not as `(@f t) u` where `u` would have taken the place of `y`. The empirical reason for (*) is that this allows notations hiding the need for a `@`. The empirical reason for (**) is that this allows to have notations providing part of the implicit arguments and keep taking into account the other implicit arguments and scopes of `f`.
+
+Thanks!
+
+And huh, I had noticed both of those behaviors before, and even made use of (\*\*).  I think I also assumed (\*\*) extended to nested notations, i.e., that if I have
+```coq
+Axiom f : forall {x y z w : nat}, nat.
+Notation g := (@f 0).
+Notation h := (@g 1).
+Notation i := (@h 2).
+Notation j := (@f 0 1 2).
+```
+Then `i` and `j` would be the same.  I think my model is that notations can have implicit argument status separate from the underlying definition.

@@ -1,0 +1,48 @@
+Comment author: @JasonGross
+```coq
+Axiom proof_admitted : False.
+Ltac admit := abstract case proof_admitted.
+Goal True.
+  evar (x : nat).
+  assert (H : x = 1) by (exfalso; clear; admit).
+  pose proof (f_equal (fun k => k) H).
+  subst x.
+  pose proof (f_equal (fun k => k) H). (* Error: Cannot infer the implicit parameter x of f_equal whose type is "nat". *)
+
+
+```
+Comment author: @herbelin
+
+Hi, the regression comes from the change in the order in which evar-evar problems are solved by default in 8.5: when type-checking "(f_equal (fun k => k) (x:=?y) H)", the instantiation is ?x:=?y in 8.5 and 8.6 which it was ?y:=?x, misguiding the test that all evars, ?y included, should be resolved.
+
+In this example, I feel that the intended behavior is indeed that ?x is treated as opaque and ?y be instantiate to it. I tried a quick fix (PR [BZ#370](https://github.com/coq/coq/issues?q=is%3Aissue%20%22Original%20bug%20ID%3A%20BZ%23370%22)), which I hope is not breaking other things which would benefit from another instantiation order, but the question is more generally about the expected status of pre-existing evars.
+
+For instance, in:
+
+Goal exists x, x = 1 -> (1 = 1 -> False) -> False.
+eexists. intros H H'. pose proof (H' H).
+
+Do we expect the ?x to be intanstiated by default (as it now), or to be considered as frozen.
+
+[Technically, for devs, the proposal is to use the future_goal field as a heuristic for deciding whether ?x:=?y is to be preferred or the reverse.]
+
+
+Comment author: @jonleivent
+
+Just curious, but why does the first pose here fail, but the second one work?:
+
+Goal True.
+  refine (let H := _ : (_:nat) = _ in _).
+  Fail pose (f_equal S H).
+  pose (@ f_equal _ _ S _ _ H).
+
+I would have thought them to be identical except for syntactic sugar...
+
+
+Comment author: @herbelin
+
+To Jonathan: Technically because the heuristic used for evar-evar unification in 8.5 is dependent on the "kind" of evar: a "_" is not of the same internal kind as an implicit argument (function "preferred_orientation" in evarsolve.ml).
+
+I'm unfortunately unsure that the criterion I had implemented there is robust enough, and I suppose it would be needed to collect further representative examples to find a better criterion.
+
+

@@ -1,0 +1,3 @@
+I agree about the complexity of the change.
+
+In the meanwhile you can simulate this in the logic using TC or CS. Eg in math-comp we have a "sigma-type" structure (called `subType`), and its projection `val` works for all of its instances.

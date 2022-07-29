@@ -1,0 +1,2 @@
+Instead of explicitly mentioning all the possible cases, we should just say that it must be "a sort" and document this accordingly.
+It might even be reasonable to add a link to https://coq.inria.fr/refman/language/core/sorts.html in the error message.

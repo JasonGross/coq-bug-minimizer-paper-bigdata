@@ -1,0 +1,19 @@
+Comment author: @JasonGross
+
+(* File reduced by coq-bug-finder from original input, then from 13503 lines to 824 lines, then from 731 lines to 741 lines, then from 754 lines to 586 lines, then from 600 lines to 309 lines, then from 311 lines to 26 lines *)
+Class foo : Set := {}.
+Instance: foo := {}.
+Axiom T : Set.
+Goal exists (p : prod Set foo), T = fst p.
+Proof.
+  intros.
+  eexists.
+  change T with (fst (T, (_ : foo))).
+(* Anomaly: undefined_evars_of_term: evar not found. Please report. *)
+
+
+Comment author: @aspiwack
+
+Indeed. It's one manifestation of the now semi-famous change-loses-evars bug. I had fixed it in trunk so it was already alright there. Since the fix is actually fairly simple, I backported it to v8.4 (e9722063c). Thanks.
+
+

@@ -1,0 +1,12 @@
+As far as I can tell, this is not too many arguments for `coqtop`, but too many arguments for the shell.
+Note that Coq's makefile has 
+```make
+vo_to_obj = $(foreach vo,$(1),$(dir $(vo)).coq-native/$(subst /,_,$(patsubst theories/%,NCoq_%,$(patsubst plugins/%,NCoq_%,$(vo:.vo=.o)))))
+```
+Is that the same thing except without calling shell/coqtop?
+Sure, it is too many arguments for cygwin shell to pass to coqtop.
+> Is that the same thing except without calling shell/coqtop?
+
+That seems specialized to `-R theories Coq - R plugins Coq` or something, no?
+Is anyone working on this? Otherwise, I'll remove from the 8.8.1 milestone.
+Removing from the milestone.

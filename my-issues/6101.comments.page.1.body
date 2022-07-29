@@ -1,0 +1,43 @@
+So the cost comes from the function `Equality.instantiate_lemma`, and more precisely its subcall to `reduce_to_quantified_ind` that keeps headish-normalizing your big term (it's calling simpl, AFAIU). I don't know how easily we can tweak that, I need to understand the invariants first.
+> that keeps headish-normalizing your big term (it's calling simpl, AFAIU)
+
+Ew, really?  I am failing to find a case that relies on `simpl` flags, though.  Is there one?
+You always have the problem of refolding fixpoints, so if ever you define some equality relation by a fixpoint over some inductive data structure, not having simpl is going to potentially leave the fixpoint unfolded in the body, which can be not pleasant. I agree that this is a very rare case though.
+
+Actually, there is also a call to beta-iota reduction after that simpl pass, for the holy backward compatibility, and I think that this is the one that causes trouble in your instance.
+
+Getting the hnf with refolding should still permit lazy evaluation of the arguments, in theory, right?
+
+Anyway, maybe I should post the actual example.  It's a lot more code, but if the solution requires fiddling with the reduction engine, not just adding a fast path that keys on head constants, then it's probably important to have the actual lemmas I'm having trouble with and not this fake minimized test case.  (The case I'm actually running into looks a lot more like `foo ` than `hoo `.)
+> relation by a fixpoint over some inductive data structure, not having simpl is going to potentially leave the fixpoint unfolded in the body, which can be not pleasant
+
+I still think a fast path should be possible.  Compute the headish inductive at `Hint Rewrite ` time.  If you can't, mark it as dynamic; otherwise cache it.  Then we pay the cost only once.  If need be, put this behavior behind a flag or database attribute.
+Does Unset/Set Refolding Reduction change anything, by any chance? I think I have examples in Equations suffering from the same performance problem as well but didn’t investigate yet.
+After a cursory glance, I'm under the terrible impression that the code of autorewrite doesn't use at all the underlying discrimination net and tries to rewrite with every hint in the base... The only part that actually takes advantage of the net is the hint strategy (as in rewrite strategies).
+I'm always very confused about all this. Isn't `autorewrite` subsumed by `rewrite_strat`? Wouldn't switching to it improve the situation? Sorry, this is a very naive question.
+@maximedenes The least I can say is that autorewrite is a derelict piece of code that is on par with plugins when it comes to maintenance...
+Well the manual says about `autorewrite`:
+
+"As a drawback of the re-engineering of the code, this tactic has also been completely revised to get a very compact and readable version."
+
+I guess the drawback has been resolved since then, and we are back to unreadable code :)
+@maximedenes The comment seems to be at least from 2001 by David Delahaye (26d8f21), I'd probably take the qualification *readable* with a bit of prehistorical salt...
+You mean in these ancient times, being readable was a drawback? :)
+I completely forgot about that actually, now I remember why I added support for efficient rewriting with standard equality to setoid_rewrite was in good part because this could provide a replacement to autorewrite... I think not much is missing to do that, mainly experiments. This one is a good test actually.
+Does it mean the documentation should be updated, `autorewrite` deprecated, etc?
+Well, once we're sure that indeed it can be replaced, yes. I think autorewrite should just become an alias for a particular "rewrite_strat" call.
+> Well, once we're sure that indeed it can be replaced, yes.
+
+What is it that we need to know exactly? If it is always at least as efficient? Do you already know if it provides all the `autorewrite` functionality?
+It can be made to employ exactly the same (dumb) strategy for sure, it can handle with and using, and I think side-condition tactics as well (I have to check). The next step is just trying and branching autorewrite to the code of rewrite_strat and seeing if there are any incompatibilities.
+> The next step is just trying and branching autorewrite to the code of rewrite_strat and seeing if there are any incompatibilities.
+
+Sounds very good. Can you create an issue so that we don't forget this time? And so that we can sync, in case some of us have time to experiment with it.
+Yes, I have 3 minutes so should be able to do it :)
+@maximedenes re subsumed: https://github.com/coq/coq/issues/6105#issuecomment-342514870
+@mattam82 
+
+> Does Unset/Set Refolding Reduction change anything, by any chance?
+
+No.  Or, at least, it seems within the range of noise from 3 iterations.
+

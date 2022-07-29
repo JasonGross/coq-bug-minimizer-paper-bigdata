@@ -1,0 +1,15 @@
+Comment author: @JasonGross
+
+I got this failure on a Require Import; removing the .vo file and rebuilding fixed it.  I suspect this is the result of force-killing coqtop while it is in the process of writing to a .vo file.
+
+
+Comment author: @JasonGross
+
+It would be nice to, e.g., get a file name, and a nice error message stating that the .vo file seems to be truncated (or whatever the problem is), and informing the user that the solution is to remove the .vo file and try re-building the project.
+
+
+Comment author: @ppedrot
+
+This has already been fixed.
+
+

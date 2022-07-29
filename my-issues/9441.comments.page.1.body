@@ -1,0 +1,12 @@
+This is likely a side effect of some gilab changes we are doing and should be closed cc: @Zimmi48 
+
+You see so much output because Nix is not using the cache.
+The raw full logs say:
+
+```
+warning: unable to download 'https://cachix.cachix.org/nix-cache-info': Couldn't connect to server (7)
+```
+
+which should be unrelated to the other changes we are doing, but should be fixed by #9440 nonetheless.
+Maybe the build should fail when some cache is unreachable (no network, no build). Théo do you know how to turn this warning into an error?
+Good idea: it would allow a quicker failure. But I have no idea how to do this.

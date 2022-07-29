@@ -1,0 +1,59 @@
+Comment author: @JasonGross
+
+Inspecting the source code suggests that this error is only triggered when the kernel tries to verify that [A] is a submoduletype of [B], and finds that the number of arguments to [A] does not match the number of arguments to [B], for example, on [End bar.] in
+
+Module Type Foo.
+  Parameter X : Type.
+End Foo.
+Module Type Bar (foo : Foo).
+  Parameter x : foo.X.
+End Bar.
+Module bar : Bar.
+End bar.
+
+and on [Module bar' :=] in
+
+Module Type Foo.
+  Parameter X : Type.
+End Foo.
+Module Type Bar (foo : Foo).
+  Parameter x : foo.X.
+End Bar.
+Module bar (foo : Foo) <: Bar foo.
+  Axiom x : foo.X.
+End bar.
+Module bar' : Foo := bar.
+
+(I eventually discovered that
+
+Module Type Foo.
+  Parameter X : Type.
+End Foo.
+Module Type Bar (foo : Foo).
+  Parameter x : foo.X.
+End Bar.
+Module bar (foo : Foo) <: Bar foo.
+  Axiom x : foo.X.
+End bar.
+Module bar' : Bar := bar.
+
+is valid.)
+
+
+It should say something like "Incompatible module types: Module Type [Bar] is a functor with arguments [(foo : Foo)], while module [bar] is not a functor." on, e.g.,
+
+Module Type Foo.
+  Parameter X : Type.
+End Foo.
+Module Type Bar (foo : Foo).
+  Parameter x : foo.X.
+End Bar.
+Module bar <: Bar.
+End bar.
+
+
+Comment author: @ppedrot
+
+Fixed by 030ef2f.
+
+

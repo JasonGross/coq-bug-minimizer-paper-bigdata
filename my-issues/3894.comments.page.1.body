@@ -1,0 +1,15 @@
+Comment author: @JasonGross
+
+It should say something closer to "Tactic-producing match statements are not allowed in tactic expressions in local definitions".  The important bits that are forbidden are: (1) a [match] which evaluates to a tactic (not a constr or integer) (2) in a local definition (3) not hidden underneath another tactic like [;].
+
+
+Comment author: @JasonGross
+
+See also my very recent long post to coqdev@ .
+
+
+Comment author: @aspiwack
+
+Considering that this error doesn't exist in trunk, I don't think we will change it into a slightly different but still unclear error message, I'm sorry.
+
+

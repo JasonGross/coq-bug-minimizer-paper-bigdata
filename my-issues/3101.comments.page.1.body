@@ -1,0 +1,20 @@
+Comment author: @JasonGross
+
+I think the following code should work (especially the middle case).
+
+Class Foo := { f : nat; foobarbaz : nat }.
+Class Bar := BuildBar : Foo.
+
+Instance bar : Bar := let x := {| f := 1; foobarbaz := 1 |} in x.
+Instance bar' : Bar := {| f := 1; foobarbaz := 1 |}. (* Error: Mismatched contexts while declaring instance:
+ Expected: (BuildBar : Foo)
+ Found:   1  1 *)
+Instance bar'' : Bar := { f := 1; foobarbaz := 1 }.
+
+
+Comment author: @Zimmi48
+
+The middle case works in 8.6.
+As for the last case, I find the discrepancy between the syntax for records and class types a bit unfortunate indeed, although I suppose that there is a reason for it.
+
+

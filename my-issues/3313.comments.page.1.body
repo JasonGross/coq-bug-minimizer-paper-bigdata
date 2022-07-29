@@ -1,0 +1,5 @@
+Comment author: @JasonGross
+
+If I make [eq] polymorphic and then try to compile the standard library, [discriminate] breaks.  If I make [f_equal] polymorphic, then [inversion] generates terms which lead to universe inconsistencies.
+
+

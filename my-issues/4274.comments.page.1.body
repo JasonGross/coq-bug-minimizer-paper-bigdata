@@ -1,0 +1,24 @@
+Comment author: @JasonGross
+
+In Coq 8.5:
+<prompt>Coq < 1 || 0 < </prompt>Axiom x : True.
+<infomsg>
+x is assumed</infomsg>
+
+
+In Coq 8.4:
+
+<prompt>Coq < 4 || 0 < </prompt>Axiom x : True.
+x is assumed
+
+
+The extra newline is definitely wrong, and I prefer the old coloring for the message (why was this changed?)
+
+
+Comment author: @Matafou
+
+Fixed the extra newline, it is also not displayed as warning.
+
+Thanks for reporting.
+
+

@@ -1,0 +1,16 @@
+Comment author: @JasonGross
+
+I'd like long sequences of [Print Assumptions] to run faster.  This could be 
+accomplished by some sort of caching the results of print assumptions, 
+preferably on all identifiers (so that if I reverse the order of this list, the 
+execution is still fast).
+
+Require Import Coq.ZArith.ZArith.
+Definition foo := Z.div_eucl_eq.
+Definition bar := foo.
+Definition baz := bar.
+Time Print Assumptions foo. (* 0.131 *)
+Time Print Assumptions bar. (* 0.15 *)
+Time Print Assumptions baz. (* 0.144 *)
+
+

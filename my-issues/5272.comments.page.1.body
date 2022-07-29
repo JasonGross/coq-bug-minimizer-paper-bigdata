@@ -1,0 +1,30 @@
+Comment author: @JasonGross
+
+Commit 301ec42f1b38623df8f5de2cfb69da6836bd6e01 removed the install-coqlight 
+target.  Without this target, we cannot test HoTT on Travis, because building 
+all of Coq takes too long.  Please bring back this target.  The requirement is 
+that "coqlight" must build, at least, the subset of the stdlib that coqtop 
+loads by default on boot, and install-coqlight must install enough files (.vo 
+and plugins) that coqtop will run without crashing.
+
+
+Comment author: @ejgallego
+
+Hi Jason, would `make states` work in this case?
+
+
+Comment author: @JasonGross
+
+No, I would need something like `make install-states` which also installs plugins.  Note that `make coqlight` still exists and works fine, it's only the `install-` target that disappeared.
+
+
+Comment author: @Zimmi48
+
+The commit message says:
+Note that I've removed install-library-light which was broken anyway (arith isn't self-contained anymore).
+
+But makes no mention of install-coqlight.
+
+If the coqlight target still exists though, this should be easy to fix, no? (I'm not going to try given my virtually nonexistent knowledge in Makefiles).
+
+

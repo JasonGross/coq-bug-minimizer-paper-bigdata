@@ -1,0 +1,93 @@
+Attempting to make sense of it...
+
+```coq
+Goal True -> True.
+  intro x.
+  unshelve (
+      let e := open_constr:(_) in
+      clear x;
+      exact e).
+  exact x.
+  Show Proof.
+(* (fun _ : True => x) *)
+Qed.
+(* Error: No such section variable or assumption: x. *)
+```
+
+Note that this can also happen with `rename`:
+```coq
+Goal True -> True /\ True.
+  intro x; split;
+    unshelve (let f := open_constr:(_) in rename x into x'; refine f); exact x.
+Qed. (* Error: No such section variable or assumption: x. *)
+```
+
+Here is a workaround:
+```coq
+Ltac refine_restrict v :=
+  let v' := open_constr:(_) in
+  let __ := open_constr:(eq_refl : v = v') in
+  refine v'.
+Goal True -> True /\ True.
+  intro x; split;
+    unshelve (let f := open_constr:(_) in clear x; refine_restrict f).
+  Fail exact x.
+```
+Here is perhaps a slightly more general workaround:
+```coq
+Ltac restrict v :=
+  let v' := open_constr:(_) in
+  let __ := open_constr:(eq_refl : v = v') in
+  idtac.
+Goal True -> True /\ True.
+  intro x; split;
+    unshelve (let f := open_constr:(_) in clear x; restrict f; refine f).
+  Fail exact x.
+```
+Oh, you think expected behavior is for the tactic to fail? In #9936 removing the `rename` made the proof pass.
+Is there a reason why errors at Qed are not considered anomalies?
+Unsafe tactics like exact_no_check exist
+
+Gaëtan Gilbert
+
+On 10/04/2019 22:36, Andres Erbsen wrote:
+> Is there a reason why errors at Qed are not considered anomalies?
+> 
+> —
+> You are receiving this because you are subscribed to this thread.
+> Reply to this email directly, view it on GitHub 
+> <https://github.com/coq/coq/issues/9937#issuecomment-481852012>, or mute 
+> the thread 
+> <https://github.com/notifications/unsubscribe-auth/ACWQ7GCU07kuWv-gAIC9RQIg5HzdCogFks5vfktDgaJpZM4clxzk>.
+> 
+
+It is better for the proof to fail early than for it to not fail until Qed.  I don't see how you can get Coq to propagate the renaming inside the evar contexts when it doesn't track all of the evars floating around in Ltac variables and thunks.  If you want to leave the rename, you need to be careful to also issue the rename in all evars that you care about.  (Posing the evar in the context might be enough to get Coq to do this automatically?)
+if the proofs are bad, can we get to qed with something that shouldn't be provable? if we can't, are the proofs actually bad?
+There's not enough information left to do that by the time you get to Qed.  What's the bad thing that's unprovable when your proof is `λ x. y` with no `y` in the global environment because you refined with an ever in a context where `y` had been renamed to `x` but the context tracking lost track of that?  And anyway, this should not happen without using `*_no_check`; Coq should be more careful about refining with evars.
+Just bumping this thread -- I also ran into this issue and found it problematic, because then I had to go through a large proof trying to figure out where the illegal `instantiate` was. Would be nice to have an earlier error.
+Here is my current understanding of what goes wrong:
+
+In the following example, `initialname` is in scope when evar `NEWGOAL` is created and the `rename` and `exact` only act on `FIRSTGOAL`. This means that `NEWGOAL` can be filled by using `initialname` and that this behavior is expected. However, the open_constr that represents `e` in the Ltac environment does not get updated when `rename` is called, rendering `e` essentially useless. Specifically, I think the evar substitution that forms open_constr `e` from evar `NEWGOAL` contains a reference to `initialname` (before and after `rename`). To make matters worse, `exact`/`refine` happily solves the goal using a dangling open_constr. I don't understand why the latter happens, but might it be related to the infamous #8014? Jason proposed a workaround for this above.
+
+```coq
+Goal True -> True.
+  refine (fun initialname => ?[FIRSTGOAL]);
+    unshelve (
+      let e := open_constr:(?[NEWGOAL]) in
+      rename initialname into newname;
+      exact e).
+
+  (* initialname : True
+     ========================= (1 / 1)
+     True *)
+  Show Proof. (* (fun _ : True => ?NEWGOAL : True) *)
+
+  exact initialname.
+  Show Proof. (* (fun _ : True => initialname : True) *)
+Qed. (* Error: No such section variable or assumption: initialname. *)
+```
+> To make matters worse, exact/refine happily solves the goal using a dangling open_constr. I don't understand why the latter happens, but might it be related to the infamous #8014? 
+
+Yes, checking that the open_constr is well-formed is at best linear in the size of the open_constr, and at worst involves arbitrarily expensive conversion checks to see if changes in the types of named variables are innocuous or not.  As we saw in #8014, this costs almost 10% in fiat-crypto.
+We could have less expensive dynamic checks though. I believe that we could store the state in which a term was generated, and check that if it doesn't correspond to the one in which it is used, we can trigger varying levels of checks depending on the tactic at hand. This kind of problems is even more salient in Ltac2 since one can generate broken terms via low-level APIs, no question asked.
+

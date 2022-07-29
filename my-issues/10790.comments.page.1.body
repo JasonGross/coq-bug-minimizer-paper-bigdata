@@ -1,0 +1,3 @@
+It seems, that someone already resolved this. At least, I can’t find (using grep) any typos of this kind in https://github.com/coq/coq/blob/master/doc/sphinx/practical-tools/utilities.rst. Maybe it was 395519de374e2c51cde2b2777af90f8af1200ea2 that fixed them.
+I searched a little in other files whether the same kind of typo turned up, but couldn’t find any.
+I propose closing this issue.

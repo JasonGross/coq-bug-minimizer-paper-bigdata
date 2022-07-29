@@ -1,0 +1,6 @@
+As you figured out, I suggest you add 1 ad-hoc dependency of the .d file on the .ml4 one in the .local makefile (next to your custom rule to generate the .ml4 file).
+
+Yes, coq_makefile does not support v -> ml -> v dependencies.
+> Does dune do better? cc @ejgallego
+
+It should have no problem with this, IIUC.

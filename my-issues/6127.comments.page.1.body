@@ -1,0 +1,3 @@
+So, you want a parsing-time disambiguation similar to what can be already achieved with type-class based notations? Is it to avoid having to see the projection of the type class? Or another technical reason?
+
+Indeed that would delay the interpretation to use time and thus be a change of perspective. It is unclear whether this would marry well with the existing framework but I like the idea.

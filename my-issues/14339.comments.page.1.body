@@ -1,0 +1,12 @@
+Thanks for the example @JasonGross , I am on holidays for a few days, but if you can bear with me I will implement your specific use case, no idea if Coq modifications would be needed, I'd bet yes, but on the API that I reference last time.
+
+I actually already implemented a `Locate` command in SerAPI which works for some other objects, which required some minor modificatons to Coq's API, so I will add you example to the testing there and hopefully push the bits to Coq.
+
+[I use SerAPI quite often as incubator for ideas / API proposals, for example most of the current API for the STM / toplevel was first tested there to some extent]
+The behavior of the Locate command is beyond my immediate concern with the debugger.  The debugger should let you set a break point (and stop at it) on `B1.foo` in `C.v`, from which you can Step In to `A.v` as well as breakpoints on either of the `idtac`s.  We'll figure out how to make this work.
+Not sure I follow, but the process of setting a breakpoint visually is the dual of jumping to a definition, I have no idea for Ltac as I have never defined my own tactics, but for other objects you usually need just to run internalization.
+> From file `C.v`, I want to locate `B1.foo` in a way that it tells me that it came from `A.v`, and, in the middle of debugging, when the debugger prints out something like "going to execute `idtac "I'm in Module Functor F in A.v (1)"`", I want to locate that evaluated tactic AST in a way that gives me the correct line and character information in `A.v`.
+
+I think users will want to set breakpoints in `C.v` on `B1.foo` and also within the definition of `foo` in `A.v`.  I expect we'll get those to work.  The extra message seems beyond basic debugger functionality--an enhancement to consider somewhat later.
+
+Resolved by #14354

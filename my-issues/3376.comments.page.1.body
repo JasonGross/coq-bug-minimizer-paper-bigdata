@@ -1,0 +1,23 @@
+Comment author: @JasonGross
+
+CoFixpoint f (m : nat) (o := true) (n : nat) {struct n} := n.
+(* Error: Bad implicit argument number: 5. *)
+
+
+Comment author: @maximedenes
+
+In fact, this happens with regular definitions:
+
+Definition f (o := true) {T : Type} := T.
+
+
+Comment author: @maximedenes
+
+*** Bug [BZ#4191](https://github.com/coq/coq/issues?q=is%3Aissue%20%22Original%20bug%20ID%3A%20BZ%234191%22) has been marked as a duplicate of this bug. ***
+
+
+Comment author: @herbelin
+
+Made a fix which seems locally correct (trunk and v8.4).
+
+

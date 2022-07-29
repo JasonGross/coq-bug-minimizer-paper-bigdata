@@ -1,0 +1,32 @@
+@JasonGross Hello. Your script gives me the following output in Coq 8.9 and 8.10.
+```haskell
+module Main where
+
+import qualified Prelude
+
+alpha :: Prelude.String
+alpha =
+  (:) '\206' ((:) '\177' ([]))
+```
+It does compile with GHC 8.0.1. `α` is `0xCE 0xB1` in UTF-8 encoding so I think it's fine. Would you confirm the problem is disappeared? (I have no Windows computer.)
+I didn't reproduce this issue in Coq 8.8.0. The pretty-printing function of character literals is implemented by using `Char.escaped` and hasn't been changed in the recent 5 years. So I guess that the source of the issue was ocaml/ocaml#6521. If it's true, the issue is addressed in OCaml 4.03.0.
+> α is 0xCE 0xB1 in UTF-8 encoding so I think it's fine.
+
+Not really.  `"\206\177"` is `"Î±"`
+
+It should be
+```haskell
+alpha = "α"
+   -- or "\945"
+   --  = ('\945' : [])
+   --  = Data.Text.unpack (Data.Text.Encoding.decodeUtf8 (Data.ByteString.pack [206,177]))
+```
+
+
+Haskell strings (type String) are not encoded: they are a list of unicode code points.
+
+Maybe the extraction of Coq strings should target the ByteString Haskell data type.
+@llelf I know. But translating the given Coq definition `alpha` to `"\945"` doesn't preserve the meaning and makes Haskell extraction unsound. The former one has size 2 but the latter one has size 1.
+@vbgl `Data.ByteString.cons` has the linear time complexity so would `[Word8]` be reasonable?
+Indeed, a list of Word8 precisely matches the Coq definition. Extracted string literals will probably be hard to read — but they already are…
+Anyway, we wouldn't able to deal with Unicode strings in extraction. So I think this issue itself has been addressed in OCaml 4.03.0. But we can keep it opened to find a good alternative to `ExtrHaskellString` which realizes Coq `string` by `[Word8]` or `ByteString`.

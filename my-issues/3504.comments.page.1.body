@@ -1,0 +1,101 @@
+Comment author: @JasonGross
+
+(* File reduced by coq-bug-finder from original input, then from 15037 lines to 13721 lines, then from 13307 lines to 556 lines, then from 556 lines to 176 lines, then from 134 lines to 37 lines *)
+Set Implicit Arguments.
+Inductive paths {A : Type} (a : A) : A -> Type := idpath : paths a a where "x = y" := (@ paths _ x y) : type_scope.
+Unset Printing Notations.
+Module NonPrim.
+  Unset Primitive Projections.
+  Record PreCategory := { object :> Type ; morphism : object -> object -> Type ; identity : forall x, morphism x x }.
+  Record Functor (C D : PreCategory) :=
+    { object_of :> C -> D;
+      morphism_of : forall s d, morphism C s d -> morphism D (object_of s) (object_of d);
+      identity_of : forall x, morphism_of _ _ (identity _ x) = identity _ (object_of x) }.
+  Definition indiscrete_category X : PreCategory := @ Build_PreCategory X (fun _ _ => unit) (fun _ => tt).
+  Goal forall (C : PreCategory) (X : Functor (indiscrete_category unit) C),
+         @ paths (morphism C (object_of X tt) (object_of X tt))
+                (morphism_of X tt tt tt)
+                (identity C (object_of X tt)).
+  Proof.
+    intros.
+    apply (identity_of X).
+    Undo.
+    apply identity_of.
+  Qed.
+End NonPrim.
+Module Prim.
+  Set Primitive Projections.
+  Record PreCategory := { object :> Type ; morphism : object -> object -> Type ; identity : forall x, morphism x x }.
+  Record Functor (C D : PreCategory) :=
+    { object_of :> C -> D;
+      morphism_of : forall s d, morphism C s d -> morphism D (object_of s) (object_of d);
+      identity_of : forall x, morphism_of _ _ (identity _ x) = identity _ (object_of x) }.
+  Definition indiscrete_category X : PreCategory := @ Build_PreCategory X (fun _ _ => unit) (fun _ => tt).
+  Goal forall (C : PreCategory) (X : Functor (indiscrete_category unit) C),
+         @ paths (morphism C (object_of X tt) (object_of X tt))
+                (morphism_of X tt tt tt)
+                (identity C (object_of X tt)).
+  Proof.
+    intros.
+    apply (identity_of X).
+    Undo.
+    apply identity_of. (* Toplevel input, characters 21-32:
+Error:
+In environment
+C : PreCategory
+X : Functor (indiscrete_category unit) C
+Unable to unify
+ "paths (morphism_of ?192 ?193 ?193 (identity ?190 ?193))
+    (identity ?191 (object_of ?192 ?193))" with
+ "paths (morphism_of X tt tt tt) (identity C (object_of X tt))". *)
+  Qed.
+End Prim.
+
+
+Comment author: @mattam82
+
+Hmmm... this is due to apply's unification being too weak. It does not check types in general, and does not use evar subsitutions eagerly so when unifying X with ?192 it doesn't realize ?190 has to be [indiscrete_category unit] so it fails to unify (identity ?190 ?193) with tt later on... I can try to fix this for projections by forcing a type unification, but it will still fail if the metas become evars:
+Even without primproj, try setting Arguments identity_of {C D} f x (maximal implicits are elaborated to evars). The unification fails because the instance found for the evar of C is not used when unifying later arguments... This is a major design flaw of apply's unification. The only solution is to use refine instead.
+
+
+Comment author: @mattam82
+
+As said in the comment above, this is not solvable without a major redesign of apply. The current solution we're working towards is to use refine's unification in apply, which would solve this.
+
+
+Comment author: @herbelin
+
+For testing purpose, I think it is relatively easy to bind apply to evarconv:
+change mk_clenv_bindings so that it uses Evar instead of Meta and use a variant of res_pf that calls evar_conv_x. The next worry then will certainly be that w_unify might be clever than evarconv on some examples (e.g. on second-order problems). So, in practice, the work is probably more at making both algorithms converge to a common specification... (my 2c)
+
+
+Comment author: @JasonGross
+
+*** Bug [BZ#3599](https://github.com/coq/coq/issues?q=is%3Aissue%20%22Original%20bug%20ID%3A%20BZ%233599%22) has been marked as a duplicate of this bug. ***
+
+
+Comment author: @mattam82
+
+Actually I fixed this by forcing type unifications for projection arguments.... The general argument and the problem with evars remain.
+
+
+Comment author: @mattam82
+
+*** Bug [BZ#3588](https://github.com/coq/coq/issues?q=is%3Aissue%20%22Original%20bug%20ID%3A%20BZ%233588%22) has been marked as a duplicate of this bug. ***
+
+
+Comment author: @mattam82
+
+*** Bug [BZ#3506](https://github.com/coq/coq/issues?q=is%3Aissue%20%22Original%20bug%20ID%3A%20BZ%233506%22) has been marked as a duplicate of this bug. ***
+
+
+Comment author: @JasonGross
+
+Should this be remarked as resolved fixed, then?
+
+
+Comment author: @mattam82
+
+Yes, done now.
+
+

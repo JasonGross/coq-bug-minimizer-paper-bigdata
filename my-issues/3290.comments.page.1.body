@@ -1,0 +1,662 @@
+Comment author: @JasonGross
+
+Trunk's [abstract] is crippled, at least in the case that the proof is ended in [Qed].
+
+Using the memusg script (https://gist.github.com/JasonGross/11149425, just my copy of https://gist.github.com/netj/526585), I get
+```
+jgross@ cagnode17:/tmp$ cat memabstract.v
+Goal True.
+Proof.
+  do 100 assert True by abstract (do 100 assert True by constructor; constructor).
+  constructor.
+Qed.
+jgross@ cagnode17:/tmp$ cat memnoabstract.v
+Goal True.
+Proof.
+  do 100 assert True by (do 100 assert True by constructor; constructor).
+  constructor.
+Qed.
+jgross@ cagnode17:/tmp$ for DIR in coq-8.4pl3 coq-trunk; do echo "$DIR"; echo; echo "abstract"; time memusg ~/.local64/coq/$DIR/bin/coq
+c memabstract.v; sleep 0.2; echo; echo "no abstract"; time memusg ~/.local64/coq/$DIR/bin/coqc memnoabstract.v; sleep 0.2; echo; echo; done
+coq-8.4pl3
+
+abstract
+
+real    0m16.842s
+user    0m16.613s
+sys     0m0.240s
+memusg: peak=48308
+
+no abstract
+
+real    0m15.622s
+user    0m15.113s
+sys     0m0.516s
+memusg: peak=388672
+
+
+coq-trunk
+
+abstract
+
+real    0m5.264s
+user    0m4.852s
+sys     0m0.412s
+memusg: peak=388800
+
+no abstract
+
+real    0m4.628s
+user    0m4.160s
+sys     0m0.460s
+memusg: peak=430960
+```
+
+It is nice that Coq trunk is 3x faster in this case.  But it uses a comparable amount of memory (~400 MB), and, worse, using [abstract] does not give the ~10x decrease in memory usage that it does in 8.4.
+
+
+
+As I understand it, this has something to do with it inlining the proofs:
+```
+Lemma Foo : True.
+Proof.
+  assert (True) by (abstract exact I).
+  clear; abstract (exact I).
+Defined.
+Print Foo.
+(* as expected: Foo = (fun _ : True => Foo_subproof0) Foo_subproof
+     : True *)
+Lemma Foo' : True.
+Proof.
+  assert (True) by (abstract exact I).
+  clear; abstract (exact I).
+Qed.
+Print Foo'.
+(* Foo' =
+(fun Top_Foo'_subproof : True =>
+ (fun Top_Foo'_subproof0 : True =>
+  (fun _ : True => Top_Foo'_subproof0) Top_Foo'_subproof) I) I
+     : True *)
+(* um.... *)
+```
+Comment author: @gares
+
+You are right proofs are inlined as beta-redexes (but not duplicated).
+
+So the reason must be something else.  Every time a Qed happens, and abstract was doing a Qed behind the scenes, the proof term is hashconsed.  This is still happening but just at the end of the proof.
+Can you force a garbage collection with Gc.compat() just before you measure the memory consumption?
+
+Also, abstract is an horrible hack that should have never been coded.  Hacks are not durable.  Don't rely on them.
+
+
+Comment author: @JasonGross
+
+I presume you mean from the OCaml toploop, using Drop, or something?  The only time I've made use of Drop is when I had Bruno Barras helping me debug something, and I don't really recall how to use it.  (For example, Drop gives me "Error: There is no ML toplevel.".  And once I Drop., do I just type Gc.compat()?  Or do I need to load things?  Or do I need to compile Coq specially?)  If you give me a Coq script or other instructions, I can measure the memory consumption at a certain point and report back.
+
+I personally use abstract to keep some part of a transparent proof folded, to improve performance (see https://coq.inria.fr/bugs/show_bug.cgi?id=3280).  Adam Chlipala, at least, makes extensive use of it for precisely the purpose of decreasing memory usage.  I'll see if I can get him to weigh in here on the potential for a non-hacky alternative to [abstract] that will satisfy his needs.
+
+
+Comment author: @gares
+
+I've discussed on coqdev the implementation of abstract and after a chat with Adam I made it behave as in 8.4 for proofs ending with Defined.
+
+Pulling back the old behavior is always possible but given that it is an
+hack I prefer to understand what you are doing (for real, not the repeat 1000...)
+and see how thinks can be made to work without the hack.
+
+W.r.t. Gc.compat() I was thinking of adding it to the code of Coq after the code running Qed.  I don't know how you measure memory usage, but I expect that if you
+measure it after the compaction what you measure is the real memory usage, not a peek.  And I expect it to be aligned with 8.4.
+
+You could do it via Drop, you need coqtop in bytecode (so all you measurements have to be redone, the bytecode is less efficient).  Then Load "yourscript".
+Then Drop.  Then Gc.compact();;  Then go();;  Then you measure with your utility.
+
+
+Comment author: @JasonGross
+
+After Drop, I get:
+
+```
+File "/afs/csail.mit.edu/u/j/jgross/.ocamlinit", line 2, characters 13-33:
+Error: Unbound module Toploop
+
+.ocamlinit is
+if Filename.basename Sys.argv.(0) = "coqtop.byte"
+then ignore (Toploop.use_silently Format.std_formatter "include")
+(* some comments *)
+
+
+If I run the commands anyway, I get
+Gc.compat();;
+Characters 0-9:
+  Gc.compat();;
+  ^^^^^^^^^
+Error: Unbound value Gc.compat
+Did you mean compact?
+# Gc.compact();;
+- : unit = ()
+# go();;
+Characters 0-2:
+  go();;
+  ^^
+Error: Unbound value go
+#
+```
+
+The script I used is at https://gist.github.com/JasonGross/11149425, which looks at peak memory usage, but now I am using htop, because I can look at the usage at any point in time.  Gc.compact() without go() seems to have virtually no effect; I get 566M VIRT and 376M RES both before and after Gc.compact() (this is after the final Qed).
+
+
+Comment author: @gares
+
+While you are at it, could you try to call compaction twice?  IIRC the ephemeron data structure I coded needs it.
+
+Also, you could "#use include;;"  after Drop. (maybe "include" between quotes)
+to have back go();; and the rest.
+
+Cheers
+
+
+Comment author: @JasonGross
+
+```
+# use "include";;
+Characters 0-3:
+  use "include";;
+  ^^^
+Error: Unbound value use
+# use include;;
+Toplevel input:
+# use include;;
+      ^^^^^^^
+Parse error: ';;' expected after [phrase] (in [top_phrase])
+
+# Gc.compact();;
+- : unit = ()
+# Gc.compact();;
+- : unit = ()
+# Gc.compact();;
+- : unit = ()
+# Gc.compact();;
+- : unit = ()
+#
+```
+
+Both before and after Gc: 565M VIRT, 375M RES
+
+Is it possible that OCaml never gives memory back, and so the system can't tell?  (Alternatively, maybe I just need to get go() working)
+
+(For reference, 8.4pl3, according to htop, peaks at around 79M VIRT, 51M RES)
+
+
+Comment author: @herbelin
+
+Hi Jason, you can have a look at dev/doc/debugging.txt in the Coq archive for using the ocaml toplevel.
+
+
+Comment author: @JasonGross
+
+Hi, Hugo.  Thanks for the pointer, but that file doesn't seem to tell me how to fix
+File "/afs/csail.mit.edu/u/j/jgross/.ocamlinit", line 2, characters 13-33:
+Error: Unbound module Toploop
+        Camlp5 parsing version 6.11
+
+#
+
+
+Comment author: @herbelin
+
+You don't need to use an .ocamlinit file, nor Toploop. Toploop.use_silently is just the ocaml internal name of the directive #use that you can type yourself at toplevel.
+
+If Toploop is not found for you, maybe it is because you don't have the ocaml library toplevellib.cma installed, or in your path (it is e.g. at /usr/lib/ocaml/toplevellib.cma on my Linux) 
+
+Hugo
+
+
+Comment author: @gares
+
+Hum that is really weird.  Can I ask to repeat the test but measure before the Qed?  During proof construction, abstract does behave as usual + it declares the name of the global object defined by side effect.  Then Qed takes the list of side effects and inlines it.  So, if the memory bloat it visible *before* the Qed, the problem has not to be looked for in the abstract tactic, but elsewhere.
+
+Thanks for all the testing,
+Enrico
+
+
+Comment author: @JasonGross
+
+Qed (which in both cases runs almost instantly, if I recall correctly) has approximately no effect on memory consumption.  The unexpectedly high usage is already there by the time abstract is done running (even before the final "constructor" of the script).
+
+I'm now off to sleep, the internet having distracted me for seven hours past my bed time.  Let me know if there are any other tests you want me to run (but I expect this to be reproducible on any linux machine, if not on all computers0.
+
+
+Comment author: @achlipala
+
+What makes the old [abstract] a hack?  I'm certainly happy with any solution that achieves the same effect, which is to allow the deallocation of thunks standing for completed subgoals, by generating proof terms (which can be _much_ smaller) early.
+
+We have plenty of examples where it is just not feasible to store all proof thunks in memory until [Qed], unless you are willing to devote 32 GB+ of RAM to the task.  See for instance examples in the Bedrock library:
+  http://plv.csail.mit.edu/bedrock/
+The file examples/TreeSet.v there should be a good one to demonstrate.
+
+Bedrock using automated verification condition generation to produce many subgoals within a single proof, and each subgoal is dispatched automatically by tactics for separation logic.  The individual subgoal proof thunks grow large enough to be a real problem memory-wise, if they can't be forced after each subgoal.
+
+
+Comment author: @gares
+
+@ jason: thanks for the test.  This shows that it is not the "new" abstract.  You should be able to Show Proof before the Qed and see that abstracted subproofs are indeed abstracted out as in 8.4.  The new thing happens at Qed time.
+Maybe the evars corresponding to the abstracted subterms are not purged?  Arnaud, is this possible?
+
+@ adam: abstract is a hack because it subverts the logical order of the script.
+You typecheck the statement in an environment E1, then you typecheck the proof
+in a new environment E2 that is not E1 (it is an extension of it).  This is not a real problem in practice, but complicates the way one has to handles proof construction.  Proof construction is not a function from text to a proof term,
+but to a proof term plus a random number of side effects.  Of course, if such function is run on a worker process, these side effects have to be at least notified to the master process and taken into account.  This is what Qed does now: takes a proof term and a list of side effects, and makes them local by creating local let-in or beta-redex.
+
+Now I'm on VAC, I'll try to follow your pointers when I'll be back.  If memory consumption is a problem I believe we should understand why/who wastes it.  
+
+I see that a huge evar map can be way bigger than the terms it represents given that it holds the type of every subterm each evar represents.  If this is the culprit, rather than providing a tactic generating global side effects and indirectly freeing some memory, I'd provide brave users like you two a vernacular command to compact the evar map manually (as a last resort) and eventually see if one can find a good heuristic to compact it automatically when it grows above a reasonable size.
+
+Ciao
+
+
+Comment author: @achlipala
+
+Thanks; I'll be glad to see what you find, Enrico!
+
+I don't know exactly which element of subgoal state uses so much memory, and it would certainly be a win to optimize the representation rather than provide a way to force it to proof terms selectively (as [abstract] does now in 8.4).
+
+
+Comment author: @aspiwack
+
+
+> Maybe the evars corresponding to the abstracted subterms are not purged? 
+> Arnaud, is this possible?
+
+It's quite likely indeed. As far as I know there are two things which may be different in trunk than in v8.4 and may be involved here, depending on how you implemented them.
+1/ abstract (v8.4) used a different evar_map than the main proof, it was discarded at the end of the abstracted proof. The main proof was resumed merrily as if the abstracted proof is a single exact of a constant. I the new implementation of abstract (trunk) uses the same evar_map, then the abstracted proof will be kept in memory in the evar_map
+2/ the intermediate step of functions were (v8.4) saved as a separated undo mechanism than the main commands. As a consequence, when a proof was completed, the evar_map used during this proof was garbage collected. Is it possible that the trunk implementation keeps the evar_map-s in memory even after the proof is completed.
+
+The issue I see, is that persistent data structures are hard to compact. There are a few things which I want to explore to improve time efficiency. But memory usage is another beast altogether. Even if we forget that the whole proof together with the intermediate evar_map-s is kept in memory so that even if we compact the evar_map along the way it may no gain us any memory (by the virtue of sharing), every evar in the evar_map is a potential point of entry into the evar_map meaning that it is not safe to remove it unless you have a way to know that no one knows about this existential variable (is there some way to have a notion of scope for these existentials ? I have no idea). I've thought about this issue before, and I couldn't find anything satisfactory.
+
+Unrelated to abstract, but potentially useful for the memory front, I think we should borrow a trick from Matita (it's too late for the next release, I think): having a special, compact representation for (lifted) identity substitutions for evars. I strongly suspect that almost all the substitutions are of this form in proofs. So there may be some significant gain there.
+
+
+Comment author: @gares
+
+When you decide to compact the evar map you split the evars that have an assignment and the ones that don't, then you apply the substitution to the type
+of all evars that don't; then you find the initial evar (the root/s of the proof)
+and you apply the subst to it; finally you keep one assignment, the one from the initial evar to its current proof term.  This assumes that the only terms around are the goals (because these are the only terms you apply the subst to before pruning it), so you can do that only as a vernacular command, not as a tactic.
+
+
++1 for the compact identity list, but beware it is not all roses: you lose the canonicity of identity substitution (i.e. a non identity one may become an identity one) hence you need to compact these subst when you have the occasion.  Also I recall a lot of headaches dealing with mixed cases (like comparing/unifying the two subst, one compact one not).  But yes, the speedup was visible, especially in automatic tactics.
+
+
+Comment author: @aspiwack
+
+
+> When you decide to compact the evar map you split the evars that have an
+> assignment and the ones that don't, then you apply the substitution to the
+> type
+> of all evars that don't; then you find the initial evar (the root/s of the
+> proof)
+> and you apply the subst to it; finally you keep one assignment, the one from
+> the initial evar to its current proof term.  This assumes that the only
+> terms around are the goals (because these are the only terms you apply the
+> subst to before pruning it), so you can do that only as a vernacular
+> command, not as a tactic.
+
+It sounds fairly reasonable. I don't know how robust are the assumptions, nor whether it will yield the expected effect. But if the assumptions are reasonable, there would be arguments to do partial compaction at the end of each tactic dot-terminated command (so that to avoid storing too large evar_map for the purpose of backtracking (though, of course, it may destroy some sharing and end up having the reverse effect, it warrants careful profiling).
+
+
+> +1 for the compact identity list, but beware it is not all roses: you lose
+> the canonicity of identity substitution (i.e. a non identity one may become
+> an identity one) hence you need to compact these subst when you have the
+> occasion.  Also I recall a lot of headaches dealing with mixed cases (like
+> comparing/unifying the two subst, one compact one not).  But yes, the
+> speedup was visible, especially in automatic tactics.
+
+I'm aware of some of the shortcomings indeed. I'm pretty sure many of the hairy cases can be handled conservatively by turning the identity substitution into a regular one when the cases arise, with room for future improvement.
+
+
+Comment author: @ppedrot
+
+Created attachment 462
+Memory dump
+
+Here is an excerpt of a memory dump of coqtop (revision d23c753) after the constructor tactic has been applied. The left column indicates the number of words allocated and the right line indicates which part of the code allocated it.
+
+> Attached file: [memory.log](https://coq.inria.fr/bugfiles/attachment.cgi?id=462) (text/x-log, 93408 bytes)
+> Description:   Memory dump
+
+
+Comment author: @aspiwack
+
+Golly!
+
+According to this memory dump, almost all* of the space are evars with substitutions (the substitutions are probably the biggest offenders). The relevant substitutions, however, are of the form [Var id1; Var id2 ; … ; Var idn]. Which seem tricky to optimise, compared to [Rel 1; Rel 2 ; … ; Rel n].
+
+Named context really obscure the dependencies between evars. On the other hand, as they don't need to be strictly linear, they promise optimisations in large goals. I'm totally confused what to do about this.
+
+* We're talking an order of magnitude more than the next thing on the list, itself an order of magnitude bigger than the third item.
+
+
+Comment author: @gares
+
+Yes it seems all memory is taken by goals.  If one compacts the evar map as I've suggested the number of goals should drop considerably.
+
+
+Comment author: @gares
+
+Hello, I've "coded" the compaction function and If I call it in place of abstract then memory consumption stays very low.
+
+In the quick patch I attach I define a new toplevel vernacular command,
+hence the script becomes 100 copies of the following line:
+
+ assert True by (do 100 .... ).  Compact Proof.
+
+I could not make a tactic of it because the proof engine patch that landed
+a few months ago changed the structure of the proof in a way that I don't understand anymore, but Arnaud should be able to make a tactic of it.
+
+@ Arnaud: the point is that I need a Proof.entry for the compaction operation,
+but a new tactic gets only a proofview...
+
+Cheers
+
+
+Comment author: @gares
+
+Created attachment 463
+compaction patch
+
+> Attached file: [compact.diff](https://coq.inria.fr/bugfiles/attachment.cgi?id=463) (text/plain, 5315 bytes)
+> Description:   compaction patch
+
+
+Comment author: @ppedrot
+
+Sounds dangerous as a tactic, as tactics may share evars from different states of the goal, thus resulting in a potential evar leak... The main question is to understand why the evarmap grows so much in that case, I can't find in the code of tclABSTRACT where the problem is.
+
+
+Comment author: @ppedrot
+
+I failed to see any effect to your patch, Enrico. The memory is almost untouched by your command, be it through coqtop or in interactive mode. I think there is some hidden memory leak somewhere.
+
+
+Comment author: @ppedrot
+
+Sorry, actually it does work only if you remove the "abstract", as you stated. But with the "abstract" tactic present, as I did, no effect at all. Something fishy in here...
+
+
+Comment author: @ppedrot
+
+I think I may have an idea of the culprit: when exactly is computed the body of the abstracted proof? If this is a future, then we're wasting a lot of memory because of the pending evarmap needed to recompute it. If that's the case, there should be some way to force the computation of the body at abstraction time.
+
+
+Comment author: @gares
+
+I suspected that but if you look at Proof_global.close_proof the proof
+is really forced, then the abstract tactic calls   Declare.declare_constant and there the future should reach the kernel and be sunk (see library.ml, line 409)
+hence the system state associated with the future should be dropped.
+
+I would follow that trajectory to see if for some reason things go differently.
+
+BTW, can you tell me how you did trace the allocator?
+
+
+Comment author: @ppedrot
+
+That's really strange, because sinking by hand in tclABSTRACT does divide by 2 the quantity of allocated memory in the memabstract.v example. That's far from the division by 10, but still...
+
+For the allocation profiling, I use the following opam switch:
+
+https://github.com/mshinwell/opam-repo-dev
+
+together with this branch of mine (that's essentially a set of three patches):
+
+https://github.com/ppedrot/coq/tree/allocation-profiling
+
+Then you need some scripts provided with Mark Shinwell's distribution of OCaml switch to get a nice output, but I can put them somewhere for more convenience if you wish (I modified them a bit for some outputs).
+
+
+Comment author: @ppedrot
+
+In Proof_global.close_proof, line 277, there is a Future.force used on the body of the entry. Shouldn't it be a Future.sink to release the memory used by the proof once and for all? The entry should be pure, shouldn't it?
+
+
+Comment author: @aspiwack
+
+Re compaction as a tactic:
+
+Instead of compacting with respect to the initial goals (which is fairly likely to be unsafe), we could imagine a tactic (compact t) which runs [t] and only compacts the proof produced by t (t could still leak evars in a reference, but that's a problem even without compaction).
+
+I don't have time right now to do much more than outline the idea:
+we have sigma_initial when we start and get sigma_after after t. And sigma_after is guaranteed to be an expansion of sigma_initial. So, for each unsolved evar in sigma_initial, we can fill it with its normal form  in sigma_after. After this, we add the new unsolve evars of sigma_after into sigma_initial.
+
+
+Comment author: @ppedrot
+
+Beotian question to Enrico: why are we still using Future.force and not Future.join in rather many places if we know that the computation should not depend on non-registered effects? That sounds like a potentially huge memory leak, as observed by the factor two gained by sinking the constant body in tclABSTRACT...
+
+
+Comment author: @gares
+
+@ PMP: it should be documented in the .mli.  Forcing a future is different from joining it.  When you force it, you save the system state (and the output value),
+so that if you chain it with another function, that function will run in the same system state.  When one joins a future, it purges the system state, hence it makes sense to compose this future only with pure functions.  E.g.  At some point compcert stopped to compile.  I was erroneously joining the future computing a proof term thinking that what follows, type checking by the kernel, is purely functional.  It was not, because the kernel uses the conversion oracle which state is not part of the env nor part of the proof term.  The fix was to force the future (for example to compute the section variables used) without throwing away the system state in which the future was created.  This particular issue is fixed, the oracle state is part of the env now.  Hope it helps understanding the difference.  Sink is different: if the future is a value, it throws away the state, if not it does nothing.
+Now, for abstract, I agree with you that one could join the future producing the term.  What I was suggesting is to trace it because it should get sunk automatically.  When two futures are composed, if the first one is a value, the composition is evaluated immediately (i.e. the compound future is still a value, unless ~greedy:false is given) and this should go on until library, where the future is stocked (and sunk).
+
+@ Arnaud: can you explain why the command I wrote is "probably unsafe"?  Pruning a substitution potentially affects terms in which the evars occur. These terms are IMO inside the "entry" (initial proof term) and inside the evar map.  Where else should they be?
+Also, is it possible to access the "entry" from a "new" tactic?
+
+
+Comment author: @aspiwack
+
+
+> @ Arnaud: can you explain why the command I wrote is "probably unsafe"? 
+> Pruning a substitution potentially affects terms in which the evars occur.
+> These terms are IMO inside the "entry" (initial proof term) and inside the
+> evar map.  Where else should they be?
+
+I meant unsafe in the middle of a tactic. Tactics can hold references inside the evar_map (and have many of good reason to do so). Thus I suggest it is safer to delimit the compaction. As a command there is probably nothing wrong.
+
+> Also, is it possible to access the "entry" from a "new" tactic?
+
+I think the entry used to be part of the proofview and Pierre-Marie removed it (legitimately as it was not used anywhere). I don't feel strongly about that.
+
+
+Comment author: @ppedrot
+
+@ Enrico: clearly, the constant body is not sunk by the kernel as shown by the debugger after the declaration. I don't know why, but it seems that the pure chainings of Library l. 408 and Opaqueproof l. 53 prevent it somehow.
+
+
+Comment author: @gares
+
+@ PMP: In interactive mode !mk_indirect returns null since Library did not set it.  Hence the future never reaches library 408, and it is never sunk.  I've fixed it in trunk.  Thanks for adding the pretty printers.
+
+@ Arnaud:
+> I meant unsafe in the middle of a tactic. Tactics can hold references inside
+> the evar_map (and have many of good reason to do so). Thus I suggest it is
+> safer to delimit the compaction. As a command there is probably nothing wrong.
+
+I still don't get what you mean, sorry.  What can go wrong in something like
+
+  t1; compact (t2).
+
+?
+
+
+Comment author: @ppedrot
+
+Created attachment 464
+Testcase for memory releasing
+
+Still, the problem of releasing memory is not fixed in non-interactive mode.
+
+With the following patch, we are able to trace when the memory of a computation is released from the ephemeron table. This should happen after a [Future.join] and a subsequent garbage collection. I have tested it with dummy examples and it worked; in the case of tclABSTRACT, on memabstract.v, the finalizer is never called, thus resulting in a memory blowup because of the still-present proof state.
+
+> Attached file: [patch.txt](https://coq.inria.fr/bugfiles/attachment.cgi?id=464) (text/plain, 1956 bytes)
+> Description:   Testcase for memory releasing
+
+
+Comment author: @ppedrot
+
+Created attachment 465
+Tentative patch
+
+If this patch is correct, then the problem is solved for the memory leak.
+
+I am not really aware of the subtleties of the future mechanism, but at first sight, a pure computation when forced should not register the state, so this 2-line patch should be correct. What do you think of it, Enrico?
+
+> Attached file: [patch.txt](https://coq.inria.fr/bugfiles/attachment.cgi?id=465) (text/plain, 585 bytes)
+> Description:   Tentative patch
+
+
+Comment author: @gares
+
+Thanks!  The patch is correct, I've committed a slight variant of it.
+
+But I would not close this bug yet, since the right fix for the memory blowup is a (well written) compaction of the evarmap.
+
+
+Comment author: @aspiwack
+
+
+> I still don't get what you mean, sorry.  What can go wrong in something like
+> 
+>   t1; compact (t2).
+
+That's safe. On the other hand t1;compact t2; t3 may not be, if t1 and t3 share an evar which is in the evar_map (and, say, get instantiated by t2). Then t3 would have a dangling reference.
+
+I think there is an invariant we should violate in any situation: that the evar_map after a tactic t0 is an extension of the evar_map before t0.
+
+With a defininition like: m2 is an extension of m1 if all the evars in m1 are also in m2, with the same type. And m2 might have instantiated some of the undefined evars of m1.
+
+The function you defined doesn't preserve the evars if I'm not mistaken. We should probably only compact relatively to m1 (as in the definition above), so that the compacted m2 is still an extension of m1.
+
+
+Comment author: @gares
+
+Hum, I think I see what you mean now.  If one writes
+
+match goal with ..?T.. => t1 T; compact (t2 T); t3 T. 
+
+The term captured by ?T may contain an evar.  I don't know how these Ltac bindings are kept, but I guess compact could apply the substitution to them too, right?
+
+Are there other ways t1 and t3 could share evars?
+
+
+Comment author: @ppedrot
+
+Created attachment 469
+Memory dump of the ephemeron table
+
+I persist thinking that while the compaction of evar map may provide a nice speedup, there is still some memory leak hidden somewhere. The attached file is a graph dump of the ephemeron table after coqc-ing the last line of the following code:
+
+Goal True.
+Proof.
+  do 5 assert True by abstract (do 5 assert True by constructor; constructor).
+  constructor.
+Qed.
+
+We can clearly see that some futures are never joined (I expect the ephemeron table after this code to be almost empty), and that they contain constrs that seems to have escaped hashconsing (as far as I understand the redundancy of the graph).
+
+Enrico, what do you think about that?
+
+> Attached file: [ephemeron.846.5](https://coq.inria.fr/bugfiles/attachment.cgi?id=469) (application/octet-stream, 47444 bytes)
+> Description:   Memory dump of the ephemeron table
+
+
+Comment author: @gares
+
+Sorry I can't make much sense of the graph you attach, but I believe you.
+
+The only thing that could save me here is that the ephemeron table
+is cleaned up "asynchronously".  
+When a future key (an ephemeron key) gets unreferenced nothing is removed.
+When the key is collected by the Gc it is moved in the cleanup list.
+When a new ephemeron key is created (or when Ephemeron.clear is called) the cleanup list is actually removed from the ephemeron table.
+
+Did you call Gc.major() and Ephemeron.clear() before drawing the graph?
+
+In other words "Qed" is not supposed to actively clear that table, but to
+make it possible for the Gc to put futures in the cleanup list and that will
+eventually remove their values from the table.
+
+
+Comment author: @ppedrot
+
+That's a Graphviz graph, you can generate a graphical representation of it using the dot command.
+
+I have tried again by forcing a major GC and the clearing the table. There is still some rather big live futures around, but I doubt they contribute that much to the whole memory consumption. Actually, I am more worried by the in-proof futures generated by the abstract tactic now. Aren't they supposed to be joined immediately?
+
+
+Comment author: @aspiwack
+
+
+> Hum, I think I see what you mean now.  If one writes
+> 
+> match goal with ..?T.. => t1 T; compact (t2 T); t3 T. 
+> 
+> The term captured by ?T may contain an evar.  I don't know how these Ltac
+> bindings are kept, but I guess compact could apply the substitution to them
+> too, right?
+
+That's one way to do it. Of course, it can also be done via direct manipulation of evars in an ML tactic.
+
+I don't really have a strong opinion on what should be compacted and what shouldn't. The only thing one should ensure is that every evar before compact is still there after with an equivalent content (possibly further instantiated).
+
+If we assume (and we probably should) that no tactic is allowed to "mutate" the definition of an evar to a different term (up to evar substitution), then any strategy which compacts any number of evar bodies is safe.
+
+
+Comment author: @ppedrot
+
+Well, I think I have finally spotted why we use so much memory in trunk. Remember the GC trick I introduced? The one enlarging the minor heap. Actually, I thought I was enlarging it to 4MB by multiplying it by 128 as the documentation stated it was 32k by default.
+
+Not quite true. It is indeed 32k __words__, that is, the current trunk uses a whooping 128MB minor heap on 64-bit archs. No more questions about why I can't get the example Jason provided to run under ~130MB of maximum memory used. Mystery solved.
+
+By reducing it to the default values, I do get a memory profile inferior to the one of v8.4, which is nice.
+
+I don't know what to do about this though. Using 128MB of memory as a minimum requirement does not seem that bad, assuming we're living in 2014. People using RPi may still change that parameter by hand using the OCAMLRUNPARAM variable. Anyway, we should document it a least (?).
+
+
+Comment author: @gares
+
+@ PMP: IMO 128MB as a requirement is not a problem.  My cell phone has 2G ;-)
+
+@ Arnaud:  I understand your invariant.  But this invariant is clearly disallowing any form of evar map compaction run by a tactic.  I wanted to
+understand why/where this invariant is needed to see how to invalidate it
+without breaking things.
+We could stay with my patch that implements evarmap compaction as a toplevel
+command, but I don't know if it is sufficient.  It would be so in a language like
+ssreflect, where proofs are made of many short sentences.  But IIRC Adam builds proofs made of very few long sentences hence he may need compaction in the middle of them.  
+It is true that abstract is once again a workaround for this issue, but still I see it as a hack.
+
+
+Comment author: @JasonGross
+
+As I understand it, Bedrock only (or primarily) needs compactification simultaneous with [abstract].  (Similarly, as I understand it, parallel processing of tactics is also primarily useful as a way to solve subgoals with time-consuming proof scripts, i.e., simultaneous with [abstract].)
+
+
+Comment author: @gares
+
+@ adam: the example used in this thread is odd.  What makes Coq blow up is that
+"assert" enlarges the context at each step.  So what we see here is surely an inefficiency but I'm not sure anymore it is representative of your real world formalizations.  And for that inefficiency I agree with Arnaud: we "just" need
+to give a compact representation to the identity explicit substitution for evars.
+
+Is it really the case that your contexts grow to the size of 10'000 entries?
+Or, as I expect, your proof terms are huge trees that live in a, say, 30 items context?
+
+
+Comment author: @achlipala
+
+Well, in this tarball:
+  http://plv.csail.mit.edu/bedrock/bedrock-20130328.tgz
+see examples/TreeSet.v for a long-running file, which uses much more memory without the [abstract].  (Not entirely sure it runs in various avant-garde Coq versions.)
+
+
+Comment author: @ppedrot
+
+Resurrecting this thread: I think the memory leak is now fixed, but I presume we should nonetheless provide the user with a way to garbage collect huge evarmaps with a command, or a by setting a flag so that it is done after each vernacular tactic command. Anyone against this?
+
+
+Comment author: @gares
+
+I agree. Hopefully my patch (in this thread) is still working.
+No time to check it now, but if you want to apply it you are welcome.
+IIRC it was not the best possible solution ever, but Arnaud agreed it was correct.
+
+

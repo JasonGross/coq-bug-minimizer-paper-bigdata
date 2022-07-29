@@ -1,0 +1,13 @@
+Comment author: @JasonGross
+
+Some users on coq-club (see https://sympa.inria.fr/sympa/arc/coq-club/2013-05/msg00074.html) seem to be confused by the fact that [Check] and [Eval] will fill in holes with evars, resulting in potentially confusing behavior such as
+
+Definition confusing {x : False} : False := x.
+Check confusing. (* confusing : False *)
+
+It would be nice if there was a flag (maybe "Set Strict Checking." or "Set Strict Evars." or something) which caused [Check confusing.] to error with "Error: Cannot infer the implicit parameter x of confusing." or, if it's easier just to pass the resulting term through the machinery of [has_evar], something like "Error: confusing as an uninstantiated evar.  Try [Set Printing All.  Unset Strict Checking.] to see where the evar ?1 is located."  I'd expect the flags to have a similar effect on [Eval ... in confusing.]
+
+I don't care much what the default behavior of [Check] and [Eval] are, so long as the behavior where they permit uninstantiated evars is still accessible.
+
+
+Nowadays it prints the list of undefined evars, I think that's enough to make it non-misleading.

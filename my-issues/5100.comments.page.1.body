@@ -1,0 +1,15 @@
+Comment author: @JasonGross
+
+Although bug [BZ#5080](https://github.com/coq/coq/issues?q=is%3Aissue%20%22Original%20bug%20ID%3A%20BZ%235080%22) is fixed, there's no way to specify the cut-off for the 
+output of -profile-ltac.  Being able to suppress hundreds or thousands of lines 
+of output and only look at the most expensive calls is essential to making good 
+use of -profile-ltac.  I propose the -profile-ltac flag take an optional 
+argument for the cutoff.
+
+
+Comment author: @gares
+
+fixed (also in purely batch mode with -profile-ltac-cutoff).
+will push soon
+
+

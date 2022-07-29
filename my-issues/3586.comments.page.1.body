@@ -1,0 +1,48 @@
+Comment author: @JasonGross
+
+The exact conditions are an educated guess, but here's a test case
+
+(* File reduced by coq-bug-finder from original input, then from 6074 lines to 4194 lines, then from 3673 lines to 40 lines, then from 60 lines to 15 lines *)
+(* coqc version trunk (September 2014) compiled on Sep 6 2014 6:15:6 with OCaml 4.01.0
+   coqtop version cagnode17:/afs/csail.mit.edu/u/j/jgross/coq-trunk,trunk (3ea6d6888105edd5139ae0a4d8f8ecdb586aff6c) *)
+Set Record Elimination Schemes.
+Local Set Primitive Projections.
+Record hProp := hp { hproptype :> Type }.
+Record ReflectiveSubuniverse :=
+  { in_subuniverse : Type -> hProp ;
+    SubuniverseType := {T : Type & (in_subuniverse) T} ;
+    to_O : Type -> SubuniverseType }.
+(* Toplevel input, characters 0-163:
+Error: Illegal application:
+The term "f" of type
+ "forall in_subuniverse : Type -> hProp,
+  let SubuniverseType := {T : Type & in_subuniverse T} in
+  forall to_O : Type -> SubuniverseType,
+  P (Build_ReflectiveSubuniverse in_subuniverse to_O)"
+cannot be applied to the terms
+ "in_subuniverse r" : "Type -> hProp"
+ "to_O r" : "Type -> {T : Type & r T}"
+The 2nd term has type "Type -> {T : Type & r T}" which should be coercible to
+ "Type -> {T : Type & in_subuniverse r T}". *)
+
+
+Comment author: @aspiwack
+
+Small remark: I've changed [Set Record Elimination Schemes] to [Set Nonrecursive Elimintation Schemes] (I left the former syntax available though, but I will probably try to remove it before the beta-release).
+
+
+Comment author: @aspiwack
+
+Here is the most minimal example I've found for this bug:
+
+Set Primitive Projections.
+Set Nonrecursive Elimination Schemes.
+
+Record Foo := { bar:nat;baz:=bar;p:baz=baz }.
+
+
+Comment author: @mattam82
+
+Fixed in trunk
+
+

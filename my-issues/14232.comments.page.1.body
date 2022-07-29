@@ -1,0 +1,49 @@
+I am not sure this is a bug, how do you know this did work before to start with?
+
+What are the contents of `/usr/local` and `/usr/local/doc`?
+> how do you know this did work before to start with?
+
+Because we tested it on our CI:
+https://github.com/mit-plv/fiat-crypto/runs/2442591339?check_suite_focus=true
+https://github.com/mit-plv/fiat-crypto/actions/runs/787009485/workflow#L47-L52
+
+
+
+> What are the contents of `/usr/local` and `/usr/local/doc`?
+
+In a couple of hours once our CI backlog is cleared out the job at https://github.com/mit-plv/fiat-crypto/runs/2483384992?check_suite_focus=true should have a step with the name `find /usr/local` which will have the answer to this.  But on my Linux box `/usr/local/doc` is not a thing; `ls /usr/local` gives
+```
+$ ls /usr/local/
+bin  etc  games  include  lib  man  sbin  share  src
+```
+so it seems like `make install` is confused about where it should be installing documentation.  The 8.12 Ubuntu packages, for example (cf [here](https://packages.ubuntu.com/hirsute/amd64/coq/filelist)), do not install anything in `/usr/doc` but instead install to `/usr/share/doc/coq/`.  So I think the correct path is `/usr/local/share/doc`, not `/usr/local/doc`?
+And in fact the ones I have are the only permitted directories as per https://refspecs.linuxfoundation.org/FHS_3.0/fhs/ch04s09.html .  And https://refspecs.linuxfoundation.org/FHS_3.0/fhs/ch04s11.html specifies that `/usr/share/doc` is a thing
+Funnily enough, my install of 8.13.1 has a `doc` folder directly under the prefix, but the only thing in there is `coq-serapi` stuff, so perhaps this is a dune-ecosystem-wide issue?
+There is an issue with `make world` indeed having to ensure that the full `coq-core` and `coqide` are built, that's a bug and produces the problem you see.
+
+Regarding the install location tho the issue is more subtle; we have to do some improvements to this for sure before 8.14, but the short story is that opam layout and FHS layout do differ.
+
+However, dune can be configured to install things in FHS layout [or any other layout], so for example in Debian, if you have configured dune properly in the .deb package, `dune build && dune install` will automatically choose the right paths.
+
+However, if you use a dune coming from opam, it will be configured to install using the opam layout. So users using an opam dune need to do some overriding at dune install time / configure time if they want the install paths to be OK.
+
+Actually I think make-based Coq did install incorrectly in an opam context unless the --foodir options were used.
+
+We need to improve all this for 8.14 so sensible defaults are used in most common cases.
+What is the status of this issue again? What is fixed, what is still to do, what is outside of scope and a Dune issue?
+This also needs to be tested further, since I wasn't convinced that #14515 fixed it.
+> This also needs to be tested further, since I wasn't convinced that #14515 fixed it.
+
+Yes, I'm gonna push another PR based on the feedback given yesterday, there are a couple of problems still remaining.
+Is this now fixed?
+Yes, we can consider this fixed. But the RM seems to have decided not to include the fix in the release after all.
+No pressure, just let us if the release is now unblocked — I'm just playing interrupt controller, not scheduler 😅 
+> Yes, we can consider this fixed. But the RM seems to have decided not to include the fix in the release after all.
+
+Indeed, we still have some work to do w.r.t. the current setup, but IMHO nothing too relevant for most users or packagers.
+
+@Zimmi48 suggested to fall back to opam-installer, but IMHO that's overkill, people using old versions of dune can use `DESTDIR` and fixup [as done usually in Debian], patch their dune, or use opam-installer manually.
+> No pressure, just let us if the release is now unblocked — I'm just playing interrupt controller, not scheduler sweat_smile
+
+Yep, the rc is again on the horizon.
+Closing according to @JasonGross bug description.

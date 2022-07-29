@@ -1,0 +1,24 @@
+Comment author: @JasonGross
+
+[reflexivity] errors with "Tactic failure: The relation R is not a declared reflexive relation. Maybe you need to require the Setoid library." on any typeclass resolution failure, it seems.  This is inaccurate when the typeclass resolution failure was caused by an unrelated missing instance.
+
+Axiom R : Prop -> Prop -> Prop.
+Instance: Reflexive R.
+Admitted.
+Class bar := { x : False }.
+Record foo := { a : Prop ; b : bar }.
+Definition default_foo (a0 : Prop) `{b : bar} : foo := {| a := a0 ; b := b |}.
+Goal exists k, R k True.
+  eexists.
+  evar (b : bar).
+  let e := match goal with |- R ?e _ => constr:(e) end in
+  unify e (a (default_foo True)).
+  subst b.
+  reflexivity. (* Tactic failure: The relation R is not a declared reflexive relation. Maybe you need to require the Setoid library. *)
+
+
+Comment author: @ppedrot
+
+Seems to be fixed as of 78eb89f. The call to reflexivity now succeeds, with the bar instance being on the shelf.
+
+

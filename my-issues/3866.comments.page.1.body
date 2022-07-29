@@ -1,0 +1,51 @@
+Comment author: @JasonGross
+
+I don't have a small test-case, yet, but I get
+
+Future: no fix_exn.
+You have probably created a Future.computation from a value without passing the ~fix_exn argument.  You probably want to chain with an already existing future instead.
+File "/tmp/tmphFbDCm.v", line 8811, characters 0-28:
+Timeout!
+
+on a file where I have [Timeout End foo.] where [foo] is a section.
+
+I've attached a rather large test-case, but I'm hoping this will be an easy one to track down.
+
+
+Comment author: @JasonGross
+
+Created attachment 524
+large buggy file
+
+> Attached file: [bug_factorization_slow_end_02.v](https://coq.inria.fr/bugfiles/attachment.cgi?id=524) (text/plain, 259254 bytes)
+> Description:   large buggy file
+
+
+Comment author: @JasonGross
+
+Created attachment 525
+reproducing test case (as of ab1e5d1f9180daa64924b0b398300cd311611045)
+
+> Attached file: [bug_factorization_slow_end_07_admitted.v](https://coq.inria.fr/bugfiles/attachment.cgi?id=525) (text/plain, 13353 bytes)
+> Description:   reproducing test case (as of ab1e5d1f9180daa64924b0b398300cd311611045)
+
+
+Comment author: @ppedrot
+
+It works for me both under coqtop and coqide. Could you check that this is now the case for you?
+
+
+Comment author: @JasonGross
+
+It works for you because Matthieu fixed the underlying issue that was causing [End Section] to be slow.  If you want to find a way to trigger this bug, you need to find a way to make [End Section] take longer than a second or two.... maybe you can see if it pops up if you put a `sleep 3` in the end section source code?
+
+
+Comment author: @gares
+
+To me this is a nasty coincidence: timeout asks the OS so send a signal
+after X seconds, the signal raises an exception *somewhere*.
+To me this class of "bugs" is unfixable in Coq. Timeout should be considered as  a debug, best-effort, commodity.  No software can be resilient to a random injection in its control flow of an exception (especially if it is imperative).
+
+Not sure "invalid" is the right tag.
+
+

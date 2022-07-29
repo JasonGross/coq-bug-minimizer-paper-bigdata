@@ -1,0 +1,31 @@
+Comment author: @JasonGross
+
+Matthieu Sozeau pushed r16632* based on my bug report https://github.com/HoTT/coq/issues/49.
+
+The following is a test-case which should succeed, but failed with an anomaly:
+
+Require Import FunctionalExtensionality.
+
+Goal forall y, @ f_equal = y.
+  intro.
+  apply functional_extensionality_dep.
+
+
+
+
+* The email I got about this commit was:
+Author: msozeau
+Date: 2013-07-19 16:50:48 +0200 (Fri, 19 Jul 2013)
+New Revision: 16632
+
+Log:
+- Fix uncaught exception NotASort from reductionops, moving decomp_sort to retyping.ml
+- In unification's w_merge, assign the evars in the same order they were found. Might
+create rare incompatibilities.
+
+
+Comment author: @ppedrot
+
+Fixed in r16634.
+
+

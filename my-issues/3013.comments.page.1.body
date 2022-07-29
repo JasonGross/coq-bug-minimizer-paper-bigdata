@@ -1,0 +1,49 @@
+Comment author: @JasonGross
+
+The code
+
+Local Reserved Notation "'Ω'".
+Record foo :=
+  {
+    A : Set where "'Ω'" := A; B : 1 = true
+  }.
+
+"compiles" in ProofGeneral with "Warning: This notation will not be used for printing as it is bound to a single variable", while it should fail with a type error.
+
+This is possibly a bug in ProofGeneral, but the comments on http://proofgeneral.inf.ed.ac.uk/trac/ticket/463 suggest that the "right" solution might involve changing how Coq marks error and warning messages, so I'm posting this bug here.  (Disclaimer: I haven't actually looked at how PG handles error messages.)
+
+
+Comment author: @ppedrot
+
+The way ProofGeneral discusses with Coq is outdated, as it is based on regexps to parse Coq answers. This is not reliable nor robust, as you mention.
+
+As a general workaround to the type of problem you're describing, we need to find a volunteer to port ProofGeneral to the new XML messaging protocol used by CoqIDE since v8.4.
+
+If ever you're interested...
+
+
+Comment author: @hendriktews
+
+This is a Proof General problem, I don't believe, the issue
+should be here in the coq tracker.
+
+Hendrik
+
+
+Comment author: @letouzey
+
+
+There's something awkward here : the error is displayed first, and only then comes
+the warning. Maybe a forgotten flush ? With Coq trunk, the warning comes first,
+then the error, and PG concentrates correctly on the error, discarding the warning...
+
+
+Comment author: @letouzey
+
+
+Indeed, this warning message (and many others) was displayed by a non-flushing printing function. This should be fixed by commit r16437 in 8.4 branch.
+
+Best,
+P.L.
+
+

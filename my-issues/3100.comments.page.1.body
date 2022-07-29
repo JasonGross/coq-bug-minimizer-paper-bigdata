@@ -1,0 +1,66 @@
+Comment author: @JasonGross
+
+This happens in HoTT/coq trunk.  I know that expecting this to work is a stretch, but it would be nice (and should probably not raise an anomaly)...
+
+Inductive trunc_index' : Type :=
+| minus_two' : trunc_index'
+| trunc_S' : trunc_index' -> trunc_index'.
+
+Axiom Contr_internal' : Type -> Type.
+
+Fixpoint IsTrunc_internal' (n : trunc_index') (A : Type) : Type :=
+  match n with
+    | minus_two' => Contr_internal' A
+    | trunc_S' n' => forall (x y : A), IsTrunc_internal' n' (x = y)
+  end.
+
+Goal forall A n (H : forall (x y : A) (x' y' : x = y), IsTrunc_internal' n (x' = y')), True.
+intros.
+change (forall x y, IsTrunc_internal' ?n (x = y)) with (IsTrunc_internal' (trunc_S' n)) in H.
+(* Toplevel input, characters 15-107:
+Error: in _: Conversion test raised an anomaly *)
+
+
+Comment author: @ppedrot
+
+A slightly more self-contained test-case:
+
+Fixpoint F (n : nat) (A : Type) : Type :=
+  match n with
+  | 0 => True
+  | S n => forall (x : A), F n (x = x)
+  end.
+
+Goal forall A n, (forall (x : A) (e : x = x), F n (e = e)).
+intros A n.
+change (forall x, F n (x = x)) with (F (S n)).
+
+If you change last line as follows, it surprisingly succeeds:
+
+change (forall (x : A), F n (x = x)) with (F (S n)).
+
+Note the annotation (x : A).
+
+
+Comment author: @ppedrot
+
+*** Bug [BZ#4077](https://github.com/coq/coq/issues?q=is%3Aissue%20%22Original%20bug%20ID%3A%20BZ%234077%22) has been marked as a duplicate of this bug. ***
+
+
+Comment author: @maximedenes
+
+In v8.5 branch, the version without the ( : A) annotation now prints "Error: types are incompatible". Is this expected?
+
+
+Comment author: @herbelin
+
+Yes, "Types are incompatible" is expected because the right-hand side is not fully applied while the left-hand side is.
+
+That PMP's example with cast A does not fail because no subterm is matching and hence the right-hand side is not checked. Don't know if this is what "we" want but at least, this is the explanation. Whether the rhs should be typable from only the lhs and not from the instances of the rhs found in the goal is an open question to me.
+
+
+Comment author: @herbelin
+
+In any case, I consider this bug closed.
+
+

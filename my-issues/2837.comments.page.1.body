@@ -1,0 +1,64 @@
+Comment author: @JasonGross
+
+The following code errors with
+
+Toplevel input, characters 15-27:
+Anomaly: Uncaught exception Failure("nth"). Please report.
+
+on [rewrite test]
+
+
+Require Import JMeq.
+
+Axiom test : forall n m : nat, JMeq n m.
+
+Goal forall n m : nat, JMeq n m.
+  rewrite test.
+
+
+
+On the other hand, replacing [rewrite test] with [intros; pose (test n m) as H; subst n] works fine.
+
+
+Comment author: @letouzey
+
+Created attachment 395
+proposed patch, to be confirmed by Hugo or Matthieu
+
+> Attached file: [proposed_fix_2837.patch](https://coq.inria.fr/bugfiles/attachment.cgi?id=395) (text/plain, 2567 bytes)
+> Description:   proposed patch, to be confirmed by Hugo or Matthieu
+
+
+Comment author: @letouzey
+
+The test in Equality.find_elim seems insufficiently protected: it performs some (List.nth 2) on something that comes either from a decompose_app (in leibniz_rewrite_ebindings_clause) or from an explicit list of size only 2 (in bareRevSubstInConcl). Here in this bug, the decompose_app provides no args since the type of "test" starts with some products. I attach a temptative patch that starts with a decompose_prod and then tries to build a correct env for the reduction test.
+
+Alas, this is not the end of the story. After this patch, I get on the precise example the following error:
+<<
+Error: Cannot refine with term
+ "JMeq_ind_r (fun _ : nat => forall n m : nat, JMeq n m) 
+    ?237 (test ?232 ?233)" because a metavariable has several occurrences.
+>>
+Has it something to see with the fact that the goal is still quantified ?
+After all, a regular rewrite would fail too (albeit with a less scary error).
+
+If I try "intros. rewrite test." the error is now
+<<
+Error: Unable to find an instance for the variable m.
+>>
+Once again, this looks legitimate: "rewrite" cannot read minds...
+
+Finally, a "intros. rewrite (test n m)." seems to work ok.
+
+Hugo or Matthieu, could you please check whether my patch is ok and whether the above errors are legitimate ?
+
+Thanks,
+Pierre
+
+
+Comment author: @letouzey
+
+
+Patch ok with Hugo, applied as r16392 (trunk) and r16393 (v8.4)
+
+

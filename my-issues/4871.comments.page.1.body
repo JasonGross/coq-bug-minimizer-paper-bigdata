@@ -1,0 +1,48 @@
+Comment author: @JasonGross
+
+If I spam C-c in emacs PG while Coq is running par: abstract; when the command aborts, coqtop dies.
+
+
+Comment author: @maximedenes
+
+Fixed in v8.5 branch by 3da141c5df
+
+
+Comment author: @JasonGross
+
+I just hit this again, in the tip of v8.6, with [par: repeat pose 1], for 
+example.  Is it possible to add something to the test-suite to test this?  
+(Note that [Timeout] isn't enough, it needs to be an interrupt...)
+
+
+Comment author: @JasonGross
+
+Here's a test case that reproduces it sometimes:
+Require Import Coq.ZArith.ZArith.
+Local Notation g := (Z.div_eucl = Z.div_eucl) (only parsing).
+Notation hide := (_ = _).
+Goal g /\ g /\ g /\ g /\ g /\ g.
+  repeat apply conj.
+  par:vm_compute; reflexivity.
+
+Interrupting the par: by spamming C-c gives:
+Process coq broken pipe
+, shutting down scripting...done.
+
+
+Comment author: @psteckler
+
+In vanilla PG, in the *coq* buffer, when this failure occurs, I see:
+--
+6998:master:20] Uncaught exception in worker manager: 
+User interrupt.
+--
+
+In PG/xml, the error does not seem to occur, because while the par: is executing, there's an active worker, and PG/xml sends an XML Stop Worker command, rather sending a signal to the process.
+
+
+Comment author: @psteckler
+
+The error message comes from asyncTaskQueue.ml, line 225 in v8.6 tip. Could the code do something graceful on a SIGINT?
+
+

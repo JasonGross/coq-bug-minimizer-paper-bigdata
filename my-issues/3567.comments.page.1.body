@@ -1,0 +1,240 @@
+Comment author: @JasonGross
+
+This error message should never show up, if the tactics are working properly, righty?
+
+(* File reduced by coq-bug-finder from original input, then from 2901 lines to 69 lines, then from 80 lines to 63 lines *)
+(* coqc version trunk (September 2014) compiled on Sep 2 2014 2:7:1 with OCaml 4.01.0
+   coqtop version cagnode17:/afs/csail.mit.edu/u/j/jgross/coq-trunk,trunk (3c5daf4e23ee20f0788c0deab688af452e83ccf0) *)
+
+Set Primitive Projections.
+Set Implicit Arguments.
+Record prod (A B : Type) := pair { fst : A ; snd : B }.
+Arguments fst {A B} _ / .
+Arguments snd {A B} _ / .
+Add Printing Let prod.
+Notation "x * y" := (prod x y) : type_scope.
+Notation "( x , y , .. , z )" := (pair .. (pair x y) .. z) : core_scope.
+Unset Implicit Arguments.
+Inductive paths {A : Type} (a : A) : A -> Type := idpath : paths a a where "x = y" := (@ paths _ x y) : type_scope.
+Arguments idpath {A a} , [A] a.
+Definition ap {A B:Type} (f:A -> B) {x y:A} (p:x = y) : f x = f y := match p with idpath => idpath end.
+Definition Sect {A B : Type} (s : A -> B) (r : B -> A) := forall x : A, r (s x) = x.
+Class IsEquiv {A B : Type} (f : A -> B) :=
+  { equiv_inv : B -> A ;
+    eisretr : Sect equiv_inv f;
+    eissect : Sect f equiv_inv;
+    eisadj : forall x : A, eisretr (f x) = ap f (eissect x) }.
+Definition path_prod_uncurried {A B : Type} (z z' : A * B) (pq : (fst z = fst z') * (snd z = snd z'))
+: (z = z')
+  := match fst pq in (_ = z'1), snd pq in (_ = z'2) return z = (z'1, z'2) with
+       | idpath, idpath => idpath
+     end.
+Definition path_prod {A B : Type} (z z' : A * B) :
+  (fst z = fst z') -> (snd z = snd z') -> (z = z')
+  := fun p q => path_prod_uncurried z z' (p,q).
+Definition path_prod' {A B : Type} {x x' : A} {y y' : B}
+: (x = x') -> (y = y') -> ((x,y) = (x',y'))
+  := fun p q => path_prod (x,y) (x',y') p q.
+Axiom ap_fst_path_prod : forall {A B : Type} {z z' : A * B}
+                                (p : fst z = fst z') (q : snd z = snd z'),
+                           ap fst (path_prod _ _ p q) = p.
+Axiom ap_snd_path_prod : forall {A B : Type} {z z' : A * B}
+                                (p : fst z = fst z') (q : snd z = snd z'),
+                           ap snd (path_prod _ _ p q) = q.
+Axiom eta_path_prod : forall {A B : Type} {z z' : A * B} (p : z = z'),
+                        path_prod _ _(ap fst p) (ap snd p) = p.
+Definition isequiv_path_prod {A B : Type} {z z' : A * B} : IsEquiv (path_prod_uncurried z z').
+Proof.
+  refine (Build_IsEquiv
+            _ _ _
+            (fun r => (ap fst r, ap snd r))
+            eta_path_prod
+            (fun pq => match pq with
+                         | (p,q) => path_prod'
+                                      (ap_fst_path_prod p q) (ap_snd_path_prod p q)
+                       end) _).
+  destruct z as [x y], z' as [x' y'].
+(* Toplevel input, characters 15-50:
+Error: Abstracting over the term "z" leads to a term
+fun z0 : A * B =>
+forall x : (fst z0 = fst z') * (snd z0 = snd z'),
+eta_path_prod (path_prod_uncurried z0 z' x) =
+ap (path_prod_uncurried z0 z')
+  (let (p, q) as pq
+       return
+         ((ap (fst) (path_prod_uncurried z0 z' pq),
+          ap (snd) (path_prod_uncurried z0 z' pq)) = pq) := x in
+   path_prod' (ap_fst_path_prod p q) (ap_snd_path_prod p q))
+which is ill-typed.
+Reason is: Pattern-matching expression on an object of inductive type prod
+has invalid information.
+ *)
+
+
+Comment author: @JasonGross
+
+git bisect says:
+
+32c83676c96ae4a218de0bec75d2f3353381dfb3 is the first bad commit
+commit 32c83676c96ae4a218de0bec75d2f3353381dfb3
+Author: Matthieu Sozeau <matthieu.sozeau@ inria.fr>
+Date:   Thu Aug 28 19:49:16 2014 +0200
+
+    Change the way primitive projections are declared to the kernel.
+
+    Now kernel/indtypes builds the corresponding terms (has to be trusted)
+    while translate_constant just binds a constant name to the
+    already entered projection body, avoiding the dubious "check"
+    of user given terms. "case" Pattern-matching on primitive records is
+    now disallowed, and the default scheme is implemented using
+    projections and eta (all elimination tactics now use projections
+    as well). Elaborate "let (x, y) := p in t" using let bindings
+    for the projections of p too.
+
+:040000 040000 1b20d8af8dc9d9920b9208aaf0658b3c3f2a0b79 6c6d589c42c67b5ae5155ff493828238aa262c9a M      kernel
+:040000 040000 f213a6a233c367d9ab8a4fb68ffa4cec234b6930 bc4e5786c26d3f2ab1222a01e6346a30268425b0 M      library
+:040000 040000 eb75c7415b45125dcae9ac30d432bc74d0e2200a d2d3a2f09cfcb9bae93ae42003d006617f5351a8 M      plugins
+:040000 040000 22a4e6de82e0239ca9fc4c7d34f6d031eb11608c b3022d0ddaa7a4170f067a0d01464f63375f8ef4 M      pretyping
+:040000 040000 5504ab50ab61a1a401972befba8c054acabc917d ed120e01787f532a6b565e3419578569816e4265 M      proofs
+:040000 040000 56290a471b5da148ab2e76ced175e905e9ab3bc1 3c1cac8932afdb421d022085a9346d5d91040f9a M      toplevel
+bisect run success
+
+
+
+
+#!/bin/bash
+
+SCRIPT="$(readlink -f "${BASH_SOURCE[0]}")"
+COQ_DIR="$HOME/coq"
+
+# exit immediately and abort the bisect if killed
+trap "exit 128" SIGHUP SIGINT SIGTERM
+
+if [ "$1" = "--init" ]
+then
+    shift
+    cd "$COQ_DIR"
+    PS4='$ '
+    set -x
+    # git bisect start [--no-checkout] [<bad> [<good>...]] [--] [<paths>...]
+    git bisect start 3c5daf4e23ee20f0788c0deab688af452e83ccf0 c4ecec191130a51975bf97d067472e0e5bd744f5
+    git bisect run "$SCRIPT" "$@ "
+    exit 128 # if git bisect run gets --init, abort immediately
+fi
+
+cd "$COQ_DIR"
+
+ARGS="-local"
+for arg in "-nodoc" "-no-native-compiler"; do
+    if [ ! -z "$(./configure -h 2>&1 | grep -- "$arg")" ]; then
+        ARGS="$ARGS $arg"
+    fi
+done
+for arg in "-coqide" "-with-doc"; do
+    if [ ! -z "$(./configure -h 2>&1 | grep -- "$arg")" ]; then
+        ARGS="$ARGS $arg no"
+    fi
+done
+if [ "$1" == "--no-build" ]; then
+    shift
+else
+    git clean -xfd 2>&1 >/dev/null
+    echo "./configure $ARGS"
+    ./configure $ARGS
+    make coqbinaries "$@ " || exit 125
+fi
+ls ./bin
+
+
+FILE=`mktemp --suffix=.v --tmpdir tmpXXXXXXXXXX`
+
+cat > "$FILE" <<'EOF'
+(* -*- mode: coq; coq-prog-args: ("-emacs" "-nois") -*- *)
+
+(* File reduced by coq-bug-finder from original input, then from 2901 lines to 69 lines, then from 80 lines to 63 lines *)
+(* coqc version trunk (September 2014) compiled on Sep 2 2014 2:7:1 with OCaml 4.01.0
+   coqtop version cagnode17:/afs/csail.mit.edu/u/j/jgross/coq-trunk,trunk (3c5daf4e23ee20f0788c0deab688af452e83ccf0) *)
+
+Set Primitive Projections.
+Set Implicit Arguments.
+Record prod (A B : Type) := pair { fst : A ; snd : B }.
+Arguments fst {A B} _ / .
+Arguments snd {A B} _ / .
+Add Printing Let prod.
+Reserved Notation "x * y" (at level 40, left associativity).
+Notation "x * y" := (prod x y) : type_scope.
+Notation "( x , y , .. , z )" := (pair .. (pair x y) .. z) : core_scope.
+Unset Implicit Arguments.
+Reserved Notation "x -> y" (at level 99, right associativity, y at level 200).
+Reserved Notation "x = y" (at level 70, no associativity).
+Notation "A -> B" := (forall (_ : A), B) : type_scope.
+
+Inductive paths {A : Type} (a : A) : A -> Type := idpath : paths a a where "x = y" := (@ paths _ x y) : type_scope.
+Open Scope type_scope.
+Open Scope core_scope.
+Arguments idpath {A a} , [A] a.
+Definition ap {A B:Type} (f:A -> B) {x y:A} (p:x = y) : f x = f y := match p with idpath => idpath end.
+Definition Sect {A B : Type} (s : A -> B) (r : B -> A) := forall x : A, r (s x) = x.
+Class IsEquiv {A B : Type} (f : A -> B) :=
+  { equiv_inv : B -> A ;
+    eisretr : Sect equiv_inv f;
+    eissect : Sect f equiv_inv;
+    eisadj : forall x : A, eisretr (f x) = ap f (eissect x) }.
+Definition path_prod_uncurried {A B : Type} (z z' : A * B) (pq : (fst z = fst z') * (snd z = snd z'))
+: (z = z')
+  := match fst pq in (_ = z'1), snd pq in (_ = z'2) return z = (z'1, z'2) with
+       | idpath, idpath => idpath
+     end.
+Definition path_prod {A B : Type} (z z' : A * B) :
+  (fst z = fst z') -> (snd z = snd z') -> (z = z')
+  := fun p q => path_prod_uncurried z z' (p,q).
+Definition path_prod' {A B : Type} {x x' : A} {y y' : B}
+: (x = x') -> (y = y') -> ((x,y) = (x',y'))
+  := fun p q => path_prod (x,y) (x',y') p q.
+Axiom ap_fst_path_prod : forall {A B : Type} {z z' : A * B}
+                                (p : fst z = fst z') (q : snd z = snd z'),
+                           ap fst (path_prod _ _ p q) = p.
+Axiom ap_snd_path_prod : forall {A B : Type} {z z' : A * B}
+                                (p : fst z = fst z') (q : snd z = snd z'),
+                           ap snd (path_prod _ _ p q) = q.
+Axiom eta_path_prod : forall {A B : Type} {z z' : A * B} (p : z = z'),
+                        path_prod _ _(ap fst p) (ap snd p) = p.
+Instance isequiv_path_prod {A B : Type} {z z' : A * B} : IsEquiv (path_prod_uncurried z z')
+  := Build_IsEquiv
+       _ _ _
+       (fun r => (ap fst r, ap snd r))
+       eta_path_prod
+       (fun pq => match pq with
+                    | (p,q) => path_prod'
+                                 (ap_fst_path_prod p q) (ap_snd_path_prod p q)
+                  end) _.
+destruct z as [x y], z' as [x' y'].
+Admitted.
+EOF
+
+rm -f "${FILE%.v}.vo"
+OUTPUT="$(timeout 30 ./bin/coqtop -nois -boot -compile "${FILE%.v}" 2>&1)"
+ls "${FILE%.v}"*
+ERR=$?
+echo "$OUTPUT"
+echo "$ERR"
+#echo "$FILE"
+rm -f "$FILE" "${FILE%.v}.vo" "${FILE%.v}.glob"
+
+if [ ! -z "$(echo "$OUTPUT" | grep -o 'Pattern-matching expression on an object of inductive type')" ]; then
+    echo 'exit 1'
+    exit 1 # bad
+elif [ $ERR = 0 ]; then
+    echo 'exit 0'
+    exit 0 # good
+else
+    echo 'exit 125'
+    exit 125 # failed for other reason
+fi
+
+
+Comment author: @mattam82
+
+Fixed in trunk.
+
+

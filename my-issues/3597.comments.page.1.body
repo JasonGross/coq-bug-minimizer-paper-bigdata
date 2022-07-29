@@ -1,0 +1,25 @@
+Comment author: @JasonGross
+
+Sorry ask for the compatibility mode to be even more complicated, but
+
+Set Primitive Projections.
+Record bar {A : Type} := { bx : forall {x : Set}, Set }.
+Goal let k := (@ bx Set (@ Build_bar Set (fun _ => nat)) nat) in True.
+cbv beta delta [bx].
+Set Printing All.
+(* Goal is:
+let k := @ bx (Build_bar Set (fun _ : Set => nat)) nat in True *)
+assert (let k := @ bx (Build_bar Set (fun _ : Set => nat)) nat in True). (* Toplevel input, characters 29-63:
+Error:
+The term "Build_bar Set (fun _ : Set => nat)" has type
+"@ bar Set" while it is expected to have type "Type". *)
+
+
+Perhaps [Set Printing All]/[Set Printing Implicit] on primitive projections should use named arguments / the (foo := bar) syntax?
+
+
+Comment author: @mattam82
+
+Well, not in Set Printing All mode... I fixed it. Now for primitive projection p, r.(p) and r.(@ p) are reserved for the primitive projection, the first for the "implicit version" and the second for the explicit version (all of this according to the implicits of the record field, ignoring parameters). The hackish part of the compatibility mode is just for the special case of "p r" really. Now Set Printing All or not, you should get you reparseable terms (not exactly though, I found a bug in the externalisation code on the way).
+
+

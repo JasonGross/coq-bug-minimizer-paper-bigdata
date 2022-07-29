@@ -1,0 +1,21 @@
+cc @ppedrot ?
+What does `Local Arguments` do in your example?
+local on reduction behaviour makes it Dispose/nodischarge
+
+Gaëtan Gilbert
+
+On 04/04/2019 09:46, Maxime Dénès wrote:
+> What does |Local Arguments| do in your example?
+> 
+> —
+> You are receiving this because you are subscribed to this thread.
+> Reply to this email directly, view it on GitHub 
+> <https://github.com/coq/coq/issues/9902#issuecomment-479788624>, or mute 
+> the thread 
+> <https://github.com/notifications/unsubscribe-auth/ACWQ7HUJj8LWd5btSAbbfwnCKg4e_S-Zks5vda3UgaJpZM4cb0yt>.
+> 
+
+> local on reduction behaviour makes it Dispose/nodischarge
+
+I see, but that's two different problems. @JasonGross is it the one in the text (not make it active on `Require`) or the one in the example (make it module-local), that you'd like to see fixed?
+Is this about `#[export] Arguments`?

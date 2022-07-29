@@ -1,0 +1,48 @@
+Comment author: @JasonGross
+
+There's currently no way to attach opacity status to a module, as demonstrated 
+by the following example:
+```coq
+Ltac check_opaque_id :=
+  tryif let v := eval unfold id in id in idtac then fail else idtac.
+Ltac check_transparent_id :=
+  tryif check_opaque_id then fail else idtac.
+
+Goal True. check_transparent_id. Abort.
+Module LocalQualid.
+  Local Opaque id.
+End LocalQualid.
+Goal True. check_transparent_id. Abort.
+Module ImportLocalQualid.
+  Import LocalQualid.
+  Goal True. check_transparent_id. Abort. (* good *)
+End ImportLocalQualid.
+
+Goal True. check_transparent_id. Abort.
+Module NoQualid.
+  Opaque id.
+End NoQualid.
+Goal True. check_transparent_id. Abort.
+Module ImportNoQualid.
+  Import NoQualid.
+  Goal True. Fail check_opaque_id. Abort. (* probably wrong; should not need 
+fail *)
+End ImportNoQualid.
+
+Goal True. check_transparent_id. Abort.
+Module GlobalQualid.
+  Global Opaque id.
+End GlobalQualid.
+Goal True. Fail check_transparent_id. Abort. (* wrong; should not need fail *)
+Local Transparent id.
+Module ImportGlobalQualid.
+  Import GlobalQualid.
+  Goal True. Fail check_opaque_id. Abort. (* very wrong; should not need fail *)
+End ImportGlobalQualid.
+```
+When combined with things like bug [BZ#2972](https://github.com/coq/coq/issues?q=is%3Aissue%20%22Original%20bug%20ID%3A%20BZ%232972%22) ([simpl] sometimes ignores [simpl 
+never], and variants where it ignores [simpl never] but not [Opaque]), this 
+means that we can't actually control reduction behavior for a set of constants 
+by inserting directives in a module to be imported.
+
+

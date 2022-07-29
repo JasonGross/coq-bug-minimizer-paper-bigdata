@@ -1,0 +1,10 @@
+Comment author: @JasonGross
+
+coqdoc -latex gives me \coqdockw{match} but \coqdocvar{lazymatch}
+
+
+Comment author: @silene
+
+Fixed in commit d065ea3.
+
+

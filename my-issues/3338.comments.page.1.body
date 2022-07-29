@@ -1,0 +1,8 @@
+Comment author: @JasonGross
+
+Goal forall x y : Set, x = y -> y = y.
+intros x y H.
+rewrite_strat try topdown terms H.
+(* Error: Tactic failure:setoid rewrite failed: No progress made. *)
+
+

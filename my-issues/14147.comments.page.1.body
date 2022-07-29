@@ -1,0 +1,2 @@
+Isn't there an option to unconditionally upload artifacts even when the build fails?
+Job timeout is a special failure.

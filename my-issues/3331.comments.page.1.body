@@ -1,0 +1,59 @@
+Comment author: @JasonGross
+
+(* File reduced by coq-bug-finder from original input, then from 6303 lines to 66 lines, then from 63 lines to 36 lines *)
+Inductive paths {A : Type} (a : A) : A -> Type := idpath : paths a a where "x = y :> A" := (@ paths A x y) : type_scope.
+Arguments idpath {A a} , [A] a.
+Notation "x = y" := (x = y :>_) : type_scope.
+Class Contr_internal (A : Type) := BuildContr { center : A ; contr : (forall y : A, center = y) }.
+Inductive trunc_index : Type :=
+| minus_two : trunc_index
+| trunc_S : trunc_index -> trunc_index.
+Fixpoint IsTrunc_internal (n : trunc_index) (A : Type) : Type :=
+  match n with
+    | minus_two => Contr_internal A
+    | trunc_S n' => forall (x y : A), IsTrunc_internal n' (x = y)
+  end.
+Class IsTrunc (n : trunc_index) (A : Type) : Type := Trunc_is_trunc : IsTrunc_internal n A.
+Instance istrunc_paths (A : Type) n `{H : IsTrunc (trunc_S n) A} (x y : A) : IsTrunc n (x = y) := H x y.
+Notation Contr := (IsTrunc minus_two).
+Section groupoid_category.
+  Variable X : Type.
+  Context `{H : IsTrunc (trunc_S (trunc_S (trunc_S minus_two))) X}.
+  Goal X -> True.
+    intro d.
+    pose (_ : Contr (idpath = idpath :> (@ paths (@ paths X d d) idpath idpath))) as H'. (* success *)
+    clear H'.
+    compute in H.
+    change (forall (x y : X) (p q : x = y) (r s : p = q), Contr (r = s)) in H.
+    assert (H' := H).
+    pose proof (_ : Contr (idpath = idpath :> (@ paths (@ paths X d d) idpath idpath))) as X0. (* success *)
+    clear H' X0.
+    pose (_ : Contr (idpath = idpath :> (@ paths (@ paths X d d) idpath idpath))). (* Toplevel input, characters 21-22:
+Error:
+Cannot infer this placeholder.
+Could not find an instance for "Contr (idpath = idpath)" in environment:
+
+X : Type
+H : forall (x y : X) (p q : x = y) (r s : p = q), Contr (r = s)
+d : X *)
+
+
+
+This happens in both 8.4pl3 and trunk, though HoTT/coq was able to infer the instance in the last case.  I'm very surprised that [assert (H' := H)] is enough to make it find the instance, which suggests that there's some "this is a typeclass hypothesis" bit that's getting unset by [compute], or not getting set by [change], or something (it also happens when I [unfold] rather than [compute], or even don't [compute] at all).
+
+
+Comment author: @ppedrot
+
+The change tactic is know to leak evars, so it may come from there.
+
+
+Comment author: @aspiwack
+
+It's probably not the change tactic which is involved. For one thing the problem was when change was using a pattern, which is clearly not the case here. Second, I believe I fixed the evar leak, and it does not make this example succeed.
+
+
+Comment author: @mattam82
+
+This is due to the fact that H is a section hypothesis, hence typeclass resolution doesn't reindex it every time it indexes the local context of the goal. That's mainly for efficiency, and up to now unproblematic (the section variable is still considered, with its initial type). One shouldn't ever modify the section context, compute, change or destruct it... sadly Coq doesn't enforce this. I patched the code so that if the variable changed type then it gets reindexed.
+
+

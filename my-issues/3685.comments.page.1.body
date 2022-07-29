@@ -1,0 +1,259 @@
+Comment author: @JasonGross
+
+(* File reduced by coq-bug-finder from original input, then from 14001 lines to 844 lines, then from 848 lines to 524 lines, then fro\
+m 525 lines to 336 lines, then from 259 lines to 186 lines, then from 98 lines to 64 lines *)
+(* coqc version trunk (September 2014) compiled on Sep 29 2014 14:5:39 with OCaml 4.01.0
+   coqtop version cagnode16:/afs/csail.mit.edu/u/j/jgross/coq-HoTT,(no branch) (e8726550e01e51ef3ccf8602f2ecbe2b3737cca3) *)
+
+Set Universe Polymorphism.
+Class Funext := { }.
+Delimit Scope category_scope with category.
+Record PreCategory := { object :> Type ; morphism : object -> object -> Type }.
+Set Implicit Arguments.
+Record Functor (C D : PreCategory) :=
+  { object_of :> C -> D;
+    morphism_of : forall s d, morphism C s d -> morphism D (object_of s) (object_of d);
+    identity_of : forall s m, morphism_of s s m = morphism_of s s m }.
+Definition sub_pre_cat `{Funext} (P : PreCategory -> Type) : PreCategory.
+Proof.
+  exact (@ Build_PreCategory PreCategory Functor).
+Defined.
+Definition opposite (C : PreCategory) : PreCategory.
+Proof.
+  exact (@ Build_PreCategory C (fun s d => morphism C d s)).
+Defined.
+Local Notation "C ^op" := (opposite C) (at level 3, format "C '^op'") : category_scope.
+Definition prod (C D : PreCategory) : PreCategory.
+Proof.
+  refine (@ Build_PreCategory
+            (C * D)%type
+            (fun s d => (morphism C (fst s) (fst d) * morphism D (snd s) (snd d))%type)).
+Defined.
+Local Infix "*" := prod : category_scope.
+Record NaturalTransformation C D (F G : Functor C D) := {}.
+Definition functor_category (C D : PreCategory) : PreCategory.
+Proof.
+  exact (@ Build_PreCategory (Functor C D) (@ NaturalTransformation C D)).
+Defined.
+Local Notation "C -> D" := (functor_category C D) : category_scope.
+Module Export PointwiseCore.
+  Local Open Scope category_scope.
+  Definition pointwise
+             (C C' : PreCategory)
+             (F : Functor C' C)
+             (D D' : PreCategory)
+             (G : Functor D D')
+  : Functor (C -> D) (C' -> D').
+  Proof.
+    refine (Build_Functor
+              (C -> D) (C' -> D')
+              _
+              _
+              _);
+    abstract admit.
+  Defined.
+End PointwiseCore.
+Axiom Pidentity_of : forall (C D : PreCategory) (F : Functor C C) (G : Functor D D), pointwise F G = pointwise F G.
+Local Open Scope category_scope.
+Module Success.
+  Definition functor_uncurried `{Funext} (P : PreCategory -> Type)
+             (has_functor_categories : forall C D : sub_pre_cat P, P (C -> D))
+  : object (((sub_pre_cat P)^op * (sub_pre_cat P)) -> (sub_pre_cat P))
+    := Eval cbv zeta in
+        let object_of := (fun CD => (((fst CD) -> (snd CD))))
+        in Build_Functor
+             ((sub_pre_cat P)^op * (sub_pre_cat P)) (sub_pre_cat P)
+             object_of
+             (fun CD C'D' FG => pointwise (fst FG) (snd FG))
+             (fun _ _ => @ Pidentity_of _ _ _ _).
+End Success.
+Module Bad.
+  Include PointwiseCore.
+  Fail Definition functor_uncurried `{Funext} (P : PreCategory -> Type)
+             (has_functor_categories : forall C D : sub_pre_cat P, P (C -> D))
+  : object (((sub_pre_cat P)^op * (sub_pre_cat P)) -> (sub_pre_cat P))
+    := Eval cbv zeta in
+        let object_of := (fun CD => (((fst CD) -> (snd CD))))
+        in Build_Functor
+             ((sub_pre_cat P)^op * (sub_pre_cat P)) (sub_pre_cat P)
+             object_of
+             (fun CD C'D' FG => pointwise (fst FG) (snd FG))
+             (fun _ _ => @ Pidentity_of _ _ _ _).
+  (* Toplevel input, characters 15-541:
+Error: Illegal application:
+The term "Build_Functor" of type
+ "forall (C D : PreCategory) (object_of : C -> D)
+    (morphism_of : forall s d : C,
+                   morphism C s d -> morphism D (object_of s) (object_of d)),
+  (forall (s : C) (m : morphism C s s), morphism_of s s m = morphism_of s s m) ->
+  Functor C D"
+cannot be applied to the terms
+ "(sub_pre_cat P)^op * sub_pre_cat P" : "PreCategory"
+ "sub_pre_cat P" : "PreCategory"
+ "fun CD : PreCategory * PreCategory => fst CD -> snd CD"
+   : "(PreCategory * PreCategory -> PreCategory)%type"
+ "fun (CD C'D' : ((sub_pre_cat P)^op * sub_pre_cat P)%category)
+    (FG : morphism ((sub_pre_cat P)^op * sub_pre_cat P) CD C'D') =>
+  pointwise (fst FG) (snd FG)"
+   : "forall CD C'D' : ((sub_pre_cat P)^op * sub_pre_cat P)%category,
+      morphism ((sub_pre_cat P)^op * sub_pre_cat P) CD C'D' ->
+      Functor (fst CD -> snd CD) (fst C'D' -> snd C'D')"
+ "fun (s : ((sub_pre_cat P)^op * sub_pre_cat P)%category)
+    (m : morphism ((sub_pre_cat P)^op * sub_pre_cat P) s s) =>
+  Pidentity_of (fst m) (snd m)"
+   : "forall (s : ((sub_pre_cat P)^op * sub_pre_cat P)%category)
+        (m : morphism ((sub_pre_cat P)^op * sub_pre_cat P) s s),
+      PointwiseCore.pointwise (fst m) (snd m) =
+      PointwiseCore.pointwise (fst m) (snd m)"
+The 5th term has type
+ "forall (s : ((sub_pre_cat P)^op * sub_pre_cat P)%category)
+    (m : morphism ((sub_pre_cat P)^op * sub_pre_cat P) s s),
+  PointwiseCore.pointwise (fst m) (snd m) =
+  PointwiseCore.pointwise (fst m) (snd m)" which should be coercible to
+ "forall (s : ((sub_pre_cat P)^op * sub_pre_cat P)%category)
+    (m : morphism ((sub_pre_cat P)^op * sub_pre_cat P) s s),
+  (fun (CD C'D' : ((sub_pre_cat P)^op * sub_pre_cat P)%category)
+     (FG : morphism ((sub_pre_cat P)^op * sub_pre_cat P) CD C'D') =>
+   pointwise (fst FG) (snd FG)) s s m =
+  (fun (CD C'D' : ((sub_pre_cat P)^op * sub_pre_cat P)%category)
+     (FG : morphism ((sub_pre_cat P)^op * sub_pre_cat P) CD C'D') =>
+   pointwise (fst FG) (snd FG)) s s m".
+*)
+End Bad.
+
+
+Comment author: @maximedenes
+
+Seems fixed in v8.5 branch. Jason, can you confirm?
+
+
+Comment author: @JasonGross
+
+This is still broken in fdd6a17b272995237c9f95fc465bb1ff6871bedc, though I have to add [Axiom proof_admitted : False. Ltac admit := case proof_admitted.] to the top.  That is, if I remove the [Fail], the [Definition] still fails.
+
+
+Comment author: @maximedenes
+
+I can't reproduce it. I tried both coqtop and coqc. What flags are you using? And what filename (just in case)?
+
+
+Comment author: @JasonGross
+
+Created attachment 607
+bash script that reproduces the output
+
+I've attached a script that writes the file and invokes coqc.  When I run this script, I get:
+
+$ ~/public_html/tmp/3685.sh
+COQBIN=
+/afs/csail.mit.edu/u/j/jgross/.local64/bin/coqc
+The Coq Proof Assistant, version 8.5beta2 (July 2015)
+compiled on Jul 17 2015 9:42:12 with OCaml 4.01.0
+Welcome to Coq cagnode13:/afs/csail.mit.edu/u/j/jgross/coq-8.5,v8.5 (fdd6a17b272995237c9f95fc465bb1ff6871bedc)
+
+Coq < Coq <
+File "/tmp/bug3685.v", line 70, characters 2-532:
+Error: Illegal application:
+The term "Build_Functor" of type
+ "forall (C D : PreCategory) (object_of : C -> D)
+    (morphism_of : forall s d : C,
+                   morphism C s d -> morphism D (object_of s) (object_of d)),
+  (forall (s : C) (m : morphism C s s), morphism_of s s m = morphism_of s s m) ->
+  Functor C D"
+cannot be applied to the terms
+ "(sub_pre_cat P)^op * sub_pre_cat P" : "PreCategory"
+ "sub_pre_cat P" : "PreCategory"
+ "fun CD : PreCategory * PreCategory => fst CD -> snd CD"
+   : "(PreCategory * PreCategory -> PreCategory)%type"
+ "fun (CD C'D' : ((sub_pre_cat P)^op * sub_pre_cat P)%category)
+    (FG : morphism ((sub_pre_cat P)^op * sub_pre_cat P) CD C'D') =>
+  pointwise (fst FG) (snd FG)"
+   : "forall CD C'D' : ((sub_pre_cat P)^op * sub_pre_cat P)%category,
+      morphism ((sub_pre_cat P)^op * sub_pre_cat P) CD C'D' ->
+      Functor (fst CD -> snd CD) (fst C'D' -> snd C'D')"
+ "fun (s : ((sub_pre_cat P)^op * sub_pre_cat P)%category)
+    (m : morphism ((sub_pre_cat P)^op * sub_pre_cat P) s s) =>
+  Pidentity_of (fst m) (snd m)"
+   : "forall (s : ((sub_pre_cat P)^op * sub_pre_cat P)%category)
+        (m : morphism ((sub_pre_cat P)^op * sub_pre_cat P) s s),
+      PointwiseCore.pointwise (fst m) (snd m) =
+      PointwiseCore.pointwise (fst m) (snd m)"
+The 5th term has type
+ "forall (s : ((sub_pre_cat P)^op * sub_pre_cat P)%category)
+    (m : morphism ((sub_pre_cat P)^op * sub_pre_cat P) s s),
+  PointwiseCore.pointwise (fst m) (snd m) =
+  PointwiseCore.pointwise (fst m) (snd m)" which should be coercible to
+ "forall (s : ((sub_pre_cat P)^op * sub_pre_cat P)%category)
+    (m : morphism ((sub_pre_cat P)^op * sub_pre_cat P) s s),
+  (fun (CD C'D' : ((sub_pre_cat P)^op * sub_pre_cat P)%category)
+     (FG : morphism ((sub_pre_cat P)^op * sub_pre_cat P) CD C'D') =>
+   pointwise (fst FG) (snd FG)) s s m =
+  (fun (CD C'D' : ((sub_pre_cat P)^op * sub_pre_cat P)%category)
+     (FG : morphism ((sub_pre_cat P)^op * sub_pre_cat P) CD C'D') =>
+   pointwise (fst FG) (snd FG)) s s m".
+$?=1
+
+> Attached file: [3685.sh](https://coq.inria.fr/bugfiles/attachment.cgi?id=607) (text/plain, 6147 bytes)
+> Description:   bash script that reproduces the output
+
+
+Comment author: @maximedenes
+
+Thanks Jason! Not sure why I failed to reproduce it earlier, sorry about that.
+Anyway, the problem vanishes after replacing "pointwise" by "PointwiseCore.pointwise" in the module "Bad". So something seems broken with constant aliases.
+
+
+Comment author: @JasonGross
+
+Right, it's only the constant generated by the module [Include] that breaks things.
+
+
+Comment author: @silene
+
+Here is a bit reduced testcase. The fundamental parts to reproduce the bug are:
+- sub_pre_cat needs to have a dummy argument (???),
+- baz needs to be universe-polymorphic and part of the module of pointwise.
+
+Class Funext : Prop := { }.
+Context {foo : Funext}.
+Polymorphic Record PreCategory := { object :> Type ; morphism : object -> Type }.
+Polymorphic Record Functor (C : PreCategory) :=
+  { object_of :> C -> C;
+    morphism_of : forall s, morphism C (object_of s);
+    identity_of : forall (s : C), morphism_of s = morphism_of s }.
+Definition sub_pre_cat `{Funext} := Build_PreCategory PreCategory Functor.
+Definition functor_category C := Build_PreCategory (Functor C) (fun _ => True).
+Module PointwiseCore.
+  Polymorphic Axiom baz : PreCategory -> False.
+  Definition pointwise (C : PreCategory) :=
+    Build_Functor (functor_category C) (match baz C with end) (fun _ => I) (fun _ => eq_refl).
+End PointwiseCore.
+Axiom Pidentity_of : forall C : PreCategory,
+  PointwiseCore.pointwise C = PointwiseCore.pointwise C.
+Module Success.
+  Import PointwiseCore.
+  Definition functor_uncurried := Build_Functor sub_pre_cat _ pointwise Pidentity_of.
+End Success.
+Module Bad.
+  Include PointwiseCore.
+  Definition functor_uncurried := Build_Functor sub_pre_cat _ pointwise Pidentity_of.
+
+
+Comment author: @silene
+
+Matthieu, it seems like there is something strange going on with universe levels/constraints there. As mentioned, the last definition does not go through:
+
+Definition functor_uncurried := Build_Functor sub_pre_cat _ pointwise Pidentity_of. (* failure *)
+
+But if you add the following dummy definitions before it, the last one magically goes through:
+
+Definition dummy := Build_Functor sub_pre_cat _ pointwise.
+Definition dummy':= dummy Pidentity_of.
+Definition functor_uncurried := Build_Functor sub_pre_cat _ pointwise Pidentity_of. (* success *)
+
+
+Comment author: @mattam82
+
+Fix in 8.5 coming up.
+
+

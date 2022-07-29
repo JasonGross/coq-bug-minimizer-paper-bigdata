@@ -1,0 +1,19 @@
+Comment author: @JasonGross
+```coq
+(* 9e6b28c04ad98369a012faf3bd4d630cf123a473 *)
+Record foo := { bar : Type }.
+Arguments bar !_ / .
+Definition baz (x : Type) := x.
+Arguments baz / : simpl nomatch.
+Goal forall x, baz (bar x) = baz (bar x).
+Proof.
+  simpl; match goal with |- forall x : foo, bar x = bar x => idtac | |- ?G => fail 1 G end. (* success *)
+  Undo.
+  cbn; match goal with |- forall x : foo, bar x = bar x => idtac | |- ?G => fail 1 G end. (* Error: Tactic failure: (forall x : foo, baz (bar x) = baz (bar x)). *)
+```
+
+Comment author: @pirbo
+
+The the end of my command on #3989. I pretend that cbn is right !
+
+

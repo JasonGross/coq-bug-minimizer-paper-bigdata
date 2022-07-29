@@ -1,0 +1,98 @@
+Comment author: @JasonGross
+
+A week ago, this worked.  Sometime between then and now, it stopped working.
+
+(* File reduced by coq-bug-finder from original input, then from 2236 lines to 1877 lines, then from 1652 lines to 160 lines, then from 102 lines to 34 lines *)
+(* coqc version trunk (December 2014) compiled on Dec 23 2014 22:6:43 with OCaml 4.01.0
+   coqtop version cagnode15:/afs/csail.mit.edu/u/j/jgross/coq-trunk,trunk (90ed6636dea41486ddf2cc0daead83f9f0788163) *)
+Generalizable All Variables.
+Axiom admit : forall {T}, T.
+Notation "g 'o' f" := (fun x => g (f x)) (at level 40, left associativity).
+Definition ap {A B:Type} (f:A -> B) {x y:A} (p:x = y) : f x = f y := match p with eq_refl => eq_refl end.
+Class IsEquiv {A B : Type} (f : A -> B) := { equiv_inv : B -> A ; eisretr : forall x, f (equiv_inv x) = x }.
+Arguments eisretr {A B} f {_} _.
+Notation "f ^-1" := (@ equiv_inv _ _ f _) (at level 3, format "f '^-1'").
+Global Instance isequiv_compose `{IsEquiv A B f} `{IsEquiv B C g} : IsEquiv (g o f) | 1000 := admit.
+Definition isequiv_homotopic {A B} (f : A -> B) (g : A -> B) `{IsEquiv A B f} (h : forall x, f x = g x) : IsEquiv g := admit.
+Global Instance isequiv_inverse {A B} (f : A -> B) {feq : IsEquiv f} : IsEquiv f^-1 | 10000 := admit.
+Definition cancelR_isequiv {A B C} (f : A -> B) {g : B -> C} `{IsEquiv A B f} `{IsEquiv A C (g o f)} : IsEquiv g.
+Proof.
+  pose (fun H => @ isequiv_homotopic _ _ ((g o f) o f^-1) _ H
+                                    (fun b => ap g (eisretr f b))) as k.
+  revert k.
+  let x := match goal with |- let k := ?x in _ => constr:x end in
+  intro k; clear k;
+  pose (x _).
+  pose (@ isequiv_homotopic _ _ ((g o f) o f^-1) g _
+                           (fun b => ap g (eisretr f b))).
+(* Toplevel input, characters 15-123:
+Error: Unable to satisfy the following constraints:
+UNDEFINED EVARS:
+ ?X84==[A B C f g H H0
+         (i:=(fun H0 : IsEquiv (g o f o f^-1) =>
+              isequiv_homotopic (g o f o f^-1) g
+                (fun b : B => ap g (eisretr f b))) isequiv_compose)
+         |- IsEquiv (g o f o f^-1)] (underscore) {i1}
+ ?X91==[A B C f g H H0
+         (i:=(fun H0 : IsEquiv (g o f o f^-1) =>
+              isequiv_homotopic (g o f o f^-1) g
+                (fun b : B => ap g (eisretr f b))) isequiv_compose) b
+         |- IsEquiv f] (parameter IsEquiv of @ eisretr) {IsEquiv}
+*)
+
+
+Comment author: @JasonGross
+
+Git bisect* says that it is 96906c2a1ba9426271a4048bfa8b3991db51c192 or 5bbe23801d8961b04d54f48123f01b21e43261c3; I suspect
+
+commit 96906c2a1ba9426271a4048bfa8b3991db51c192
+Author: Hugo Herbelin <Hugo.Herbelin@ inria.fr>
+Date:   Fri Dec 19 10:39:27 2014 +0100
+
+    Back to the preferred ?n1:=?n2 order of evar-evar unification which got accidentally mixed up in 9aa416c0c6.
+
+
+Indeed, the script does not work in 8.4.  So I am changing this to a feature request, that typeclass resolution be able to infer this instance.
+
+
+* The git bisect run script used was https://github.com/JasonGross/coq-bisect, with 
+(* -*- coq-prog-args: ("-emacs" "-nois") -*- *)
+(* File reduced by coq-bug-finder from original input, then from 2236 lines to 1877 lines, then from 1652 lines to 160 lines, then from 102 lines to 34 lines *)
+(* coqc version trunk (December 2014) compiled on Dec 23 2014 22:6:43 with OCaml 4.01.0
+   coqtop version cagnode15:/afs/csail.mit.edu/u/j/jgross/coq-trunk,trunk (90ed6636dea41486ddf2cc0daead83f9f0788163) *)
+Generalizable All Variables.
+Require Import Coq.Init.Notations.
+Reserved Notation "x -> y" (at level 99, right associativity, y at level 200).
+Notation "A -> B" := (forall (_ : A), B) : type_scope.
+Axiom admit : forall {T}, T.
+Notation "g 'o' f" := (fun x => g (f x)) (at level 40, left associativity).
+Inductive eq {A} (x:A) : A -> Prop := eq_refl : x = x where "x = y" := (@ eq _ x y) : type_scope.
+Arguments eq_refl {_ _}.
+Definition ap {A B:Type} (f:A -> B) {x y:A} (p:x = y) : f x = f y := match p with eq_refl => eq_refl end.
+Class IsEquiv {A B : Type} (f : A -> B) := { equiv_inv : B -> A ; eisretr : forall x, f (equiv_inv x) = x }.
+Arguments eisretr {A B} f {_} _.
+Notation "f ^-1" := (@ equiv_inv _ _ f _) (at level 3, format "f '^-1'").
+Global Instance isequiv_compose `{IsEquiv A B f} `{IsEquiv B C g} : IsEquiv (g o f) | 1000 := admit.
+Definition isequiv_homotopic {A B} (f : A -> B) (g : A -> B) `{IsEquiv A B f} (h : forall x, f x = g x) : IsEquiv g := admit.
+Global Instance isequiv_inverse {A B} (f : A -> B) {feq : IsEquiv f} : IsEquiv f^-1 | 10000 := admit.
+Definition cancelR_isequiv {A B C} (f : A -> B) {g : B -> C} `{IsEquiv A B f} `{IsEquiv A C (g o f)} : IsEquiv g.
+Proof.
+  pose (fun H => @ isequiv_homotopic _ _ ((g o f) o f^-1) _ H
+                                    (fun b => ap g (eisretr f b))) as k.
+  revert k.
+  let x := match goal with |- let k := ?x in _ => constr:x end in
+  intro k; clear k;
+  pose (x _).
+  pose (@ isequiv_homotopic _ _ ((g o f) o f^-1) g _
+                           (fun b => ap g (eisretr f b))).
+
+
+Comment author: @mattam82
+
+Adding a parsing notation:
+
+Notation "g 'o' f" := $(let g' := g in let f' := f in exact (fun x => g' (f' x)))$ (at level 40, left associativity). (* Ensure that x is not captured in [g] or [f] in case they contain holes *)
+
+Makes it work. This is really the cleanest solution, anything else will have to rely on heuristics of higher-order unification otherwise.
+
+

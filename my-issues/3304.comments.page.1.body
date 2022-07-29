@@ -1,0 +1,21 @@
+Comment author: @JasonGross
+
+Notation "( x , y , .. , z )" := $(let r := constr:(prod .. (prod x y) .. z) in r)$.
+(* Error: Special token .. is for use in the Notation command. *)
+
+
+Comment author: @ppedrot
+
+I highly doubt we will be able to allow that sort of recursive notation. The only think I can think of consists in providing a better error message.
+
+
+Comment author: @JasonGross
+
+I'm fine with just having a nicer error message, though of course having it work as intended would be nice.  (Even if it can only work inside a constr:() inside a tactic in a term.)
+
+
+Comment author: @psteckler
+
+This is much like the macro-by-example discipline from the Scheme world.
+
+

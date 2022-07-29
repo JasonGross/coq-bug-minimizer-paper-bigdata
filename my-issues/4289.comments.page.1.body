@@ -1,0 +1,160 @@
+Comment author: @JasonGross
+
+Module Type A.
+  Axiom B : nat.
+End A.
+
+Module C (a : A).
+  Module Import D.
+    Include a.
+    Definition c : nat := @ B.
+  End D.
+End C.
+Back 6. (* The *coq* buffer from PG has [Backtrack 8 0 0 . ] here, but it also uses [Set Silent] and [Unset Silent] *)
+Module C (a : A).
+  Module Import D.
+    Include a.
+    Definition c : nat := @ B. (* Toplevel input, characters 15-40:
+Anomaly: Uncaught exception Not_found. Please report. *)
+
+
+This is with 8.5beta2.  In this example, if you evaluate to [End C], then back up to the beginning of [Module C], then down to [Definition c] (which is what the [Back 6] and subsequent things should do), you get the stated anomaly.  In my actual code base, I seem to be hitting another variant of this bug, where I get "Anomaly: File "library/heads.ml", line 71, characters 25-31: Assertion failed. Please report.".
+
+
+Comment author: @silene
+
+The inner module does not even seem necessary:
+
+Module Type A.
+  Axiom B : nat.
+End A.
+Module C (a : A).
+  Include a.
+  Definition c : nat := B.
+End C.
+Back 4.
+Module C (a : A).
+  Include a.
+  Definition c : nat := B.
+
+The Not_found exception is raised by the kernel when looking up a constant needed for the bytecode compilation of the last definition.
+
+
+Comment author: @herbelin
+
+Apparently related to hash-consing, knowing that the counter for unique bound module identifiers (in names.ml) is not synchronized with the backtracking mechanism.
+
+In the first "Module C (a:A)", "a" is referred to by MPbound (1,a,Top).
+
+In the second "Module C (a:A)", "a" is referred to by MPbound (2,a,Top), where 2 is a fresh discriminating number.
+
+For a reason I don't understand, the hcons_constr in the case DefinitionEntry of Term_typing.infer_declaration is incorrectly turning the MPdot (B,MPbound (2,a,Top)) into MPdot (B,MPbound (1,a,Top)).
+
+Note that the same applied in 8.4 and the same with the replay mechanism of coqide.
+
+
+Comment author: @herbelin
+
+The problem comes (in 8.5) from the compare and hash functions of user/canonical pairs of names (in Names.KerPair), in combination with backtracking.
+
+My understanding of the cause of the problem is the following:
+
+In a given active "logical" environment, two equal user names implies that their canonical names are the same.
+
+However, since the hash table used for backtracking is not reset by backtracking, and since the counter for unique ident is not synchronous with backtracking, one can have pairs (user,canonical) of a logical session which collide with pairs (user,canonical') from a previous logical session overwritten by backtracking which remains in the hash table.
+
+I see several alternatives possible:
+
+1 don't try to optimize the hash-consing time and use the canonical part also for hash-consing
+2 make the hash-consing table synchronous with backtracking
+3 make the uniq ident synchronous with backtracking.
+
+What the hash-consing experts think?
+
+If I would implement it myself, I would do 1 by simplicity, but maybe 2 would be more "moral" (i.e. why to keep in the hashtable objects which do not belong any more to the current active "logical" environment)
+
+In particular, I will push 1 for branch v8.4, but I'm unsure for v8.5.
+
+
+Comment author: @silene
+
+There is something I don't understand. Two kernel pairs are equal if their canonical parts are (see KerPair.equal), but they are hash-consed to the same value if their user parts are equal (see KerPair.Self_Hashcons.equal). So my initial move would simply be to fix KerPair.Self_Hashcons so that it is consistent with KerPair.equal. That would make your solution 1 irrelevant (or rather implicitly implemented).
+
+As for solution 2, it mostly depends on how often the hashconsing table is purged. If it happens regularly, no need to degrade performances by tying the table to the backtracking mechanism.
+
+Now, for the longer term. Let us imagine that one day, we get to the bright new land where computations happen concurrently inside the kernel. In particular, there might be computations working with obsolete data. That is expected, and not an issue, as long as their side effects cannot affect computations with up-to-date data. This means that solution 3 is plain wrong. It also makes solution 1 mandatory (see above anyway). And it makes solution 2 counter-productive.
+
+
+Comment author: @gares
+
+As far as I can tell, the table is never purged.
+
+Assuming OCaml finally merges in the "ephemeron" patch, then we could really have a weak table and use that for hashconsing (i.e. a garbage entry gets automatically removed from the table and the reference in the table does not count for GC marking).
+
+I'd go for "1" (how Guillaume puts it seems more convincing by I suspect Hugo meant the same thing after all).
+
+But the fishy thing to me is that, at least in 8.4, == was never assumed to be complete (only correct of course) since terms stocked in .vo files are not re-hashconsed.  So I don't understand why 3 would break (hypothetically) things.
+My understanding is that "randomly purging" the hashcons table would just slow down things.  Am I wrong?
+
+
+Comment author: @silene
+
+Solution 3 means that the same unique identifier can be associated to two different definitions (create a definition, backtrack, create another definition). That is just a bullet waiting for a foot. As soon as someone introduces some global cache (to avoid expensive computations), even if you backtrack the cache, since you have obsolete computations on flight, the content of your cache becomes incorrect. Example:
+
+- define D
+- do some computation about definition D
+- nothing in the cache yet, so start a full computation
+- keep computing
+- backtrack before D is defined, including the cache
+- keep computing
+- define D, with the same unique identifiers because of solution 3
+- keep computing
+- finish computation and store the result in the cache
+- return the result, it will be discarded because it is obsolete
+- do some computation about definition D
+- find something in the cache, because identifiers are no longer unique
+- return the content of the cache
+- fail badly
+
+Sure, it could be made to work by not storing anything in the cache if some backtrack happened since the start of the computation. But the foolproof way is just to ensure that no two definitions share the same unique identifier. That is why I said that solution 3 is not suitable for a concurrent setting.
+
+For the record, Why3 is already using weak tables for hashconsing, with the behavior you are describing. Ephemerons are not needed at all (though they would make the implementation much simpler). I am not sure I could explain where the miracle comes from, as the implementation is quite tricky (something about storing tables inside values rather than the opposite).
+
+
+Comment author: @herbelin
+
+OK for solution 1 but I'm unsure of what we each other intend. In particular,  two kernel pairs are equal (in the sense of CIC conversion) if their canonical parts are (in the syntactic sense), but this does not mean that two kernel names with same canonical name can be syntactically (and physically) identified. In particular, KerPair.equal is not used for hash-consing, as far as I can see (see HMap.Make which requires only compare and hash).
+
+In any case, agreed that solution 2 is a priori costly (though keeping obsolete data in the hash-consing table also has a cost, which at some time in the past
+happened to have been significant).
+
+As for solution 3, I'm unsure I fully understood the point. I thought 
+Guillaume was considering evaluating several disjoint "Module M(A:S)." in
+parallel with ability for locally undoing each of this
+evaluation (say à la Alf) rather than backtracking along a linear
+sequence of commands as it is now. In this case, either the counter
+would have needed to be fully global (and "infinite" enough), or, better,
+made more local (i.e. made local to each "Module" declaration; I don't
+know for sure why the counter has been introduced by Jacek but I guess
+it is to deal with configuration like "Module M(A:S). Module Sub(A:T).").
+
+But maybe you actually meant something else.
+
+Anyway, let's go for solution 1, as I did for 8.4, i.e. not trying to mix the logical level and the physical level, i.e. considering pairs of kernel names as purely syntactic blocks to be dealt syntactically and renouncing to mix it with logical arguments which are valid only in a consistent environment (while the memory has no reason to contain objects from a single consistent environment, as the residual objects after backtracking shows).
+
+In short, unless no further objection, I'll commit hash-consing of pairs of kernel names along a purely syntactical way.
+
+[A long-term solution where the counter is local to a functor declaration might
+be cleaner (no more side-effect), but that's another story, part
+of the general question of the status of modules in the kernel.]
+
+
+Comment author: @herbelin
+
+I applied a patch (9f81b585519) which changes KerPair.hash/KerPair.Self_Hashcons.hash and KerPair.Self_Hashcons.equal (both used in HashKP.hcons, hence hcons_con).
+
+I found this code pretty difficult to follow, with variants of equal functions used for different purposes. For instance, couldn't the equal from signatures Hashset.EqType and Hashcons.HashconsType be more discriminatingly called equate_phys_block or something like that?
+
+In any case, I hope I did not mix up things.
+
+

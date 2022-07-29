@@ -1,0 +1,82 @@
+Note: Unnecessary use of -X or --request, GET is already inferred.
+  % Total    % Received % Xferd  Average Speed   Time    Time     Time  Current
+                                 Dload  Upload   Total   Spent    Left  Speed
+  0     0    0     0    0     0      0      0 --:--:-- --:--:-- --:--:--     0*   Trying 172.65.251.78:443...
+* TCP_NODELAY set
+* Connected to gitlab.com (172.65.251.78) port 443 (#0)
+* ALPN, offering h2
+* ALPN, offering http/1.1
+* successfully set certificate verify locations:
+*   CAfile: /etc/ssl/certs/ca-certificates.crt
+  CApath: /etc/ssl/certs
+} [5 bytes data]
+* TLSv1.3 (OUT), TLS handshake, Client hello (1):
+} [512 bytes data]
+* TLSv1.3 (IN), TLS handshake, Server hello (2):
+{ [122 bytes data]
+* TLSv1.3 (IN), TLS handshake, Encrypted Extensions (8):
+{ [19 bytes data]
+* TLSv1.3 (IN), TLS handshake, Certificate (11):
+{ [2410 bytes data]
+* TLSv1.3 (IN), TLS handshake, CERT verify (15):
+{ [78 bytes data]
+* TLSv1.3 (IN), TLS handshake, Finished (20):
+{ [52 bytes data]
+* TLSv1.3 (OUT), TLS change cipher, Change cipher spec (1):
+} [1 bytes data]
+* TLSv1.3 (OUT), TLS handshake, Finished (20):
+} [52 bytes data]
+* SSL connection using TLSv1.3 / TLS_AES_256_GCM_SHA384
+* ALPN, server accepted to use h2
+* Server certificate:
+*  subject: C=US; ST=California; L=San Francisco; O=Cloudflare, Inc.; CN=gitlab.com
+*  start date: Jul  4 00:00:00 2022 GMT
+*  expire date: Oct  2 23:59:59 2022 GMT
+*  subjectAltName: host "gitlab.com" matched cert's "gitlab.com"
+*  issuer: C=US; O=Cloudflare, Inc.; CN=Cloudflare Inc ECC CA-3
+*  SSL certificate verify ok.
+* Using HTTP2, server supports multi-use
+* Connection state changed (HTTP/2 confirmed)
+* Copying HTTP/2 data in stream buffer to connection buffer after upgrade: len=0
+} [5 bytes data]
+* Using Stream ID: 1 (easy handle 0x55f7285658c0)
+} [5 bytes data]
+> GET /api/v4/projects/coq%2Fcoq/pipelines/41387500/jobs?page=1&per_page=100 HTTP/2
+> Host: gitlab.com
+> accept: application/json
+> private-token: glpat-XDp_z_rcbYZNNy2yefRv
+> user-agent: JasonGross/coq-bug-minimizer-paper
+> 
+{ [5 bytes data]
+* TLSv1.3 (IN), TLS handshake, Newsession Ticket (4):
+{ [230 bytes data]
+* TLSv1.3 (IN), TLS handshake, Newsession Ticket (4):
+{ [230 bytes data]
+* old SSL session ID is stale, removing
+{ [5 bytes data]
+* Connection state changed (MAX_CONCURRENT_STREAMS == 256)!
+} [5 bytes data]
+  0     0    0     0    0     0      0      0 --:--:--  0:00:01 --:--:--     0  0     0    0     0    0     0      0      0 --:--:--  0:00:02 --:--:--     0  0     0    0     0    0     0      0      0 --:--:--  0:00:03 --:--:--     0< HTTP/2 502 
+< date: Fri, 29 Jul 2022 01:05:39 GMT
+< content-type: text/html
+< content-length: 150
+< strict-transport-security: max-age=31536000
+< referrer-policy: strict-origin-when-cross-origin
+< ratelimit-observed: 36
+< ratelimit-remaining: 1962
+< ratelimit-reset: 1659056799
+< ratelimit-resettime: Fri, 29 Jul 2022 01:06:39 GMT
+< ratelimit-limit: 2000
+< gitlab-lb: fe-30-lb-gprd
+< gitlab-sv: localhost
+< cf-cache-status: DYNAMIC
+< expect-ct: max-age=604800, report-uri="https://report-uri.cloudflare.com/cdn-cgi/beacon/expect-ct"
+< report-to: {"endpoints":[{"url":"https:\/\/a.nel.cloudflare.com\/report\/v3?s=MI4%2BtqSvei02PvrW26RYdIB5gvJ%2BV9w0XE7Om2%2BJxB0zKLcqfsn%2FFND6mlkULiSmzw51yT%2B%2FfAO3%2FYwIYMAH0R838iBmft2pTU6ZuyxL8GxDoxn11yqS1AiBhNw%3D"}],"group":"cf-nel","max_age":604800}
+< nel: {"success_fraction":0.01,"report_to":"cf-nel","max_age":604800}
+< x-content-type-options: nosniff
+< server: cloudflare
+< cf-ray: 7321f2797e1632d9-EWR
+< 
+{ [150 bytes data]
+100   150  100   150    0     0     40      0  0:00:03  0:00:03 --:--:--    40100   150  100   150    0     0     40      0  0:00:03  0:00:03 --:--:--    40
+* Connection #0 to host gitlab.com left intact

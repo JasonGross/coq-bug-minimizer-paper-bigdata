@@ -1,0 +1,58 @@
+Comment author: @JasonGross
+
+Set Universe Polymorphism.
+Definition foo := (Type + Type)%type.
+Check foo@ {i j}. (* Error: Undeclared universe: i *)
+
+I don't think [Check] should enforce this check on universe declaration.
+
+
+Comment author: @JasonGross
+
+One possibility: allow
+
+Check foo@ {_ _}.
+
+
+Comment author: @ppedrot
+
+Yes, that's probably a useful feature.
+
+
+Comment author: @silene
+
+I might be missing something but what is wrong with "Check foo" or "Print foo"? Or doing it the following way:
+
+Monomorphic Universe i j.
+Check foo@ {i j}.
+
+if you need to give more readable names to universes?
+
+
+Comment author: @JasonGross
+
+Guillaume: I want Coq to error if the number of universe arguments does not match what I expect it to be (useful for catching regressions early).  I don't want the universes to stick around after the [Check] command.
+
+
+Comment author: @silene
+
+The universes will stick around, whichever the implementation. Even a command like "Undo" is not able to discard universes, so there is no way that a command such as "Check ...@ {...}" can work without introducing fresh universes. It would require a large rewrite of the kernel to make universes non-persistent.
+
+
+Comment author: @JasonGross
+
+Sorry, I meant to say that there should be no new persistent named universes, i.e. even if the universes stick around, their names should not.  If I have to introduce new named universes to use [Check], unless I put it in a section, there will always be done code that ran without the universe declarations that falls to run with them, and vice versa.  I want a way of inserting modular [Check]s, without the nasal of adding an extra section.
+
+
+Comment author: @mattam82
+
+What's wrong with using Check foo@ {Type Type}? The fact that the universe 
+counter is not backtracked on is a separate issue, I can't think of a way it 
+will change anything if we fix it.
+
+
+Comment author: @ppedrot
+
+AFAIU, your initial request is solved by Matthieu's example, so I close this bug.
+
+

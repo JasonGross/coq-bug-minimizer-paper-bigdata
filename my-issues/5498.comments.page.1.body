@@ -1,0 +1,19 @@
+Comment author: @JasonGross
+
+I'd like to be able to do:
+
+Local Module Notation X := Y.
+
+and have it create [X] as an alias of [Y].
+
+
+Comment author: @Zimmi48
+
+Jason, it's funny how one can spot your bug reports as the ones whose target milestone is the next patch level. However, for feature requests, you will agree it doesn't make much sense.
+
+
+Comment author: @JasonGross
+
+This is, in part, because I'm one of the few people using Deskzilla, which sets the "target milestone" by default to whichever one I picked last.  Indeed, though, I do pay some attention to the target milestone (and forgot to adjust it for this one).
+
+

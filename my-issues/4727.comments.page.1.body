@@ -1,0 +1,71 @@
+Comment author: @JasonGross
+
+Please revert 27689bac62f85c039517cbd003f8ea74cb9b4aa7, or add a flag that reverts it and add that flag to the Compat/Coq84.v file.  Here is a script that passes in Coq 8.4 and in Coq 8.5pl1, but not in Coq 8.5.dev.
+
+Global Set Regular Subst Tactic.
+Goal forall (P : Set) (l : P) (P0 : Set) (w w0 : P0) (T : Type) (a : P * T) (o : P -> option P0),
+    (forall (l1 l2 : P) (w1 : P0), o l1 = Some w1 -> o l2 = Some w1 -> l1 = l2) ->
+    o l = Some w -> o (fst a) = Some w0 -> {w = w0} + {w <> w0} -> False.
+Proof.
+  clear; intros ???????? inj H0 H1 H2.
+  destruct H2; intuition subst.
+  eapply inj in H1; [ | eauto ].
+  progress subst.
+Abort.
+
+
+Comment author: @herbelin
+
+Hi Jason,
+
+Maybe I was not clear in my comment 9 to #4222: The "Regular" mode is new and moreover unset by default in 8.5. In particular, #4222 was caused by a bug in my partial reimplementation of subst which affected the non-regular mode.
+
+So, by default, there is no need for a Set Regular Subst Tactic in Coq84.v (but, if 8.6 keeps the flag set as trunk does now, the forthcoming Coq85.v in 8.6 will have to _unset_ the flag).
+
+So, as a consequence of 27689bac6 being thought as a fix of the Regular mode, and I believe it is legitimate to think so, this script fails because it used an unperfect implementation of the regular mode in 8.5 and 8.5pl1.
+
+Is this ok for you? Can I set the bug as invalid?
+
+On the other side Coq84.v will have to be changed.
+
+Hugo
+
+
+Comment author: @JasonGross
+
+Ah, yes, I think I misinterpreted your comment.  If it's not required for compatibility, then it should be removed from Coq84.v (before pl2 is released), and unset in Coq85.v in trunk.
+
+I don't think the bug is invalid (it's true as described), but I now think the correct fix is to remove `Set Regular Subst Tactic` from the Coq84.v file, rather than to revert 27689bac62f85c039517cbd003f8ea74cb9b4aa7.
+
+
+Comment author: @herbelin
+
+I fixed the Coq84.v file, thus closing.
+
+
+Comment author: @JasonGross
+
+Thanks!
+
+
+Comment author: @JasonGross
+
+In Coq trunk, at least, this code still fails with -compat 8.4, so I'm reopening.
+
+```coq
+(* -*- coq-prog-args: ("-emacs" "-compat" "8.4") -*- *)
+Goal forall (P : Set) (l : P) (P0 : Set) (w w0 : P0) (T : Type) (a : P * T) (o : P -> option P0),
+    (forall (l1 l2 : P) (w1 : P0), o l1 = Some w1 -> o l2 = Some w1 -> l1 = l2) ->
+    o l = Some w -> o (fst a) = Some w0 -> {w = w0} + {w <> w0} -> False.
+Proof.
+  clear; intros ???????? inj H0 H1 H2.
+  destruct H2; intuition subst.
+  eapply inj in H1; [ | eauto ].
+  progress subst. (* should succeed *)
+Abort.
+```
+Comment author: @herbelin
+
+The inclusion of Coq85.v in Coq84.v fixes it.
+
+

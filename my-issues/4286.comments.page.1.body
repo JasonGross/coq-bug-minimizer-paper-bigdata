@@ -1,0 +1,25 @@
+Comment author: @JasonGross
+
+Created attachment 601
+file displaying the error
+
+Toplevel input, characters 15-90:
+Error:
+In environment
+f := ?y ‘fromH’%term :
+Term (ε ▻ ‘H’)
+  (W3 (W2 (W2 ‘Term’) ‘’₁ qcontext_extend) ‘’₂ ?t9@ {x:=‘fromH’}
+   ‘’₁ ?t11@ {x:=‘fromH’} ‘’ ?t16@ {x:=‘fromH’})
+x := ?y0 :
+Term (ε ▻ ‘H’)
+  (W4
+     (W2 (W2 ‘Term’) ‘’₁ qcontext_extend
+      ‘→’ W1 (W1 ‘Typ’) ‘’ qcontext_extend ‘→’ ‘Term’) ‘’₃
+   ?t2@ {x:=‘fromH’} ‘’₂ ?t6@ {x:=‘fromH’} ‘’₁ ?t16@ {x:=‘fromH’} ‘’ f)
+Unable to unify "?t11@ {x:=‘fromH’%term}" with "?t6@ {x:=‘fromH’%term}".
+
+> Attached file: [bug_evar_pose_02.v](https://coq.inria.fr/bugfiles/attachment.cgi?id=601) (application/octet-stream, 9770 bytes)
+> Description:   file displaying the error
+
+
+Can't reproduce on a recent Coq.

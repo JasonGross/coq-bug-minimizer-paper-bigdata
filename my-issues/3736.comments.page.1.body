@@ -1,0 +1,57 @@
+Comment author: @JasonGross
+
+This should be an error.
+
+
+Comment author: @JasonGross
+
+Note that this is a breaking change from 8.4, where it was either silent or just a warning.  This should, at least, be noted in CHANGES.
+
+
+Comment author: @silene
+
+Could you post a testcase where it was silent/warning in 8.4? As far as I can tell, there is not much difference between 8.4 and 8.5:
+
+Inductive a := A with b := B.
+Scheme Equality for a.
+
+8.4: Error: Unknown exception during scheme creation.
+8.5: Anomaly: Decidability lemma for mutual inductive types not supported.
+
+
+Comment author: @JasonGross
+
+In 8.4:
+Local Set Decidable Equality Schemes.
+Inductive a := A with b := B.
+(* a, b are defined
+a_rect is defined
+a_ind is defined
+a_rec is defined
+b_rect is defined
+b_ind is defined
+b_rec is defined *)
+
+In 8.5:
+Local Set Decidable Equality Schemes.
+Inductive a := A with b := B.
+(* a, b are defined
+a_rect is defined
+a_ind is defined
+a_rec is defined
+b_rect is defined
+b_ind is defined
+b_rec is defined
+Toplevel input, characters 0-29:
+> Inductive a := A with b := B.
+> ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Anomaly: Decidability lemma for mutual inductive types not supported.
+Please report.
+ *)
+
+
+Comment author: @herbelin
+
+Fixed
+
+

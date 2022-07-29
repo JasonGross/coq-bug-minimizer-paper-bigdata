@@ -1,0 +1,119 @@
+Comment author: @JasonGross
+
+This works in 8.4, but fails in trunk
+
+(* File reduced by coq-bug-finder from original input, then from 15831 lines to 7052 lines, then from 6868 lines to 199 lines, then from 204 lines to 66 lines *)
+(* coqc version trunk (December 2014) compiled on Dec 10 2014 12:26:15 with OCaml 4.01.0
+   coqtop version cagnode15:/afs/csail.mit.edu/u/j/jgross/coq-trunk,trunk (c938cb8e85f741ce697e7486d35c27c1aa31fe7a) *)
+
+Definition relation (A : Type) := A -> A -> Type.
+Class Reflexive {A} (R : relation A) := reflexivity : forall x : A, R x x.
+Axiom IsHProp : Type -> Type.
+Existing Class IsHProp.
+Inductive Empty : Set := .
+Notation "~ x" := (x -> Empty) : type_scope.
+Record hProp := BuildhProp { type :> Type ; trunc : IsHProp type }.
+Arguments BuildhProp _ {_}.
+Canonical Structure default_hProp := fun T P => (@ BuildhProp T P).
+Generalizable Variables A B f g e n.
+Axiom trunc_forall : forall `{P : A -> Type}, IsHProp (forall a, P a).
+Existing Instance trunc_forall.
+Inductive V : Type := | set {A : Type} (f : A -> V) : V.
+Axiom mem : V -> V -> hProp.
+Axiom mem_induction
+: forall (C : V -> hProp), (forall v, (forall x, mem x v -> C x) -> C v) -> forall v, C v.
+Definition irreflexive_mem : forall x, (fun x y => ~ mem x y) x x.
+Proof.
+  pose (fun x => BuildhProp (~ mem x x)).
+  refine (mem_induction (fun x => BuildhProp (~ mem x x)) _); simpl in *.
+  admit.
+(* Toplevel input, characters 15-20:
+Error:
+Unable to satisfy the following constraints:
+In environment:
+h := fun x : V => {| type := ~ mem x x; trunc := trunc_forall |} : V -> hProp
+v : V
+
+?i0 : "IsHProp ((fun x y : V => ~ mem x y) v v)" *)
+
+
+Comment author: @JasonGross
+
+Here's a slightly shorter version.  Maybe it's a change in the order of canonical structure resolution?
+
+Axiom Foo : Type -> Type.
+Existing Class Foo.
+Record Bar := { type :> Type ; foo : Foo type }.
+Canonical Structure default_Bar := fun T P => Build_Bar T P.
+Instance: Foo Set.
+Admitted.
+Goal Foo ((fun x => x) Set).
+  Fail typeclasses eauto.
+  refine (foo (@ Build_Bar Set _)).
+
+
+Comment author: @herbelin
+
+The order of resolution of ?n1 = ?n2 unification problems has changed. These two "changes" of semantics are a consequence of the change of this order.
+
+I initially made this change for improving a small issue in naming existential variables. It happened that this change (and related ones) revealed a couple of bugs here and there. It happened that the order of resolution of problems crucially impacted type classes resolution, and, incidentally Program.
+
+What it is clear at this point is that the order of resolution of ?n1 = ?n2 unification problems impacts the order in which type classes instances are looked for. Consider e.g. the following ordered list of evars to solve using the type class mechanism.
+
+?n1 : T
+?m : U
+?n2 : T
+
+If we do ?n1 := ?n2, then an instance for ?m is looked for first. If we do ?n2:=?n1, an instance for ?n1 is looked for first, which does not necessarily commutes.
+
+Why the order of resolution of ?n1 = ?n2 unification problems impacts the success of type class inference is however yet unclear to me. Maybe this is the same reason as why it impacts Program, but it has to be investigated further (why Program is sensitive to the order of resolution of ?n1 = ?n2 problems is that evars have tags and that Program and type classes know only for some specific tags - for instance they do not consider named implicit arguments -, then, if we set ?n1 := ?n2, then it is the tag of ?n2 which is tested, if we otherwise do ?n2 := ?n1, it is the tag of ?n1 which is tested, and they might differ).
+
+Maybe should we revert the change in order of resolution of ?n1 = ?n2 problems while waiting for a better understanding of how to address the resolution of these problems in a less arbitrary way.
+
+
+Comment author: @herbelin
+
+*** Bug [BZ#3848](https://github.com/coq/coq/issues?q=is%3Aissue%20%22Original%20bug%20ID%3A%20BZ%233848%22) has been marked as a duplicate of this bug. ***
+
+
+Comment author: @JasonGross
+
+As I understand it, the issue here is that, previously, the typeclass algorithm faced the problem [Foo Set] (inferred from [(@ Build_Bar Set _)]), which it could solve, but currently, it faces the problem [Foo ((fun x => x) Set)] (inferred from the fact that the goal is [Foo ((fun x => x) Set)], and in [foo (Build_Bar ?x ?y)], [?y] must have type [Foo ((fun x => x) Set)]), which it cannot solve.
+
+
+Comment author: @gares
+
+Hugo are you saying that TC resolution follows the order in which evars
+standing for TC instances occur in the evar map?
+
+
+Comment author: @mattam82
+
+Indeed, Hugo made a change to unification that can result in a different order and different constraints being resolved by typeclasses and that's what you're seing here: it tries to resolve ?f : Foo ((fun X : Type => X) Set) instead of ?f' : Foo Set because it instantiates f' with f instead of the converse. Now there's no reason Foo ((fun X => X) Set) couldn't be solved, and indeed there was a bug in the discrimination tree used to index patterns and lookup hints based on their type that prevented the beta reduced instance to be found (fixed now).
+
+On the order of resolution issue, yes the typeclass resolution uses the order given by fold_undefined to resolve classes.
+Do you think a canonical order could be used instead, like an order on user input locations of introductions of the evars (taking the min when merging two evars)? I suspect for Program, taking a kind of lub of the statuses (assuming QuestionMark is at the top) could be a solution too.
+
+Resolution is not commutative for reordering in connected components of evars (w.r.t. dependency) which have non-unique solutions (typically for problems ?foo : Class ?A, ?bar : Class2 ?A with two couples of instances for Class(/2) nat and Class(/2) bool). In strict resolution mode, or if the argument of Class and Class2 is declared an input for Class and Class2 (using the new, undocumented (sorry) Hint Mode Class + : typeclass_instances for example), ?A is either frozen (strict resolution) or no resolution will happen as ?A contains an existential and is declared an input. This hopefully can make resolution much more predictable and solve this non-commutativity problem when the user registers the indexes correctly.
+
+
+Comment author: @gares
+
+My impressions is that the order in which these "logic programs" are run is important to make the whole thing programmable.  I'd choose something maybe
+dumb but easy to explain to the user.  The original
+order (in left to right traversal) of implicit arguments standing for class
+instances seems reasonable to me.  I mean, you pretype then scan the term to
+see what ended up in place of an instance, if it is flexible you fire the inference.  This makes the order robust in face of who gets assigned to solve
+an evar/evar problem.
+
+
+Comment author: @aspiwack
+
+*** Bug [BZ#3848](https://github.com/coq/coq/issues?q=is%3Aissue%20%22Original%20bug%20ID%3A%20BZ%233848%22) has been marked as a duplicate of this bug. ***
+
+
+Comment author: @herbelin
+
+Was fixed already in Dec 2014, probably 9aa416c0c66 even if apparently committed at the same time as another unrelated modification.
+
+

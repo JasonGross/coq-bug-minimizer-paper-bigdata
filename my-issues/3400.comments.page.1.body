@@ -1,0 +1,38 @@
+Comment author: @JasonGross
+
+```coq
+Axiom A : Type.
+Axiom B : Type.
+Axiom C : Type.
+
+Goal A = A.
+match goal with
+  | [ |- context G[$(exact B)$] ] => let G' := context G[C] in pose G'
+end. (* success, I get [T := C : Type] as a hypothesis *)
+match goal with
+  | [ |- context G[B] ] => let G' := context G[C] in pose G'
+end. (* No matching clauses for match *)
+```
+
+I expect both of them to fail similarly.
+
+
+Comment author: @ppedrot
+
+I think this one is difficult to solve without wreaking havoc in the semantics of patterns. Currently, patterns in Ltac are treated as essentially syntactic objects, i.e. they live at the "glob" level. Interpretation of tactics in terms is done at the later "typed" level, i.e. they go through the pretyper. We want patterns to stay syntactic, otherwise strange things may happen (think of all the implicit stuff just popping out in front of you).
+
+Therefore, I think the best answer to this bug is to prohibit tactics-in-terms in tactic patterns. You can still work around this by writing:
+
+```coq
+let t := constr:($(exact B)$) in
+match goal with
+  | [ |- context G[t] ] => let G' := context G[C] in pose G'
+end.
+```
+
+which also fails with the "no matching clause" error.
+
+Are you happy with that?
+
+
+There is a workaround and this would be messing with the Ltac un-semantics, so it's a WONTFIX.

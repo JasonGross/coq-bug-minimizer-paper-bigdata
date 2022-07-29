@@ -1,0 +1,40 @@
+Comment author: @JasonGross
+
+https://github.com/coq/coq/pull/613#discussion_r122720075
+https://github.com/coq/coq/pull/613#discussion_r122721614 (As I understand it, 
+`Cumulative Inductive` does nothing in non-polymorphic mode, while instead, I 
+think it should error, or at least warn.)
+https://github.com/coq/coq/pull/613#discussion_r122727789
+
+Also, this example should probably be incorporated into the doc:
+Set Universe Polymorphism.
+Inductive eq@ {i} {A : Type@ {i}} (x : A) : A -> Type@ {i} := eq_refl : eq x x.
+Infix "=" := eq : type_scope.
+
+Definition funext_type@ {a b e} (A : Type@ {a}) (B : A -> Type@ {b})
+  := forall f g : (forall a, B a),
+    (forall x, eq@ {e} (f x) (g x))
+    -> eq@ {e} f g.
+
+Section down.
+  Universes a b e e'.
+  Constraint e' < e.
+  Lemma funext_down {A B}
+    : @ funext_type@ {a b e} A B -> @ funext_type@ {a b e'} A B.
+  Proof.
+    Fail exact (fun x => x).
+    intros H f g Hfg.
+    specialize (H f g).
+    Fail specialize (H Hfg). (* this would succeed with cumulativity *)
+    specialize (H (fun x => match Hfg x with eq_refl _ => eq_refl _ end)).
+    Fail exact H. (* would this work with cumulativity? *)
+    exact (match H with eq_refl _ => eq_refl _ end).
+  Defined.
+End down.
+
+
+Comment author: @Zimmi48
+
+See https://github.com/coq/coq/pull/864 (ready but waiting to be merged).
+
+

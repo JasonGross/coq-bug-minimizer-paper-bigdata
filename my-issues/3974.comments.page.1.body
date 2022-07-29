@@ -1,0 +1,59 @@
+Comment author: @JasonGross
+
+(* File reduced by coq-bug-finder from original input, then from 178 lines to 132 lines, then from 148 lines to 73 lines, then from 80 lines to 11 lines *)
+(* coqc version trunk (January 2015) compiled on Jan 17 2015 21:58:5 with OCaml 4.01.0
+   coqtop version cagnode15:/afs/csail.mit.edu/u/j/jgross/coq-trunk,trunk (9e6b28c04ad98369a012faf3bd4d630cf123a473) *)
+
+Module Type TypeM.
+End TypeM.
+
+Module Type FunctionM0 (XM : TypeM).
+End FunctionM0.
+
+Module Type FunctionM (XM : TypeM).
+  Module ComposeM (XM : TypeM). (* Anomaly: XM already exists. Please report. *)
+
+
+Comment author: @silene
+
+I am not sure we want to support this kind of code. Nonetheless, the error became an anomaly with the following commit.
+
+commit 466c4cbacfb5ffb19ad9a042af7ab1f43441f925
+Author: letouzey <letouzey@ 85f007b7-540e-0410-9357-904b9bb8a0f7>
+Date:   Wed Jul 17 15:32:11 2013 +0000
+
+    Declaremods: major refactoring, stop duplicating libobjects in modules
+    
+     When refering to a module / module type, or when doing an include,
+     we do not duplicate and substitution original libobjects immediatly.
+     Instead, we store the module path, plus a substitution. The libobjects
+     are retrieved later from this module path and substituted, typically
+     during a Require. This allows to vastly decrease vo size (up to 50%
+     on some files in the stdlib). More work is done during load (some
+     substitutions), but the extra time overhead appears to be negligible.
+    
+     Beware: all subst_function operations should now be
+     environment-insensitive, since they may be arbitrarily delayed.
+     Apparently only subst_arguments_scope had to be adapted.
+    
+     A few more remarks:
+    
+     - Increased code factorisation between modules and modtypes
+     - Many errors and anomaly are now assert
+     - One hack : brutal access of inner parts of module types
+       (cf handle_missing_substobjs)
+
+
+Comment author: @letouzey
+
+Quick note : the anomaly comes from the final line of Declaremods.consistency_checks
+
+
+Comment author: @letouzey
+
+
+Fixed by commit 6417a9 in branch v8.5 (I'll report it to trunk as well).
+
+The anomaly is back to a regular error message instead.
+
+

@@ -1,0 +1,8 @@
+@ppedrot Do you intend to address this in time for 8.12? If that's the case, there should be an assignee. If not, please remove or adjust the milestone.
+This is not urgent, so postponing.
+This was already postponed once. Not a problem, but maybe the milestone could be simply removed?
+Having access to the number of parameters of an Inductive would be a useful feature!
+Lack of this feature in Ltac 1 made me come up with hacks [like this one](https://github.com/mit-plv/bedrock2/blob/720023ddce9ba114f451cf3f0ebc8f9ee3002893/compiler/src/compiler/Simp.v#L44-L82), where I derive the number of parameters by checking for how many arguments passed to a constructor, the induction principle can be specialized with the argument (which is only the case for parameters, but not for indices).
+@ppedrot I'd like an update w.r.t. this PR and its milestone
+It's an issue, not a PR, so postpone.
+My interpretation of milestoned issues, is that they have something to do with that release. So I'm not postponing, but rather clearing the milestone.

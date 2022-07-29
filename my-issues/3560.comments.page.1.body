@@ -1,0 +1,49 @@
+Comment author: @JasonGross
+
+At the very least, this is a confusing error message, because it gives me no information about why it can't unify two evars.  But I don't think this shouldn't ever happen, right?  Either they're types shouldn't unify, and I should get a message about that, or the evars should unify.
+
+(* File reduced by coq-bug-finder from original input, then from 6236 lines to 1049 lines, then from 920 lines to 209 lines, then from 179 lines to 30 lines *)
+(* coqc version trunk (August 2014) compiled on Aug 31 2014 10:12:32 with OCaml 4.01.0
+   coqtop version cagnode17:/afs/csail.mit.edu/u/j/jgross/coq-trunk,trunk (437b91a3ffd7327975a129b95b24d3f66ad7f3e4) *)
+Set Primitive Projections.
+Set Implicit Arguments.
+Record prod (A B : Type) := pair { fst : A ; snd : B }.
+Notation "x * y" := (prod x y) : type_scope.
+Record Equiv A B := { equiv_fun :> A -> B ; equiv_isequiv : forall P, P equiv_fun }.
+Goal forall (A B : Type) (C : Type), Equiv (A -> B -> C) (A * B -> C).
+Proof.
+  intros.
+  exists (fun u => fun x => u (fst x) (snd x)). (* Toplevel input, characters 15-60:
+Error:
+In environment
+A : Type
+B : Type
+C : Type
+u : forall x : ?22, ?23 -> C
+x : ?22 * ?26
+Unable to unify "?23" with "?26". *)
+
+
+Comment author: @mattam82
+
+The error message has been fixed, but it seems to be a pruning problem...  
+
+Toplevel input, characters 0-44:
+Error:
+In environment
+A : Type
+B : Type
+C : Type
+u : forall (x : ?A0) (_ : ?T), C
+x : prod ?A0 ?B0
+Unable to unify "?T@ {x:=@ fst ?A0 ?B0 x}" with "?B0".
+
+?B0 cannot be instantiated by something depending on x so this should succeed.
+Hugo, do you have an idea why it doesn't prune x from ?T ?
+
+
+Comment author: @mattam82
+
+This is fixed now.
+
+

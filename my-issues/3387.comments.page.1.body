@@ -1,0 +1,52 @@
+Comment author: @JasonGross
+
+Set Universe Polymorphism.
+Set Printing Universes.
+Record Cat := { Obj :> Type }.
+Definition set_cat := {| Obj := Type |}.
+Goal Type@ {i} = Type@ {j}.
+Proof.
+  (* 1 subgoals
+, subgoal 1 (ID 3)
+
+  ============================
+   Type@ {Top.368} = Type@ {Top.370}
+(dependent evars:) *)
+  let x := constr:(Type) in
+  let y := constr:(Obj set_cat) in
+  unify x y. (* success *)
+  let x := constr:(Type) in
+  let y := constr:(Obj set_cat) in
+  first [ unify x y | fail 2 "no unify" ];
+    change x with y. (* Error: Not convertible. *)
+
+
+Comment author: @JasonGross
+
+This is with 90d64647d3fd5dbf5c337944dc0038f0b19b8a51
+
+
+Comment author: @mattam82
+
+Fixed in trunk.
+
+
+Comment author: @mattam82
+
+Actually, this is wrong, change x with y should work at occurrences 2 and 3 of Type only, as trying to change the hidden Type of the equality with it should fail. It now works as expected.
+
+
+Comment author: @JasonGross
+
+I think my expectation is that [change foo with bar] will succeed in all of the locations that it can succeed in, error with "Not Convertible" if they are not convertible (in which case [unify] should also fail), and error with "no found term" if it's not there.  (Why is the -1 needed in the test-case that you fixed?)
+
+
+Comment author: @mattam82
+
+Unify is unrelated here. You're unifying a fresh type to Obj set_cat, that will always work. Then you're considering that fresh type as a pattern (so it's level is completely ignored afterwards, except it unified with that of y) used in change to find subterms to convert with the y. At this point the unification constraints makes it so that either the Type parameter of the equality or the two Type arguments can be converted with y but not both at the same time with the same y. However, you can convert with three different instances of Obj set_cat using:
+
+  change Type with (Obj set_cat).
+
+The -1 indicates all except the first occurrence here.
+
+

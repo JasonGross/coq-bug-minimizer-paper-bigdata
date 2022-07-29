@@ -1,0 +1,164 @@
+Comment author: @JasonGross
+
+Fail Check
+  (forall {A B} (P : forall b : bool, A b -> B b) (a : A true) (a' : A false)
+         (b : bool),
+    P (if b as b return A b then a else a') =
+    if b as b return B b then P _ a else P _ a').
+(* The command has indeed failed with message:
+=> Error: Illegal application (Type Error): 
+   The term "A" of type "bool -> Type"
+   cannot be applied to the term
+    "if b as b return (A b) then a1 else a'" : "A b"
+   This term has type "A b" which should be coercible to 
+   "bool".
+ *)
+
+
+Definition pull_if_dep
+: forall {A B} (P : forall b : bool, A b -> B b) (a : A true) (a' : A false)
+         (b : bool),
+    P (if b as b return A b then a else a') =
+    if b as b return B b then P _ a else P _ a'.
+Admitted.
+(*
+Error: Illegal application (Type Error): 
+The term "A" of type "bool -> Type"
+cannot be applied to the term
+ "if b as b return (A b) then a else a'" : "A b"
+This term has type "A b" which should be coercible to 
+"bool".
+*)
+
+
+This is present in 8.4 and trunk.
+
+
+Comment author: @ppedrot
+
+This is strange. I had a look in the debugger, but I am not skilled enough to clearly see what is going on.
+
+
+Comment author: @JasonGross
+
+If it helps, here is a slightly smaller example (and an even smaller one at the bottom):
+
+Definition pull_if_dep
+: forall {A} (P : bool -> Type) (a : A true) (a' : A false)
+         (b : bool),
+    P (if b as b return A b then a else a').
+
+
+If I manually desugar the [if], I get:
+
+Definition pull_if_dep
+: forall {A} (P : bool -> Type) (a : A true) (a' : A false)
+         (b : bool),
+    P (match b as b return A b with true => a | false => a' end).
+(* Toplevel input, characters 111-167:
+Error:
+In environment
+A : bool -> Type
+P : bool -> Type
+a : A true
+a' : A false
+b : bool
+The term "if b as b return (A b) then a else a'" has type 
+"A b" while it is expected to have type "bool". *)
+
+So it seems to have something to do with how [if]s are parsed.
+
+If I do:
+
+Definition pull_if_dep
+: forall {A} (P : forall b : bool, A b) (a : A true) (a' : A false)
+         (b : bool),
+    P (if b as b return A b then a else a').
+
+then I get
+
+(* Toplevel input, characters 135-174:
+Error:
+In environment
+A : bool -> Type
+P : forall b : bool, A b
+a : A true
+a' : A false
+b : bool
+The term "P (if b as b return (A b) then a else a')" has type
+"A (if b as b return (A b) then a else a')"
+which should be Set, Prop or Type. *)
+
+So it's clear that it's sticking the [if] in as the boolean argument, and somehow bypassing the check that [P ...] is well-typed.  Note that this [if] statement also manages to break the well-typedness check of the equality:
+
+Definition pull_if_dep
+: forall {A} (P : forall b : bool, Type) (a : A true) (a' : A false)
+         (b : bool),
+    P (if b as b return A b then a else a') = 1.
+
+fails with [The term "1" has type "nat" while it is expected to have type 
+"Type".], but
+
+Definition pull_if_dep
+: forall {A} (P : forall b : bool, Type) (a : A true) (a' : A false)
+         (b : bool),
+    P (if b as b return A b then a else a') = if b as b return nat then 1 else 1.
+
+succeeds.  This led me to an even smaller example:
+
+Definition pull_if_dep
+: forall (b : bool),
+    @ eq Prop
+        (if b as b return Type then True else True)
+        (if b as b return nat then 1 else 1).
+
+which checks out (note that replacing [@ eq Prop] with [@ eq] followed by any other Type works (but [@ eq 1] fails as expected)).  Note that replacing [True] with something that is not a [Type] fails.  Additionally, let-expanding out either of the [if]-statements results in the expected error.
+
+My barely-educated hypothesis is that there's incorrect error-catching logic somewhere, and there's an error thrown by something involving the [if]-statement which is improperly silenced elsewhere, leading to incorrectly successful typechecking.
+
+
+Comment author: @ppedrot
+
+For ther record, after pretyping the [if] in the following definition,
+
+Definition pull_if_dep
+: forall {A} (P : bool -> Type) (a : A true) (a' : A false)
+         (b : bool),
+    P (if b as b return A b then a else a').
+
+the pretyper is in the following state (env is the current environment, v is the if, p is its type and evdref is the current evarmap):
+
+env: Environ.env = [] [(A : ?X1) (P : forall _ : bool, Type@ {bug.2})
+  (a : A CSTR.bool._0._1) (a' : A CSTR.bool._0._2) 
+  (b : bool)]
+v: Term.constr =
+  if _UNBOUND_REL_1 as b return (_UNBOUND_REL_6 b)
+  then _UNBOUND_REL_3
+  else _UNBOUND_REL_2
+p: Term.constr = _UNBOUND_REL_5 _UNBOUND_REL_1
+evdref: Evd.evar_map ref =
+  {contents = EVARS:
+     ?3==[x |- Type@ {bug.4} => Type@ {bug.5}] (type of A) {X3}
+     ?2==[ |- Type@ {bug.3} => bool] (internal placeholder) {X2}
+     ?1==[ |- Type@ {bug.1} => forall x : ?X2, ?X3@ {A:=x}] (type of A) {X1}
+    
+    UNIVERSES:
+     {bug.5 bug.4 bug.3 bug.2 bug.1} |= bug.5 < bug.4
+                                         Set <= bug.3
+                                         bug.3 <= bug.1
+                                         bug.4 <= bug.1
+                                         
+    ALGEBRAIC UNIVERSES:{bug.4 bug.3 bug.1}
+    UNDEFINED UNIVERSES:bug.4
+                        bug.3
+                        bug.1
+    }
+
+I can't see anything wrong, but I may be tired...
+
+
+Comment author: @ppedrot
+
+Should be fixed in trunk. The ambient type constraint was dropped when pretyping [if], so that in this case it was never checking the [if] had not type bool.
+
+

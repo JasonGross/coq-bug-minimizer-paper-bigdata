@@ -1,0 +1,18 @@
+Comment author: @JasonGross
+
+Class A := {}.
+  Class B {T} `(A) := { B_intro : forall t t' : T, t = t' }.
+  Lemma foo T (t t' : T) : t = t'.
+    erewrite @ B_intro.
+    reflexivity.
+(* Anomaly: File "toplevel/himsg.ml", line 699, characters 2-8: Assertion failed.
+Please report. *)
+
+Matthieu tells me that the problem is that a typeclass existential is being characterized as a goal existential, which apparently shouldn't happen.
+
+
+Comment author: @mattam82
+
+Fixed in trunk and 8.4.
+
+

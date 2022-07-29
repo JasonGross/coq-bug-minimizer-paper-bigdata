@@ -1,0 +1,11 @@
+This will hopefully fixed when we migrate to dune and move loadpath handling to a common place 
+What does loadpath handling within coqc/coqchk have to do with migrating to dune?
+> What does loadpath handling within coqc/coqchk have to do with migrating to dune?
+
+Ideally the same code for loadpath would be shared by coqc / coqdep and coqcheck; doing this in dune is like 1% of the work than having to adjust the makefiles due to the way `coqdep` is used there.
+That being said others could go ahead and implement this refactoring; what I'm saying is that _I_ won't implement it until the build system gets out of my way.
+IIUC the dune migration happened, so this should be unblocked (and might be fixed?)
+> IIUC the dune migration happened, so this should be unblocked (and might be fixed?)
+
+Still the refactoring is not trivial, of course a specific fix would also work. We already have a `boot` library were we could move loadpath handling.
+I was thinking of https://github.com/coq/coq/pull/14718, but I see that https://github.com/coq/coq/pull/15002 hasn't happened yet.

@@ -1,0 +1,6 @@
+Btw, here's a `native_compute` that takes about 26 s, with the corresponding `vm_compute` taking about 203 s: https://github.com/mit-plv/fiat-crypto/pull/804/files#diff-0b199ed57c23a6e98f314caf3a05ab46R139
+This should be pretty easy to implement. Are there any restrictions about these flags w.r.t. dynamic linking? I.e. can units compiled with different values for these settings be linked together without trouble? If not, we should pass the same options as the ones used to compile Coq itself.
+IIUC unfortunately OCaml doesn't provide any compatibility guarantee between object files compiled with a different set of options. cc @ejgallego 
+I understand that it should be possible to still link files compiled with different `-O` choices in flabmda, but we need confirmation from upstream.
+It would be strange if there was a problem, we already link to the stdlib without caring what options it was compiled with.
+Oh right! The only thing we do ensure as of today is that it was compiled with flambda.

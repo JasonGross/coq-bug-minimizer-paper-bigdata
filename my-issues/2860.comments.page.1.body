@@ -1,0 +1,20 @@
+Comment author: @JasonGross
+
+It would be nice if I could `cbv eta`, now that Coq has eta conversion/reduction.
+
+Something like
+```
+Ltac eta_red :=
+  repeat match goal with
+           | [ H : appcontext[fun x => ?f x] |- _ ] => change (fun x => f x) with f in H
+           | [ |- appcontext[fun x => ?f x] ] => change (fun x => f x) with f
+         end.
+```
+(except it would be nice to allow `f` to reference things that are not free in `H`/the goal)
+
+
+Comment author: @herbelin
+
+The logic of Coq has eta-conversion from 8.4. The question of also providing eta-reduction (or eta-expansion) as a user reduction (expansion) tool is probably relevant. In general, eta-reduction can be ill-typed because of subtyping (considered e.g. `fun x:Type(1) => f x` for `f: Type(2)->Prop`) but up to a test for ensuring typing, this would probably be a nice feature so as at least to simplify the displaying of term.
+
+

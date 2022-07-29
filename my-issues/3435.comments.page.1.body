@@ -1,0 +1,18 @@
+Comment author: @JasonGross
+
+(* File reduced by coq-bug-finder from original input, then from 3171 lines to 131 lines, then from 114 lines to 69 lines, then from 78 lines to 14 lines *)
+Set Primitive Projections.
+Set Implicit Arguments.
+Record PreCategory := { object :> Type ; morphism : object -> object -> Type }.
+Arguments morphism !C s d : rename.
+Goal forall (C D : PreCategory) (fst fst0 : object C) (snd snd0 : object D) (fst1 : morphism C fst fst0),
+       (@ pair (morphism C fst fst0) (morphism D snd snd0) fst1) = (@ pair (morphism C fst fst0) (morphism D snd snd0) fst1).
+trivial. (* Toplevel input, characters 0-8:
+Anomaly: Uncaught exception Invalid_argument("List.nth", _). Please report. *)
+
+
+Comment author: @mattam82
+
+Fixed in trunk.
+
+

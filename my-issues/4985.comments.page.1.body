@@ -1,0 +1,25 @@
+Comment author: @JasonGross
+
+Require Import Coq.QArith.QArith Coq.micromega.Psatz Coq.fourier.Fourier.
+Local Open Scope R_scope.
+Goal forall x : R, x * x >= 0.
+  intro; nra. (* success *)
+Qed.
+Local Open Scope Q_scope.
+Goal forall x : Q, x * x >= 0.
+  intro; nra. (* Error: Tactic failure:  Cannot find witness. *)
+Qed.
+
+
+Comment author: @fajb
+
+The support for Q is somewhat lagging behind. There is actually no nra for Q.
+
+I could implement -- without too much hassle -- an equivalent of nra over Q.
+
+
+Comment author: @fajb
+
+Fixed by commit 721637c
+
+

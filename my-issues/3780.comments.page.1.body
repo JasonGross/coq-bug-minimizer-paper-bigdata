@@ -1,0 +1,171 @@
+Comment author: @JasonGross
+```
+$ echo 'Goal forall (A B : Set) (p : @ eq Type A B), @ eq Set A B. Proof. intros. exact_no_check Set. Defined. Backtrack 4 0 0 .' | coqtop -emacs
+Welcome to Coq cagnode15:/afs/csail.mit.edu/u/j/jgross/coq-trunk,(no branch) (53bfe9cf58a3c40e6eb7120d25c1633a9cea3126)
+
+<prompt>Coq < 1 || 0 < </prompt>1 subgoals, subgoal 1 (ID 1)
+
+  ============================
+   forall A B : Set, A = B -> A = B
+
+(dependent evars:)
+
+
+<prompt>Unnamed_thm < 2 |branch| 0 < </prompt>1 subgoals, subgoal 1 (ID 1)
+
+  ============================
+   forall A B : Set, A = B -> A = B
+
+(dependent evars:)
+
+
+<prompt>Unnamed_thm < 3 |branch| 0 < </prompt>1 subgoals, subgoal 1 (ID 4)
+
+  A, B : Set
+  p : A = B
+  ============================
+   A = B
+
+(dependent evars:)
+
+
+<prompt>Unnamed_thm < 4 |branch| 0 < </prompt>No more subgoals.
+(dependent evars:)
+
+
+<prompt>Unnamed_thm < 5 |branch| 0 < </prompt>Toplevel input, characters 92-100:
+> Goal forall (A B : Set) (p : @ eq Type A B), @ eq Set A B. Proof. intros. exact_no_check Set. Defined.
+>                                                                                             ^^^^^^^^
+Error:
+The term "fun (A B : Set) (_ : A = B) => Set" has type
+ "forall A B : Set, A = B -> Type" while it is expected to have type
+ "forall A B : Set, A = B -> A = B".
+
+<prompt>Unnamed_thm < 2 |branch| 0 < </prompt>Toplevel input, characters 101-118:
+> Goal forall (A B : Set) (p : @ eq Type A B), @ eq Set A B. Proof. intros. exact_no_check Set. Defined. Backtrack 4 0 0 .
+>                                                                                                      ^^^^^^^^^^^^^^^^^
+Anomaly: error with no safe_id attached:
+Uncaught exception Stm.Vcs_aux.Expired.. Please report.
+
+<prompt>Unnamed_thm < 2 |branch| 0 < </prompt>
+```
+
+Comment author: @gares
+
+Did PG generate the Backtrack command?
+
+
+Comment author: @JasonGross
+
+Yes.
+
+
+Comment author: @JasonGross
+
+PG assumes that if [Defined] fails, you have only autobacktracked to the beginning of the line.  So it assumes it's valid to backtrack to the beginning of the previous line, i.e., the state number of the [Defined] line, minus one.  (The actual numbers in my example are slightly different, because PG issues a few commands automatically at the beginning; the real code PG issues is:
+
+$ echo 'Set Undo 500 . Set Printing Depth 50 . Set Undo 500 . Set Silent. Goal forall (A B : Set) (p : @ eq Type A B), @ eq Set A B. Proof. intros. exact_no_check Set. Defined. Backtrack 8 0 0 .' | coqtop -emacs
+Welcome to Coq cagnode15:/afs/csail.mit.edu/u/j/jgross/coq-trunk,(no branch) (53bfe9cf58a3c40e6eb7120d25c1633a9cea3126)
+
+<prompt>Coq < 1 || 0 < </prompt>
+
+<prompt>Coq < 1 || 0 < </prompt>
+
+<prompt>Coq < 1 || 0 < </prompt>
+
+<prompt>Coq < 1 || 0 < </prompt>
+<prompt>Coq < 1 || 0 < </prompt>
+<prompt>Unnamed_thm < 6 |branch| 0 < </prompt>
+<prompt>Unnamed_thm < 7 |branch| 0 < </prompt>
+<prompt>Unnamed_thm < 8 |branch| 0 < </prompt>
+<prompt>Unnamed_thm < 9 |branch| 0 < </prompt>Toplevel input, characters 158-166:
+> Set Undo 500 . Set Printing Depth 50 . Set Undo 500 . Set Silent. Goal forall (A B : Set) (p : @ eq Type A B), @ eq Set A B. Proof. intros. exact_no_check Set. Defined.
+>                                                                                                                                                               ^^^^^^^^
+Error:
+The term "fun (A B : Set) (_ : A = B) => Set" has type
+ "forall A B : Set, A = B -> Type" while it is expected to have type
+ "forall A B : Set, A = B -> A = B".
+
+<prompt>Unnamed_thm < 6 |branch| 0 < </prompt>Toplevel input, characters 167-184:
+> Set Undo 500 . Set Printing Depth 50 . Set Undo 500 . Set Silent. Goal forall (A B : Set) (p : @ eq Type A B), @ eq Set A B. Proof. intros. exact_no_check Set. Defined. Backtrack 8 0 0 .
+>                                                                                                                                                                        ^^^^^^^^^^^^^^^^^
+Anomaly: error with no safe_id attached:
+Uncaught exception Stm.Vcs_aux.Expired.. Please report.
+
+<prompt>Unnamed_thm < 6 |branch| 0 < </prompt>
+
+)
+
+
+Comment author: @JasonGross
+
+For reference, the log from *coq* in PG is:
+
+Warning: Obsolete option "-emacs-U", use -emacs instead.
+Welcome to Coq cagnode15:/afs/csail.mit.edu/u/j/jgross/coq-trunk,(no branch) (53bfe9cf58a3c40e6eb7120d25c1633a9cea3126)
+
+<prompt>Coq < 1 || 0 < </prompt>Set Undo 500 .
+
+
+<prompt>Coq < 1 || 0 < </prompt>Set Printing Depth 50 .
+
+
+<prompt>Coq < 1 || 0 < </prompt>Set Undo 500 .
+
+
+<prompt>Coq < 1 || 0 < </prompt>Set Silent.
+
+<prompt>Coq < 1 || 0 < </prompt>Goal forall (A B : Set) (p : @ eq Type A B), @ eq Set A B.
+
+<prompt>Unnamed_thm < 6 |branch| 0 < </prompt>Proof.
+
+<prompt>Unnamed_thm < 7 |branch| 0 < </prompt>intros.
+
+<prompt>Unnamed_thm < 8 |branch| 0 < </prompt>exact_no_check Set.
+
+<prompt>Unnamed_thm < 9 |branch| 0 < </prompt>Unset Silent.
+No more subgoals.
+(dependent evars:)
+
+
+<prompt>Unnamed_thm < 9 |branch| 0 < </prompt>Defined.
+Toplevel input, characters 15-23:
+> Defined.
+> ^^^^^^^^
+Error:
+The term "fun (A B : Set) (_ : A = B) => Set" has type
+ "forall A B : Set, A = B -> Type" while it is expected to have type
+ "forall A B : Set, A = B -> A = B".
+
+<prompt>Unnamed_thm < 6 |branch| 0 < </prompt>Backtrack 8 0 0 .
+Toplevel input, characters 0-17:
+> Backtrack 8 0 0 .
+> ^^^^^^^^^^^^^^^^^
+Anomaly: error with no safe_id attached:
+Uncaught exception Stm.Vcs_aux.Expired.. Please report.
+
+<prompt>Unnamed_thm < 6 |branch| 0 < </prompt>
+
+
+Comment author: @gares
+
+I see.  I'll try to fix it on thursday.
+
+Does the bug exists even if you Qed the proof?
+I believed I had fixed the issue once an for all, but I must have missed a detail.
+
+Best,
+
+
+Comment author: @JasonGross
+
+Thanks!
+
+There is no bug with [Qed], only [Defined].
+
+
+Comment author: @gares
+
+Fixed, the commit will land soon.
+
+

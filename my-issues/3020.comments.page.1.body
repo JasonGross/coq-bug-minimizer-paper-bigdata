@@ -1,0 +1,10 @@
+Comment author: @JasonGross
+
+I would like to be able to use the notation "C ᵒᵖ" for an opposite category.  However, the Lexer barfs on ᵒᵖ, saying "Syntax Error: Lexer: Unsupported Unicode character (0x1d52)".
+
+
+Comment author: @ppedrot
+
+Reminder to self: to fix this bug, force Yann Régis-Gianas to regenerate lib/unicodetable.ml with an updated Camomile version.
+
+

@@ -1,0 +1,7 @@
+Same as #8909, actually.
+@ppedrot Wait, really?  I thought #8909 was about binder naming slowness, and this version shouldn't spend too much time on binder naming?
+Why not? The `x` definitions do contain an important number of binders.
+More precisely, the phase that hides the definition through the notation happens after the binder allocation, which thus cannot be delayed, if this is what is puzzling you.
+Huh.  In that case, I'd very much like to see a fix to #8909 (even at the cost of compatibility for printing, which is not a thing I care about super-much).
+I'm working on that.
+Duplicate of #8909

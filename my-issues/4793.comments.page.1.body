@@ -1,0 +1,20 @@
+Comment author: @JasonGross
+
+Currently, -compat 8.6 makes coqtop silently crash.  Same with `coqtop -compat xyz`.
+
+
+Comment author: @maximedenes
+
+Fixed in branch v8.6. Not sure why it was not showing "Error: Unknown compatibility version "xyz"". On my machine it does. Maybe a Windows flush issue? Did you try on another architecture? Leaving the bug report open meanwhile.
+
+
+Comment author: @ppedrot
+
+I downgrade the severity then.
+
+
+Comment author: @maximedenes
+
+I tried under Windows (with trunk), and it does show the "Unknown compatibility version" error. So closing.
+
+

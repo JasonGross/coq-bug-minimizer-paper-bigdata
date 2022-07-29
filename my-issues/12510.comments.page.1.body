@@ -1,0 +1,21 @@
+`rewrite_strat` and `setoid_rewrite` are based on the same code, but `setoid_rewrite`'s stategy is
+```ocaml
+    Strategies.fix (fun aux ->
+        Strategies.choice app (subterm true default_flags aux))
+```
+
+That's quite different from the bottomup or topdown strategies you are using with rewrite_strat, which are defined as:
+
+```ocaml
+
+    let bu (s : 'a pure_strategy) : 'a pure_strategy =
+      fix (fun s' -> seq (choice (progress (all_subterms s')) s) (try_ s'))
+
+    let td (s : 'a pure_strategy) : 'a pure_strategy =
+      fix (fun s' -> seq (choice s (progress (all_subterms s'))) (try_ s'))
+```
+
+I would look for the difference there. (`all_subterms = subterm true default_flags`)
+Bottomup and topdown are certainly doing more work by trying the rewrite strategy again in case of success.
+Does this really account for the difference?  I suppose it might...  I've reported the fact that the matching algorithm seems to be ~cubic in the number of binders as #12524
+I concur with @mattam82, rewrite_strat is doing more work than setoid_rewrite. I don't think that this issue is valid, so closing.

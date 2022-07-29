@@ -1,0 +1,7 @@
+I suggest you detach the Messages panel of the primary script
+
+... just click here.  Not sure the code change you suggest is needed.
+
+![image](https://user-images.githubusercontent.com/1253341/119686179-ecf6c100-bdfa-11eb-93e9-bee29c1a0149.png)
+
+Ah, neat, that works.  I think this should definitely be mentioned in the documentation of the visual debugger

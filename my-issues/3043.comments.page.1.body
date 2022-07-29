@@ -1,0 +1,39 @@
+Comment author: @JasonGross
+
+I want [fun A (P : A -> Prop) (X : sigT P) => proj1_sig X] to unify with [fun A (P : A -> Prop) (X : sigT P) => projT1 X].  If you replace the definitions in the standard library of [sig_of_sigT] and [sigT_of_sig] with the following code, then the test case below passes.
+
+Code:
+Definition sig_of_sigT (A : Type) (P : A -> Prop) (X : sigT P) : sig P
+  := exist P (projT1 X) (projT2 X).
+
+Definition sigT_of_sig (A : Type) (P : A -> Prop) (X : sig P) : sigT P
+  := existT P (proj1_sig X) (proj2_sig X).
+
+
+Test case:
+Goal (fun A (P : A -> Prop) (X : sigT P) => proj1_sig X) = (fun A (P : A -> Prop) (X : sigT P) => projT1 X).
+  reflexivity.
+Qed.
+
+
+Comment author: @JasonGross
+
+Created attachment 410
+patch implementing the change and checking the bug
+
+Here's a patch (from git diff), in case that makes this more likely to be adopted.
+
+> Attached file: [sig_sigT.diff](https://coq.inria.fr/bugfiles/attachment.cgi?id=410) (text/plain, 1157 bytes)
+> Description:   patch implementing the change and checking the bug
+
+
+Comment author: @JasonGross
+
+Pull request at https://github.com/coq/coq/pull/4
+
+
+Comment author: @pirbo
+
+pull request accepted
+
+

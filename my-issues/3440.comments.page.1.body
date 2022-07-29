@@ -1,0 +1,40 @@
+Comment author: @JasonGross
+
+I propose the following behavior for primitive projections, which should make them more compatible:
+
+When applying a primitive projection to an argument, if not all record arguments are implicit, eta-expand the projection automatically and apply it to enough underscores to get the implicit status correct.
+
+Have a flag that disables the implicit-status compatibility mode and defaults to all record arguments as implicit in the projections (possibly for classes too?).
+
+Possibly warn the user about eta-expansion and inefficiency when arguments to the record type are marked not-implicit in a projection, either by default or by the user with [Arguments].
+
+(Uses: Having [apply proj] do the right thing.  Compatibility.  Also, allowing saner primitive projections of typeclasses, maybe?)
+
+
+Comment author: @mattam82
+
+Yes, that's an idea I've been playing with. The main issue with this compatibility layer is the use of application-like parsing for primitive projections: [f a] meaning a.(f) and at the same time @ f _ a being printed as [f a] (supposing the record has 1 parameter). You're suggesting a mode where the eta-expansion constant is not used, just it's body? Then the elaboration of @ f _ a would be beta-reducible to a.(f). But in partially applied cases you would see things like (fun x : Rec B => f x) in the goals, would that be alright?
+
+
+Comment author: @JasonGross
+
+I'm no longer sure the mode where the body is used is a good idea.  What I'm really after is "as much as possible, existing code should just work when you [Set Primitive Projections]".  Whether you do this by making it so that the tactics use equivalence classes of symbols like Matita, as Enrico suggested on coq-club, and put @ proj and proj in the same class, or by using eta-expanded bodies instead of separate constants (if that works), I don't think matters that much.  Regardless, I once the "Primitive projection not applied to enough arguments" messages disappear, I can give you examples that used to work that don't anymore, and possibly more ideas, if I have any.  (Though Enrico's suggestion of equivalence classes of symbols driving the conversion engine of all the tactics appeals to me.)
+
+
+Comment author: @mattam82
+
+Agreed, the equivalence classes are needed for matching/automation to work, but regarding just the syntax, what should be the rules? I just pushed a patch that allows apply p for primitive projections which don't have all parameters and the record as implicit (this always works for typeclasses as they're set so).
+
+
+Comment author: @mattam82
+
+Closing as the discussion continues elsewhere.
+
+
+Comment author: @JasonGross
+
+Where is the discussion continuing?
+
+Regarding syntax, I think that it would be useful to have something like [Add Unification Edge(s) ident_list] and [Remove Unification Edge(s) constr_list].  These should add the relevant edges to the class graph.  Two constants are considered unifiable if they are in the same connected component of the graph.  (Presumably optimized connected components would be recomputed at edge adding time.)  It would be nice to also be able to declare whether or not match/apply/rewrite are up to beta, iota, and/or zeta.
+
+

@@ -1,0 +1,30 @@
+Comment author: @JasonGross
+```
+Tactic Notation "testo" open_constr(t) :=
+  lazymatch goal with
+  | [ |- t ] => idtac
+  end.
+Tactic Notation "testu" uconstr(t) :=
+  lazymatch goal with
+  | [ |- t ] => idtac
+  end.
+Goal True.
+  testo True. (* success *)
+  testu True. (* no matching clauses *)
+```
+
+Comment author: @JasonGross
+
+I also expect this to work:
+
+Tactic Notation "testu" uconstr(t) :=
+  lazymatch goal with
+  | [ |- t ] => idtac
+  end.
+Goal True.
+  testu _.
+  constructor.
+Qed.
+
+
+Duplicate of #9321.

@@ -1,0 +1,16 @@
+Comment author: @JasonGross
+
+In Coq 8.6, Makefile.install has:
+	$(MKDIR) $(FULLCOQLIB)/toploop
+	$(INSTALLBIN) $(TOPLOOPCMA) $(FULLCOQLIB)/toploop/
+
+In Coq 8.7, the first line was lost (I think by 
+https://github.com/coq/coq/commit/7a14df13a771651973da980eb9ab5c6608ffdcef or 
+https://github.com/coq/coq/commit/419e7cac23d7b8ac97d46a6c0d3228d591273d2b).
+
+
+Comment author: @Zimmi48
+
+Fixed in 8.7.0 with Jason's PR https://github.com/coq/coq/pull/1152
+
+

@@ -1,0 +1,134 @@
+Comment author: @JasonGross
+
+In 8.4, and trunk from March 5 (42a04b75717d719d013af902379450e4c0e72928), the following code works, but in today's trunk (502e61ec1ac488dd430ce6654c7a6947c6f7d1c3), it fails.  The problem is that the unification/inference engine has changed, and it is now inferring the identity function too eagerly.
+
+Inductive paths {A : Type} (a : A) : A -> Type :=
+  idpath : paths a a.
+
+Arguments idpath {A a} , [A] a.
+
+Arguments paths_ind [A] a P f y p.
+Arguments paths_rec [A] a P f y p.
+Arguments paths_rect [A] a P f y p.
+
+Notation "x = y :> A" := (@ paths A x y) : type_scope.
+Notation "x = y" := (x = y :>_) : type_scope.
+
+Definition ap {A B:Type} (f:A -> B) {x y:A} (p:x = y) : f x = f y
+  := match p with idpath => idpath end.
+
+Definition ap_compose {A B C : Type} (f : A -> B) (g : B -> C) {x y : A} (p : x = y) :
+  ap (fun x => g (f x)) p = ap g (ap f p)
+  :=
+  match p with idpath => idpath end.
+
+Definition ap_apply_Fr {A B C : Type} {x y : A} (p : x = y) (z : B -> C) (N : A -> B) :
+  ap (fun a => z (N a)) p = ap z (ap N p)
+:= (ap_compose _ _ _).
+(* Toplevel input, characters 135-151:
+> := (ap_compose _ _ _).
+>     ^^^^^^^^^^^^^^^^
+Error:
+In environment
+A : Type
+B : Type
+C : Type
+x : A
+y : A
+p : x = y
+z : B -> C
+N : A -> B
+The term "ap_compose (fun x : A => x) (fun a : A => z (N a)) p" has type
+ "ap (fun x : A => z (N x)) p =
+  ap (fun a : A => z (N a)) (ap (fun x : A => x) p)"
+while it is expected to have type
+ "ap (fun a : A => z (N a)) p = ap z (ap N p)"
+(cannot unify "ap (fun a : A => z (N a)) (ap (fun x : A => x) p)" and
+"ap z (ap N p)"). *)
+
+
+Comment author: @JasonGross
+
+But, miraculously, it seems to be fixed as of 5b39c3535f7b3383d89d7b844537244a4e7c0eca?  Can someone confirm this for me?  I'll go make a pull request for a regression test, after I bisect to find where it was broken and fixed...
+
+
+Comment author: @JasonGross
+
+Nevermind, I was running the wrong version of Coq when I thought it was fixed today.  (I think.)
+
+git bisect tells me that the first bad commit is f16f8383f0af88deda99fa4c033ea04149b00f49 (Pierre Boutillier):
+
+MaybeFlexible semantic changes
+From Maybe reducible to Maybe to reduce (but for sure reducible)
+
+
+
+The git bisect script I used was:
+
+$ cat ../test-coq-trunk-script.sh
+#!/bin/bash
+
+cd ~/coq
+
+git clean -xfd 2>&1 >/dev/null
+./configure -local -coqide no -nodoc -no-native-compiler
+make coqbinaries "$@ " || exit 125
+ls ./bin
+#((make coqbinaries "$@ " \
+#        || (git clean -xfd; \
+#           ./configure -local -coqide no -nodoc -no-native-compiler \
+#           make coqbinaries "$@ ")) \
+#    || exit 125) # source can't be tested
+
+
+CODE='Inductive paths {A : Type} (a : A) : forall _ : A, Type :=
+  idpath : paths a a.
+
+Arguments idpath {A a} , [A] a.
+
+Arguments paths_ind [A] a P f y p.
+Arguments paths_rec [A] a P f y p.
+Arguments paths_rect [A] a P f y p.
+
+Notation "x = y" := (@ paths _ x y) (at level 70, no associativity) : type_scope.
+
+Definition ap {A B:Type} (f:forall _ : A, B) {x y:A} (p:x = y) : f x = f y
+  := match p with idpath => idpath end.
+
+Definition ap_compose {A B C : Type} (f : forall _ : A, B) (g : forall _ : B, C) {x y : A} (p : x = y) :
+  ap (fun x => g (f x)) p = ap g (ap f p)
+  :=
+  match p with idpath => idpath end.
+
+Definition ap_apply_Fr {A B C : Type} {x y : A} (p : x = y) (z : forall _ : B, C) (N : forall _ : A, B) :
+  ap (fun a => z (N a)) p = ap z (ap N p)
+:= (ap_compose _ _ _).
+'
+
+FILE=`mktemp --suffix=.v --tmpdir tmpXXXXXXXXXX`
+
+echo "$CODE" > "$FILE"
+./bin/coqtop -boot -compile "${FILE%.v}" -noinit
+ERR=$?
+rm "$FILE"
+
+if [ $ERR = 0 ]; then
+    exit 0 # good
+else
+    exit 1 # bad
+fi
+$ git bisect start; git bisect bad; git bisect good 42a04b75717d719d013af902379450e4c0e72928; git bisect run ../test-coq-trunk-script.sh -j10
+
+
+Comment author: @ppedrot
+
+I think you're far too optimistic to hope second-order unification to guess the arguments of a compose function. Unification is essentially heuristic, so you should not really complain when you're actually unifying such really tricky terms.
+
+I may not be the most competent on this topic, but I believe that unless you come up with a real example which is somehow blocking for you, there is unluckily not much to do but close this bug...
+
+
+Comment author: @JasonGross
+
+It still seems to me that inference should work here; the arguments to ap_compose are uniquely determined by the resulting type.  There is only one way to unify [ap z (ap N p)] with [ap ?1 (ap ?2 ?3)], even after unfolding.  But I guess knowing that would require unfolding, and Coq doesn't take the strategy of "if the heads match, see if the arguments match", or something?
+
+

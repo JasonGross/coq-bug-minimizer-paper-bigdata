@@ -1,0 +1,9 @@
+The expression is highlighted in CoqIDE though.
+Maybe "following" is confusing? Why not "This expression"?
+In CoqIDE, yes.  On the command line, no.  In coqtop, the expression fines before.  And in PG, the cursor is moved to the beginning of the expression, but it is not highlighted.
+FTR after #14027 we also get the type of the expression. I am a bit reluctant to print the whole expression since it won't be very informative in general. I'd recommend closing this bug since #14027 makes it easier to understand what is going on. The fact we have deficient UIs should not be circumvented by making the base program overly verbose.
+>In CoqIDE, yes. On the command line, no. In coqtop, the expression fines before. And in PG, the cursor is moved to the beginning of the expression, but it is not highlighted.
+
+Sounds like the real issue is https://github.com/ProofGeneral/PG/issues/548 then.
+I second Maxime's recommendation of changing "the following" by "this" before closing this issue.
+@Zimmi48 your desires are orders: #14133.

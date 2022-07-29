@@ -1,0 +1,1 @@
+I don't know much what is good to do. For a section variable (`Variable a : R -> nat.`) it would work (and I even though that there are other cases where it works which I can't find again). This design question is the topic of #12099.

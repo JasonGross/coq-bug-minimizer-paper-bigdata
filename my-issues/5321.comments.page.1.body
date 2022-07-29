@@ -1,0 +1,75 @@
+Comment author: @JasonGross
+
+(* -*- mode: coq; coq-prog-args: ("-emacs" "-R" "src" "Crypto" "-R" "Bedrock" 
+"Bedrock" "-top" "WordUtil") -*- *)
+(* File reduced by coq-bug-finder from original input, then from 1317 lines to 
+51 lines, then from 149 lines to 52 lines, then from 321 lines to 58 lines, 
+then from 72 lines to 59 lines, then from 70 lines to 56 lines, then from 1242 
+lines to 59 lines, then from 65 lines to 59 lines, then from 53 lines to 31 
+lines, then from 37 lines to 31 lines *)
+(* coqc version 8.6rc1 (December 2016) compiled on Dec 8 2016 13:43:59 with 
+OCaml 4.02.3
+   coqtop version 8.6rc1 (December 2016) *)
+Module Export AdmitTactic.
+Module Import LocalFalse.
+Inductive False := .
+End LocalFalse.
+Axiom proof_admitted : False.
+Tactic Notation "admit" := abstract case proof_admitted.
+End AdmitTactic.
+
+Definition proj1_sig_path {A} {P : A -> Prop} {u v : sig P} (p : u = v)
+  : proj1_sig u = proj1_sig v
+  := f_equal (@ proj1_sig _ _) p.
+
+Definition proj2_sig_path {A} {P : A -> Prop} {u v : sig P} (p : u = v)
+  : eq_rect _ _ (proj2_sig u) _ (proj1_sig_path p) = proj2_sig v
+  := match p with eq_refl => eq_refl end.
+
+Goal forall sz : nat,
+    let sz' := sz in
+    forall pf : sz = sz',
+      let feq_refl := exist (fun x : nat => sz = x) sz' eq_refl in
+      let fpf := exist (fun x : nat => sz = x) sz' pf in feq_refl = fpf -> 
+proj2_sig feq_refl = proj2_sig fpf.
+Proof.
+  intros.
+  etransitivity; [ | exact (proj2_sig_path H) ].
+  admit.
+  Undo.
+  clearbody fpf.
+  admit. (* In nested Ltac calls to "admit" and "case proof_admitted", last 
+call failed.
+Error: Abstracting over the term "proof_admitted" leads to a term
+fun _ : LocalFalse.False =>
+proj2_sig feq_refl = eq_rect (proj1_sig feq_refl) (fun x : nat => sz = x) 
+(proj2_sig feq_refl) (proj1_sig fpf) (proj1_sig_path H)
+which is ill-typed.
+Reason is: Illegal application:
+The term "@ eq" of type "forall A : Type, A -> A -> Prop"
+cannot be applied to the terms
+ "sz = proj1_sig feq_refl" : "Prop"
+ "proj2_sig feq_refl" : "sz = proj1_sig feq_refl"
+ "eq_rect (proj1_sig feq_refl) (fun x : nat => sz = x) (proj2_sig feq_refl) 
+(proj1_sig fpf) (proj1_sig_path H)"
+   : "sz = proj1_sig fpf"
+The 3rd term has type "sz = proj1_sig fpf" which should be coercible to "sz = 
+proj1_sig feq_refl".
+ *)
+
+
+Comment author: @ppedrot
+
+Interestingly, this is fixed in my econstr branch, where clearbody rightly fails. It thus looks like we're lacking an evar normalization somewhere in the code of clearbody.
+
+
+Comment author: @ppedrot
+
+Fixed in trunk since the merge of EConstr. Not sure if we should backport it to 8.6, and if so, how.
+
+
+Comment author: @ppedrot
+
+Fixed in 8.7 with a test.
+
+

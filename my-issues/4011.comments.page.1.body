@@ -1,0 +1,20 @@
+Comment author: @JasonGross
+
+I don't have an explicit small example, because I'm not familiar with the ML plugin infrastructure, but the following seems to trigger it:
+
+Have a file "A.v" which has a [Add ML Path] and then does a [Declare ML Module] using ocaml files in that path.
+Have a file "B.v" which [Require Import]s "A"
+
+In 8.5, this results in errors that Coq can't find the .cmxs file associated with the ML module declared in A.v.  In 8.4, this seems to work fine.
+
+
+Comment author: @maximedenes
+
+Pierre-Marie investigated this bug, and (I believe) reached the conclusion that it will be very hard to support properly. Anyway, I think Add ML Path should be for interactive use (coqtop) only. We should make that explicit in the doc.
+
+
+Comment author: @ppedrot
+
+I've documented this in 8.5-dev.
+
+

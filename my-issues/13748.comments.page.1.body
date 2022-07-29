@@ -1,0 +1,125 @@
+Here's a slightly refined example:
+This works:
+```coq
+Fixpoint uncurry_rev_cps (A : uncurry_types)
+  : denoteUncurried_rev_nounit A -> denoteUncurried A
+  := match A with
+     | cnil         => fun v => v
+     | ccons A As
+       => match As return (denoteUncurried_rev_nounit As -> denoteUncurried As) -> denoteUncurried_rev_nounit (ccons A As) -> _ with
+          | cnil => fun _ v => (v, tt)
+          | _ => fun uncurry_rev_cps '(v, a) => (a, uncurry_rev_cps v)
+          end (uncurry_rev_cps As)
+     end.
+```
+But removing types in the return clause does not:
+```coq
+Fixpoint uncurry_rev_cps (A : uncurry_types)
+  : denoteUncurried_rev_nounit A -> denoteUncurried A
+  := match A with
+     | cnil         => fun v => v
+     | ccons A As
+       => match As return (_ -> denoteUncurried As) -> denoteUncurried_rev_nounit (ccons A As) -> _ with
+          | cnil => fun _ v => (v, tt)
+          | _ => fun uncurry_rev_cps '(v, a) => (a, uncurry_rev_cps v)
+          end (uncurry_rev_cps As)
+     end.
+(* Error:
+In environment
+uncurry_rev_cps : forall A : uncurry_types,
+                  denoteUncurried_rev_nounit A ->
+                  denoteUncurried A
+A : uncurry_types
+A0 : Type
+As : uncurry_types
+The term "uncurry_rev_cps As" has type
+ "denoteUncurried_rev_nounit As -> denoteUncurried As"
+while it is expected to have type
+ "denoteUncurried_rev_nounit ?u1@{As0:=As; As:=As} ->
+  denoteUncurried As" (cannot satisfy constraint
+"match u with
+ | ccons _ _ =>
+     ((fix denoteUncurried_rev_nounit (A : uncurry_types) :
+           Type :=
+         match A with
+         | ccons A1 (ccons _ _ as As) =>
+             denoteUncurried_rev_nounit As * A1
+         | ccons A1 cnil => A1
+         | cnil => unit
+         end) u * T)%type
+ | cnil => T
+ end" == "denoteUncurried_rev_nounit
+            ?u1@{As0:=As; As:=ccons T u}").
+*)
+```
+and
+```coq
+Fixpoint uncurry_rev_cps (A : uncurry_types)
+  : denoteUncurried_rev_nounit A -> denoteUncurried A
+  := match A with
+     | cnil         => fun v => v
+     | ccons A As
+       => match As return (denoteUncurried_rev_nounit As -> _) -> denoteUncurried_rev_nounit (ccons A As) -> _ with
+          | cnil => fun _ v => (v, tt)
+          | _ => fun uncurry_rev_cps '(v, a) => (a, uncurry_rev_cps v)
+          end (uncurry_rev_cps As)
+     end.
+(* Error:
+In environment
+uncurry_rev_cps : forall A : uncurry_types,
+                  denoteUncurried_rev_nounit A ->
+                  denoteUncurried A
+A : uncurry_types
+A0 : Type
+As : uncurry_types
+The term "uncurry_rev_cps As" has type
+ "denoteUncurried_rev_nounit As -> denoteUncurried As"
+while it is expected to have type
+ "denoteUncurried_rev_nounit As -> unit"
+(cannot unify "denoteUncurried As" and "unit").
+*)
+```
+and
+```coq
+Fixpoint uncurry_rev_cps (A : uncurry_types)
+  : denoteUncurried_rev_nounit A -> denoteUncurried A
+  := match A with
+     | cnil         => fun v => v
+     | ccons A As
+       => match As return (denoteUncurried_rev_nounit As -> denoteUncurried As) -> _ -> denoteUncurried (ccons A As) with
+          | cnil => fun _ v => (v, tt)
+          | _ => fun uncurry_rev_cps '(v, a) => (a, uncurry_rev_cps v)
+          end (uncurry_rev_cps As)
+     end.
+(* Error:
+In environment
+uncurry_rev_cps : forall A : uncurry_types,
+                  denoteUncurried_rev_nounit A ->
+                  denoteUncurried A
+A : uncurry_types
+A0 : Type
+As : uncurry_types
+d : denoteUncurried_rev_nounit cnil -> denoteUncurried cnil
+v : denoteUncurried_rev_nounit cnil * A0
+The term "(v, tt)" has type
+ "(denoteUncurried_rev_nounit cnil * A0 * unit)%type"
+while it is expected to have type
+ "denoteUncurried (ccons A0 cnil)".
+*)
+```
+and
+```coq
+Fixpoint uncurry_rev_cps (A : uncurry_types)
+  : denoteUncurried_rev_nounit A -> denoteUncurried A
+  := match A with
+     | cnil         => fun v => v
+     | ccons A As
+       => match As return (denoteUncurried_rev_nounit As -> denoteUncurried As) -> _ -> _ with
+          | cnil => fun _ v => (v, tt)
+          | _ => fun uncurry_rev_cps '(v, a) => (a, uncurry_rev_cps v)
+          end (uncurry_rev_cps As)
+     end.
+(* infinite loop *)
+```
+
+A loop in `Evarsolve.reconsider_unif_constraints`.

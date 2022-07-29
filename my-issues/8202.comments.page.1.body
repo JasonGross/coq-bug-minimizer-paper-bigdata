@@ -1,0 +1,57 @@
+Still here in 8.13, I ran into it in office hours:
+
+```
+Require Import FunctionalExtensionality.
+Goal True.
+  rewrite @equal_f with _ _ _ I 1.
+```
+
+```
+Error: Anomaly "Non-functional construction."
+Please report at http://coq.inria.fr/bugs/.
+```
+`master` backtrace:
+```ocaml
+Error: Anomaly "in retyping: Non-functional construction."
+Please report at http://coq.inria.fr/bugs/.
+Raised at Exninfo.iraise in file "clib/exninfo.ml", line 80, characters 4-11
+Called from Unification.unify_to_type in file "pretyping/unification.ml", line 1328, characters 10-53
+Called from Unification.w_merge.w_merge_rec.process_eqns in file "pretyping/unification.ml", line 1441, characters 30-68
+Called from Unification.w_merge in file "pretyping/unification.ml", line 1474, characters 4-157
+Called from Unification.w_unify_core_0 in file "pretyping/unification.ml", line 1527, characters 12-65
+Called from Clenv.clenv_unify in file "proofs/clenv.ml", line 317, characters 25-73
+Called from Clenv.clenv_fchain in file "proofs/clenv.ml", line 442, characters 4-120
+Called from Tactics.general_elim_clause.(fun) in file "tactics/tactics.ml", line 1394, characters 21-67
+Called from Proofview.Goal.enter.f in file "engine/proofview.ml", line 1120, characters 40-46
+Called from Logic_monad.BackState.(>>=).(fun) in file "engine/logic_monad.ml", line 192, characters 38-43
+Called from Logic_monad.BackState.split.(fun) in file "engine/logic_monad.ml", line 260, characters 6-27
+Called from Logic_monad.BackState.split.(fun) in file "engine/logic_monad.ml", line 260, characters 6-27
+Called from Logic_monad.NonLogical.run in file "engine/logic_monad.ml", line 117, characters 8-12
+Called from Proofview.apply in file "engine/proofview.ml", line 234, characters 12-42
+Called from Proof.run_tactic in file "proofs/proof.ml", line 381, characters 4-49
+Called from Proof.solve in file "proofs/proof.ml", line 567, characters 31-52
+Called from ComTactic.solve_core.(fun) in file "vernac/comTactic.ml", line 46, characters 23-59
+Called from Declare.Proof.map_fold_endline in file "vernac/declare.ml", line 1360, characters 20-33
+Called from ComTactic.solve_core in file "vernac/comTactic.ml", line 43, characters 23-442
+Called from Vernacstate.LemmaStack.map_top in file "vernac/vernacstate.ml", line 84, characters 30-34
+Called from Option.map in file "clib/option.ml", line 102, characters 19-24
+Called from Vernacinterp.interp_typed_vernac in file "vernac/vernacinterp.ml", line 42, characters 4-82
+Called from Vernacinterp.interp_control.(fun) in file "vernac/vernacinterp.ml", line 215, characters 24-69
+Called from Flags.with_modified_ref in file "lib/flags.ml", line 17, characters 14-17
+Re-raised at Exninfo.iraise in file "clib/exninfo.ml", line 82, characters 4-38
+Called from Vernacinterp.interp_gen.(fun) in file "vernac/vernacinterp.ml", line 264, characters 18-43
+Called from Vernacinterp.interp_gen in file "vernac/vernacinterp.ml", line 262, characters 6-279
+Re-raised at Exninfo.iraise in file "clib/exninfo.ml", line 82, characters 4-38
+Called from Stm.Reach.known_state.reach.(fun) in file "stm/stm.ml", line 2145, characters 20-47
+Called from Stm.Reach.known_state.resilient_tactic in file "stm/stm.ml", line 2082, characters 10-14
+Called from Stm.State.define in file "stm/stm.ml", line 957, characters 6-10
+Re-raised at Exninfo.iraise in file "clib/exninfo.ml", line 82, characters 4-38
+Called from Stm.Reach.known_state.reach in file "stm/stm.ml", line 2296, characters 4-105
+Called from Stm.observe in file "stm/stm.ml", line 2397, characters 4-60
+Re-raised at Exninfo.iraise in file "clib/exninfo.ml", line 82, characters 4-38
+Called from Vernac.interp_vernac in file "toplevel/vernac.ml", line 68, characters 31-52
+Re-raised at Exninfo.iraise in file "clib/exninfo.ml", line 82, characters 4-38
+Called from Coqloop.process_toplevel_command in file "toplevel/coqloop.ml", line 400, characters 17-62
+Called from Coqloop.read_and_execute_base in file "toplevel/coqloop.ml", line 437, characters 4-39
+Called from Coqloop.read_and_execute in file "toplevel/coqloop.ml", line 443, characters 6-34
+```

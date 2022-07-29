@@ -1,0 +1,79 @@
+Comment author: @JasonGross
+
+$ cat foo.v
+(* -*- coq-prog-args: ("-emacs" "-quick") -*- *)
+Set Suggest Proof Using.
+Lemma foo : True.
+Proof.
+  exact I.
+Qed.
+Lemma bar : True.
+Proof using .
+  fail "bar".
+Qed.
+Lemma baz : True.
+Proof.
+  fail "baz".
+Qed.
+$ echo | coqtop
+Welcome to Coq cagnode15:/afs/csail.mit.edu/u/j/jgross/coq-8.5,v8.5 (8dbfee5c5f897af8186cb1bdfb04fd4f88eca677)
+
+Coq < Coq <
+$ coqc foo.v
+File "./foo.v", line 9, characters 2-13:
+Error: Tactic failure: bar.
+$ coqc -quick foo.v # this should succeed; also, where's my line number?!
+Error: Tactic failure: baz.
+
+
+Comment author: @gares
+
+Yep, it is a bug.  
+
+If you put ".. using." then things work (hence I consider it a normal bug).  
+
+But it should work even without "...using." (not documented, but still), since there is code to check if there is no section and evidently it is broken..
+
+
+Comment author: @JasonGross
+
+The biggest problem is that it is not mentioned by [Set Suggest Proof Using], even though [Proof using] would help.  Can the logic for [Set Suggest Proof Using] and for the actual deferment be (more?) unified, so that this doesn't happen again?
+
+
+Comment author: @gares
+
+Will push soon
+
+
+Comment author: @JasonGross
+
+Is this case also fixed?  (It also gives neither a suggestion nor is async.)
+
+(* -*- coq-prog-args: ("-emacs" "-quick") -*- *)
+Set Suggest Proof Using.
+Section foo.
+  Lemma foo : True.
+  Proof.
+    exact I.
+  Qed.
+  Lemma bar : True.
+  Proof using .
+    fail "bar".
+  Qed.
+  Lemma baz : True.
+  Proof.
+    fail "baz".
+  Qed.
+End foo.
+
+
+Comment author: @gares
+
+Seems so:
+
+gares@ birba:~/COQ/coq$ bin/coqc -quick -debug a 2>&1 | grep STM
+master:0] STM: 10: proof bar: asynch
+master:0] STM: 6: proof foo: asynch
+master:0] STM: 14: proof baz: asynch
+
+

@@ -1,0 +1,1 @@
+AFAIR this primitive is not yet available in Ltac2, but this is about 3 lines of code. Regarding Ltac1, that means changing the runtime to make it aware that "a string that looks like a bound identifier is probably one, depending on the phase of the moon and the mood of the user", and no, that's not going to happen.

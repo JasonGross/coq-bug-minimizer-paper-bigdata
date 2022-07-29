@@ -1,0 +1,92 @@
+Comment author: @JasonGross
+
+It looks like this:
+
+```
+Chars 16716 - 16770 [Theorem~seq_sound~:~forall~G~P...] Chars 16775 - 16781 [Proof.] Chars 16788 - 16
+807 [induction~1;~eauto~~.] Chars 16812 - 16816 [Qed.] Chars 16822 - 16917 [Hint~Resolve~Init~Inj_R~Cptr_R...] Chars 16923 - 16984 [Lt
+ac~ready~con~:=~eapply~con;~...] Chars 16990 - 17154 [Ltac~doLeft~:=~~~intros;~~~~re...] Chars 17160 - 17251 [Theorem~seq_weaken~:~for
+all~G~...] Chars 17256 - 17262 [Proof.] Chars 17269 - 17296 [induction~1;~eauto~~;~doLeft.] Chars 17301 - 17305 [Qed.] Chars 17311 - 17332 [Section~seq_complete.] Chars 17339 - 17363 [Hint~Resolve~seq_weaken.] Chars 17371 - 17552 [Theorem~seq_complete~:~~~foral...] Chars 17559 - 17565 [Proof.] Chars 17574 - 17703 [apply~normal_neutral_min;~eaut...] Chars 17710 - 17714 [Qed.] Chars 17719 - 17736 [End~seq_complete.] 0. secs (0.u,0.s)
+0. secs (0.u,0.s)
+0. secs (0.u,0.s)
+0. secs (0.u,0.s)
+0.011 secs (0.004u,0.003s)
+0. secs (0.u,0.s)
+0. secs (0.u,0.s)
+0. secs (0.u,0.s)
+```
+
+Comment author: @JasonGross
+
+Enrico, I think this is your domain, but I'm not completely sure.
+
+
+Comment author: @JasonGross
+
+(Note: The use-case of this is trying to figure out which lines are slowest when building a file with coqc -quick)
+
+
+Comment author: @JasonGross
+
+I should note that the annotations are not bogus (re 3 of https://coq.inria.fr/bugs/show_bug.cgi?id=3935#c2); they are actually the time spent on the relevant commands.  However, the list of file contents is printed first, and then the times are printed incrementally, rather than each line being printed immediately before the relevant time.
+
+
+Comment author: @gares
+
+The bug is real but I'm not sure what you are trying to do makes sense.
+
+The difference between coqc and coqc -quick is that the latter may
+skip to process the text between Proof. and Qed.  The other sentences
+are processed exactly as before.
+
+If we fix you would eventually see the same timings you get without -quick,
+but with a 0 on each proof step between proof and qed.  Is this what you want?
+
+Best,
+
+
+Comment author: @JasonGross
+
+Yes, that is exactly what I want.  (Or perhaps I want the skipped steps to not show up.)  I want to use -time to see which proofs are not being compiled async / not being skipped.
+
+
+Comment author: @gares
+
+You can get this info when you turn a .vio into a .vo, since it prints
+which proofs it is processing (that are the ones that were skipped in
+the v->vio phase).
+
+
+Comment author: @JasonGross
+
+I want it interactively, for files that do not fully compile, or that take way too long to compile.
+
+
+Comment author: @gares
+
+There is no such feature, sorry.  But coq is it consistent, and easy to predict.
+
+In batch mode: if a proof ends with Qed and is annotated with "using",
+then it is deferred.  If it is not annotated then it is deferred only if the file was compiled before (.aux file) or if the context in which it occurs
+is empty (e.g. not inside a section).
+Proofs ending with Defined or proofs of mutual lemmas are never deferred.
+
+When you use CoqIDE, proofs that took less than 1 second are not deferred
+the second time you process them, since it would be a waste of time.  All the
+rules above apply too.
+
+Best,
+
+
+Comment author: @gares
+
+Tagging as enhancement.
+
+This is an instance of the X Y problem to me: coqc -quick -time is not a way to know which proof is skipped.
+
+coqc -time works, so no regression.
+
+coqc -quick -time does not, and we may want it to work, but requires some work. In particular the STM must take over the -time functionality, and I don't think
+this will happen for 8.5.
+
+

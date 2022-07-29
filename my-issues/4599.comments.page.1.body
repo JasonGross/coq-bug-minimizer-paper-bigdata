@@ -1,0 +1,26 @@
+Comment author: @JasonGross
+
+If it's not too much trouble, I'd like the following code to work in -compat 8.4 mode, as it does in 8.4:
+
+(* -*- coq-prog-args: ("-emacs" "-compat" "8.4") -*- *)
+Goal True.
+  refine (let x := _ : Set in _);
+    [ lazymatch goal with
+      | [ |- Set ] => idtac
+      end
+    | lazymatch goal with
+      | [ H := _ |- _ ] => fail
+      | [ H : Set |- True ] => idtac
+      end ].
+
+
+Comment author: @ppedrot
+
+Looks a bit complicated to implement for a dubious result. Why on earth did not you write ((fun x : Set => _) _) in your 8.4 refinements in the first place?
+
+
+Comment author: @ppedrot
+
+I think we won't fix this one anyway.
+
+

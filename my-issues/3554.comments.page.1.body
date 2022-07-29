@@ -1,0 +1,12 @@
+Comment author: @JasonGross
+
+This should not error, and should instead behave, I think, as if the argument were not anonymous.
+
+Example foo (f : forall {_ : Type}, Type) : Type.
+
+
+Comment author: @ppedrot
+
+Fixed by 701a6973.
+
+

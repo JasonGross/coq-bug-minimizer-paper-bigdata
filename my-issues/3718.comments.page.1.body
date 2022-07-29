@@ -1,0 +1,68 @@
+Comment author: @JasonGross
+
+I'm rather confused why [Require Import Coq.Classes.EquivDec] makes both matches fail in Coq 8.4.  I'm even more confused why it makes only the second one fail in trunk.
+
+(* File reduced by coq-bug-finder from original input, then from 906 lines to 14 lines, then from 34 lines to 23 lines *)
+(* coqc version trunk (October 2014) compiled on Oct 8 2014 13:38:17 with OCaml 4.01.0
+   coqtop version cagnode16:/afs/csail.mit.edu/u/j/jgross/coq-trunk,trunk (335cf2860bfd9e714d14228d75a52fd2c88db386) *)
+Require Import Coq.Classes.EquivDec.
+Goal forall (e : option bool),
+       match e return option bool with
+         | Some f => None
+         | None => None
+       end <> None -> False.
+  clear; intros e H0.
+  match goal with
+    | [ H : match ?X with
+              | Some _ => _ | None => _
+            end <> None |- _ ]
+      => pose X
+  end. (* fails in 8.4, succeeds in trunk *)
+  match type of H0 with
+    | match ?X with
+        | Some _ => _ | None => _
+      end <> None
+      => pose X
+  end. (* fails in both 8.4 and trunk *)
+
+
+Note that this change in behavior results in a failure of Bedrock in trunk.  (Specifically, it results in the proof script of exprD_principal failing.)
+
+
+Comment author: @ppedrot
+
+It simply changes the notation "<>".
+
+Notation            Scope     
+"x <> y  :> T" := not (eq x y) : type_scope
+                      (default interpretation)
+"x <> y" := nequiv_dec x y     : equiv_scope
+                      (default interpretation)
+"x <> y" := not (eq x y)       : type_scope
+
+
+Comment author: @ppedrot
+
+And for the record (or any people out there not aware of the internalization flags of Coq), the matching behaves differently in the two cases above because the [match goal] internalizes its pattern in the %type scope, resulting in the parsing of "<>" as [not (eq _ _)] while the [match type of] does not necessarily matches a type, so the internalization is done in no scope at all, resulting in "<>" being parsed as [nequiv_dec].
+
+
+Comment author: @JasonGross
+
+Oh, *sigh*.  This is mildly worrying (and the change in scope interpretation should definitely be mentioned in CHANGES as a source of incompatibilities if it's not already).  Otherwise, I think I'm fine with this being marked as resolved invalid.
+
+
+Comment author: @ppedrot
+
+I think you should be throwing stones at the reporter of bug [BZ#3050](https://github.com/coq/coq/issues?q=is%3Aissue%20%22Original%20bug%20ID%3A%20BZ%233050%22), whose fix introduced this incompatibility...
+
+
+Comment author: @herbelin
+
+This is now documented (actually an enhancement suggested in [BZ#3050](https://github.com/coq/coq/issues?q=is%3Aissue%20%22Original%20bug%20ID%3A%20BZ%233050%22) by someone you know...).
+
+
+Comment author: @JasonGross
+
+Yes, I know that I'm the one who requested this behavior.  This makes me less sure that it was a good idea, but I'm still on the "I think it was a good idea" side of the fence, at least for now.
+
+

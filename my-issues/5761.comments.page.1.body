@@ -1,0 +1,405 @@
+Comment author: @JasonGross
+
+[Edited by HH to add missing "Set Primitive Projections" necessary to reproduce the bug]
+```coq
+Set Primitive Projections.
+Record mix := { a : nat ; b : a = a ; c : nat ; d : a = c ; e : nat ; f : nat }.
+Ltac strip_args T ctor :=
+  lazymatch type of ctor with
+  | context[T]
+    => match eval cbv beta in ctor with
+       | ?ctor _ => strip_args T ctor
+       | _ => ctor
+       end
+  end.
+Ltac get_ctor T :=
+  let full_ctor := constr:(ltac:(let x := fresh in intro x; econstructor; apply 
+x) : T -> T) in
+  let ctor := constr:(fun x : T => ltac:(let v := strip_args T (full_ctor x) in 
+exact v)) in
+  lazymatch ctor with
+  | fun _ => ?ctor => ctor
+  end.
+Ltac uncurry_domain f :=
+  lazymatch type of f with
+  | forall (a : ?A) (b : @ ?B a), _
+    => uncurry_domain (fun ab : { a : A & B a } => f (projT1 ab) (projT2 ab))
+  | _ => eval cbv beta in f
+  end.
+Ltac get_of_sigma T :=
+  let ctor := get_ctor T in
+  uncurry_domain ctor.
+Ltac repeat_existT :=
+  lazymatch goal with
+  | [ |- sigT _ ] => simple refine (existT _ _ _); [ repeat_existT | shelve ]
+  | _ => shelve
+  end.
+ Ltac prove_to_of_sigma_goal of_sigma :=
+  let v := fresh "v" in
+  simple refine (exist _ _ (fun v => _ : id _ (of_sigma v) = v));
+  try unfold of_sigma;
+  [ intro v; destruct v; repeat_existT
+  | cbv beta;
+    repeat match goal with
+           | [ |- context[projT2 ?k] ]
+             => let x := fresh "x" in
+                is_var k;
+                destruct k as [k x]; cbn [projT1 projT2]
+           end;
+    unfold id; reflexivity ].
+Ltac prove_to_of_sigma of_sigma :=
+  constr:(
+    ltac:(prove_to_of_sigma_goal of_sigma)
+    : { to_sigma : _ | forall v, id to_sigma (of_sigma v) = v }).
+Ltac get_to_sigma_gen of_sigma :=
+  let v := prove_to_of_sigma of_sigma in
+  eval hnf in (proj1_sig v).
+Ltac get_to_sigma T :=
+  let of_sigma := get_of_sigma T in
+  get_to_sigma_gen of_sigma.
+Definition to_sigma := ltac:(let v := get_to_sigma mix in exact v).
+(* Error:
+In nested Ltac calls to "get_to_sigma", "get_to_sigma_gen",
+"prove_to_of_sigma",
+"(_ : {to_sigma : _ | forall v, id to_sigma (of_sigma v) = v})" (with
+of_sigma:=fun
+            ab : {_
+                 : {_
+                   : {ab : {_ : {a : nat & a = a} & nat} &
+                     projT1 (projT1 ab) = projT2 ab} & nat} & nat} =>
+          {|
+          a := projT1 (projT1 (projT1 (projT1 (projT1 ab))));
+          b := projT2 (projT1 (projT1 (projT1 (projT1 ab))));
+          c := projT2 (projT1 (projT1 (projT1 ab)));
+          d := projT2 (projT1 (projT1 ab));
+          e := projT2 (projT1 ab);
+          f := projT2 ab |}) and "prove_to_of_sigma_goal", last call failed.
+Anomaly "Uncaught exception Not_found." Please report at 
+http://coq.inria.fr/bugs/.
+frame @  file "toplevel/coqtop.ml", line 640, characters 6-22
+frame @  file "list.ml", line 73, characters 12-15
+frame @  file "toplevel/vernac.ml", line 344, characters 2-13
+frame @  file "toplevel/vernac.ml", line 308, characters 14-75
+raise @  file "lib/exninfo.ml", line 63, characters 8-15
+frame @  file "lib/flags.ml", line 141, characters 19-40
+raise @  file "lib/exninfo.ml", line 63, characters 8-15
+frame @  file "lib/flags.ml", line 11, characters 15-18
+raise @  file "lib/exninfo.ml", line 63, characters 8-15
+frame @  file "toplevel/vernac.ml", line 167, characters 6-16
+frame @  file "toplevel/vernac.ml", line 151, characters 26-39
+frame @  file "stm/stm.ml", line 2365, characters 2-35
+raise @  file "lib/exninfo.ml", line 63, characters 8-15
+frame @  file "stm/stm.ml", line 2355, characters 4-48
+frame @  file "stm/stm.ml", line 2321, characters 4-100
+raise @  file "lib/exninfo.ml", line 63, characters 8-15
+frame @  file "stm/stm.ml", line 832, characters 6-10
+frame @  file "stm/stm.ml", line 2206, characters 10-32
+raise @  file "lib/exninfo.ml", line 63, characters 8-15
+frame @  file "stm/stm.ml", line 975, characters 8-81
+raise @  file "lib/exninfo.ml", line 63, characters 8-15
+frame @  file "vernac/vernacentries.ml", line 2216, characters 10-389
+frame @  file "lib/flags.ml", line 141, characters 19-40
+raise @  file "lib/exninfo.ml", line 63, characters 8-15
+frame @  file "lib/flags.ml", line 11, characters 15-18
+frame @  file "vernac/command.ml", line 150, characters 4-56
+frame @  file "interp/constrintern.ml", line 2046, characters 2-73
+frame @  file "pretyping/pretyping.ml", line 1194, characters 19-77
+frame @  file "pretyping/pretyping.ml", line 1155, characters 8-72
+frame @  file "pretyping/pretyping.ml", line 628, characters 23-65
+frame @  file "plugins/ltac/tacinterp.ml", line 2095, characters 21-61
+frame @  file "proofs/pfedit.ml", line 178, characters 6-22
+raise @  file "lib/exninfo.ml", line 63, characters 8-15
+frame @  file "proofs/pfedit.ml", line 174, characters 8-36
+frame @  file "proofs/proof.ml", line 351, characters 4-30
+raise @  file "lib/exninfo.ml", line 63, characters 8-15
+frame @  file "engine/proofview.ml", line 1222, characters 8-12
+frame @  file "plugins/ltac/tacinterp.ml", line 2020, characters 19-36
+frame @  file "plugins/ltac/tacinterp.ml", line 618, characters 4-70
+raise @  file "lib/exninfo.ml", line 63, characters 8-15
+frame @  file "plugins/ltac/tacinterp.ml", line 214, characters 6-9
+frame @  file "pretyping/pretyping.ml", line 1198, characters 19-62
+frame @  file "pretyping/pretyping.ml", line 1155, characters 8-72
+raise @  unknown
+frame @  file "pretyping/pretyping.ml", line 628, characters 23-65
+frame @  file "plugins/ltac/tacinterp.ml", line 2095, characters 21-61
+frame @  file "proofs/pfedit.ml", line 178, characters 6-22
+raise @  file "lib/exninfo.ml", line 63, characters 8-15
+frame @  file "proofs/pfedit.ml", line 174, characters 8-36
+frame @  file "proofs/proof.ml", line 351, characters 4-30
+raise @  file "lib/exninfo.ml", line 63, characters 8-15
+ *)
+```
+
+Comment author: @psteckler
+
+In master, if I run everything up til the comment, I get no error. Do I need to run something more?
+
+
+Comment author: @JasonGross
+
+Oh, oops, I copy/pasted wrong from the output of my bug-minimizer.  There should be
+  Set Primitive Projections.
+at the top.
+
+
+Comment author: @psteckler
+
+Thanks, I can reproduce the error now.
+
+
+Comment author: @psteckler
+
+Some information on where the Not_found is raised, which isn't so evident from the backtrace.
+
+In ltac/tacinterp.ml, around line 2081, there's a call to Pfedit.refine_by_tactic. There, there's a call to Proof.run_tactic which raises a TacticFailure, carrying the Not_found as data. Then, there's a call to iraise to re-raise the Not_found.
+
+So, I'm supposing the right thing here is for the code in tacinterp.ml to catch exceptions that might be raised by refine_by_tactic. 
+
+I think this is PMP's bailiwick.
+
+
+Comment author: @herbelin
+
+(In reply to Paul Steckler from comment [BZ#4](https://github.com/coq/coq/issues?q=is%3Aissue%20%22Original%20bug%20ID%3A%20BZ%234%22))
+> Some information on where the Not_found is raised, which isn't so evident
+> from the backtrace.
+> 
+> In ltac/tacinterp.ml, around line 2081, there's a call to
+> Pfedit.refine_by_tactic. There, there's a call to Proof.run_tactic which
+> raises a TacticFailure, carrying the Not_found as data. Then, there's a call
+> to iraise to re-raise the Not_found.
+> 
+> So, I'm supposing the right thing here is for the code in tacinterp.ml to
+> catch exceptions that might be raised by refine_by_tactic. 
+> 
+> I think this is PMP's bailiwick.
+
+In general, Not_found exceptions are not supposed to be propagated (they are generally suposed to be immediately caught by the caller of those "find" and similar functions liable to return a Not_found). So, it would be good to pinpoint who initially produced the Not_found. I would suspect it is something called from constrintern.ml or pretyping.ml but I must confess that I have difficulties to understand the trace.
+
+
+Comment author: @psteckler
+
+I was able to use ocamldebug to find the re-raise. I didn't step deeper to find the initial raise of Not_found. I can do that. I'm leaving for vacation later today, so I can try that when I'm back.
+
+
+Comment author: @psteckler
+
+I spent a little more time on this. Besides the OCaml stdlib, there are 264 uses of Not_found in Coq, making it hard to know where it's been raised.
+
+Maybe it would be a good idea to change these to something like Coq_not_found, and attach the file and line number (with __FILE__ and __LINE__) as data, making it trivial to track down a stray exception.
+
+I can probably still track down the exception by single-stepping, but that might take a long time.
+
+
+Comment author: @herbelin
+
+(In reply to Paul Steckler from comment [BZ#7](https://github.com/coq/coq/issues?q=is%3Aissue%20%22Original%20bug%20ID%3A%20BZ%237%22))
+> I spent a little more time on this. Besides the OCaml stdlib, there are 264
+> uses of Not_found in Coq, making it hard to know where it's been raised.
+> 
+> Maybe it would be a good idea to change these to something like
+> Coq_not_found, and attach the file and line number (with __FILE__ and
+> __LINE__) as data, making it trivial to track down a stray exception.
+
+There are a lot of Not_found in OCaml standard library too, so that would not change a lot to rename those of Coq I think.
+
+> I can probably still track down the exception by single-stepping, but that
+> might take a long time.
+
+In general, the problem I have in going backwards are:
+
+iraise and with_option: which I solve by a couple of "prec", before continuing with "b"
+
+tclZERO: which I solve by setting a breakpoint there, then "start" (or "rev") to go at the breakpoint, a couple of b to see if I'm still in the monad or in a more interesting part, then "start"/"rev" again, until reaching the interesting part which has sent the Not_found.
+
+To be honest, I'm still continuing to improve the method time after time. Maybe Arnaud, or Pierre-Marie, have better tricks (or maybe also Gaëtan).
+
+Anyway, have nice holidays at the current time.
+
+
+Comment author: @psteckler
+
+In the OCaml stdlib, there are only 42 of them, and I suspect that Coq only receives a few of them, so there are many more in Coq itself.
+
+Yes, I should try a more clever search than single-stepping.
+
+
+Comment author: @psteckler
+
+Another trick is to use gdb, and break on "caml_raise_exn". (In ocamldebug, if you try to break on Pervasives.raise, it breaks at the wrong location.) Then you have to work out which such call is the one that causes a problem, because it's called many times.
+
+
+I think I've found the offending `Not_found`.
+
+That exception is raised during a call to `EConstr.lookup_rel`, which is passed the result of a call to  `Context.Rel.lookup`, which can raise a `Not_found`.
+
+In turn, `lookup_rel` is called from `Reductionops.whd_state_gen` in the `Rel` clause for `match c0`. There's no exception handler here, and I think there should be.
+
+The backtrace provided by `ocamldebug` is:
+
+```
+#0  Pc: 3908  Pervasives char 18849
+#1  Pc: 3882904  EConstr char 27043
+#2  Pc: 4050876  Reductionops char 31653
+#3  Pc: 4058088  Reductionops char 39896
+#4  Pc: 5088016  Redexpr char 1510
+#5  Pc: 4083852  Reductionops char 23758
+#6  Pc: 50868  Array char 3602
+#7  Pc: 3957720  Termops char 26103
+#8  Pc: 50868  Array char 3602
+#9  Pc: 3958728  Termops char 25885
+#10  Pc: 50868  Array char 3602
+#11  Pc: 3958728  Termops char 25885
+#12  Pc: 50868  Array char 3602
+#13  Pc: 3958728  Termops char 25885
+#14  Pc: 50868  Array char 3602
+#15  Pc: 3958728  Termops char 25885
+#16  Pc: 50868  Array char 3602
+#17  Pc: 3958728  Termops char 25885
+#18  Pc: 3958292  Termops char 25536
+#19  Pc: 50868  Array char 3602
+#20  Pc: 3958728  Termops char 25885
+#21  Pc: 50868  Array char 3602
+#22  Pc: 3958728  Termops char 25885
+#23  Pc: 5084140  Redexpr char 6706
+#24  Pc: 5569228  Tactics char 26096
+#25  Pc: 4012192  Proofview char 36828
+```
+There are other, similar match cases in `whd_state_gen` that might also need an exception handler.
+
+Not sure who the expert is on this bit of code.
+
+Ask me over a beer how I found this.
+
+Congratulation! So, this probably means that the wrong env is passed at some time, i.e. an env with a too short `rel_context`, or otherwise, a missing lift of de Bruijn indices somewhere. 
+
+`Reductionops.whd_state_gen` is supposingly correct (if it were not, we would already know it), so
+the culprit is probably in the callers to `whd_state_gen`. Is there a way with the debugger to find at what time appears the unbound `Rel` first in the hierarchy of calls, i.e. at what time the term is mentioning a `Rel` which is greater than the length of the `rel_context` part of the accompanyning env?
+Note it is possible to reduce the example to have `Record mix := { a : Prop ; b : nat -> a ; c : nat }.` (`a : nat; b : a = a; c : nat` also "works").
+Then I managed to backtrack to `e_reduct_in_concl` where `redfun` (secretly `Redexpr.reduction_of_red_expr`) is called with environment
+```
+$1: Environ.env =
+  [v : sigT Prop (fun a : Prop => forall _ : nat, a)  x : nat] []
+```
+and term
+```
+$1: EConstr.types =
+  eq
+    (sigT (sigT Prop (fun a : Prop => forall _ : nat, a))
+       (fun _ : sigT Prop (fun a : Prop => forall _ : nat, a) => nat))
+    (id
+       (forall _ : mix,
+        sigT (sigT Prop (fun a : Prop => forall _ : nat, a))
+          (fun _ : sigT Prop (fun a : Prop => forall _ : nat, a) => nat))
+       (fun v0 : mix =>
+        CSTR.sigT._0._1 (sigT Prop (fun a : Prop => forall _ : nat, a))
+          (fun _ : sigT Prop (fun a : Prop => forall _ : nat, a) => nat)
+          (CSTR.sigT._0._1 Prop (fun a : Prop => forall _ : nat, a)
+             ?X81@{__:=_UNBOUND_REL_2;
+                   __:=CSTR.sigT._0._1
+                         (sigT Prop (fun a : Prop => forall _ : nat, a))
+                         (fun
+                            _ : sigT Prop (fun a : Prop => forall _ : nat, a)
+                          => nat) v x; __:=v0}
+             ?X82@{__:=_UNBOUND_REL_2;
+                   __:=CSTR.sigT._0._1
+                         (sigT Prop (fun a : Prop => forall _ : nat, a))
+                         (fun
+                            _ : sigT Prop (fun a : Prop => forall _ : nat, a)
+                          => nat) v x; __:=v0})
+          ?X76@{__:=_UNBOUND_REL_2;
+                __:=CSTR.sigT._0._1
+                      (sigT Prop (fun a : Prop => forall _ : nat, a))
+                      (fun _ : sigT Prop (fun a : Prop => forall _ : nat, a)
+                       => nat) v x; __:=v0})
+       (CSTR.mix._0._1
+          (projT1 Prop (fun a : Prop => forall _ : nat, a)
+             (projT1 (sigT Prop (fun a : Prop => forall _ : nat, a))
+                (fun _ : sigT Prop (fun a : Prop => forall _ : nat, a) => nat)
+                (CSTR.sigT._0._1
+                   (sigT Prop (fun a : Prop => forall _ : nat, a))
+                   (fun _ : sigT Prop (fun a : Prop => forall _ : nat, a) =>
+                    nat) v x)))
+          (projT2 Prop (fun a : Prop => forall _ : nat, a)
+             (projT1 (sigT Prop (fun a : Prop => forall _ : nat, a))
+                (fun _ : sigT Prop (fun a : Prop => forall _ : nat, a) => nat)
+                (CSTR.sigT._0._1
+                   (sigT Prop (fun a : Prop => forall _ : nat, a))
+                   (fun _ : sigT Prop (fun a : Prop => forall _ : nat, a) =>
+                    nat) v x)))
+          (projT2 (sigT Prop (fun a : Prop => forall _ : nat, a))
+             (fun _ : sigT Prop (fun a : Prop => forall _ : nat, a) => nat)
+             (CSTR.sigT._0._1 (sigT Prop (fun a : Prop => forall _ : nat, a))
+                (fun _ : sigT Prop (fun a : Prop => forall _ : nat, a) => nat)
+                v x))))
+    (CSTR.sigT._0._1 (sigT Prop (fun a : Prop => forall _ : nat, a))
+       (fun _ : sigT Prop (fun a : Prop => forall _ : nat, a) => nat) v x)
+```
+Note a few unbound_rel.
+(the non reduced example has a very large term)
+The evar map is https://gist.github.com/SkySkimmer/771c9b69eda5f7b2c90d7b308470cc53
+
+Soon after this when trying to backtrack further I get "no such frame", I think this is because it's calling from the plugins but I don't know what to do with it.
+
+I recall it's possible to build with plugins linked statically, which would allow further backtracking. @ppedrot knows the trick.
+Using the standard build system it should suffice to pass the desired plugin `cma` to `coqmktop`.
+which can be achieved by tweaking `STATICPLUGINS` in `Makefile.common`. Example:
+```
+ STATICPLUGINS:=plugins/ltac/ltac_plugin.cmo plugins/ltac/tauto_plugin.cmo
+```
+Indeed, that's basically the trick I use too.
+
+This allows to traverse plugins but setting breakpoints in packed files is broken. From 4.06 this is fixed, but only when setting breakpoints manually using the quaiified module name. The Emacs binding to set breakpoints is still broken. (Edited for typos.)
+I just tried changing the `cbv beta` into `cbn beta` in `prove_to_of_sigma_goal` and it stopped failing. 
+
+Apparently a serious problem with evar instances in `cbv`, a short version of it being:
+```coq
+Eval cbv beta in (fun x => _) 0.
+(*  = ?y@{x:=_UNBOUND_REL_1} : ?T@{x:=O} *)
+```
+
+> which can be achieved by tweaking STATICPLUGINS in Makefile.common
+
+Even simpler: pass `-natdynlink no` to `configure`
+It seems so, indeed. I thought that, at some time, `-natdynlink` was only for dynlink in native compilation but apparently it changed. Maybe not a big deal even with `nat` in the name? What is strange though is that if the architecture does not support native compilation or if `-byte` is given, `-natdynlink no` will apparently have no effect on not dynlinking the plugins. Looks like there is a little inconsistency.
+
+@psteckler: are you interested in working further on this bug?
+@herbelin In fact, I've been looking at your small example a bit. 
+
+It appears that the `_UNBOUND_REL` in the `cbv` case is introduced during `norm_head`, in the `Lambda` clause. There's a call to `decompose_lam` (in term.ml), which calls `kind_of_term`, which returns a `Lambda` containing the `_UNBOUND_REL`. 
+
+So `kind_of_term` is an alias for `Constr.kind`, which is just the identity, except that the input and return types differ, so it's a cast of some kind. Not sure I follow how that works, but that's where the things appear to go wrong.
+`kind_of_term` is the identity, and was introduced to emulate private types so certain invariants can be enforced when building a `constr`. Thus, you need to look further for your bad bug.
+I mean, the input to `kind_of_term` already had the error.
+I see, that's just where the error is revealed.
+If that indeed is an error.
+If you have `t : constr = fun x : T => x` then `kind_of_term t` will be `Lambda (x,T, unbound rel 1)` because the body needs to be considered in the extended context.
+
+In the example given by @herbelin `Eval cbv beta in (fun x => _) 0.` we will end up in the LAM/APP case of `cbv_stack_value` with `b = ?X@{x:=Rel 1}` and `args = [| 0 |]` and empty `stk`. So we go into `cbv_stack_term` with the extended `env`. At this point everything is fine.
+The first step of `cbv_stack_term` is `norm_head`. We are in the Evar case with an undefined evar, so we return `VAL (0, ?X@{x:=Rel 1}), TOP` (TOP because empty stack).
+Then we apply `cbv_stack_value` on the result. For `VAL/TOP` it just returns the VAL above.
+At this point we are done with operations under the extended environment and have an unbound rel.
+
+If we liken evars to applications it seems a `cbv_stack_term` is missing in the undefined evar case. The following patch adds it and makes both @herbelin's `Eval cbv ...` and the original report go through. I may have misunderstood something though (eg I had a first version passing `stack` which is definitively wrong).
+``` ocaml
+--- a/pretyping/cbv.ml
++++ b/pretyping/cbv.ml
+@@ -290,7 +290,14 @@ let rec norm_head info env t stack =
+   | Evar ev ->
+       (match evar_value info.infos.i_cache ev with
+           Some c -> norm_head info env c stack
+-        | None -> (VAL(0, t), stack))
++        | None ->
++          let e, xs = ev in
++          let xs' = Array.map (fun x ->
++              let v = cbv_stack_term info TOP env x in
++              reify_value v)
++              xs
++          in
++          (VAL(0, mkEvar (e,xs')), stack))
+ 
+   (* non-neutral cases *)
+   | Lambda _ ->
+```
+I can confirm the fix for @herbelin's example and the original bug report. @SkySkimmer do you want to make a PR (or I can do that)?
+Incidentally, the change does not fix #6016.

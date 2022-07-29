@@ -1,0 +1,94 @@
+Comment author: @JasonGross
+
+I do not think that [try t] should ever fail if [t] is a valid tactic.  In particular, if the code [Ltac t := ... .] succeeds, then [try t] should never fail in the context of a goal.  The following code causes [try t] to fail with
+"""
+Toplevel input, characters 29-30:
+In nested Ltac calls to "t" and
+"(E = (fun _ xyz => (fst (fst xyz), (snd (fst xyz), snd xyz))))" (with
+E:=?354, H:=H), last term evaluation failed.
+Error: The type of this term is a product while it is expected to be
+ "(T0 * T1 * T)%type".
+"""
+
+      Local Ltac t := 
+        match goal with
+          | [ |- appcontext[?E] ] => is_evar E;
+                                    let H := fresh in
+                                    first [ assert (H : E = (fun _ xyz => (fst (fst xyz), (snd (fst xyz), snd xyz)))) by reflexivity
+                                          | assert (H : E = (fun _ xyz => ((fst xyz, fst (snd xyz)), snd (snd xyz)))) by reflexivity
+                                          | assert (H : E = (fun xyz => (fst (fst xyz), (snd (fst xyz), snd xyz)))) by reflexivity
+                                          | assert (H : E = (fun xyz => ((fst xyz, fst (snd xyz)), snd (snd xyz)))) by reflexivity ];
+                                      clear H
+        end.
+
+      Goal forall T0 T1 T : Type,
+           exists (H : T0 * (T1 * T) -> T0 * T1 * T) (H0 : forall c : Type * Type * Type,
+                                                             fst (fst c) * snd (fst c) * snd c ->
+                                                             fst (fst c) * (snd (fst c) * snd c)),
+             (fun x : T0 * T1 * T => H (H0 (T0, T1, T) x)) = (fun x : T0 * T1 * T => x).
+      intros; repeat esplit.
+      try t.
+
+Note that removing the first two branches of the [first] fixes this problem.
+
+
+Comment author: @JasonGross
+
+I've found another instance of what I presume to be the same bug, where a branch of a match failing with "Error: Found type "Empty_set" where "CObject C" was expected." causes the remaining branches of the match to not get tried.
+
+Here's a small test case:
+
+Section foo.
+  Record Functor (objC objD : Type) := { }.
+  Record NT objC objD (F G : @ Functor objC objD) := { CO :> objC -> Type }.
+  Ltac t := match goal with
+              | [ |- NT ?F ?G ] =>
+                (exact (Build_NT F G (fun x : Empty_set => match x with end)))
+              | _ => idtac
+            end.
+  Goal forall objC (F : Functor objC objC),
+         NT F F.
+  intros.
+  t. (* Toplevel input, characters 0-1:
+In nested Ltac calls to "t" and
+"{| CO := fun x : Empty_set => match x with
+                               end |}" (with G:=F, F:=F), last term
+evaluation failed.
+Error: Found type "Empty_set" where "objC" was expected. *)
+
+
+I suspect the problem is that there are some cases in which Coq's backtracking mechanism fails to be triggered when there are type errors in constructing the terms.  In particular, I think the kernel assumes that all type errors about functions mean that the Ltac is wrong, or something like that.
+
+Here's another interesting example:
+
+Goal Empty_set.
+  try exact (@ id (true : bool)).
+  try exact true.
+  try exact (@ id unit).
+  try exact (@ id).
+  try exact (let f := (fun x : unit => x) in f).
+  (* everything up to here succeeds, but makes no progress on the goal, as expected *)
+  try exact (fun x : unit => x).
+  (* Toplevel input, characters 11-28:
+Error: The type of this term is a product while it is expected to be
+ "Empty_set". *)
+
+
+Comment author: @ppedrot
+
+Fixed, but I don't really trust the fixing patch. Specifying what Ltac may catch is a long-term issue.
+
+
+Comment author: @JasonGross
+
+For future reference, here is a much smaller example that is broken in 8.4pl6 (but is fixed in 8.5):
+
+Ltac foo f' :=
+  idtac;
+  let x := constr:(f' (fun x : unit = unit => True)) in idtac.
+
+Goal forall (f' : forall (P : (nat = nat) -> Prop), P = P), True.
+  intro f'.
+  repeat foo f'.
+
+

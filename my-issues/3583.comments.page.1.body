@@ -1,0 +1,29 @@
+Comment author: @JasonGross
+
+Goal (fun x : nat => x) = (fun x : nat => x).
+  match goal with
+    | |- context[fun x => x] => pose (fun y : Set => y)
+  end. (* success *)
+  match goal with
+    | |- context[fun y => y] => pose (fun y : Set => y)
+  end. (* Toplevel input, characters 0-78:
+Error: Ltac variable y is not bound to an identifier.
+It cannot be used in a binder. *)
+
+I'm not sure if this was intentional, but it seems wrong.  It would be nice if [y] shared the name with whatever binder it matched, but this isn't necessary.  It definitely shouldn't error, though.
+
+
+Comment author: @aspiwack
+
+Yes, I thought this might happen. The patch on name is unfinished an does not treat constr:() and the likes properly. I'll fix this on Monday.
+
+
+Comment author: @aspiwack
+
+Fixed.
+
+I factorised the treatment of the Ltac context of typed terms with that of untyped term.
+
+A consequence is that Gregory Malecha's proposition to force the typing of untyped constr now works (let u:=uconstr:(I I) in let v:=constr:(u) in idtac v).
+
+

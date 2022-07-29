@@ -1,0 +1,16 @@
+Comment author: @JasonGross
+
+Module Type A.
+End A.
+Module X (a : A).
+  Notation v := Set.
+End X.
+Module aa : A.
+End aa.
+Module Y := X aa.
+Check Y.v. (* Set : Type *)
+Print Y. (* Module Y : Sig  End := (X aa) *)
+
+(* Where's the alias v? *)
+
+

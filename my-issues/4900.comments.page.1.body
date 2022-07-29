@@ -1,0 +1,16 @@
+Comment author: @JasonGross
+
+If [Fail foo] takes longer than a second, then [Timeout 1 Fail foo] should fail with a timeout, rather than succeeding, claiming that [foo] failed with the message "Timeout!".
+
+
+This is still bothering me.
+
+cc @ejgallego ?
+cc: @maximedenes 
+Still an issue:
+```coq
+Require Import List.
+
+Fail Timeout 1 Eval cbv in (fold_left plus (seq 0 250) 0).
+Timeout 1 Fail Eval cbv in (fold_left plus (seq 0 250) 0).
+```

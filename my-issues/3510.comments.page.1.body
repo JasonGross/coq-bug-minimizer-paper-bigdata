@@ -1,0 +1,54 @@
+Comment author: @JasonGross
+
+(* File reduced by coq-bug-finder from original input, then from 5752 lines to 3828 lines, then from 2707 lines to 193 lines, then from 214 lines to 36 lines *)
+Lemma match_option_fn T (b : option T) A B s n
+: match b as b return forall x : A, B b x with
+    | Some k => s k
+    | None => n
+  end
+  = fun x : A => match b as b return B b x with
+                   | Some k => s k x
+                   | None => n x
+                 end.
+admit.
+Defined.
+Lemma match_option_comm_2 T (p : option T) A B R (f : forall (x : A) (y : B x), R x y) (s1 : T -> A) (s2 : forall x : T, B (s1 x)) n1 n2
+: match p as p return R match p with
+                          | Some k => s1 k
+                          | None => n1
+                        end
+                        match p as p return B match p with Some k => s1 k | None => n1 end with
+                          | Some k => s2 k
+                          | None => n2
+                        end with
+    | Some k => f (s1 k) (s2 k)
+    | None => f n1 n2
+  end
+  = f match p return A with
+        | Some k => s1 k
+        | None => n1
+      end
+      match p as p return B match p with Some k => s1 k | None => n1 end with
+        | Some k => s2 k
+        | None => n2
+      end.
+admit.
+Defined.
+Hint Rewrite match_option_fn match_option_comm_2 : matchdb. (* Toplevel input, characters 15-74:
+Anomaly: Uncaught exception Invalid_argument("map2_t:compare", _).
+Please report. *)
+
+
+Comment author: @silene
+
+This is a regression with respect to 8.4. Here is a reduced testcase:
+
+Inductive T := Foo : T.
+Axiom (b : T) (R : forall x : T, Prop) (f : forall x : T, R x).
+Axiom a1 : match b with Foo => f end = f.
+Axiom a2 : match b with Foo => f b end = f b.
+Hint Rewrite a1 a2 : bar.
+
+frame @  file "tactics/dnet.ml", line 97, characters 22-59
+
+

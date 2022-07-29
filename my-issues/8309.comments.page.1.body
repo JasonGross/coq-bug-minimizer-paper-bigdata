@@ -1,0 +1,1 @@
+They don't correspond to the same object. Printing a tactic will give you the syntactic representation of a strategy, which is printable, while printing an evaluated strategy will give you some continuation-heavy toplevel value that is far from being printable.

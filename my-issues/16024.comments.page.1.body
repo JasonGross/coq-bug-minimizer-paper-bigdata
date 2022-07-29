@@ -1,0 +1,11 @@
+I think I know precisely why this one is failing. I believe I've spotted this bug last time I messed with the module system but didn't care to report it (for fear of having to fix it).
+simplified
+~~~coq
+Module Type T. End T.
+
+Module F (E : T) := E.
+
+Module Type FT (X:T). End FT.
+
+Module M := F <+ FT.
+~~~

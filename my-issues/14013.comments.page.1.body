@@ -1,0 +1,8 @@
+What interface are you using? With CoqIDE I get the right expression highlighted. Also it's quickly going to become intractable if you print random snippets of code. I know Coq does it for Gallina, but it's most of the time useless because the printed term is not informative enough (the *types* do matter a lot though).
+ProofGeneral.  But also `coqc` on the command line.  Location information is correct, which is why it's highlighted in CoqIDE.
+
+I find the error messages including Gallina quite useful, though there is a very steep learning curve.  I agree that when the IDE highlights the corresponding input, additionally printing out the term is useless noise.  So perhaps we should always print the type, and print the term only on the command line and in emacs mode, and not for CoqIDE?
+I agree the message should be made more informative. I don't really know if there is a proper infrastructure to display richer information in batch / emacs mode though.
+By the way:
+
+Duplicate of #11683 

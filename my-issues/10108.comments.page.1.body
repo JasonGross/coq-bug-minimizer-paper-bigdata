@@ -1,0 +1,10 @@
+IIUC some useful simpler steps would be:
+- ability to print any type of variable (e.g. "intropattern")
+- ability to print with simpler syntax (e.g. `print x` vs `Message.print (Message.of_ident x)`
+- ability to print multiple values on a single line.
+
+print statements are quite useful for debugging, particularly since IIUC the current debugging capabilities are limited.
+The solution is fairly easy: export a scope that macro-expands to a type-safe format construction as in OCaml. We don't need to deconstruct these format instructions in Ltac2 so no need for GADTs, they can be given as abstract definitions with phantom types.
+Ah, that would address the printf with a format string case?  What format string do you use for something of type `intropattern`?
+
+Supporting a print without a format string would often be simpler and good enough for users provided that Ltac2 knows the type of each item.  Jason's suggestion of supporting `%a` seems like it would require having the appropriate formatter exported from OCaml code.

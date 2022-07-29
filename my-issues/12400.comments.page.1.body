@@ -1,0 +1,23 @@
+Indeed we have 
+~~~yaml
+# We cannot use flambda due to
+# https://github.com/ocaml/ocaml/issues/7842, see
+# https://github.com/coq/coq/pull/11916#issuecomment-609977375
+library:ci-fiat_crypto:
+  extends: .ci-template
+  stage: stage-4
+  needs:
+  - build:edge+flambda
+  - library:ci-coqprime
+  - plugin:ci-bignums
+  - plugin:ci-rewriter
+  dependencies:
+  - build:edge+flambda
+  - library:ci-coqprime
+  - plugin:ci-rewriter
+~~~
+ie we switch to non-flambda 4.05 but use dependencies compiled with flambda 4.10
+
+Since succeeding job https://gitlab.com/coq/coq/-/jobs/564129619 only #12379 and #12392 have been merged to Coq, neither have a plausible impact.
+On the fiat crypto side the failing file was added https://github.com/mit-plv/fiat-crypto/commit/b5d9ba0385443fa9b3d7d6ca7ca63600f2b01efa
+So I guess we only succeeded because fiat-crypto didn't use native compute? (we stopped using flambda because extracted code failed to compile, not native_compute code, so that's plausible)

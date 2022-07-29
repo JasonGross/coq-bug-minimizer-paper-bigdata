@@ -1,0 +1,65 @@
+Comment author: @JasonGross
+
+Ltac sleep' := do 100 (do 100 (do 100 idtac)).
+Ltac sleep := sleep'.
+Set Ltac Profiling.
+Theorem x : True.
+Proof.
+  idtac. idtac. sleep. constructor.
+  Show Ltac Profile.
+  (* 
+total time:      1.073s
+
+ tactic                                    self  total   calls       max
+────────────────────────────────────────┴──────┴──────┴───────┴─────────┘
+─sleep' -------------------------------- 100.0% 100.0%       1    1.073s
+
+ tactic                                    self  total   calls       max
+────────────────────────────────────────┴──────┴──────┴───────┴─────────┘
+─sleep' -------------------------------- 100.0% 100.0%       1    1.073s
+ *)
+Defined.
+
+Show Ltac Profile.
+  (* 
+
+total time:     -0.000s
+
+ tactic                                    self  total   calls       max
+────────────────────────────────────────┴──────┴──────┴───────┴─────────┘
+
+ tactic                                    self  total   calls       max
+────────────────────────────────────────┴──────┴──────┴───────┴─────────┘
+ *)
+
+
+I suspect the issue is in how the document state is synchronized, but I don't know how Summary.ref works, nor how to fix it to persist across definitions.
+
+
+Comment author: @JasonGross
+
+Not sure whether Enrico or PMP would know more about how to fix this.
+
+
+Comment author: @JasonGross
+
+I've confirmed that going back to an unsynchronized state fixes the issue; I've 
+made a pull request for fixing -profile-ltac, though there should be a better 
+way.
+
+
+Comment author: @maximedenes
+
+See also https://github.com/coq/coq/pull/236
+
+
+Comment author: @gares
+
+This should be fixed by my recent push
+
+
+Comment author: @JasonGross
+
+Thanks!
+
+

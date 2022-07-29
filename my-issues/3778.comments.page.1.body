@@ -1,0 +1,40 @@
+Comment author: @JasonGross
+
+```coq
+Set Universe Polymorphism.
+Definition foo A B := A -> B.
+Section foo.
+  Universes i j.
+  Set Printing Universes.
+  Check forall (C : Type@ {i}) D (pf : D = foo@ {i j}), Type. (* Type@ {i} ->
+forall D : Type@ {i} -> Type@ {j} -> Type@ {Top.16},
+D = foo@ {Top.7 Top.8} -> Type@ {Top.17}
+     : Type@ {max(i+1, j+1, Top.16+1, Top.17+1)}
+(* Top.16
+   Top.17 |= Top.7 < Coq.Init.Logic.8
+              Top.8 < Coq.Init.Logic.8
+              Top.16 < Coq.Init.Logic.8
+              Top.7 <= Top.16
+              Top.8 <= Top.16
+               *)
+
+*)
+(* I expect Type@ {i} ->
+forall D : Type@ {i} -> Type@ {j} -> Type@ {Top.16},
+D = foo@ {i j} -> Type@ {Top.17}
+     : Type@ {max(i+1, j+1, Top.16+1, Top.17+1)}
+(* Top.16
+   Top.17 |= i < Coq.Init.Logic.8
+              j < Coq.Init.Logic.8
+              Top.16 < Coq.Init.Logic.8
+              i <= Top.16
+              j <= Top.16
+               *)
+
+*)
+```
+Comment author: @mattam82
+
+Fixed in 8.5.
+
+

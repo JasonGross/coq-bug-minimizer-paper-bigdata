@@ -1,0 +1,37 @@
+Comment author: @JasonGross
+
+Global Set Primitive Projections.
+Inductive W (A : Type) (B : forall _ : A, Type) : Type :=
+  sup { w_label : A ; w_arg : forall _ : B w_label, W A B }.
+(* Error: The recursive definition
+"fun w : W A B =>
+ f (let (w_label, _) := w in w_label)
+   (let (w_label, w_arg) as w0 return (B (w_label A B w0) -> W A B) := w in
+    w_arg)
+   (fun y : B (let (w_label, _) := w in w_label) =>
+    F
+      ((let (w_label, w_arg) as w0 return (B (w_label A B w0) -> W A B) :=
+          w in
+        w_arg) y))" has type
+"forall w : W A B,
+ P
+   (sup A B (let (w_label, _) := w in w_label)
+      (let (w_label, w_arg) as w0 return (B (w_label A B w0) -> W A B) :=
+         w in
+       w_arg))" while it should be "forall w : W B P, f w".
+*)
+
+
+Either the error message should be "Primitive projections are not supported for recursive records" or there should be a warning "This recursive record will not be primitive" or similar.
+
+
+Comment author: @mattam82
+
+I have a fix (pr [BZ#175](https://github.com/coq/coq/issues?q=is%3Aissue%20%22Original%20bug%20ID%3A%20BZ%23175%22)) which now warns about non-dependent induction principles being generated. I'll ensure that the rest of the Scheme functions properly handle (co)inductives with primitive projections too, so leaving it open until that is done.
+
+
+Comment author: @mattam82
+
+Done in 175, closing.
+
+

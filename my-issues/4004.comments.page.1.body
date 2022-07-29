@@ -1,0 +1,27 @@
+Comment author: @JasonGross
+
+I get suggestions for things like SepExprFacts#env#heq_ST_heq_mor_Proper from theorems like
+    Global Add Parametric Morphism : (SE.sexprD funcs preds U G) with
+      signature (SE.heq funcs preds U G cs ==> SE.ST.heq cs)
+      as heq_ST_heq_mor.
+    Proof.
+      unfold SE.heq; simpl; auto.
+    Qed.
+and I get suggestions for things like imports#Straightline__subproof when I use [abstract] inside of [Defined].  In the latter case, [Set Suggest Proof Using] should make a suggestion for the transparent definition, or make no suggestion at all (if no [Proof using] directive would result in pushing the [abstract] to a worker).  In the former case, [Set Suggest Proof Using] should probably make a suggestion for the name given in [as foo], but I'm not completely sure about this.
+
+(I'm trying to write a python script to automatically implement the suggestions of [Set Suggest Proof Using], currently at https://github.com/JasonGross/coq-bug-finder/blob/master/proof-using-helper.py.)
+
+
+Comment author: @gares
+
+The suggestion is written out whenever the kernel type checks an
+opaque theorem, even if the theorem is not written by the user.
+
+I guess you should just ignore spurious suggestions.
+
+I'll think how to make the suggestions more precise.
+
+
+@JasonGross 
+Since #1103 `Proof Using` suggestions are emitted at the end of opaque interactive proofs.
+I don't know if that's enough to fix your issue.

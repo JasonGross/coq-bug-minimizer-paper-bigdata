@@ -1,0 +1,316 @@
+Comment author: @JasonGross
+
+$ cat foo.v
+Module UWFacts_fun.
+  Require Coq.Setoids.Setoid.
+  Module FSetNotations.
+  End FSetNotations.
+End UWFacts_fun.
+$ echo | coqtop
+Welcome to Coq smithers:/opt/coq-8.5.dev,v8.5 (5cec38e8a2fbe39c75404f249974227afc028f27)
+
+Coq < Coq <
+$ coqc foo.v
+File "./foo.v", line 5, characters 0-16:
+Anomaly: Uncaught exception Not_found. Please report.
+
+
+Comment author: @Matafou
+
+
+> $ cat foo.v
+> Module UWFacts_fun.
+>   Require Coq.Setoids.Setoid.
+>   Module FSetNotations.
+>   End FSetNotations.
+> End UWFacts_fun.
+> $ echo | coqtop
+> Welcome to Coq smithers:/opt/coq-8.5.dev,v8.5
+> (5cec38e8a2fbe39c75404f249974227afc028f27)
+> 
+> Coq < Coq <
+> $ coqc foo.v
+> File "./foo.v", line 5, characters 0-16:
+> Anomaly: Uncaught exception Not_found. Please report.
+
+Probably the same bug with this example, here no inner module but a missing universe variables at module (Type) closing.
+
+Strangely the Module *Type* is necessary to reproduce this bug.
+
+I suppose the Require should raise an error immediately.
+
+P.
+
+---------------------8X-------------------
+Require Import Equalities.
+
+Module Type Foo.
+Require Import List.
+(* Variable A B : Type. *)
+Parameter f : forall A B : Type, list A -> list A -> list A.
+Axiom map_singles : forall A B (f : A -> B)  (vs : list A),
+  List.map f vs = nil.
+
+End Foo. (* Anomaly: Universe Coq.Lists.List.167 undefined. Please report. *)
+---------------------8X-------------------
+
+
+Comment author: @ppedrot
+
+*** Bug [BZ#4505](https://github.com/coq/coq/issues?q=is%3Aissue%20%22Original%20bug%20ID%3A%20BZ%234505%22) has been marked as a duplicate of this bug. ***
+
+
+Comment author: @JasonGross
+
+Note that this now gives anomalies in coqtop and not just coqc.  What's the reason for `Require` inside parameterless modules to be forbidden?  Is it because there's no way to update the global environment in a way that nicely persists after closing the module?
+
+(I would like to have it so that I can wrap file contents in a module to inline it in my bug-minimizer and have things work, without needing to manually hoist Requires before running the minimizer.)
+
+
+Comment author: @ppedrot
+
+There is now a frightening warning when writing a Require inside a module. Should we close this bug? I don't think we will ever fix it anyway?
+
+
+Comment author: @JasonGross
+
+Being able to [Require] inside modules is kind-of important to having my bug-minimizer work nicely, without having to do manual parsing of Coq sources.  What makes it hard to do this?
+
+
+Comment author: @ppedrot
+
+Require are essentially global operations that rely on invariants that are not preserved inside modules. I think you could easily adapt your minimizer to cope with this special case, by extruding all Requires in sight...
+
+
+Comment author: @maximedenes
+
+Like Pierre-Marie said, Require has global side effects that are very hard to make local to modules. We are seeing countless bugs on universes related to this, for instance. Note that you can Require the module at toplevel and Import it wherever you like. If we converge on a document format for .v files, Require commands will probably be like dependency declarations at the beginning of the file.
+
+
+Comment author: @JasonGross
+
+I'm not asking for a module-local [Require].  Would it be hard to make it so that [Require] inside a module were global, i.e., were the same as [Require] at top level?  It seems better to have this slightly-counter-intuitive default behavior (together with a warning that the behavior is not well-supported), than to have anomalies.
+
+
+Comment author: @herbelin
+
+Created attachment 806
+Turning Not_found raised by OCaml Dynlink.loadfile into proper error
+
+The Not_found is raised by OCaml's Dynlink.loadfile. This seems to be an OCaml bug since Dynlink has an interface for errors and the Not_found seems to escape this interface.
+
+The patch turns the Not_found into a proper error.
+
+I guess some report should be done to OCaml, but I let this for the expert.
+
+> Attached file: [patch.dynlink](https://coq.inria.fr/bugfiles/attachment.cgi?id=806) (text/plain, 977 bytes)
+> Description:   Turning Not_found raised by OCaml Dynlink.loadfile into proper error
+
+
+Comment author: @ejgallego
+
+This bug seems to be fixed in master and likely in 8.6 by 22ab7fff908c259d6e433da246bebac519009905
+
+IMHO it should be closed and Hugo patch not applied (as I don't think it has to do with the proper issue) CF [BZ#4530](https://github.com/coq/coq/issues?q=is%3Aissue%20%22Original%20bug%20ID%3A%20BZ%234530%22)
+
+
+Comment author: @ejgallego
+
+Created attachment 807
+Patch for 8.5
+
+Patch backporting 22ab7fff908c259d6e433da246bebac519009905 to 8.5, indeed it can be useful for 8.5 users doing weird things in modules.
+
+[Wish: it is a pain to have a separate bug tracker / PR system]
+
+> Attached file: [stm_eager_require.patch](https://coq.inria.fr/bugfiles/attachment.cgi?id=807) (text/plain, 897 bytes)
+> Description:   Patch for 8.5
+
+
+Comment author: @herbelin
+
+(In reply to Emilio J. Gallego Arias from comment [BZ#10](https://github.com/coq/coq/issues?q=is%3Aissue%20%22Original%20bug%20ID%3A%20BZ%2310%22))
+> This bug seems to be fixed in master and likely in 8.6 by
+> 22ab7fff908c259d6e433da246bebac519009905
+> 
+> IMHO it should be closed and Hugo patch not applied (as I don't think it has
+> to do with the proper issue) CF [BZ#4530](https://github.com/coq/coq/issues?q=is%3Aissue%20%22Original%20bug%20ID%3A%20BZ%234530%22)
+
+Hi Emilio, this bug is not fixed in trunk (I just checked) nor 8.6. But since this is an ocaml bug, it might be fixed in recent versions of OCaml (I'm personally using 4.01.0).
+
+
+Comment author: @ejgallego
+
+Hi Hugo, I dunno, but with Jason file and coq-trunk I get:
+
+> $ bin/coqc u.v 
+> File "./u.v", line 2, characters 2-29:
+> Warning: Require inside a module is deprecated and strongly discouraged. You
+> can Require a module at toplevel and optionally Import it inside another one.
+> [require-in-module,deprecated]
+> $ cat u.v
+> Module UWFacts_fun.
+>   Require Coq.Setoids.Setoid.
+>   Module FSetNotations.
+>   End FSetNotations.
+> End UWFacts_fun.
+
+So I cannot reproduce it. I am using Ocaml 4.03, however it shouldn't matter. What steps are you doing to reproduce the bug?
+
+
+Comment author: @ejgallego
+
+I may be doing something wrong, but also I don't see the Not_found being raised by Ocaml, but by the STM, this is why IMHO we shouldn't take your patch if my observation is correct.
+
+
+Comment author: @herbelin
+
+(In reply to Emilio J. Gallego Arias from comment [BZ#14](https://github.com/coq/coq/issues?q=is%3Aissue%20%22Original%20bug%20ID%3A%20BZ%2314%22))
+> I may be doing something wrong, but also I don't see the Not_found being
+> raised by Ocaml, but by the STM, this is why IMHO we shouldn't take your
+> patch if my observation is correct.
+
+With this exact same file and option -debug, I got the trace:
+
+frame @  file "library/library.ml", line 178, characters 12-18
+raise @  unknown
+frame @  file "kernel/nativelib.ml", line 133, characters 30-48
+raise @  unknown
+raise @  unknown
+frame @  file "list.ml", line 73, characters 12-15
+raise @  unknown
+raise @  unknown
+raise @  unknown
+raise @  file "map.ml", line 117, characters 16-25
+
+Line 117 of map.ml is the Not_found in OCaml's Map.find
+Line 133 of nativelib.ml is the call to Dynlink.loadfile
+
+
+Comment author: @ejgallego
+
+Oh indeed you are right, I am sorry for the noise.
+
+I always disable native_compute so indeed I think I was seeing something different. 
+
+This code seems to work fine without native_compute, so should the component be changed to native_compiler?
+
+
+Comment author: @ejgallego
+
+Note that with the backtrack I get:
+
+> frame @  file "kernel/nativelib.ml", line 133, characters 30-48
+> frame @  file "dynlink.mlopt", line 185, characters 15-60
+> frame @  file "dynlink.mlopt", line 179, characters 2-36
+> frame @  file "list.ml", line 77, characters 12-15
+> raise @  unknown
+> raise @  unknown
+> frame @  file "./theories/Program/.coq-native/NCoq_Program_Basics.native", line 7, characters 2-132
+> raise @  file "map.ml", line 122, characters 16-25
+
+It is not clear if the problem is in Ocaml or in the .coq-native generated program.
+
+
+Comment author: @herbelin
+
+
+> It is not clear if the problem is in Ocaml or in the .coq-native generated
+> program.
+
+I don't know, even more that dynlink has apparently changed in recent OCaml.
+
+Moving to native_compiler seems indeed relevant (I guess Maxime would agree), so doing it.
+
+
+Comment author: @ejgallego
+
+I had a second look and indeed it looks to me that the exception is thrown from `Safe_typing.get_library_native_symbols`, so Dynlink doesn't seem to be directly reponsible here.
+
+I have no clue about this part of the code, but I hope it helps.
+
+
+Comment author: @ejgallego
+
+CF https://coq.inria.fr/bugs/show_bug.cgi?id=4139
+
+
+Comment author: @ejgallego
+
+Hi folks, what do you think of this patch instead?
+
+--- a/kernel/safe_typing.ml
++++ b/kernel/safe_typing.ml
+@ @  -794,7 +794,9 @ @  type compiled_library = {
+ type native_library = Nativecode.global list
+ 
+ let get_library_native_symbols senv dir =
+-  DPMap.find dir senv.native_symbols
++  try DPMap.find dir senv.native_symbols
++  with Not_found -> CErrors.errorlabstrm "get_library_native_symbols"
++                      (Pp.str "Linker error in the native compiler. Are you using Require inside a Module section?")
+ 
+ (** FIXME: MS: remove?*)
+ let current_modpath senv = senv.modpath
+
+
+Comment author: @ejgallego
+
+Note that I've opted not to use an anomaly so users don't get the "report to coq/bugs" bits.
+
+
+Comment author: @ejgallego
+
+I confirm this gives me the correct error message both in Jason and Randy files.
+
+
+Comment author: @herbelin
+
+Emilio, the patch is working for me. Your analysis was right. The bug is not in ocaml. I thought it was raised by ocaml itself while it was only raised by the code loaded by calling ocaml. Thanks!
+
+I'm taking the responsability to move the report from Invalid to Fixed. Even if not supported, one might consider that the error message explains that there is nothing better to do. I hope this view is ok for everyone else involved.
+
+
+Comment author: @herbelin
+
+One more comment. It looks like the problem is much better identified now, and that a fix is not unattainable. So, that Maxime feels free to reopen it if he wishes to fix it.
+
+
+Comment author: @ejgallego
+
+Hi Hugo, thanks for closing the bug; I was wondering thou if we shouldn't mark this bug as WONTFIX? As you point out, even if not supported, the bug could be in principle fixed.
+
+
+Comment author: @herbelin
+
+Emilio: At least the original anomaly is fixed. Whether Jason, Maxime, Randy, ... are satisfied with this I don't know. If not, it should rather indeed be either a WONTFIX or an OPEN (or even a more qualitative statement).
+
+
+Comment author: @JasonGross
+
+I like that it's not an anomaly, but it would still be nice to have it work; the use case is that my bug minimizer has to lift requires to top-level, and occasionally this changes the behavior of the code.  However, I've already written the code to do the lifting, and it rarely causes issues, so this isn't urgent.
+
+
+Comment author: @maximedenes
+
+Hi Jason,
+
+Did you report the cases when this lifting was problematic?
+
+
+Comment author: @JasonGross
+
+I did not, as whenever I could find a reliable test case, the reasons were well-understood; some option settings (I believe) escape module boundaries; typeclass instances and hint databases follow Require, name resolution is sensitive to require (in particular, absolute kernel names are universally preferred over other names, so Coq.Init.Logic.eq will always refer to the standard library when it's required, even if I define Replacement.Coq.Init.Logic.eq afterwards (see https://coq.inria.fr/bugs/show_bug.cgi?id=4455 and
+https://github.com/JasonGross/coq-tools/issues/16)).  There are still occasional cases where my bug minimizer fails to lift requires for unknown reasons, but I've yet to get a reproducing test case.
+
+
+Comment author: @ejgallego
+
+@ Jason a simple fix for your bug minimizer is to run with native compilation disabled. I would be very interested if you get problems in that case.
+
+
+Comment author: @maximedenes
+
+@ Emilio there are several parts of Coq known to be incompatible with Require inside modules, among which universes, the STM and the native compiler.
+
+

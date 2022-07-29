@@ -1,0 +1,77 @@
+Comment author: @JasonGross
+```coq
+Axiom iter2 : bool -> bool -> bool.
+Fixpoint do2 (n : nat) (A : bool) :=
+  match n with
+    | 0 => A
+    | S n' => do2 n' (iter2 A A)
+  end.
+Ltac display2 := hnf; unfold do2; cbv beta.
+Axiom x : bool.
+Notation hidden := (_ = _).
+Tactic Notation "t'" integer(n) := do n try (match goal with |- ?f ?x = ?g ?x => apply f_equal end; fail).
+Ltac t := t' 4.
+Goal let n := 16 in do2 n x = do2 n x.
+  display2.
+  try (timeout 1 t; fail 1 "Too fast; increase the argument to t to make the test slower so the timeout fails").
+  Info 1 try timeout 1 t. (* Anomaly: File "proofs/proofview_monad.ml", line 43, characters 12-18: Assertion failed. Please report. *)
+```
+Comment author: @ppedrot
+
+Are you sure it is not Windows-specific? I can't reproduce it on my machine.
+
+
+Comment author: @JasonGross
+
+It worked on linux (I didn't try on Windows), but I can't reproduce it now either.  Maybe the [timeout] has to trigger in the middle of the [Info] handling code or something?
+
+
+Comment author: @ppedrot
+
+Ah, yes, by fiddling a bit with it, I managed to reproduce this. But it is quite uncommon indeed.
+
+
+Comment author: @ppedrot
+
+Here is a backtrace:
+
+```
+Anomaly: File "engine/proofview_monad.ml", line 43, characters 12-18: Assertion failed.
+Please report.
+frame @  file "ide/xmlprotocol.ml", line 594, characters 29-46
+frame @  file "ide/ide_slave.ml", line 433, characters 12-15
+frame @  file "ide/ide_slave.ml", line 215, characters 2-15
+frame @  file "stm/stm.ml", line 2285, characters 2-35
+raise @  file "lib/exninfo.ml", line 63, characters 8-15
+frame @  file "stm/stm.ml", line 2275, characters 4-48
+frame @  file "stm/stm.ml", line 2242, characters 4-91
+raise @  file "lib/exninfo.ml", line 63, characters 8-15
+frame @  file "stm/stm.ml", line 879, characters 6-10
+frame @  file "stm/stm.ml", line 2121, characters 12-216
+raise @  unknown
+frame @  file "stm/stm.ml", line 2063, characters 10-14
+frame @  file "stm/stm.ml", line 2124, characters 14-32
+raise @  file "lib/exninfo.ml", line 63, characters 8-15
+frame @  file "stm/stm.ml", line 116, characters 15-71
+raise @  file "lib/exninfo.ml", line 63, characters 8-15
+frame @  file "lib/flags.ml", line 30, characters 14-17
+raise @  unknown
+frame @  file "toplevel/vernacentries.ml", line 2033, characters 10-389
+frame @  file "lib/flags.ml", line 148, characters 20-45
+raise @  file "lib/exninfo.ml", line 63, characters 8-15
+frame @  file "lib/flags.ml", line 30, characters 14-17
+raise @  file "lib/exninfo.ml", line 63, characters 8-15
+frame @  file "toplevel/vernacinterp.ml", line 64, characters 4-10
+frame @  file "ltac/g_ltac.ml", line 932, characters 4-640
+frame @  file "proofs/proof_global.ml", line 160, characters 24-36
+frame @  file "ltac/g_ltac.ml", line 942, characters 11-100
+raise @  unknown
+frame @  file "proofs/pfedit.ml", line 122, characters 28-67
+frame @  file "proofs/proof.ml", line 351, characters 4-30
+frame @  file "engine/proofview.ml", line 237, characters 12-42
+raise @  unknown
+frame @  file "engine/logic_monad.ml", line 114, characters 8-12
+raise @  unknown
+frame @  file "engine/logic_monad.ml", line 370, characters 59-69
+raise @  file "engine/proofview_monad.ml", line 43, characters 12-24
+```

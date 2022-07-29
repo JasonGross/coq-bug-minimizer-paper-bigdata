@@ -1,0 +1,11 @@
+Also,
+```
+make[1]: Entering directory '/cygdrive/d/Documents/GitHub/coq/test-suite'
+Makefile:77: cannot run complexity tests (no bogomips found)
+rm -f trace .lia.cache output/MExtraction.out
+RM        <**/*.stamp> <**/*.vo> <**/*.vio> <**/*.log> <**/*.glob>
+xargs: environment is too large for exec
+make[1]: *** [Makefile:127: clean] Error 1
+make[1]: Leaving directory '/cygdrive/d/Documents/GitHub/coq/test-suite'
+make: *** [Makefile:198: indepclean] Error 2
+```

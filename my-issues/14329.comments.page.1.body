@@ -1,0 +1,25 @@
+At the moment, the goal is always displayed in the goal panel of the primary script as you've noticed.
+Now the goal will be displayed in both the primary script and the appropriate secondary script goal panels.
+
+Time to conceive a solution: ~5 minutes
+Working around OCaml awkwardness: 2 hours
+Dealing with inherent GUI code awkwardness: 45 minutes
+That's an unfortunate length of time, but thanks!
+The goal displayed in the primary buffer does not match the goal displayed in the secondary buffer.  There are two issues here:
+1. The names are differently qualified.  If this is deliberate, it's okay, though I think it's better if the displays match exactly.
+2. The secondary goal buffers are not updated when tactics are run.  This is bad.  Consider the difference between `VerifiedRewriter` and `VerifiedRewriter_with_args`, which I believe is not just a notation thing:
+Primary:
+![image](https://user-images.githubusercontent.com/396076/119683146-6ac5c700-be11-11eb-8118-8b4e748fca43.png)
+Secondary:
+![image](https://user-images.githubusercontent.com/396076/119683174-70231180-be11-11eb-81fc-30b684b423ee.png)
+
+When did you last pull the PR?
+> The names are differently qualified.
+
+This must be because the contents reflect the proof at different steps.  I don't do anything to vary the printing parameters.
+> When did you last pull the PR?
+
+An hour or two ago.  I'm at e3e0a477cbdf8fff29d960581ac30d424adcbea1
+I can't reproduce your example.  I set a breakpoint in the same spot, but I see identical content in the goals panel in both of the tabs, matching your first screen shot.  Let me know if you see this again and whether it's reproducible or intermittent.
+
+From time to time I see some glitchy behavior that may be due to our GUI package (GTK).  It may well also be incorrect code in CoqIDE.  I would like to get a handle on that and look at making fixes or workarounds if reasonably possible.

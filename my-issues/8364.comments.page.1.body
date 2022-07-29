@@ -1,0 +1,19 @@
+I cannot reproduce the issue with Coq 8.8.1.
+
+My system is macOS 10.13.6:
+
+```shell
+$ opam switch
+...
+coq.8.8.1  C 4.07.0+flambda  Official release 4.07.0 with flambda activated
+...
+$ coqtop -v
+The Coq Proof Assistant, version 8.8.1 (July 2018)
+compiled on Jul 11 2018 12:45:39 with OCaml 4.07.0
+$ coqc issue_8364.v
+$ echo $!
+0
+```
+Sorry, I must have overwritten the most important part when pasting the error message into the code.  I've updated the initial report with the inductive that actually triggers the error.
+This is something to do with the hack we use to get algebraics in the type of inductive types (eg `prod A B : Type@{max ...}`).
+I don't know what kind of solution we need but you can do `Inductive stack : Type -> Type@{_} := ...` to work around it.

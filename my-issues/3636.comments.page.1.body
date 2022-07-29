@@ -1,0 +1,30 @@
+Comment author: @JasonGross
+
+I don't want to see a long list of "This subproof is complete, but there are still unfocused goals." in the response buffer when I evaluate to the middle of a long file using proof grouping braces.
+
+
+Comment author: @aspiwack
+
+Does it show up on emacs or coqide ? (or both, maybe?)
+
+
+Comment author: @JasonGross
+
+Emacs with ProofGeneral.  I haven't tried CoqIDE.
+
+
+Comment author: @JasonGross
+
+Oh, is this actually a ProofGeneral bug, and a holdover from the days when it this was an unusual state to be in, because it meant you were manually playing with [Focus]?
+
+
+Comment author: @aspiwack
+
+No, this is probably me being confused about the coqtop-emacs protocol and registering the message the wrong way. A sort of copy/paste bug if you will. I'll deal with that soon.
+
+
+Comment author: @aspiwack
+
+Fixed in cc9618ef7543566013f4c9831df25f9503527507 .
+
+

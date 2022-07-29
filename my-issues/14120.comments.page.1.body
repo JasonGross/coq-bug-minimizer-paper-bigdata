@@ -1,0 +1,27 @@
+Possibly related to #4872
+Can the regex matcher read from a file, or it has to actually take input from stdout ?
+Another question, wouldn't it be better to have a mode so that warnings are `\0`-separated? Or we can even output things in json/sexp format; I guess whatever works best with the available infra should be easy to do in Coq's side.
+
+This is also related to the silent mode rework discussed in the CUDW2020
+It has to take input from stdout.  But I can `cat` the file.  However, the logs are prettier if the warnings/errors are close to the build job for the particular file (and also whatever we do should work well with parallel builds).   I guess if the warnings are `\0` separated I can pipe stderr through a script that does the encoding for me, so I guess that should be sufficient.  Are we guaranteed that Coq will only ever print errors and warnings to stderr?
+
+The docs on problem matchers are [here](https://github.com/actions/toolkit/blob/master/docs/problem-matchers.md), in case you're interested.)
+Interesting, thanks for the info.
+
+I think the original proposal is fine if that works for you, and easy to implement. The console printer is pretty self-contained these days, personally i'd have it act upon an environment variable as it seems to me that this is the most convenient for CI.
+
+> Are we guaranteed that Coq will only ever print errors and warnings to stderr?
+
+it should be, note tho that in principle current code allows for redirection from plugins, see `Topfmt.err_ft` etc... , but I think it has not been really used recently.
+
+Likely this was used in the past by CoqIDE to actually grab output, but one of my first patches to Coq back in 2015 was to actually have all user output go thru a dedicated interface.
+
+Note that indeed I was quite pragmatic in that migration [was a crazy large patch], but indeed the current printing API could be improved in many ways, and there are places where stuff is still not fully consistent.
+Yeah, I think having an environment variable that replaces newlines in warning/error output with the contents of that variable, whenever it is defined, would be ideal.  (But it should only do this for newlines within each individual message, not for newlines between error messages.)  However, I'm also fine with a flag or environment variable that leaves the newlines in place and just makes the warnings terminated with `\0`, and then I'd just do something like `2> >(tr '\n' '\r' | sed 's/\r/%0A/g' | tr '\0' '\n')` on the whole output.
+@JasonGross If you are interested, I am able to make coq print some configurable strings after warnings and errors (separately if you wish). I can open a PR if you wish.
+Related to https://github.com/coq/coq/issues/11953
+It seems to me that we have this bug in several forms, actually solving this in the way we outlined somewhere else is super easy as the code already support alternative output formats.
+
+The way we outlined is:
+- Coq should output information in some standard format (JSON, SEXP) when given a flag
+- Users / tools can provide their own little post-processor to transform such output to whatever they'd like

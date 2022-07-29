@@ -1,0 +1,29 @@
+Comment author: @JasonGross
+
+Set Primitive Projections.
+Set Implicit Arguments.
+Record category := { obj :> Type ; hom : obj -> obj -> Type }.
+Goal forall (C : category) (x : C), True.
+(* 1 subgoals
+, subgoal 1 (ID 3)
+
+  ============================
+   forall C : category, obj C -> True
+(dependent evars:) *)
+Goal forall (C : category) (x : @ obj C), True.
+(* 1 subgoals
+, subgoal 1 (ID 3)
+
+  ============================
+   forall C : category, C -> True
+(dependent evars:) *)
+
+
+I'm not sure if this is actually a bug (it makes sense, I suppose, if only functions can be registered as coercions), but it's certainly a bit confusing, and perhaps deserves to be documented if it can't be fixed.  (Though, really, I think that the difference between eta-expanded projections and projections is fishy.)
+
+
+Comment author: @mattam82
+
+The printing is now fixed in trunk, primitive projections can be registered as coercions just as well as constants.
+
+

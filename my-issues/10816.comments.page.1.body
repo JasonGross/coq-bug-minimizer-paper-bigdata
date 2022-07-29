@@ -1,0 +1,25 @@
+I think this is a bug of `Scheme Case` and `Scheme Elimination`. They should be the non-recursive equivalents for `Scheme Minimality` and `Scheme Induction`, but unfortunately they are the respective equivalents.
+
+I think `Scheme nat_caset := Elimination for nat Sort Type.` should yield
+
+```
+nat_caset : forall P : nat -> Type, P 0 -> (forall n : nat,  P (S n)) -> forall n : nat, P n
+```
+but what you get is
+```
+nat_caset : forall P : nat -> Type, P 0 -> (forall n : nat, (* wrong *) P n (* end wrong *)-> P (S n)) -> forall n : nat, P n
+```
+The bug (in case it's a bug) has at least been there since `Coq 8.4.6`.
+
+Can somebody confirm it's a bug and that this is the morally expected behaviour of `Scheme Elimination`?
+
+(prompted by [Marcel's question on discourse](https://coq.discourse.group/t/dependent-case-analysis-scheme/491))
+
+
+
+I think the reason is that lines 331 and 332 in [indschemes.ml](https://github.com/coq/coq/blob/7153cc3a4d886944f9e09a10ea106cefb1e9d0f8/vernac/indschemes.ml#L331) are exactly the same, so `CaseScheme` and `IndScheme` are never distinguished in the code and the `Scheme` command does not actually use the `build_case_analysis_scheme` function in `indrec.ml`, but rather always `build_mutual_induction_scheme`.
+
+I have hacked a fix here: https://github.com/yforster/coq/commit/1e8d2545f8fd35cb8a24ddf2d03886a1a9fc3efd
+
+That's in no way good enough, but maybe it can serve as template for a developer to fix it for `8.10.2` or `8.11`?
+ 

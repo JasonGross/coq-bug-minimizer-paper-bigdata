@@ -1,0 +1,71 @@
+Strangely, I'm also getting more heisenanomalies in https://travis-ci.org/github/mit-plv/fiat/jobs/686845182 / https://api.travis-ci.org/v3/job/686845182/log.txt which I cannot reproduce locally
+```
+File "./src/Common.v", line 1154, characters 2-41:
+Error:
+Anomaly
+"Ltac Profiler encountered an invalid stack (wrong self node) likely due to backtracking into multi-success tactics."
+Please report at http://coq.inria.fr/bugs/.
+Raised at file "lib/loc.ml", line 95, characters 16-23
+Called from file "plugins/ltac/profile_ltac.ml", line 296, characters 6-181
+Called from file "engine/logic_monad.ml", line 105, characters 8-12
+Called from file "engine/logic_monad.ml", line 67, characters 36-42
+Called from file "engine/logic_monad.ml", line 67, characters 36-42
+Called from file "engine/logic_monad.ml", line 67, characters 36-42
+Called from file "engine/logic_monad.ml", line 67, characters 36-42
+Called from file "engine/logic_monad.ml", line 67, characters 36-42
+Called from file "engine/logic_monad.ml", line 67, characters 36-42
+Called from file "engine/logic_monad.ml", line 67, characters 36-42
+Called from file "engine/logic_monad.ml", line 67, characters 36-42
+Called from file "engine/logic_monad.ml", line 67, characters 36-42
+Called from file "engine/logic_monad.ml", line 67, characters 36-42
+Called from file "engine/logic_monad.ml", line 67, characters 36-42
+Called from file "engine/logic_monad.ml", line 67, characters 36-42
+Called from file "engine/logic_monad.ml", line 67, characters 36-42
+Called from file "engine/logic_monad.ml", line 67, characters 36-42
+Called from file "engine/logic_monad.ml", line 67, characters 36-42
+Called from file "engine/logic_monad.ml", line 67, characters 36-42
+Called from file "engine/logic_monad.ml", line 67, characters 36-42
+Called from file "engine/logic_monad.ml", line 67, characters 36-42
+Called from file "engine/logic_monad.ml", line 67, characters 36-42
+Called from file "engine/logic_monad.ml", line 67, characters 36-42
+Called from file "engine/logic_monad.ml", line 67, characters 36-42
+Called from file "engine/logic_monad.ml", line 67, characters 36-42
+Called from file "engine/logic_monad.ml", line 67, characters 36-42
+Called from file "engine/logic_monad.ml", line 117, characters 8-12
+Called from file "engine/proofview.ml", line 229, characters 12-42
+Called from file "proofs/proof.ml", line 383, characters 4-42
+Called from file "proofs/proof.ml", line 553, characters 31-52
+Called from file "plugins/ltac/g_ltac.mlg", line 372, characters 8-83
+Called from file "vernac/declare.ml", line 53, characters 20-33
+Called from file "plugins/ltac/g_ltac.mlg", line 367, characters 23-579
+Called from file "vernac/lemmas.ml", line 69, characters 36-46
+Called from file "vernac/vernacstate.ml", line 33, characters 37-55
+Called from file "clib/option.ml", line 100, characters 19-24
+Called from file "vernac/vernacinterp.ml", line 210, characters 20-60
+Called from file "lib/flags.ml", line 17, characters 14-17
+Re-raised at file "clib/exninfo.ml", line 82, characters 4-38
+Called from file "vernac/vernacinterp.ml", line 253, characters 18-43
+Called from file "vernac/vernacinterp.ml", line 251, characters 6-279
+Re-raised at file "clib/exninfo.ml", line 82, characters 4-38
+Called from file "stm/stm.ml", line 2417, characters 20-47
+Called from file "stm/stm.ml", line 2342, characters 10-14
+Called from file "stm/stm.ml", line 1006, characters 6-10
+Re-raised at file "clib/exninfo.ml", line 82, characters 4-38
+Called from file "stm/stm.ml", line 2567, characters 4-105
+Called from file "stm/stm.ml", line 2698, characters 4-60
+Re-raised at file "clib/exninfo.ml", line 82, characters 4-38
+Called from file "toplevel/vernac.ml", line 68, characters 31-52
+Re-raised at file "clib/exninfo.ml", line 82, characters 4-38
+Called from file "lib/flags.ml", line 17, characters 14-17
+Re-raised at file "clib/exninfo.ml", line 82, characters 4-38
+Called from file "lib/flags.ml" (inlined), line 66, characters 19-40
+Called from file "toplevel/vernac.ml", line 111, characters 8-69
+Called from file "toplevel/vernac.ml", line 115, characters 6-19
+Re-raised at file "clib/exninfo.ml", line 82, characters 4-38
+Called from file "toplevel/vernac.ml", line 171, characters 30-88
+Called from file "toplevel/ccompile.ml", line 184, characters 18-89
+Called from file "toplevel/ccompile.ml", line 251, characters 2-39
+Called from file "list.ml", line 85, characters 12-15
+Called from file "toplevel/coqc.ml", line 45, characters 2-81
+Called from file "toplevel/coqc.ml", line 67, characters 4-25
+```

@@ -1,0 +1,3 @@
+@JasonGross: your proposal looks good. Would need some work to be implemented though.
+
+Added: One would need to keep parameters in `PatCstr`, which means not applying `Constrintern.chop_params_pattern` in `Constrintern.intern_cstr_with_all_args`. Then, in `cases.ml`, one would need to do the job of unifying if a term and to add a `let` if a fresh name. The latter seems to lead to changing the reduction rule for `match` so that it binds the parameters in the right-hand side of a clause. But then, we need to remember the parameters somewhere in the internal `Case` constructor so that the parameters are known at reduction time. So, accepting a term and unifying seems to be an easier first step. I.e., accepting a binder seems to be a bigger change.

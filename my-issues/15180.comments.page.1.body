@@ -1,0 +1,143 @@
+Here's a small example:
+```coq
+Require Import Coq.extraction.Extraction.
+Require Import Coq.extraction.ExtrHaskellBasic.
+Module type.
+  Inductive type {base_type : Type} := base (t : base_type) | arrow (s d : type).
+  Global Arguments type : clear implicits.
+  Fixpoint interp {base_type} (base_interp : base_type -> Type) (t : type base_type) : Type
+    := match t with
+       | base t => base_interp t
+       | arrow s d => @interp _ base_interp s -> @interp _ base_interp d
+       end.
+End type.
+Notation type := type.type.
+Global Arguments type.base {_} _.
+Module base.
+  Module type.
+    Inductive type {base_type : Type} := type_base (t : base_type) | prod (A B : type) | list (A : type) | option (A : type) | unit.
+    Global Arguments type : clear implicits.
+  End type.
+  Notation type := type.type.
+  Fixpoint interp {base} (base_interp : base -> Type) (ty : type base)
+    := match ty with
+       | type.type_base t => base_interp t
+       | type.unit => Datatypes.unit
+       | type.prod A B => interp base_interp A * interp base_interp B
+       | type.list A => Datatypes.list (interp base_interp A)
+       | type.option A => Datatypes.option (interp base_interp A)
+       end%type.
+End base.
+Class ExprInfoT :=
+  {
+  base : Type;
+  ident : type (base.type base) -> Type;
+  base_interp : base -> Type;
+  ident_interp : forall t, ident t -> type.interp (base.interp base_interp) t
+  }.
+Extraction Language Haskell.
+Axiom IO_unit : Set.
+Axiom IO_return : unit -> IO_unit.
+Extract Inlined Constant IO_return => "GHC.Base.return".
+Extract Inlined Constant IO_unit => "GHC.Base.IO ()".
+Definition seq {A} {B} (x : A) (y : B) := y.
+Definition main : IO_unit
+  := seq (@ident_interp) (IO_return tt).
+Redirect "foo.hs" Recursive Extraction main.
+```
+generates
+```haskell
+{-# OPTIONS_GHC -cpp -XMagicHash #-}
+{- For Hugs, use the option -F"cpp -P -traditional" -}
+
+module Main where
+
+import qualified Prelude
+
+#ifdef __GLASGOW_HASKELL__
+import qualified GHC.Base
+#else
+-- HUGS
+import qualified IOExts
+#endif
+
+#ifdef __GLASGOW_HASKELL__
+type Any = GHC.Base.Any
+#else
+-- HUGS
+type Any = ()
+#endif
+
+data Type base_type =
+   Base base_type
+ | Arrow (Type base_type) (Type base_type)
+
+type Interp base_type base_interp = Any
+
+data Type0 base_type =
+   Type_base base_type
+ | Prod (Type0 base_type) (Type0 base_type)
+ | List (Type0 base_type)
+ | Option (Type0 base_type)
+ | Unit
+
+type Interp0 base base_interp = Any
+
+type ExprInfoT =
+  (Type (Type0 Any)) -> Any -> Interp (Type0 Any) (Interp0 Any Any)
+  -- singleton inductive, whose constructor was Build_ExprInfoT
+
+type Base0 = Any
+
+type Ident = Any
+
+type Base_interp = Any
+
+ident_interp :: ExprInfoT -> (Type (Type0 Base0)) -> Ident -> Interp (Type0 Base0) (Interp0 Base0 Base_interp)
+ident_interp exprInfoT =
+  exprInfoT
+
+seq :: a1 -> a2 -> a2
+seq _ y =
+  y
+
+main :: GHC.Base.IO ()
+main =
+  seq ident_interp (GHC.Base.return ())
+```
+which errors with
+```
+foo.hs:37:1: error:
+Error:     • Uninferrable type variables k0, k1, k2 in
+      the type synonym right-hand side:
+      Type (Type0 (Any @{*}))
+      -> Any @{*}
+      -> Interp
+           @{*}
+           @{*}
+           @{k0}
+           (Type0 (Any @{*}))
+           (Interp0 @{k0} @{k1} @{k2} (Any @{k1}) (Any @{k2}))
+    • In the type declaration for ‘ExprInfoT’
+   |
+37 | type ExprInfoT =
+   | ^^^^^^^^^^^^^^^^...
+```
+as as per https://github.com/JasonGross/test-haskell-bug/runs/4194435468?check_suite_focus=true in Haskell 9.2.1, but succeeds in Haskell 9.0.1 as per https://github.com/JasonGross/test-haskell-bug/runs/4194435425?check_suite_focus=true
+Reported as an issue in ghc at https://gitlab.haskell.org/ghc/ghc/-/issues/20675 , let's see if the upstream devs say this is an intended breakage or not
+Reply has been obtained:
+> This is expected behavior. GHC 9.2.1 now uses the GHC2021 language extension set, which includes PolyKinds. This makes the arguments to `Interp0` poly-kinded. When `Interp0` is used on the right-hand side of the `ExprInfoT` type synonym, GHC is unable to figure out what the kinds of `Interp0`'s arguments should be, and that is an error.
+To fix this, some potential options are:
+>
+> 1. Use `-XNoPolyKinds` to disable this behavior.
+> 2. Alternatively, enable `-XHaskell98` or `-XHaskell2010`, which imply `-XNoPolyKinds`. (Prior to GHC 9.2.1, the default language set was Haskell2010.)
+> 3. Give explicit kind annotations to `Interp0` to prevent them from becoming poly-kinded.
+
+
+I take it we either want to do 1 or 2?  It'd be nice to get this in 8.15, maybe even backported into an 8.14 point release.  cc @coq/extraction-maintainers 
+
+@tchajed @zeldovich do either of you have thoughts on the preferred solution here?
+The Haskell devs replied with yet another option:
+```haskell
+type Any = GHC.Base.Any :: Data.Kind.Type
+```

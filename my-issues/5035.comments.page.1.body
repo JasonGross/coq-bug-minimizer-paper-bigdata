@@ -1,0 +1,26 @@
+Comment author: @JasonGross
+
+Section foo.
+  Variables X Y Z : Type.
+  Definition bar := X -> Y -> Z.
+  Print Assumptions bar.
+(* In 8.6 (fa141fa1d2df2720f84a3e2c1fc4900a47f9939f):
+Section Variables:
+Z : bar
+Y : bar
+X : bar
+ *)
+
+(* In 8.5pl2:
+Section Variables:
+Z : Type
+Y : Type
+X : Type
+ *)
+
+
+Comment author: @silene
+
+Fixed by commit 433d042. Thanks for the report.
+
+

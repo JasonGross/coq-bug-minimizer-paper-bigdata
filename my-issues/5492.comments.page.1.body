@@ -1,0 +1,246 @@
+Comment author: @JasonGross
+
+Here is code that worked with Coq 8.4pl6, but fails with 8.5, 8.6:
+
+```coq
+Require Coq.FSets.FMapAVL.
+
+Import Coq.Structures.OrderedType.
+Import Coq.FSets.FMapAVL.
+
+Declare Module W_as_OT : OrderedType.
+Module Import WordMap := Make W_as_OT.
+
+Set Implicit Arguments.
+
+Axiom vals : Set.
+Section ADTValue.
+  Variable ADTValue : Type.
+  Definition Heap := WordMap.t ADTValue.
+  Inductive RunsTo : vals * Heap -> vals * Heap -> Prop :=
+  | RunsToCallInternal : forall v heap', RunsTo v (fst v, heap').
+End ADTValue.
+Definition Lift (TYPE := Type) (type : TYPE := Type) (T : type) : TYPE := T.
+Set Printing Universes.
+Goal forall (ADTValue : Type)
+            (v : prod vals (Heap ADTValue))
+            (x : WordMap.t ADTValue),
+    @ RunsTo ADTValue
+            v
+            (@ pair vals (WordMap.t ADTValue) (fst v) x).
+  intros.
+  let G := match goal with |- ?G => G end in
+  refine (let H' := @ RunsToCallInternal ADTValue v _ in _);
+    cbv beta zeta in *.
+  (cut True;
+   [ intros _;
+     pose (WordMap.t (Lift (Heap nat))); eapply H'
+   | ]) || fail "too early".
+  Undo.
+  (cut True;
+   [ intros _;
+     refine H'
+   | pose (WordMap.t (Lift (Heap nat))) ]) || fail "too early".
+  Undo.
+  (cut True;
+   [ intros _;
+     eapply H'
+   | pose (WordMap.t (Lift (Heap nat))) ]).
+
+
+```
+Comment author: @JasonGross
+
+I think [rewrite] suffers from a similar issue; see 
+https://github.com/JasonGross/bedrock/commit/de910c97dcd32e39d6446e8e34c353156e278c22, 
+and note that the rewrite will add the constraint 
+"Bedrock.Platform.Cito.Semantics.9 = Coq.FSets.FMapInterface.4" (note for 
+future reference that you need to admit and close the proof at that point to 
+see the new universes in [Print Universes])
+
+
+Comment author: @ejgallego
+
+Bisect says:
+
+https://github.com/coq/coq/commit/0a1202fae3a8ae8cf651c1b699545a8638ec579f
+
+> Author: aspiwack <aspiwack@ 85f007b7-540e-0410-9357-904b9bb8a0f7>
+> Date:   Sat Nov 2 15:34:26 2013 +0000
+> 
+>    A whole new implemenation of the refine tactic.
+>    
+>    It now uses the same algorithm as pretyping does.
+>    
+>    This produces pretty weird goal when refining pattern matching terms.
+>    Modification of the pattern matching compilation algorithm are pending, hence I will let it be so for now.
+>    
+>    The file Zsqrt_compat.v has two temporary [Admitted] related to this issue.
+
+
+Comment author: @JasonGross
+
+I'm dubious about that bisect.  If you get "too early", you need to skip the commit.  I'd be very surprised if this is anything other than Mathieu's commit that introduced universe polymorphism.
+
+
+Comment author: @JasonGross
+
+Here's a slightly easier version to bisect (doesn't depend on FMapAVL):
+```coq
+
+Set Implicit Arguments.
+Inductive WordMapt (x : Type) := a (_ : x).
+Axiom vals : Set.
+Section ADTValue.
+  Variable ADTValue : Type.
+  Definition Heap := WordMapt ADTValue.
+  Inductive RunsTo : vals * Heap -> vals * Heap -> Prop :=
+  | RunsToCallInternal : forall v heap', RunsTo v (fst v, heap').
+End ADTValue.
+Definition Lift (TYPE := Type) (type : TYPE := Type) (T : type) : TYPE := T. 
+Set Printing Universes.
+Goal forall (ADTValue : Type)
+            (v : prod vals (Heap ADTValue))
+            (x : WordMapt ADTValue),
+    @ RunsTo ADTValue
+            v
+            (@ pair vals (WordMapt ADTValue) (fst v) x).
+  intros.
+  let G := match goal with |- ?G => G end in
+  refine (let H' := @ RunsToCallInternal ADTValue v _ in _);
+    cbv beta zeta in *.
+  (cut True;
+   [ intros _;
+     pose (WordMapt (Lift (Heap nat))); eapply H'
+   | ]) || fail "too early".
+  Undo.
+  (cut True;
+   [ intros _;
+     refine H'
+   | pose (WordMapt (Lift (Heap nat))) ]) || fail "too early".
+  Undo.
+  (cut True;
+   [ intros _;
+     eapply H'
+   | pose (WordMapt (Lift (Heap nat))) ]).
+  constructor.
+Qed.
+```
+
+
+I'm going to try bisecting it now, and seeing what I get.
+
+
+Comment author: @ejgallego
+
+For the first example the bisect is correct in that:
+
+- fe9258c4b228fb086baac7cd3d94207f2c43bb48 is good
+- 0a1202fae3a8ae8cf651c1b699545a8638ec579f is bad
+
+just tested.
+
+For your second example, they fail differently thou.
+
+
+Comment author: @JasonGross
+
+> 0a1202fae3a8ae8cf651c1b699545a8638ec579f is bad
+
+The relevant question is whether it fails with a universe inconsistency, or if it fails with "too early".  If it fails with "too early", that's a separate issue, and just means my test was not a very good test.  And I'm rather confused how (or why) a commit that claims to be about [refine] can change the behavior of [eapply].
+
+
+Comment author: @ejgallego
+
+Your test may not be a good test indeed, I maybe misunderstood. But refine is a base tactic so indeed it impacts other tactics using it.
+
+
+Comment author: @JasonGross
+
+Emilio, what do you get if you bisect this one?
+```coq
+Set Implicit Arguments.
+Inductive WordMapt (x : Type) := a (_ : x).
+Axiom vals : Set.
+Section ADTValue.
+  Variable ADTValue : Type.
+  Definition Heap := WordMapt ADTValue.
+  Inductive RunsTo : vals * Heap -> vals * Heap -> Prop :=
+  | RunsToCallInternal : forall v heap', RunsTo v (fst v, heap').
+End ADTValue.
+Definition Lift (TYPE := Type) (type : TYPE := Type) (T : type) : TYPE := T. 
+Set Printing Universes.
+Goal forall (ADTValue : Type)
+            (v : prod vals (Heap ADTValue))
+            (x : WordMapt ADTValue),
+    @ RunsTo ADTValue
+            v
+            (@ pair vals (WordMapt ADTValue) (fst v) x).
+  intros.
+  let G := match goal with |- ?G => G end in
+  refine (let H' := @ RunsToCallInternal ADTValue v _ in _);
+    cbv beta zeta in *.
+  (cut True;
+   [ intros _;
+     eapply H'
+   | pose (WordMapt (Lift (Heap nat))) ]).
+  constructor.
+Qed.
+```
+
+(I'm currently struggling to bisect #5493, which is giving my bisector a lot of trouble.)
+
+
+Comment author: @ejgallego
+
+This one indeed looks better, launched, thanks! Good luck with 5493 it looks tricky indeed.
+
+
+Comment author: @JasonGross
+
+Note that this bug also breaks [eauto]; here is code that works in 8.4pl6 but 
+fails in 8.6:
+```
+
+Set Implicit Arguments.
+Inductive WordMapt (x : Type) := a (_ : x).
+Axiom vals : Set.
+Section ADTValue.
+  Variable ADTValue : Type.
+  Definition Heap := WordMapt ADTValue.
+  Inductive RunsTo : vals * Heap -> vals * Heap -> Prop :=
+  | RunsToCallInternal : forall v heap', RunsTo v (fst v, heap').
+End ADTValue.
+Definition Lift (TYPE := Type) (type : TYPE := Type) (T : type) : TYPE := T.
+Set Printing Universes.
+Hint Constructors RunsTo.
+Goal forall (ADTValue : Type)
+            (v : prod vals (Heap ADTValue))
+            (x : WordMapt ADTValue),
+    @ RunsTo ADTValue
+            v
+            (@ pair vals (WordMapt ADTValue) (fst v) x).
+  intros.
+  pose (WordMapt (Lift (Heap nat))).
+  solve [ eauto ].
+Qed.
+
+
+```
+Comment author: @JasonGross
+
+Bisecting on the eauto example gives a sensible commit:
+
+834876a3e07fe8053aa99655f21883c3e8927a8c is the first bad commit
+commit 834876a3e07fe8053aa99655f21883c3e8927a8c
+Author: Matthieu Sozeau <matthieu.sozeau@ inria.fr>
+Date:   Fri Nov 6 17:52:53 2015 -0500
+
+    Ensure that conversion is called on terms of the same type in
+    unification (not necessarily preserved due to the fo approximation rule).
+
+:040000 040000 1d0c764c49ed9172afdfa253e65a06b440ddd3fc 
+7193b6c1f81a8e85b79d862f3ca9feff81bb544e M      pretyping
+
+
+Unclear if this is a bug or just a behaviour change.

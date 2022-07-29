@@ -1,0 +1,14 @@
+Comment author: @JasonGross
+
+Module A.
+  Inductive unit := tt.
+End A.
+Show Match A.unit. (* Syntax error: '.' expected after [vernac:command] (in 
+[vernac_aux]). *)
+
+
+Comment author: @silene
+
+Fixed by commit 26ed865. Thanks for the report.
+
+

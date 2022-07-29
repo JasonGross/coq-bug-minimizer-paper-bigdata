@@ -1,0 +1,27 @@
+Comment author: @JasonGross
+
+Admittedly, it's rather silly to declare an [unfold] hint and then [clear] it, but it would be nice if [autounfold] either silently ignored the hint, or informed me that I wasn't supposed to [clear] something that I had previously [Hint Unfold]ed, and told me the name that it was failing to find.
+
+Here's a small example that produces the produces the anomaly.
+
+Section foo.
+  Variable A : Type.
+  Let B := A.
+
+  Hint Unfold B.
+
+  Goal False.
+    clear B. autounfold with core.
+End foo.
+
+
+Comment author: @JasonGross
+
+Oops.  It's a bug, not an enhancement.
+
+
+Comment author: @herbelin
+
+Fixed in trunk and 8.4.
+
+

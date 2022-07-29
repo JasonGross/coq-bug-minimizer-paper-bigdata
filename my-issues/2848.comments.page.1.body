@@ -1,0 +1,20 @@
+Comment author: @JasonGross
+
+The following code gives "Anomaly: unknown meta ?436. Please report."
+
+Require Import Setoid.
+
+Parameter value' : Type.
+Parameter equiv' : value' -> value' -> Prop.
+
+Add Parametric Relation : _ equiv'
+  reflexivity proved by (Equivalence.equiv_reflexive _)
+  transitivity proved by (Equivalence.equiv_transitive _)
+    as apply_equiv'_rel.
+
+
+Comment author: @xclerc
+
+Fixed in "trunk" but still present in "v8.4".
+
+

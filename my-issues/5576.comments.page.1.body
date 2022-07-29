@@ -1,0 +1,80 @@
+Comment author: @JasonGross
+
+(* -*- mode: coq; coq-prog-args: ("-emacs" "-R" "src" "CrossCrypto" "-R" 
+"fcf/src/FCF" "FCF" "-R" "fcf/src/HMAC" "HMAC" "-top" "Minimalistic") -*- *)
+(* File reduced by coq-bug-finder from original input, then from 1610 lines to 
+38 lines, then from 473 lines to 38 lines, then from 106 lines to 38 lines, 
+then from 102 lines to 58 lines, then from 71 lines to 35 lines, then from 49 
+lines to 43 lines *)
+(* coqc version trunk (May 2017) compiled on May 30 2017 13:28:59 with OCaml 
+4.02.3
+   coqtop version jgross-Leopard-WS:/home/jgross/Downloads/coq/coq-trunk,trunk 
+(fd36c0451c26e44b1b7e93299d3367ad2d35fee3) *)
+Require Import Coq.FSets.FMapPositive.
+Require Import Coq.FSets.FMapFacts.
+Goal forall type (P : Set -> Set) (b : forall A : Set, P A -> A -> A -> bool) 
+(T : Set -> Type)
+            (P0 : forall A : Set, T A -> T A -> Prop)
+            (c : forall A B : Set, T B -> (B -> T A) -> T A),
+    (forall A : Set, @ Equivalence (T A) (P0 A)) ->
+    (forall A B : Set, @ Proper (T B -> (B -> T A) -> T A) (P0 B ==> 
+@ pointwise_relation B (T A) (P0 A) ==> P0 A) (c A B)) ->
+    (forall A : Type, @ Equivalence A (@ eq A)) ->
+    forall (c0 : forall A : Set, (forall a1 a2 : A, {a1 = a2} + {a1 <> a2}) -> 
+A -> T A) (t : type) (P1 : nat -> Set)
+           (k : forall x0 : nat, T (PositiveMap.t (P1 x0)))
+           (P2 P3 : nat -> Set) (adv' : forall x0 : nat, P2 x0 -> P3 x0) (P4 : 
+nat -> Set)
+           (strue0 sfalse0 : forall eta : nat, P4 eta)
+           (P5 : Set -> Set) (s : forall A : Set, P5 A -> forall a b0 : A, {a = 
+b0} + {a <> b0}) (e : forall eta : nat, P5 (P4 eta))
+           (P6 : Set) (f : forall x0 : nat, T (P4 x0) -> P6),
+      (forall (eta : nat) (R1 : relation (T (P4 eta))), @ Proper (T (P4 eta) -> 
+P6) (R1 ==> @ eq P6) (f eta)) ->
+      forall (negligible : (nat -> P6) -> Prop) (P7 : P6 -> P6 -> Prop),
+        @ Proper ((nat -> P6) -> Prop) (@ pointwise_relation nat P6 P7 ==> iff) 
+negligible ->
+        forall (P8 : type -> nat -> Set) (i : forall eta : nat, (P2 eta -> P3 
+eta) -> PositiveMap.t (P1 eta) -> P8 t eta)
+               (e0 : forall (t0 : type) (eta : nat), P (P8 t0 eta)),
+          (forall (eta : nat) (rands : PositiveMap.t (P1 eta)),
+              b (P8 t eta) (e0 t eta) (i eta (adv' eta) rands) (i eta (adv' 
+eta) rands) = true) ->
+          negligible
+            (fun eta : nat =>
+               f eta
+                 (c (P4 eta) (PositiveMap.t (P1 eta)) (k eta)
+                    (fun rands : PositiveMap.t (P1 eta) =>
+                       c0 (P4 eta) (s (P4 eta) (e eta))
+                          (if b (P8 t eta) (e0 t eta) (i eta (adv' eta) rands) 
+(i eta (adv' eta) rands)
+                           then strue0 eta else sfalse0 eta)))).
+  intros ????????? * H' ?? Proper_negligible * lem.
+
+  eapply Proper_negligible; [ | shelve.. ]; intro eta;
+    timeout 1 setoid_rewrite (lem _ _) || fail 1 "too early". (* success  *)
+  Undo.
+  Timeout 1 setoid_rewrite (lem _ _). (* times out *)
+
+
+Setting typeclasses debug reveals that the first [setoid_rewrite] does this:
+Debug: 1: looking for (Proper (eq ==> ?r) (c0 (P4 eta) (s (P4 eta) (e eta)))) 
+with backtracking
+...
+Debug:
+2: looking for (Proper (pointwise_relation (PositiveMap.t (P1 eta)) eq ==> ?r) 
+(c (P4 eta) (PositiveMap.t (P1 eta)) (k eta))) with
+backtracking
+
+while the second one does this:
+Debug: 1: looking for (Proper (eq ==> ?r) (c0 (P4 eta) (s (P4 eta) (e eta)))) 
+with backtracking
+...
+Debug:
+2: looking for (Proper (forall_relation (fun _ : PositiveMap.t (P1 eta) => eq) 
+==> ?r) (c (P4 eta) (PositiveMap.t (P1 eta)) (k eta))) with backtracking
+
+Why does the first one look for pointwise_relation, but the second one looks 
+for forall_relation?
+
+

@@ -1,0 +1,70 @@
+Comment author: @JasonGross
+
+I suspect this is just an issue of forgetting a check somewhere...
+
+Set Primitive Projections.
+Record ex (A:Type) (P:A -> Prop) : Prop := ex_intro { ex0 : A; _ : P ex0 }.
+Record sig (A:Type) (P:A -> Prop) : Type := exist { proj1_sig : A; proj2_sig : P proj1_sig }.
+Definition choice A P : @ ex A P -> @ sig A P.
+Proof.
+  intro x.
+  exists (ex0 x).
+  destruct x; simpl.
+  assumption.
+Defined.
+
+Recursive Extraction choice.
+(* type __ = Obj.t
+
+(** val ex0 : __ -> 'a1 **)
+
+let ex0 _ =
+  Obj.magic (fun _ -> ex0)
+
+type 'a sig0 =
+  'a
+  (* singleton inductive, whose constructor was exist *)
+
+(** val choice : __ -> 'a1 sig0 **)
+
+let choice _ =
+  Obj.magic (fun _ -> ex0) *)
+
+
+Comment author: @ppedrot
+
+Yay, another proof of False in Coq!
+
+
+Comment author: @ppedrot
+
+An even shorter example:
+
+Set Primitive Projections.
+Record inhabited (A : Type) : Prop := { inhabits : A }.
+Definition extract {A} (p : inhabited A) : A := inhabits p.
+
+
+Comment author: @maximedenes
+
+Created attachment 472
+Proof of false
+
+For the record see the attachment...
+
+I guess a term Proj(c,t) should not be typable when the corresponding usual projection is not definable because of pattern matching restrictions.
+
+> Attached file: [projstrong.v](https://coq.inria.fr/bugfiles/attachment.cgi?id=472) (text/x-verilog, 2922 bytes)
+> Description:   Proof of false
+
+
+Comment author: @mattam82
+
+Not exactly something I missed, rather I got my hands free :) I still have to find the proper way to introduce projections in the environment (and check them), probably they'll be coming along the inductive. Thanks for the reminder though :)
+
+
+Comment author: @mattam82
+
+This is fixed in the trunk. Projections are checked just as before.
+
+

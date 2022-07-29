@@ -1,0 +1,94 @@
+I will look at this.
+Thanks!
+Just a note, quoting @ppedrot "Optimize Proof" cannot be made into a tactic, due to layering reasons.
+
+[I am ignorant on the level of the hack needed to make this work, but it would 99% sure it is in conflict with the 8.8 roadmap]
+OK, will `Optimize Heap` be enough, then, @JasonGross?
+For @JasonGross use case you could certainly create a weaker version of `Optimize Proof` that maybe is enough.
+If you are curious, the problem stems from the fact that optimize proof works at the `Proof.t` level, which in a sense contains non-local goals that cannot be seen from the perspective of a tactic. However, as I just wrote, you can do a very simple tactic that calls `Proofview.compact` and that could work. [may require a bit of surgery in `Proofview` thou to get the right type]
+I am fine with a version that can only see things which are visible from the focused goals.  I was previously doing things like
+```coq
+assert (H : <test type>);
+[ do_test | clear H ]
+```
+and repeating that a bunch of times, and now I'm doing
+```coq
+let __ := constr:(ltac:(assert (H : <test type>); [ do_test | clear H; exact I ])) in
+idtac
+```
+and I want to not have the fact that I've been building terms and evars pollute, e.g., the evar map, the heap, etc.
+Sounds good to me then, the local version should be reasonably easy to implement.
+> Just a note, quoting @ppedrot "Optimize Proof" cannot be made into a tactic, due to layering reasons.
+
+The problem is not the implementation, it's the semantics. Such a tactic is fundamentally dangerous, because it can create dangling evars resulting in nasty anomalies. This should *not* be a standard Coq tactic.
+Umm, well, I won't rehash even more all the discussions you had about `evar_maps`, but it seems very fishy that `Proofview.compact` is unsound, given that the monad is supposed to implement a functional state.
+To summarize for people that weren't there: this has nothing to do with the fact the state is functional, but because an `evar_map` is a heap **without** a proper notion of reachability. So you can erase data from it, and suddenly another structure depending on the existence of an evar in ther blows up in flight.
+
+The problem is even more apparent in Ltac where you can write things along the lines of:
+```
+let t := open_constr:(_) in
+optimize_heap; (** This clears the evar contained in t **)
+exact t (** BOOM *)
+```
+@gares Suggested that maybe we could use weak refs and maps to do automatic garbage collection. I have no idea if this fits though.
+Oh, I would have thought that optimize wouldn't have cleared still used evars, but just compacted the ones already instantiated.
+
+Why is the variable in `t` indeed removed? Shouldn't it be the case that only variables that are known to be substituted are collected?
+> So you can erase data from it, and suddenly another structure depending on the existence of an evar in ther blows up in flight.
+
+Well, my reference to "functional state" was indeed to note that `proofview` should already have in scope all the structures that depend on the `evar_map`, so it should be able to properly update them, right?
+> Oh, I would have thought that optimize wouldn't have cleared still used evars, but just compacted the ones already instantiated.
+
+That's actually counter-productive: expanding all the intermediate evars consume more memory than keeping indirections.
+Counter-productive or not, it seems that this is what `nf_evar` (and thus `optimize`) does, isn't it?
+@ejgallego No, in addition to expanding the root evars, it also drops the intermediate ones.
+Yes, so it does what I thought, however, the variable in your example is not an intermediate one, why is it dropped then?
+@ejgallego Indeed you're right, my example is wrong. But it's easy to come up with a similar one that still fails, e.g. replace `open_constr` by a call to a tactic in term or something. As soon as `t` structurally contains a defined evar, the optimize process is unsound as it's going to wipe it out of the map, leaving `t` with what amounts to a dangling pointer.
+Well, I am not sure where the bug is as optimized should substitute indeed all the occurrences of the evar before removing it, so I am not sure why it would skip `t`. Is that due to a problem with the implementation of "tactic in term"? Is it a case of being bitten by plugins?
+Yeah so in this case I wouldn't blame `optimize`, IMHO it is not their fault that the state is not truly functional and other parts of the system are using the evar_map without the knolegde of `proofview`.
+> Is that due to a problem with the implementation of "tactic in term"? Is it a case of being bitten by plugins?
+
+Although they're the easiest way to shoot you in the foot, neither of those, you can already do that in vanilla Ltac.
+
+The problem is that there is a notion of global root for the heap that is not stored anywhere. Morally, the optimize tactic should be aware of the Ltac runtime through some kind of global root registration process, as in any GC-ed language. Any tactic written in ML should also register its roots, as in the good old C FFI.
+
+> IMHO it is not their fault that the state is not truly functional
+
+Please stop using the sureptiously overloaded word *functional* for this kind of property, it has little to do with functional programming if at all. We have a heap, we want an automatic GC, but we don't have neither a proper notion of reachability nor global roots. Looks more like separation logic if anything.
+
+That's your point of view, my point of view is that `optimize` doesn't have in scope all the users of the heap so it cannot indeed compute roots.
+
+With your GC hook proposal, you would solve little, as you wouldn't be able to update and traverse the LTAC terms properly, so yeah, you would prevent removing intermediate evars. This is a fix, but a poor one IMHO, as it basically amounts to "in order to avoid bugs in optimize, we just make optimize a noop".
+
+I do stand on my lack of "functionality" analysis then :p 
+> Please stop using the sureptiously overloaded word functional for this kind of property, it has little to do with functional programming if at all.
+
+Is that really true? If you see evars as pointers, the fact that you can update the state (the evar_map) and yet access terms that were typechecked in a previous state looks like an imperative feature, doesn't it? Not saying we want it, but a functional view would mean enforcing proper scoping of partial terms w.r.t. evar maps.
+
+Ironically, the old interface was closer to that, by packing terms and evar_maps (although not enforcing proper scoping). What probably happened is that it was too restrictive so client code started to do weird stuff, and breaking this abstraction.
+What about a variant of optimize that took a tactic and only compacted evars which were both introduced and filled by that tactic?
+@JasonGross This is still unsound, you may have instantiated another previous evar by one of those freshly generated evars.
+Argh.  Is there a hope of getting such unsound tactics in some `IReallyKnowWhatImDoingAndAmWillingToRiskAnomaliesWithTheseTactics.v` file?  Or name it `unsafe_optimize_proof` or such?
+Yes, I'm not saying these tactics should not exist. I'm saying that they should not be available to the casual user, which is very different.
+
+FTR, in Ltac2 it's easy to trigger dangling evars because the computation model is more powerful. Most of them are (or at least should be) caught by dynamic checks, but you can really wreak havoc if you use unsafe primitives just as you would do in OCaml code.
+
+I totally disagree, what @JasonGross asks should be available and it is not unsound, it is the Coq implementation that is wrong.
+There is a reason this is very worrying, as indeed the current model for management of evars seems non-trivially broken, and instead of trying to solve the core problem, we are moving forward and ignoring the numerous warning signs that something is definitively not right.
+As Pierre-Marie mentioned: an approximation of well-scoped, garbage collectable evars in terms would require a kind of separation logic / ownership typing in the language used to write tactics. Do you want to go there @ejgallego ?
+> I totally disagree, what @JasonGross asks should be available and it is not unsound, it is the Coq implementation that is wrong.
+
+Once again, if you want a GC, you need roots. And you need a notion of reachability to start with. That's like memory management 101.
+
+> There is a reason this is very worrying, as indeed the current model for management of evars seems non-trivially broken, and instead of trying to solve the core problem, we are moving forward and ignoring the numerous warning signs that something is definitively not right.
+
+I'm not saying that the current model is nice. It is complex, just as manipulating pointers is tricky. If you can come up with an abstraction layer that get rids of that, I'd be personally very glad. But apart from an ownership-based type-system, I don't see well how to allow pointer manipulation without danger. If you go up the abstraction layer, you could give a try at [this](http://www.redprl.org/pdfs/afpr.pdf).
+
+Still, evars are way sounder than the previous model, which was not preserving well-typedness. At least we now have this property.
+So, to summarize, no one has issues with `Optimize Heap` tactic? The existing Vernac is just a call to `Gc.compact`, so that should be OK.
+
+And we don't have sound existing code to wrap an `Optimize Proof` around? `Proofview.compact` won't do?
+
+
+
+Created #6497, which addresses the request for a tactic like `Optimize Heap`. That PR does not have anything for the request for a tactic like `Optimize Proof`.

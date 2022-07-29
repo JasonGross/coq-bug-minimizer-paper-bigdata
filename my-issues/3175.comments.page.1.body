@@ -1,0 +1,21 @@
+Comment author: @JasonGross
+
+I want a variant of [Include] which, instead of duplicating definitions, etc, includes them as aliases to the origin versions.  Combined with https://coq.inria.fr/bugs/show_bug.cgi?id=3174, I would use this to make local unions of modules (i.e., mixing in modules and giving them another name), without polluting the global context with useless modules.
+
+For example,
+
+Local Module Foo.
+  Notation Include Bar.
+  Notation Include Baz.
+End Foo.
+
+So that I could use Foo.* to alias anything in Bar or Baz, and after the end of the section/file, the references would be replaced by references to Bar.* or Baz.*.
+
+
+Comment author: @ppedrot
+
+This is simply impossible to do, period. Including modules does much more than you may imagine, and that makes no sense to do what you intend with modules.
+
+Nonetheless, I am rather in favour of your proposal for namespaces, which is indeed attainable without falling into the deadly trap of modules. There is still to convince other Coq devs that this is actually useful...
+
+

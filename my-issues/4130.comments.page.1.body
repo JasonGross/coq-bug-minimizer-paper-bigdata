@@ -1,0 +1,57 @@
+Comment author: @JasonGross
+
+I would like the following to succeed:
+
+$ cat A.v
+Lemma foo : unit.
+Proof using .
+  exact tt.
+Qed.
+$ cat B.v
+(* -*- coq-prog-args: ("-emacs" "-quick") -*- *)
+Require Import A.A.
+
+Unset Extraction AccessOpaque.
+Recursive Extraction foo.
+Set Extraction AccessOpaque.
+Recursive Extraction foo.
+
+$ coqc -quick A B -R . A; echo $?
+type unit0 =
+| Tt
+
+(** val foo : unit0 **)
+
+let foo =
+  failwith "AXIOM TO BE REALIZED"
+
+
+Fetching opaque proofs from disk for A.A
+The value you are asking for (foo) is not available in this process. If you
+really need this, pass the "-async-proofs off" option to CoqIDE to disable
+asynchronous script processing and don't pass "-quick" to
+coqc.
+1
+
+
+Comment author: @JasonGross
+
+Er, sorry, I would like a keyword that I can use to mark `Lemma foo` with that causes it to succeed, not delaying `foo`.
+
+
+Comment author: @gares
+
+I guess "Qed export." would act as you need, but you are kind of looking for troubles: you say "do no compile opaque proofs now, let extraction use opaque terms, extract now!". The error message is explicitly telling you not to use -quick.
+
+My suggestion is to separate the files in which Extraction is performed, and compile them only after having the .vo files there (don't build .vio files for the .v files that just call Extraction).
+
+Can I close the bug?
+
+
+Comment author: @JasonGross
+
+I would prefer a workflow that works well with a _CoqProject + coq_makefile based setup; what you're suggesting means that either I have to roll my own makefile, or I have to accept that either the extraction targets have to be built by hand, or the quick target will be broken.
+
+However Qed export works well, so you can mark this resolved fixed.  Could you put the files I listed in the test-suite (possibly renaming them appropriately), replacing [Qed] with [Qed export.]?  Also perhaps mention [Qed export.] as a work-around for extraction in the error message and/or the refman?
+
+

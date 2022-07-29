@@ -1,0 +1,6 @@
+Comment author: @JasonGross
+
+For example, it seems really silly for [reflexive_proper_proxy] to block 
+reduction, when it's basically [fun f x => f x].
+
+

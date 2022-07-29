@@ -1,0 +1,63 @@
+Comment author: @JasonGross
+
+Created attachment 660
+buggy file
+
+The attached file builds with Coq 8.5, and, if you replace the [simple refine] with [refine], with Coq 8.5beta2.  The timing differences:
+
+    Time simple refine <some stuff>
+    (* 8.5beta2 (replace [simple refine] with [refine]: 3.186 secs (3.183u,0.s) *)
+    (* 8.5: 4.585 secs (4.584u,0.004s) *)
+    Time all: try exact _. (* 8.5beta2: 0.46 secs (0.456u,0.004s); 8.5: 1.812 secs (1.812u,0.s) *)
+    Undo.
+    Time 5: try exact _. (* 8.5beta2: 0.978 secs (0.976u,0.s); 8.5: 5.676 secs (5.668u,0.s) *)
+
+> Attached file: [bug_csu_slow_tc_04.v](https://coq.inria.fr/bugfiles/attachment.cgi?id=660) (application/octet-stream, 45446 bytes)
+> Description:   buggy file
+
+
+Comment author: @ppedrot
+
+All right, I think I'm the responsible here. This is probably because of commit a895b2c0ca that introduced a performance enhancement of auto hints *in the non-polymorphic case*. The polymorphic case has a nice comment
+
+(** FIXME: We're being inefficient here because we substitute the whole
+          evar map instead of just its metas, which are the only ones
+          mentioning the old universes. *)
+
+which is exactly the hotspot I'm seeing right there. I'll write a quick fix.
+
+
+Comment author: @ppedrot
+
+Fixed by 22a2cc1.
+
+
+Comment author: @ppedrot
+
+Note that there is still a hotspot that looks suspicious to me. Indeed, the code for Evarsolve.noccur_evar whose goal is essentially to ensure that an evar does not appear in a term repeatedly calls the following snippet of code
+
+    let c = 
+      try Retyping.expand_projection env evd p c []
+      with Retyping.RetypeError _ -> 
+	(* Can happen when called from w_unify which doesn't assign evars/metas 
+	   eagerly enough *) c
+    in occur_rec acc c
+
+which is responsible for ~50% of the time passed in one of your tactics for no good reason.
+
+
+Comment author: @JasonGross
+
+Thanks!  This fixes almost all of the speed issues in HoTT that have arisen in the update from 8.5beta2 to 8.5.  However, there's a case of a (non-setoid) keyed unification [rewrite] that used to take 0.02 s, which now takes over 100s, if it terminates at all...
+
+The big changes from 8.5beta2 to 8.5-22a2cc are:
+After    | File Name                           | Before   || Change   
+----------------------------------------------------------------------
+>2m08.39s| Algebra/ooGroup                     | 0m06.72s || +2m01.66s
+0m05.84s | categories/Adjoint/Pointwise        | 0m24.01s || -0m18.17s
+0m15.51s | hit/V                               | 0m11.04s || +0m04.47s
+0m13.56s | categories/Category/Sigma/Univalent | 0m11.02s || +0m02.54s
+0m07.67s | contrib/Freudenthal                 | 0m06.62s || +0m01.04s
+0m04.29s | Modalities/Lex                      | 0m05.38s || -0m01.08s
+
+

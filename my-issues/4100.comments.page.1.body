@@ -1,0 +1,51 @@
+Comment author: @JasonGross
+
+If [progress rewrite foo] gives me an anomaly, then, on branch v8.5, [match goal with _ => progress rewrite foo | _ => idtac end] succeeds.  Is this intended?  (I think it was not the case in 8.4, and am not sure how I feel about it.)
+
+
+Comment author: @ppedrot
+
+Do you have a practical example we can fiddle with?
+
+
+Comment author: @JasonGross
+
+Can you reproduce it with bug [BZ#4097](https://github.com/coq/coq/issues?q=is%3Aissue%20%22Original%20bug%20ID%3A%20BZ%234097%22) at fc1b3ef9d7270938cd83c524aae0383093b7a4b5 (which I think is only one or two commits in the past), e.g., by changing the [:= foo] to a [. exact foo]?  I'm working on reproducing a test case for another "Anomaly: Uncaught exception Retyping.RetypeError(3). Please report." on an [apply path_forall], but it's still at 8000 lines, at the moment.
+
+Another note: the error message for anomalies now includes things like:
+File "./theories/categories/Adjoint/Composition/IdentityLaws.v", line 40, characters 4-40:
+In nested Ltac calls to "LawsTactic.law_t" and
+"rewrite !transport_forall_constant", last call failed.
+Anomaly: Uncaught exception Retyping.RetypeError(3). Please report.
+
+
+Comment author: @JasonGross
+
+Here's an example (from bug [BZ#3459](https://github.com/coq/coq/issues?q=is%3Aissue%20%22Original%20bug%20ID%3A%20BZ%233459%22)):
+
+Goal 1 = 2.
+  match goal with
+    | [ |- context G[2] ] => let y := constr:(fun x => $(let r := constr:(@ eq Set x x) in
+                                                         clear x;
+                                                         exact r)$) in
+                             pose y
+  end.
+  (* [P := fun _ : Set => x = x : Set -> Prop] *)
+  match goal with
+    | _ => simpl in *
+    | _ => idtac
+  end. (* success *)
+  match goal with
+    | _ => simpl in *
+  end.
+ (* Anomaly: Uncaught exception Not_found(_). Please report. *)
+
+
+Comment author: @ppedrot
+
+Actually, I believe it does _not_ catch anomalies, but rather only uncaught exceptions. Unfortunately, uncaught exceptions are only turned into an anomaly at toplevel, so there is no way to discriminate between a wild uncaught exception and a legitimate one while computing something, in particular in the tactic monad. I think it would require a lot of engineering to detect the boundaries of validity of an exception.
+
+Anyway, the issue of tracing exceptions is a recurring one in Coq codebase. We should seriously do something about it, but the working static exception checkers in OCaml are virtually inexistent...
+
+
+I'll unluckily close this bug as a WONTFIX, as it depends on the specific anomaly. We should strive for preventing stray exceptions in Coq, but that's a goal way beyond this report.

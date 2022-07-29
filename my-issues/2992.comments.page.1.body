@@ -1,0 +1,35 @@
+Comment author: @JasonGross
+
+The following [Existing Class] fails with "Anomaly: Uncaught exception Reduction.NotArity. Please report."
+
+Record Foo (obj : Type) := {}.
+Existing Class Foo.
+
+
+Replacing [Type] with [Set], [nat], [Prop], or defining [UU := Type] and making [obj : UU]; or placing [Foo] in [Set] or [Prop] all make the anomaly go away.
+
+I suspect the problem is that [Existing Class] cannot deal with universe-polymorphic records, or something like that.
+
+In revision 4c1ccb9e2a4b219ac5180115bc4267e1b059cdd1, the backtrace is
+Anomaly: Uncaught exception Reduction.NotArity(_). Please report.
+frame @  file "toplevel/vernac.ml", line 349, characters 6-16
+raise @  file "toplevel/vernac.ml", line 341, characters 18-19
+frame @  file "toplevel/vernac.ml", line 333, characters 14-104
+raise @  file "library/states.ml", line 39, characters 45-46
+frame @  file "library/states.ml", line 37, characters 4-7
+raise @  file "toplevel/vernacentries.ml", line 1809, characters 12-13
+frame @  file "toplevel/vernacentries.ml", line 1798, characters 4-12
+frame @  file "pretyping/typeclasses.ml", line 406, characters 13-148
+frame @  file "kernel/inductive.ml", line 189, characters 18-60
+frame @  file "kernel/inductive.ml", line 171, characters 18-64
+frame @  file "kernel/inductive.ml", line 148, characters 32-50
+raise @  file "kernel/reduction.ml", line 563, characters 17-25
+
+
+Comment author: @ppedrot
+
+Duplicate of bug [BZ#2951](https://github.com/coq/coq/issues?q=is%3Aissue%20%22Original%20bug%20ID%3A%20BZ%232951%22).
+
+*** This bug has been marked as a duplicate of bug [BZ#2951](https://github.com/coq/coq/issues?q=is%3Aissue%20%22Original%20bug%20ID%3A%20BZ%232951%22) ***
+
+

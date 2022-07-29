@@ -1,0 +1,45 @@
+Comment author: @JasonGross
+```coq
+Delimit Scope foo_scope with foo.
+Notation "x ~~" := (x) (at level 0) : foo_scope.
+Notation bar x := (x%foo).
+Notation baz x := ($(exact x%foo)$).
+Check bar (O ~~).
+Check baz (O ~~). (* Toplevel input, characters 11-15:
+Error: Unknown interpretation for notation "_ ~~".  *)
+```
+I would be ok with there being another way to specify binding scopes, as long as the term that I return can be completely determined by the tactic.  (So I don't want to have to let-expand outside of the tactic to get the notation scope to work.)
+
+But it would be nicer if this just worked.
+
+
+cc @ppedrot @vmurali @tchajed 
+
+Note that having `ltac:(...)` *anywhere* in a notation breaks scope stacks *everywhere* in that notation.  So, for example,
+```coq
+Notation foo a b := ((a + b)%type) (only parsing).                                                                                                                                                          
+Notation bar a b := (let __ := ltac:(exact I) in (a + b)%type) (only parsing).                                                                                                                              
+Check foo (Set + Set) Set. (* (Set + Set + Set)%type *)                                                                                                                                                     
+Check bar (Set + Set) Set. (* Error: The term "Set" has type "Type" while it is expected to have type "nat". *) 
+```
+If this were not the case, then you could do something like
+```coq
+Notation baz x := (match x%foo with y => ltac:(exact y) end) (only parsing).
+```
+(N.B., you need to `cbv delta [y] in y` to, e.g., match on the underlying term in Ltac.)
+cc @herbelin 
+Possible fix at #8745.
+@JasonGross 's example of 
+
+```
+Notation foo a b := ((a + b)%type) (only parsing).                                                                                                                                                          
+Notation bar a b := (let __ := ltac:(exact I) in (a + b)%type) (only parsing).                                                                                                                              
+Check foo (Set + Set) Set. (* (Set + Set + Set)%type *)                                                                                                                                                     
+Check bar (Set + Set) Set. (* Error: The term "Set" has type "Type" while it is expected to have type "nat". *) 
+```
+
+Still doesn't work in 8.9.x 
+
+Is this issue really closed?
+
+If so, what's the workaround to make the above example work?

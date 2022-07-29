@@ -1,0 +1,19 @@
+Comment author: @JasonGross
+
+In bug [BZ#4388](https://github.com/coq/coq/issues?q=is%3Aissue%20%22Original%20bug%20ID%3A%20BZ%234388%22) and bug [BZ#5016](https://github.com/coq/coq/issues?q=is%3Aissue%20%22Original%20bug%20ID%3A%20BZ%235016%22), [Set Printing All] prints terms that are the  different with the same text.  I think there should be a mode that prints a  representation (ideally in a reversible a way as possible) that is faithful to  the internal representation (casts, named vs anonymous binders, etc).
+
+
+Comment author: @ppedrot
+
+There exists a debugging function dumping the AST of a term. Is that OK for you or would you like something closer to standard printing of a term? AFAIK, the reversible parsing is a longstanding issue not anywhere close to being solved, so...
+
+
+Comment author: @JasonGross
+
+What's the debugging function?  (And is it documented?)
+
+It'd be nice to have something closer to the standard [Set Printing All], maybe with the debug information in comments wherever there's no way to parse it back into Coq.
+
+I was under the impression that the only hard part of reversible parsing/printing was the notations, and that once you strip notations, display all implicits, etc, it's just a technical task of, e.g., allowing one to refer to universes by numbers (possibly only with a flag), giving expressions to the various different kinds of casts that don't have expressions yet, etc?
+
+

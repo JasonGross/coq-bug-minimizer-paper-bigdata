@@ -1,0 +1,6 @@
+Also, it seems that `ring` always requires at least two universes for unclear reasons.
+While `@eq Type@{i} T U` requires an extra universe as `i < eq.u0`, you can define
+`Inductive eq_Type@{i} (lhs : Type@{i}) : Type@{i} -> Prop := eq_Type_refl : eq_Type lhs lhs.`
+such that `eq_Type@{i}` and `@eq Type@{i}` are equivalent without assuming an extra universe above `i`.
+
+If you care about minimizing universe assumptions, this may be a useful trick.

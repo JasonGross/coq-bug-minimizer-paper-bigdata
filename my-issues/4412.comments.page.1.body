@@ -1,0 +1,31 @@
+Comment author: @JasonGross
+
+This code should not fail on the [abstract].  In 8.4, it fails on the [rewrite].  Either it should fail the same way in 8.5, or it should succeed entirely, with a compatibility option to disable the more powerful rewrite behavior.
+
+Require Import Coq.Bool.Bool Coq.Setoids.Setoid.
+Goal forall (P : forall b : bool, b = true -> Type) (x y : bool) (H : andb x y = true) (H' : P _ H), True.
+  intros.
+  rewrite Bool.andb_true_iff in H.
+  revert H'.
+  abstract constructor. (* Toplevel input, characters 13-34:
+Error: Illegal application:
+The term "P" of type "forall b : bool, b = true -> Type"
+cannot be applied to the terms
+ "x && y" : "bool"
+ "H" : "x = true /\ y = true"
+The 2nd term has type "x = true /\ y = true" which should be coercible to
+ "x && y = true".
+ *)
+Qed.
+
+
+Comment author: @ppedrot
+
+This is a bug in setoid_rewrite. I though I had already reported it though, but I may have had hallucinations.
+
+
+Comment author: @ppedrot
+
+Fixed by 0c11bc399.
+
+

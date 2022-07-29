@@ -1,0 +1,14 @@
+Comment author: @JasonGross
+
+On Windows, Timeout gives
+Anomaly: Uncaught exception Invalid_argument("Sys.signal: unavailable signal").
+Please report.
+
+It would be nice if this could be fixed.  However, barring a miraculous fix, I would like to request a variant of the Timeout tactic, say, [PoorMansTimeout n tac], that executes [tac] fully, measuring how long it takes, and is equivalent to [fail "Timeout!"] if it takes longer than [n] seconds.
+
+
+Comment author: @ppedrot
+
+Fixed in trunk.
+
+

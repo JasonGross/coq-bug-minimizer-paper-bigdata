@@ -1,0 +1,59 @@
+Comment author: @JasonGross
+
+Since, as I understand it, rewrite and tc resolution does not care about the term implementing a hint, only about the type of the hint itself, [autorewrite] and tc resolution should reason up to hint types modulo syntactic equality of types respecting universes (either identical universes, or polymorphic universes with identical constraints).
+
+Consider the following code.  The time it takes to have [autorewrite] succeed (with a single rewrite) is proportional to the number of times I instantiate the [PositiveSetExtensions] module, and I don't think this should be the case.
+
+Require Import Coq.Setoids.Setoid Coq.Classes.Morphisms.
+Require Import Coq.MSets.MSetPositive Coq.MSets.MSetInterface Coq.MSets.MSetProperties.
+Require Import Coq.MSets.MSetFacts Coq.MSets.MSetDecide.
+
+Set Implicit Arguments.
+
+Local Coercion is_true : bool >-> Sortclass.
+
+Instance pointwise_Proper {A B} R (f : A -> B) `{H : forall x, Proper R (f x)}
+  : Proper (pointwise_relation A R) f
+  := H.
+
+Global Instance or_iff_impl_morphism : Proper (iff ==> iff ==> impl) or.
+Admitted.
+
+Module MSetExtensionsOn (E: DecidableType) (Import M: WSetsOn E).
+  Module Export BasicProperties := WPropertiesOn E M.
+  Module Export BasicFacts := WFactsOn E M.
+  Module Export BasicDec := WDecideOn E M.
+
+  Global Instance Equal_Equivalence : Equivalence Equal.
+  Admitted.
+  Axiom union_subset_1b : forall s s', subset s (union s s').
+  Axiom union_subset_2b : forall s s', subset s' (union s s').
+  Create HintDb setsb discriminated.
+  Hint Rewrite union_subset_1b union_subset_2b : setsb.
+End MSetExtensionsOn.
+
+Module MSetExtensions (M: Sets) := MSetExtensionsOn M.E M.
+
+Ltac t := intros; progress autorewrite with setsb; exact (eq_refl : is_true true).
+
+Typeclasses eauto := debug.
+
+Module Import PositiveSetExtensions := MSetExtensions PositiveSet.
+
+(* Unset Typeclasses Debug. *)
+Goal forall s s', PositiveSet.subset s (PositiveSet.union s s').
+Proof. Time t. (* 0.56 s, 3996 lines of tc output *) Abort.
+
+Module PositiveSetExtensions0 := MSetExtensions PositiveSet.
+
+(*Unset Typeclasses Debug.*)
+Goal forall s s', PositiveSet.subset s (PositiveSet.union s s').
+Proof. Time t. (* 0.98 s, 6972 lines of tc output *) Abort.
+
+Module PositiveSetExtensions1 := MSetExtensions PositiveSet.
+
+(*Unset Typeclasses Debug.*)
+Goal forall s s', PositiveSet.subset s (PositiveSet.union s s').
+Proof. Time t. (* 1.5 s, 9948 lines of tc output *) Abort.
+
+

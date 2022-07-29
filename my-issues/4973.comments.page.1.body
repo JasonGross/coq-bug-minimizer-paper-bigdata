@@ -1,0 +1,83 @@
+Comment author: @JasonGross
+
+Currently, the only way to modularly control hint databases (such as 
+typeclass_instances) is by creating module functors to add and remove hints, 
+and then applying them to dummy arguments.  This is a really kludgy way to 
+control locality.  There should be a better way, e.g., there should be a mode / 
+setting to allow hints to follow [Import] rather than [Require]
+
+Create HintDb test discriminated.
+Print HintDb test.
+(* Discriminated database
+Unfoldable variable definitions: all
+Unfoldable constant definitions: all
+Cut: emp
+For any goal ->   
+ *)
+Module TestHint.
+  Hint Resolve I : test.
+End TestHint.
+Print HintDb test. (* Discriminated database
+Unfoldable variable definitions: all
+Unfoldable constant definitions: all
+Cut: emp
+For any goal ->   
+For True ->   exact I(level 0, id 0) 
+ *)
+(* bad *)
+Module RemoveTestHint.
+  Remove Hints I : test.
+End RemoveTestHint.
+Print HintDb test. (* Discriminated database
+Unfoldable variable definitions: all
+Unfoldable constant definitions: all
+Cut: emp
+For any goal ->   
+For True ->   
+*)
+(* ugh *)
+Module Type DummyT. End DummyT.
+Module Dummy. End Dummy.
+Module TestHintF (dummy : DummyT).
+  Hint Resolve I : test.
+End TestHintF.
+Print HintDb test. (* Discriminated database
+Unfoldable variable definitions: all
+Unfoldable constant definitions: all
+Cut: emp
+For any goal ->   
+For True ->   
+ *)
+(* good *)
+Module Import DoImportTestHint := TestHintF Dummy.
+Print HintDb test. (* Discriminated database
+Unfoldable variable definitions: all
+Unfoldable constant definitions: all
+Cut: emp
+For any goal ->   
+For True ->   exact I(level 0, id 0) 
+ *)
+(* good *)
+Module RemoveTestHintF (dummy : DummyT).
+  Remove Hints I : test.
+End RemoveTestHintF.
+Module Import UndoImportTestHint := RemoveTestHintF Dummy.
+Print HintDb test. (* Discriminated database
+Unfoldable variable definitions: all
+Unfoldable constant definitions: all
+Cut: emp
+For any goal ->   
+For True ->   
+*)
+
+
+Comment author: @ppedrot
+
+Actually, there is a flag "Loose Hint Behavior" present in 8.5 to do exactly what you wish. It is intended to be a temporary hack before the whole hint mechanism turns into an Import-scoped one at some point.
+
+
+Comment author: @JasonGross
+
+Ah, thanks!
+
+

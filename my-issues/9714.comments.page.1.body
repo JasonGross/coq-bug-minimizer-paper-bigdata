@@ -1,0 +1,21 @@
+Note that if I replace the first `nil` with `_`, then the `Check` goes through fine
+I suspect the issue is that there is a delayed constraint that `solve_simple_eqn` causes to become impossible (note that AFAIK, there is no well-typed solution for the implicits in this `Check`, and I expect Coq to inform me that `nil` has type `list _` while it's expected to have type `list _ -> _`).
+
+cc @herbelin , who introduced this `assert false` in https://github.com/coq/coq/commit/b1b8243b7fc0bd8e2b9db3ddb28941646b3bd1ff for 8.5.
+
+Indeed, in 8.4, I get the error message in the `nil` in the `match` branch:
+```
+Error:
+In environment
+A : Type
+B : Type
+xs : list A
+ys : list B
+x : ?6
+xs0 : list ?6
+combine_xs : forall x0 : ?10, ?11
+ys0 : ?10
+The term "nil" has type "list ?27" while it is expected to have type 
+"?11".
+```
+(This is, of course, not ideal, but it is better than the anomaly.)

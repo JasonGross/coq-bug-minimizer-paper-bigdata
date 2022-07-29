@@ -1,0 +1,15 @@
+Comment author: @JasonGross
+
+Definition foo (x y : nat) := 1.
+Arguments foo _ x. (* Error: Arguments names must be distinct. *)
+
+This is the wrong error message.  I should never be able to get this error 
+message without passing the "rename" flag.  And it should tell me which 
+argument names overlap, in any case.
+
+
+Comment author: @maximedenes
+
+Fixed in 8.6 branch.
+
+

@@ -1,0 +1,10 @@
+Comment author: @JasonGross
+
+I assume it is for "nonlinear rational arithmetic", a la lia and nia and lra.  It is defined in Psatz.v.  Searching "site:https://coq.inria.fr/refman/ nra" on google gives no results, and the only "documentation" result for `git grep nra` is the typo "dev/make-sdk-win32.sh:# Sworn by Enrico Tassi <enrico.tassi@ inra.fr>" (missing an "i" in "inra")
+
+
+Comment author: @Zimmi48
+
+Seems solved: https://coq.inria.fr/refman/Reference-Manual025.html#sec%3Anra
+
+

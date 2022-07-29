@@ -1,0 +1,11 @@
+Comment author: @JasonGross
+
+$ mkdir -p tmp/a tmp/b; (cd tmp/a; coq_makefile -R . Tmp.a -R ../b Tmp.b >/dev/null)
+Uncaught exception: Invalid_argument("index out of bounds")
+
+
+Comment author: @pirbo
+
+Thanks for the report
+
+

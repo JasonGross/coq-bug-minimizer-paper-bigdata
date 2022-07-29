@@ -1,0 +1,4 @@
+>an invocation that will tell me which files I've been requested to review as codeowner on a particular PR
+
+You can try `dev/tools/check-owners-pr.sh xxxx` but it will sometimes be incorrect. Complain to github about it.
+It would indeed be a good idea to mention this (very useful) script in `dev/doc/MERGING.md`.

@@ -1,0 +1,17 @@
+Comment author: @JasonGross
+
+Require Import Coq.micromega.Psatz Coq.omega.Omega.
+
+Goal exists x : nat, x = 1 -> 1 + 1 = 2.
+Proof.
+  eexists; intro.
+  omega. (* success *)
+  Undo.
+  lia. (* Error: "abstract" cannot handle existentials. *)
+
+
+Comment author: @fajb
+
+commit 7d4b810 Fix Bug [BZ#5005](https://github.com/coq/coq/issues?q=is%3Aissue%20%22Original%20bug%20ID%3A%20BZ%235005%22) : micromega tactics is now robust to failure of 'abstract'.
+
+

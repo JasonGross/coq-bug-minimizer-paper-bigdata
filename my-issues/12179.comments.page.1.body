@@ -1,0 +1,1 @@
+This is also related to #11840 and my ensuing rant about this "static nonsense". All these constraints that are enforced at internalization time are absurd, since they are not stable by a lot of actions the user can perform. Global references should just be that, global references.

@@ -1,0 +1,49 @@
+Comment author: @JasonGross
+
+Quoting from coqdev:
+
+Hi,
+As part of my scripts to minimize bugs, I've found that I have to replace constants with their absolute references (because I've yet to find a good way to mimic the precise behavior of Coq with respect to the directory tree within a file).  I noticed that record builder notation, such as `{| foo := x; bar := y |}`, is treated as a single invocation of the constructor (shows up as constr), and the location will overlap with some subsequent definitions, but `foo` and `bar` don't show up at all.  For example, if 1382-1458 is `center := (contr x)^ @  contr y;\n  contr := path2_contr ((contr x)^ @  contr y)`, then the glob file has
+```
+R1382:1458 HoTT.Overture <> BuildContr constr
+R1425:1435 HoTT.Contractible <> path2_contr def
+R1448:1450 HoTT.Overture <> :path_scope:x_'@ '_x not
+R1438:1438 HoTT.Overture <> :path_scope:x_'^' not
+R1446:1447 HoTT.Overture <> :path_scope:x_'^' not
+R1439:1443 HoTT.Overture <> contr meth
+R1451:1455 HoTT.Overture <> contr meth
+R1402:1404 HoTT.Overture <> :path_scope:x_'@ '_x not
+R1392:1392 HoTT.Overture <> :path_scope:x_'^' not
+R1400:1401 HoTT.Overture <> :path_scope:x_'^' not
+R1393:1397 HoTT.Overture <> contr meth
+R1405:1409 HoTT.Overture <> contr meth
+```
+What's the reason glob files are built like this?
+
+Thanks,
+Jason
+
+
+
+
+Hugo Herbelin said:
+Hi Jason,
+
+I think it is acceptable that foo and bar do not show up as proper
+identifiers, since it is acceptable that they point to the location of
+the definition of the record, however, the output for record
+constructors is indeed spanning too large in glob files, possibly
+resulting in wrong links for everything in the extend of the {| |}
+which is not linked elsewhere.
+
+Could you fill a bug report?
+
+In a second time, we could indeed have coqdoc make foo and bar link to
+the corresponding names in the file defining them rather than linking
+to the defining location of the constructor name of the record
+(`BuildContr` in your case).
+
+Thanks for noticing it.
+
+
+Fixed in #12027.

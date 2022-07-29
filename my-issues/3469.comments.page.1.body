@@ -1,0 +1,74 @@
+Comment author: @JasonGross
+
+This worked in trunk a few days ago, but doesn't work in a31b978d3477d5977d87781190df136462aeea1d
+
+(* File reduced by coq-bug-finder from original input, then from 538 lines to 31 lines *)
+Open Scope type_scope.
+Global Set Primitive Projections.
+Set Implicit Arguments.
+Record sig (A : Type) (P : A -> Type) := exist { proj1_sig : A ; proj2_sig : P proj1_sig }.
+Notation sigT := sig (only parsing).
+Notation "{ x : A  & P }" := (sigT (fun x:A => P)) : type_scope.
+Notation projT1 := proj1_sig (only parsing).
+Notation projT2 := proj2_sig (only parsing).
+Variables X : Type.
+Variable R : X -> X -> Type.
+Lemma dependent_choice :
+  (forall x:X, {y : _ & R x y}) ->
+  forall x0, {f : nat -> X & (f O = x0) * (forall n, R (f n) (f (S n)))}.
+Proof.
+  intros H x0.
+  set (f:=fix f n := match n with O => x0 | S n' => projT1 (H (f n')) end).
+  exists f.
+  split.
+  reflexivity.
+  induction n; simpl in *.
+  clear.
+  apply (proj2_sig (H x0)).
+  Undo.
+  apply @ proj2_sig. (* Toplevel input, characters 21-31:
+Error: Found no subterm matching "proj1_sig ?206" in the current goal. *)
+
+
+Comment author: @JasonGross
+
+Note that if you change [projT1] to [proj1_sig] in the [set (f := ...)] line, it all goes through fine.
+
+
+Comment author: @mattam82
+
+It does work again in trunk.
+
+
+Comment author: @JasonGross
+
+What commit are you using that it works at?  It's not working for me at 0f7e73691dc043f17cf404f9ebbd4185e614e7d3, which is current tip.
+
+
+Comment author: @mattam82
+
+You're right, it fails for me now...
+
+
+Comment author: @JasonGross
+
+Created attachment 495
+git bisect script to run with ../test-3469.sh --init, if ~/coq is a git checkout of Coq trunk
+
+According to the attached git bisect script, the offending commit is:
+
+commit 625facdbf7c0a6e1386b3e6baa762b61fa0e7e02
+Author: Matthieu Sozeau <matthieu.sozeau@ inria.fr>
+Date:   Tue Jul 29 11:31:35 2014 +0200
+
+    Fix treatment of notations containing applications of projections (fixes bug [BZ#3454](https://github.com/coq/coq/issues?q=is%3Aissue%20%22Original%20bug%20ID%3A%20BZ%233454%22)).
+
+> Attached file: [test-3469.sh](https://coq.inria.fr/bugfiles/attachment.cgi?id=495) (text/plain, 2974 bytes)
+> Description:   git bisect script to run with ../test-3469.sh --init, if ~/coq is a git checkout of Coq trunk
+
+
+Comment author: @mattam82
+
+Fixed now for good.
+
+

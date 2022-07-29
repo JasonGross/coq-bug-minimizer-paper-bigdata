@@ -1,0 +1,10 @@
+What would be the type of `f` and `g`?
+Either `A -> Type`, `A -> Set`, or `A -> Prop`.
+Oh, I see, this is based on this [Stackoverflow question](https://stackoverflow.com/questions/51507117/extensionally-equal-predicates-and-equality-of-universally-quantified-applicatio). Thanks!
+
+Extending the diagram of the relative axiom strength would be nice too.
+Indeed, that would be useful. Would one of you like to do it?
+
+While we are discussing this, in the series of axioms to add, one should also add the so-called "extensional axiom of choice", or "setoid choice", i.e. [choice](https://github.com/coq/coq/blob/master/theories/Logic/SetoidChoice.v) up to an arbitrary equivalence relation.
+
+One should probably also add to the wiki and the library the strengthening of Berardi's paradox mentioned last June on the [TYPES list](http://lists.seas.upenn.edu/pipermail/types-list/2018/002048.html) by Dominik Kirst.

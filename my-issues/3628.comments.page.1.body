@@ -1,0 +1,20 @@
+Comment author: @JasonGross
+
+Module NonPrim.
+  Class AClass := { x : Set }.
+  Arguments x {AClass}.
+End NonPrim.
+Module Prim.
+  Set Primitive Projections.
+  Class AClass := { x : Set }.
+  Arguments x {AClass}. (* Toplevel input, characters 15-36:
+Error: To rename arguments the "rename" flag must be specified.
+Argument a renamed to AClass. *)
+End Prim.
+
+
+Comment author: @mattam82
+
+Fixed already, with test-suite file.
+
+

@@ -1,0 +1,17 @@
+Comment author: @JasonGross
+
+(* -*- mode: coq; coq-prog-args: ("-emacs" "-indices-matter") -*- *)
+Set Universe Polymorphism.
+Set Printing Universes.
+Inductive Empty : Set := .
+(* Toplevel input, characters 15-41:
+Error: Universe inconsistency. Cannot enforce Prop <= Set). *)
+
+(Mostly making this report so we have a number for the regression test when this gets fixed.)
+
+
+Comment author: @JasonGross
+
+This bug has been fixed; I'll submit a file for the test-suite soon.
+
+

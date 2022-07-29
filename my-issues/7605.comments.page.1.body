@@ -1,0 +1,42 @@
+Does it improve if you set the program mode on?
+@ejgallego Is there a `program refine` tactic?  Being in an obligation does not change the behavior of refine, but if what you're asking is if the following works, it does
+```coq
+Require Import Program.
+Program Definition foo (x : nat) : x + 1 = 1 + x
+  := match x with
+     | O => eq_refl 1
+     | S x' => _
+     end.
+```
+The type inference system already has a nicer bidirectional inference mode, but it is not enabled by default due to compatibility reasons. It is independent from the rest of program.
+
+See bug #6216
+So I think you can do `Set Program Mode` [or something close to this] to enable the new goodies in your development. And of course a flag could be added to `refine`, but IMHO we should just move forward with #6216 and make the new modes the default, performance allowing.
+I do not want `Set Program Mode`.  Here are some things that I dislike about `Set Program Mode`:
+1. It breaks `Fixpoint foo (x : nat) : nat.` (error message: `Error: Program Fixpoint needs defined bodies.`)
+2. It needlessly complicates the bodies of simple `match` statements, e.g.,
+```coq
+Set Program Mode.
+Fixpoint foo (x : nat) : x + 1 = 1 + x
+  := match x with
+     | O => eq_refl 1
+     | S x' => f_equal S (foo x')
+     end.
+Print foo.
+(* foo = 
+fix foo (x : nat) : x + 1 = 1 + x :=
+  let program_branch_0 : 0 = x -> 0 + 1 = 1 + 0 := fun _ : 0 = x => eq_refl in
+  let program_branch_1 : forall x' : nat, S x' = x -> S x' + 1 = 1 + S x' :=
+    fun (x' : nat) (_ : S x' = x) => f_equal S (foo x') in
+  match x as x' return (x' = x -> x' + 1 = 1 + x') with
+  | 0 => program_branch_0
+  | S x' => program_branch_1 x'
+  end eq_refl
+     : forall x : nat, x + 1 = 1 + x
+*)
+```
+
+So, yes, `Set Program Mode` makes the `refine` go through, but it leaves over the wrong goals (goals that have extra equality hypotheses and casts).
+Note that I was not advocating the use of program mode itself, just pointing out the possibility.
+
+To me a flag controlling the bidi inference would be very well received, and it would provide a path to enable it by default.

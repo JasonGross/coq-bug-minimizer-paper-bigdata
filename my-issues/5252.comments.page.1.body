@@ -1,0 +1,21 @@
+Comment author: @JasonGross
+
+Goal forall A (x : A) (P : forall y, x = y -> Type), P x eq_refl -> forall (y : 
+A) (p : x = y), P y p.
+  intros.
+  induction p.
+(* Error: Abstracting over the term "y" leads to a term fun y0 : A => P y0 p
+which is ill-typed.
+Reason is: Illegal application:
+The term "P" of type "forall y : A, x = y -> Type" cannot be applied to the 
+terms
+ "y0" : "A"
+ "p" : "x = y"
+The 2nd term has type "x = y" which should be coercible to "x = y0". *)
+
+This is unsurprising, given the form of [eq_rect].  However, changing the type 
+of [eq_rect] would break compatibility for anything that mentions [eq_rect] 
+explicitly, so I've given this the milestone next 8.x.  Perhaps there's another 
+way to fix it that involves modifying the [induction] tactic.
+
+

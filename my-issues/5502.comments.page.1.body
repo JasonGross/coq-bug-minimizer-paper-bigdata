@@ -1,0 +1,16 @@
+Comment author: @JasonGross
+
+When I write
+ all:abstract t.
+or
+ par:abstract t.
+
+It's not helpful to get a message like "Error: No applicable tactic.", 
+especially when there are 200+ subgoals.  I'd like the "all" and "par" 
+combinators, when they fail, to tell me which top-level subgoal they failed on 
+(preferably a number that I can use in [Focus]).
+
+
+see https://github.com/coq/coq/pull/12932
+cc @JasonGross 
+The `all:` version is not so easy as there is not such a clear concept of what was under focus when the error happened (and sometimes there is no focus, eg `all: gfail`)

@@ -1,0 +1,92 @@
+Comment author: @JasonGross
+
+This is very broken.  Of course, it will cause incompatibilities to fix, so I'm 
+not sure what to say.  (Ideally, fix it anyway?  This seems almost certainly 
+like a bug.)  Perhaps, at the very least, 8.5pl3 should emit a warning whenever 
+[auto] is interpreted as [auto with *].
+
+Axiom proof_admitted : False.
+Hint Extern 0 => case proof_admitted : unused.
+Ltac do_tac tac := tac.
+
+Goal False.
+  Set Ltac Profiling.
+  solve [ do_tac auto ]. (* ummmmmmmmm..... *)
+  Show Ltac Profile.
+  (* 
+total time:      0.000s
+
+ tactic                                    self  total   calls       max
+────────────────────────────────────────┴──────┴──────┴───────┴─────────┘
+─tac -----------------------------------  16.0% 100.0%       1    0.000s
+─auto with * ---------------------------  31.8%  84.0%       1    0.000s
+─case proof_admitted -------------------  52.2%  52.2%       1    0.000s
+
+ tactic                                    self  total   calls       max
+────────────────────────────────────────┴──────┴──────┴───────┴─────────┘
+─tac -----------------------------------  16.0% 100.0%       1    0.000s
+└auto with * ---------------------------  31.8%  84.0%       1    0.000s
+└case proof_admitted -------------------  52.2%  52.2%       1    0.000s
+ *)
+(* Uh huh, this is wrong. *)
+  Undo.
+  Fail solve [ do_tac ltac:(auto) ]. (* this [solve] fails, as it should *)
+
+
+Comment author: @JasonGross
+
+Note that this seems already fixed (thankfully) in Coq 8.6 (we should note it 
+in the changes, if it's not already)
+
+
+Comment author: @JasonGross
+
+(Tested with e10c9eed42e9cfc843a6cb2d48fa175c1be98741 on v8.5 from Jul 20.)
+
+
+Comment author: @ppedrot
+
+Hmm, we're not changing the behaviour of auto in 8.5 for sure. As for the warning, it is nearly useless because of the way the old warnings work... Do you really want one? I'm not even sure where to put it actually so that it gets triggered at the right time.
+
+
+Comment author: @JasonGross
+
+I think it'd be useful.  Perhaps even more useful would be a setting that I could set to turn it into an error.  (Use case: i write code on 8.6, test it on continuous integration against 8.5, and use this to make sure it's not massively slower.
+
+
+Comment author: @herbelin
+
+When used as an ltac argument, it is actually since 8.0 that the interpretation of "auto" is bugged (in the sense you said of being interpreted as "auto with *" in a way inconsistent to a call to "auto" not as an ltac argument).
+
+It is good that it is now fixed in 8.6, so the files will have to be updated anyway if ever this introduces incompatibilities.
+
+In any case, if you can want to test the impact of such a fix on v8.5, you could either replace such calls to "auto" by "ltac:(auto)" or replace the second "None" by "Some[]" in line "auto" of "initial_atomic" in file tactics/coretactics.ml4 (line 229)?
+
+
+Comment author: @herbelin
+
+Any objection to fixing the semantics of "auto" as an ltac argument for 8.5 too so that it is not anymore silently "auto with *"? It was obviously unintended. And not so many script might have used it anyway.
+
+
+Comment author: @maximedenes
+
+I think such a fix should probably not go in a pl release. In any case, please don't do it now, since I'm about to package pl3.
+
+
+Comment author: @JasonGross
+
+I agree, a silent semantics change should not go in a pl.  I'd be in favor of keeping the semantics but adding a warning.
+
+
+Comment author: @herbelin
+
+OK for not in 8.5pl3 though this is truly a bug ("auto" should have a constant semantics independently of a parsing trick).
+
+In any case, if not in 8.5, this can be closed I guess since this is fixed in 8.6.
+
+
+Comment author: @herbelin
+
+Then fixed from 8.6.
+
+

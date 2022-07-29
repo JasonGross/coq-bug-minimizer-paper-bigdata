@@ -1,0 +1,1 @@
+The culprit is SProp, it seems. Most of the time is passed checking that some terms are irrelevant. I guess this is triggering a quadratic or cubic behaviour.

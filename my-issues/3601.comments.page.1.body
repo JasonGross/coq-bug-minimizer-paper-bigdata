@@ -1,0 +1,182 @@
+Comment author: @JasonGross
+
+Sometimes, I want to build a term interactively by hand, and it just so happens that some of my holes are typeclasses, and because my term is so unconstrained, typeclass resolution picks up the wrong terms.  Then I have to go annotate the holes with `(_ : id _)` or something similarly silly to stop typeclass resolution.  It would be nice to have a variant of [refine] that doesn't trigger typeclass resolution at all.
+
+
+Comment author: @gares
+
+Hum, unless things changed again the "open_constr" Ltac type should not trigger TC inference.  Maybe you can code this version of refine yourself.
+
+
+Comment author: @JasonGross
+
+Oh, right.  Should this be closed, then?
+
+(Does [refine] make any use of the type of the goal to typecheck the term being refined in ways that [open_constr] doesn't?)
+
+
+Comment author: @gares
+
+First try, then if it works close the bug.
+
+I think you should make your refine actually refine the (term : goal) or something like that.  Yes, type inference is somewhat bidirectional.
+
+
+Comment author: @JasonGross
+
+It does not seem to work (example by Mike Shulman):
+
+Tactic Notation "refine_noTC" open_constr(term) := refine term.
+Class foo.
+Instance f : foo.
+Definition bar `{foo} : Type := Type.
+Definition baz : Type.
+refine_noTC (@ bar _).
+Defined.
+
+
+Comment author: @JasonGross
+
+Also, open_constr leaves evars, not dependent goals.
+
+
+Comment author: @gares
+
+My memory is about 85f1d9ca4b10a80be6929c81e2e6ca4c7634f619
+that also had a counterpart in 8.4 at about the time of the ssr
+1.5 release.
+
+There should also be a discussion on codev.  IIRC there was an idea
+of exporting to LTac a data type for that, but I don't have time to dig.
+Something like open_contr_noTC ... 
+
+Ciao,
+
+
+Comment author: @JasonGross
+
+`git grep` informs me that v8.4 has `open_constr_wTC`, and trunk does not.  This seems to suggest that 8.5 should not do typeclass resolution with just open_constr, but this doesn't seem to be the case, at least according to my one test.
+
+
+Comment author: @gares
+
+Then it means that the argument to refine is interpreted without forcing TC resolution.  Then it may be the tactic itself that triggers the resolution.
+In this case you feature request makes sense.
+The expert is Arnaud here.
+
+
+Comment author: @JasonGross
+
+It seems that it's being done at argument resolution time, in both [refine] and [open_constr]?
+
+Class foo := x : Set.
+Definition bar `{foo} := (_ : foo).
+Definition f' : foo := unit.
+Instance f : foo := nat.
+Tactic Notation "refine_noTC'" open_constr(term) := idtac term; unify term (@ bar f).
+Tactic Notation "refine_noTC" open_constr(term) := idtac term; unify term (@ bar f').
+Definition baz : Type.
+Set Printing All.
+solve [ refine (@ bar _) ]. (* success *)
+Undo.
+refine_noTC' (@ bar _). (* success *)
+refine_noTC (@ bar _).  (* failure *)
+Defined.
+
+
+Comment author: @aspiwack
+
+I am not really in favour of a proliferation of special case tactics. I'm not convinced such a tactic would actually be worth the effort. In particular, my guess is that most of the time, one would have type-classes which they want solved and type-classes which they want left untouched.
+
+I suspect that more control in the way type-checking treats hole is rather the way to go. Until such a feature is available, I think your workaround is not so bad (you could use a notation ntc := (_:id _) maybe ?).
+
+
+Comment author: @jonleivent
+
+Vadim Zaliva recently asked on Coq-Club about a case similar to this that can't be satisfied by "(_ : id _)":
+
+Class A (n:nat) : Prop.
+Definition f (n:nat) `{A n} := n.
+Definition g (n:nat) := n.
+Lemma Foo:  forall x, f (g x) = x.
+
+What is wanted is to turn the {A n} implicit arg into a subgoal instead of doing a typeclass search (which fails in this case).  Currently (even in 8.6) this can only be done by:
+
+Class A (n:nat) : Prop.
+Definition f (n:nat) `{A n} := n.
+Definition g (n:nat) := n.
+Lemma Foo:  forall x, exists w, @ f (g x) w = x.
+intro x.
+unshelve eexists.
+
+It doesn't work to do this:
+
+Class A (n:nat) : Prop.
+Definition f (n:nat) `{A n} := n.
+Definition g (n:nat) := n.
+Lemma Foo:  forall x, @ f (g x) (_:id _) = x.
+
+or use open_constr.
+
+As Vadim pointed out, for more complex cases, having to insert the necessary "exists" in the right places can be a hassle.
+
+Hence, IMHO Jason's original request should be revived.  There should be a way to conveniently denote a hole that one does not want typeclass resolution to run in, and instead wants the hole as a subgoal.
+
+There have been other cases where alternative hole-types were desired.  There was a discussion a while back on coqdev about holes in refine that shelve vs. holes that don't.  I recall Pierre Courtieu requesting the ability to leave certain holes generalized when applying a lemma instead of generating subgoals for them.
+
+
+Comment author: @vzaliva
+
+Another approach is to consider something like `Program` mechanism for typeclass resolution. Like obligations, typeclass instances then could be resolved either automatically or manually with something like "next obligation".
+
+
+Comment author: @jonleivent
+
+How about generalizing Vadim's latest obligation suggestion to have a way to cause any hole (evar), typeclass-typed or otherwise, to become a Program-style obligation.
+
+
+Nowadays we have `notypeclasses refine`; is this enough to close this issue?
+I'll let Jason comment on whether `notypeclasses refine` closes the part of the issue he raised.  I don't see how it helps Vadim's example, as that fails in the definition line of the Foo lemma, and so a tactic wouldn't be sufficient to fix it.  Maybe the two sub-issues need to be separated?
+@jonleivent Good point, and they should certainly be separated, but currently the only mechanism for holes in statements is to turn those into separate definitions (not even `Program` supports this feature). So currently the correct fix for
+```coq
+Class A (n:nat) : Prop.
+Definition f (n:nat) `{A n} := n.
+Definition g (n:nat) := n.
+Lemma Foo: forall x, f (g x) = x.
+```
+
+is
+
+```coq
+Class A (n:nat) : Prop.
+Definition f (n:nat) `{A n} := n.
+Definition g (n:nat) := n.
+Program Definition Foo_stmt := forall x, @f (g x) _ = x.
+Next Obligation. (* Proof. *) Defined.
+Lemma Foo: Foo_stmt.
+```
+And that `_` should ideally be `_[notc]` from https://github.com/coq/coq/issues/12147, to avoid the search altogether. Alternatively, just give a separate definition for the typeclass instance as a `Local Instance`, or a `Lemma` to apply by hand; I'd struggle to imagine usecases where that's a significant problem.
+
+I also agree this fix is sometimes not ideal, but this is a much bigger feature request  (and I'm not sure it'd be taken under consideration).
+I just tried your `Program Definition Foo_stmt` example above, and got:
+`Error: (in proof temporary_proof3): Attempt to save an incomplete proof`
+Am I missing something?  I'm using Coq 8.11.0.
+Never mind, I had `Foo_stmt : forall...` instead of `Foo_stmt := forall`.
+
+I am not able to find Vadim's original email request (it's been a few years).  However, if the problem was one of keeping the syntax simple by allowing implicit args without having to place '_' in all the holes, as well as preventing inappropriate instantiation, then one possibility is a section:
+```coq
+Class A (n:nat) : Prop.
+Definition f (n:nat) `{A n} := n.
+Definition g (n:nat) := n.
+Section Bar.
+  Context `{forall (n:nat), A n}.
+  Lemma Foo: forall x, f (g x) = x.
+  Proof. trivial. Qed.
+End Bar.
+```
+I suspect this isn't a sufficient fix, as someone would probably have thought of it back then.
+
+Also this leaves Foo defined a bit differently from what one would like.  Of course, this still requires the user to provide a Context for each typeclass arg, and there may be many.  Fortunately, Coq will inform the user with an `Unable to satisfy the following constraints:` error for each one - so Contexts can be created by the process of elimination.
+
+I'm satisfied with `notypeclasses refine`.
+This issue seems done, please open new issues if there are remaining unsatisfactions.

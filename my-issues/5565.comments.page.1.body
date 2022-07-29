@@ -1,0 +1,20 @@
+Comment author: @JasonGross
+
+I see the following warning on building current trunk:
+...
+OCAMLOPT -shared -o stm/queryworkertop.cmxs
+COQMKTOP -o bin/coqtop
+findlib: [WARNING] Interface topdirs.cmi occurs in several directories: 
+/usr/lib/ocaml, /usr/lib/ocaml/compiler-libs
+true bin/coqtop
+true bin/coqtop
+...
+
+
+Comment author: @ejgallego
+
+Sorry this is not a Coq bug, but an OCaml issue: https://caml.inria.fr/mantis/view.php?id=6754
+
+You can alleviate it by setting the env var OCAMLFIND_IGNORE_DUPS_IN=$(OPAMPATH)/ocaml/compiler-libs/
+
+

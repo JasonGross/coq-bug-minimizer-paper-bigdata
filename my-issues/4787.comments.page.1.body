@@ -1,0 +1,19 @@
+Comment author: @JasonGross
+
+Here is code that works in 8.4 and 8.5, but fails in Coq trunk (33f7d95a655add1967b5c520eb05e816963e1936):
+
+(* -*- coq-prog-args: ("-emacs" "-compat" "8.4") -*- *)
+
+Goal forall T (x y : T * T), fst x = fst y /\ snd x = snd y -> x = y.
+  do 10 ((intros [] || intro); simpl); reflexivity. (* compatibility with Coq 8.4 *)
+Qed.
+
+
+Note that [Unset Bracketing Last Introduction Pattern] does not have any impact.
+
+
+Comment author: @herbelin
+
+Sorry for the bug. Now fixed (08c69c4dd).
+
+

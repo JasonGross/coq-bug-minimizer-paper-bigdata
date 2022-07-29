@@ -1,0 +1,43 @@
+I suggest the more verbose but more accurate error message "hypothesis to clear is used in the conclusion (maybe indirectly) or is a section variable contained in the body of a definition which is used in a hypothesis (maybe indirectly)"
+Note that this is a version of `clear dependent` that does not suffer from this issue.  It's significantly more complicated to understand, though, and probably harder to maintain.  Not sure if it's worth having this rather than exposing a primitive from OCaml of `depends_on x y`.
+
+```coq
+Tactic Notation "clear" "dependent" hyp(h) :=
+  let clear_all :=
+      clear; (* clear fails to clear section variables *)
+      repeat match goal with H : _ |- _ => clear H end in
+  let needs_clearing H :=
+      let v :=
+          constr:(ltac:(clear_all;
+                        (* assert that [h] still exists *)
+                        match goal with
+                        | [ H' : _ |- _ ] => constr_eq H' h
+                        end;
+                        exact eq_refl)
+                  : H = H) in
+      idtac in
+  clear h ||
+  (repeat match goal with
+          | [ H : _ |- _ ] => needs_clearing H; clear H
+          end) ||
+  fail "hypothesis to clear is used in the conclusion (maybe indirectly)".
+```
+
+Note that this version suffers from neither #11689 nor #11692.
+It is indeed not-easy-to-understand code.
+
+Morally, in pseudo-code, wouldn't we like something like that:
+```
+Tactic Notation "clear" "dependent" hyp(h) :=
+  let l := map_hyps_from_left (fun decl l =>
+    let H := name decl in
+    if eq_constr H h || exists_list (dependent_of_restricting_evar decl) l then H::l
+    else l) nil in
+  clear l.
+```
+
+Yes, that looks roughly right to me.  But mapping hypotheses like that is only accessible in Ltac2, and AFAIK, `dependent_of_restricting_evar` can only be defined in OCaml (unless you want to pull a hack like my `needs_clearing` tactic).  (I'm not sure exactly what `exists_list` is supposed to do, but the right thing to do there is something like "does this decl depend on anything in this list".)
+Actually, this is also a question for @ppedrot: how to write an intelligible and efficient Ltac2 code for such a definition.
+
+By `dependent_of_restricting_evar`, I meant a function with two arguments `H` and `decl`, with a side-effect, which answers true if `H` occurs in the body or type of `decl` excepting evar arguments, and false otherwise, restricting on the fly the evars so that they do not depend on `H` (this is what `clear dependent` does). As for `exists_list`, I mean the equivalent of OCaml's `List.exists`
+In that case, yes, I think that is the efficient version of the current tactic in Ltac2.  Does `dependent_of_restricting_evar` compute transitive dependencies, looking inside of section definitions?  If not, then it is not sufficient to handle the example I gave in the initial comment of this issue.

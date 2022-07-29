@@ -1,0 +1,129 @@
+Comment author: @JasonGross
+
+Aggregating suggestions from bug [BZ#4300](https://github.com/coq/coq/issues?q=is%3Aissue%20%22Original%20bug%20ID%3A%20BZ%234300%22) and adding a few.
+
+Coq 8.4 should get an empty theories/Compat/Coq84.v file.
+
+Coq 8.5 should get an empty theories/Compat/Coq85.v file, and should have a theories/Compat/Coq84.v file which contains something like the following (currently untested):
+
+(** This is required in Coq 8.5 to use the [omega] tactic; in Coq 8.4, it's automatically available. *)
+Require Export Coq.omega.Omega.
+
+(** The number of arguments given in [match] statements has changed from 8.4 to 8.5. *)
+Global Set Asymmetric Patterns.
+
+(** See bug [BZ#3545](https://github.com/coq/coq/issues?q=is%3Aissue%20%22Original%20bug%20ID%3A%20BZ%233545%22) *)
+Global Set Universal Lemma Under Conjunction.
+
+(** In 8.4, [admit] created a new axiom; in 8.5, it just shelves the goal. *)
+Axiom proof_admitted : False.
+Ltac admit := abstract case proof_admitted.
+
+(** In 8.5, [refine] leaves over dependent subgoals. *)
+(* Will this work, or do we need to "save" the value of [refine] first? *)
+Tactic Notation "refine" uconstr(term) := refine term; shelve_unifiable.
+
+(** In 8.4, [constructor (tac)] allowed backtracking across the use of [constructor]; it has been subsumed by [constructor; tac]. *)
+Ltac constructor_84 := constructor.
+Ltac constructor_84_n n := constructor n.
+Ltac constructor_84_tac tac := once (constructor; tac).
+
+Tactic Notation "constructor" := constructor_84.
+Tactic Notation "constructor" int_or_var(n) := constructor_84_n n.
+Tactic Notation "constructor" "(" tactic(tac) ")" := constructor_84_n n.
+
+
+Comment author: @JasonGross
+
+Er, that last line should be 
+
+Tactic Notation "constructor" "(" tactic(tac) ")" := constructor_84_tac tac.
+
+
+Comment author: @JasonGross
+
+[Require Export Coq.omega.Omega.] is the wrong thing to do; it breaks any infix use of "~" not at level 7, because Omega exports ZArith_base, which has the effect of putting infix "~" at level 7.  The correct thing to do is:
+
+Require Coq.omega.Omega.
+Ltac omega := Coq.omega.Omega.omega.
+
+
+Comment author: @JasonGross
+
+Hmmm, would it be possible (reasonable?) to add a compatibility flag to disable the behavior of [BZ#3050](https://github.com/coq/coq/issues?q=is%3Aissue%20%22Original%20bug%20ID%3A%20BZ%233050%22)?  I know I asked for it, but it just bit me again with:
+
+match goal with
+  | [ H : context[_ + 1] |- _ ] => ...
+end
+
+which used to interpret [+] in nat_scope, and now interprets it in type_scope.  And it seems useful to have as much compatibility as is possible with 8.4, if we have a file like this to enable it.
+
+
+Comment author: @JasonGross
+
+The theories/Compat/Coq84.v file in Coq 8.4 should get the following definitions:
+
+Ltac shelve_unifiable := idtac.
+Ltac shelve := idtac.
+
+There are a few places where the [refine] trick I'm using results in different behavior, and so it'd be useful to be able to do things like [refine ... ; [ .. | tac ]; shelve.  Grab Existential Variables.]
+
+
+Comment author: @JasonGross
+
+8.5 should get:
+
+Global Set Regular Subst Tactic.
+
+
+Comment author: @JasonGross
+
+Another bit of code for Coq85.v:
+
+(** Some names have changed in the standard library, so we add aliases. *)
+Require Coq.ZArith.Int.
+Module Export Coq.
+  Module Export ZArith.
+    Module Int.
+      Module Z_as_Int.
+        Include Coq.ZArith.Int.Z_as_Int.
+        Notation plus := Coq.ZArith.Int.Z_as_Int.add (only parsing).
+        Notation minus := Coq.ZArith.Int.Z_as_Int.sub (only parsing).
+        Notation mult := Coq.ZArith.Int.Z_as_Int.mul (only parsing).
+      End Z_as_Int.
+    End Int.
+  End ZArith.
+End Coq.
+
+
+Comment author: @JasonGross
+
+Another bit of code for Coq85.v:
+
+(** Many things now import [PeanoNat] rather than [NPeano], so we require it so that the old absolute names in [NPeano.Nat] are available. *)
+Require Coq.Numbers.Natural.Peano.NPeano.
+
+
+Comment author: @maximedenes
+
+Hi Jason,
+
+If it's not asking too much, could you create a pull request on Coq's github repo containing these compatibility files? It will be easier to maintain them there before integration.
+
+Thanks!
+
+
+Comment author: @JasonGross
+
+#101 (https://github.com/coq/coq/pull/101) and [BZ#102](https://github.com/coq/coq/issues?q=is%3Aissue%20%22Original%20bug%20ID%3A%20BZ%23102%22) (https://github.com/coq/coq/pull/102)
+
+
+Comment author: @silene
+
+The files have been added to 8.5, but not to 8.4. So the way to use them in a compatible way is not to add "Require Import Coq84" at the start of a file, but to use the command line, e.g. "-require Coq84", when compiling with Coq 8.5.
+
+For the record, here are some others solutions that were suggested but did not get a consensus:
+- add a new "Set" vernacular option that would cause the file to be loaded;
+- modify the -compat command-line option so that it would load the file.
+
+

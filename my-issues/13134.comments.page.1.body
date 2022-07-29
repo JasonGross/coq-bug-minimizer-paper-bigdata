@@ -1,0 +1,7 @@
+Technically, the difference of behaviors between primitive and non-primitive projections is the ability to use eta-conversion in the former case.
+
+Beforehand, a first-order heuristics is tried to reduce `morphism D (object_of F s) (object_of F d) == ?P (?x,?y)` to (the ill-typed) `(object_of F d) == (?x,?y)`, itself leading to a failing `match`/`pair` unification in the non-primitive case, but leading instead after record-eta-expansion to an ill-typed instance of `?x` in the primitive case.
+
+This is an opportunity to try the effect of restricting the first-order heuristics to well-typed problems. See experimental PR #14733.
+
+Edited: the experiment is not working as well as expected and debugging is not easy.

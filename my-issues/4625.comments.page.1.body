@@ -1,0 +1,42 @@
+Comment author: @JasonGross
+
+Currently, if you have:
+
+ Definition foo : bar.
+ Proof.
+   some_slow_tactic.
+   some_tactic_that_makes_Defined_slow.
+ Defined.
+
+and you want to debug [some_tactic_that_makes_Defined_slow], every time you backtrack over [Defined], the entire proof is undone.  I think it'd be worth it to keep around the states for the most recent proof, so that you could backtrack one line at a time.  (I'm not sure how much of this is to be done in Coq vs in PG.)
+
+
+Comment author: @ppedrot
+
+
+
+*** This bug has been marked as a duplicate of bug [BZ#4827](https://github.com/coq/coq/issues?q=is%3Aissue%20%22Original%20bug%20ID%3A%20BZ%234827%22) ***
+
+
+Comment author: @ejgallego
+
+I am sorry but this is not a duplicate of [BZ#4827](https://github.com/coq/coq/issues?q=is%3Aissue%20%22Original%20bug%20ID%3A%20BZ%234827%22).
+
+In fact, IIUC this bug should be closed as it is a bug of ProofGeneral; jsCoq/CoqIDE have no problem implementing this.
+
+
+Comment author: @ppedrot
+
+All right, so let's mark it MOVED and wait for the release of the new PG.
+
+
+Comment author: @ejgallego
+
+Cool thanks!
+
+
+Comment author: @psteckler
+
+PG/xml allows single-step undo's, where the old PG aggregated proof steps for undo's.
+
+

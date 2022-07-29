@@ -1,0 +1,27 @@
+Comment author: @JasonGross
+
+The proof
+
+Lemma eqType2Set (a b : Set) (H : @ eq Type a b) : @ eq Set a b.
+  subst; reflexivity.
+Qed.
+
+fails on [Qed] with
+
+Error: Illegal application (Type Error): 
+The term "eq" of type "forall A : Type, A -> A -> Prop"
+cannot be applied to the terms
+ "Set" : "Type"
+ "a0" : "Type"
+ "b" : "Set"
+The 2nd term has type "Type" which should be coercible to 
+"Set".
+
+Replacing [reflexivity] with [admit] does not change this.  Replacing [subst; reflexivity] with [admit] allows [Qed] to run fine.
+
+
+Comment author: @herbelin
+
+Fixed in trunk (maybe as an effect of use of universes in unification?). Not fixed in v8.4, but would it be worth the work?
+
+

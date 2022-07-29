@@ -1,0 +1,32 @@
+Comment author: @JasonGross
+
+I would like something to support the following version of [change (fst (?x, ?y)) with x] which works in scripts and under binders.
+
+```
+Definition nonunfoldable_fst := @ fst.
+Arguments nonunfoldable_fst {_ _} _.
+Definition uncategorized_fst {A B} := @ fst A B.
+
+Ltac good_unfold_fst :=
+  repeat (change @ fst with @ uncategorized_fst at 1;
+          match goal with
+          | [ |- appcontext[uncategorized_fst (_, _)] ]
+            => unfold @ uncategorized_fst
+          | _ => change @ uncategorized_fst with @ nonunfoldable_fst
+          end);
+  cbv delta [nonunfoldable_fst].
+
+```
+Maybe something like
+```
+
+  rewrite_strat topdown subterms (fun s => match s with
+                                           | fst (_, _) => unfold fst
+                                           | snd (_, _) => unfold snd
+                                           end).
+
+
+```
+(If this works (I haven't tested it), it's not documented.)
+
+

@@ -1,0 +1,16 @@
+Comment author: @JasonGross
+
+I've installed OCaml from http://protz.github.com/ocaml-installer/, and added the bin directory to my path, and ./configure gives the oddly phrased message ". Good!e Objective-Caml 4.00.0+rc1"
+
+
+Comment author: @letouzey
+
+
+This issue was due to a final \r in the output of `ocamlc -v`
+This should be fixed now in trunk and 8.4 (commit 15695 and 15696).
+
+Thanks for the report
+
+Pierre Letouzey
+
+

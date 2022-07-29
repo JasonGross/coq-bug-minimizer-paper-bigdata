@@ -1,0 +1,70 @@
+Comment author: @JasonGross
+
+I think of [refine] as _the_ basic building block tactic.  I discovered from a recent commit ("Refine now does iota reduction in addition to beta.") that [refine] does both iota and beta reduction.  It would be nice to have a variant that doesn't do any reduction, when I really want to see what's going on under the hood.  (It would also be nice to have a variant of refine that doesn't trigger typeclass resolution (or a way to block typeclass resolution on some holes), and maybe even one that doesn't trigger canonical structures (or a way to block that on some holes).)
+
+
+Comment author: @aspiwack
+
+Not doing beta-iota is easy.
+
+Not doing typeclass should be easy too, I think. Blocking typeclass resolution for some holes: I remember having discussed such a feature quite a few years ago (I wanted to have two new kind of holes: holes that the pretyper would never try to solve, and holes that the pretyper would have to solve, and would raise an error otherwise, even with refine). I never got to the point where I knew how to give an interface to those.
+
+I have no idea about canonical projection though. Is there a way to deactivate them in a pretyper call?
+
+
+The more important in all this: what syntax do you suggest for this flurry of options?
+
+
+Comment author: @gares
+
+No, canonical structures cannot be "stopped".  The point is that a term with an unresolved type class is still well typed, while a term with an unresolved CS is not.  This is one of the features of CS in my opinion.
+
+Still one can craft a CS that just eta expands the missing record, obtaining the behavior you like (i.e. infer nothing, still show something).
+See the last page of http://hal.inria.fr/hal-00816703
+
+To me what Jason is asking falls in the category of "tracing utilities" that Coq almost completely misses.  Something that would let a regular user see what a developer is able to see using coqtop.byte, Drop. and a good set of printers.
+
+I'd love to ship a coqtop.debug that delivers decent performances but can be
+instrumented to print the trace of type inference / unification.  But to do that without affecting the performances of standard coqtop, I'm afraid we have to find a way to put proper #ifdefs in the sources.  And there was resistance against compiling Coq with a preprocessor if I recall correctly.
+
+Cheers
+
+
+Comment author: @JasonGross
+
+Typeclass resolution blocking can be hacked using [Notation]s, e.g.,
+
+Class A.
+Instance: A.
+
+Definition typeclass_blocker : forall {X}, id X -> X := id.
+
+Notation "'__'" := (typeclass_blocker _).
+
+Goal A.
+refine __.
+
+
+So I'm not sure how important it is to have it as a built-in option for [refine], and I'm not sure what syntax to use for holes which don't trigger typeclasses.  (I was just mentioning things as I thought of them, and thought of this solution afterwards.)
+
+
+
+I think Enrico is right about unification traces being what I'm interested in, because the few times I remember actually being really bothered by the current behavior is when I'd declare a typeclass, and I'd have a hole that typeclass resolution didn't pick up automatically, but [typeclasses eauto] would solve.
+
+As for the syntax of reduction after refine, I'd be fine with having [refine_no_red] or [resolve] or [eexact] or something other alternate tactic for [refine] without reduction.  I'd also be fine with having something like [Set Refine Strategy := lazy iota beta.], [Clear Refine Strategy.] (or [Set Refine Strategy := idtac.] or [Set Refine Strategy := lazy delta [].] (if that means the same thing), and [Reset Refine Strategy.] (for the default).
+
+
+Comment author: Stiv &lt;<erochat@ukr.net>&gt;
+
+Created attachment 593
+7656
+
+> Attached file: [012k](https://coq.inria.fr/bugfiles/attachment.cgi?id=593) (text/html, 5425 bytes)
+> Description:   7656
+
+
+Comment author: @silene
+
+The "simple refine" tactic does not perform any reduction, so marking the bug as closed.
+
+

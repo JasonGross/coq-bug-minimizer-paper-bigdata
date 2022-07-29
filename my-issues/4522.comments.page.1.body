@@ -1,0 +1,22 @@
+Comment author: @JasonGross
+
+$ mkdir -p tmp
+$ coq_makefile -R . Tmp >/dev/null; echo $?
+0
+$ coq_makefile -R tmp Tmp >/dev/null; echo $?
+Warning: in option -R, tmp is not a subdirectory of the current directory
+0
+$ ls | grep tmp
+tmp/
+
+
+Comment author: @ppedrot
+
+Could you check if commit 5361b02 fixed this bug for you?
+
+
+Comment author: @ppedrot
+
+I'll mark this as fixed, reopen if it is not the case.
+
+

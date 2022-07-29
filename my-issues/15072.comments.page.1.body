@@ -1,0 +1,1 @@
+This is a fun one as it also acts at Import, so if you Import Program after `foo` you will get back the normal tactic.

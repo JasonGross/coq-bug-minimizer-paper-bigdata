@@ -1,0 +1,21 @@
+Comment author: @JasonGross
+
+This code works (as expected) in 8.6, but fails in 8.4 and 8.5:
+
+Definition foo (n : nat) (m : nat) : nat := m.
+
+Arguments foo {_} _, _ _.
+
+Check foo 1 1.
+Check foo (n:=1) 1. (* Error: Wrong argument name: n. *)
+
+At the very least, it should get a test-suite case in 8.6.  It'd be nice but 
+not terribly important to have it fixed in 8.5pl4.
+
+
+Comment author: @Zimmi48
+
+There won't be any 8.5pl4. Someone can still volunteer to fix it in the 8.5 branch but there is no point in leaving this bug report open.
+I created https://github.com/coq/coq/pull/752 to add the test case.
+
+

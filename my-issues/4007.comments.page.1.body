@@ -1,0 +1,58 @@
+Comment author: @JasonGross
+
+$ cat foo.v
+Section foo.
+  Theorem A : False.
+  Proof.
+  Defined.
+
+
+
+End foo.
+
+$ coqc foo
+File "./foo.v", line 4, characters 2-10:
+Error: Attempt to save an incomplete proof
+$ coqc -quick foo
+File "./foo.v", line 8, characters 0-8:
+Error: Attempt to save an incomplete proof
+
+They seem to be tied to the [End section] line.  (This is 9e6b28c04ad98369a012faf3bd4d630cf123a473)
+
+
+Comment author: @maximedenes
+
+Enrico, I forgot what the diagnosis was here. Is it a location error or an STM issue?
+
+
+Comment author: @ejgallego
+
+It is an issue of the STM not reporting the location properly. In fact, in trunk, the error in `-quick` will display no location.
+
+In Vo mode, coqtop will immediately force checking of the `Define` command, which will trig an error, and as coqtop knows the exact location the error was caused, it will relay it.
+
+However, in -quick mode, coqtop successfully process the whole file without an error, but is the last call to `Stm.finish ()` which will produce the error; and in this case Stm.reach is not able to properly identify the sentence of origin .
+
+Solving this will require some mildly deep changes to the STM, thus 8.8 material.
+
+
+Still seems to be a problem in 8.15+alpha
+```coq
+$ coqc issue_4007.v 
+File "./issue_4007.v", line 4, characters 0-8:
+Error:  (in proof A): Attempt to save an incomplete proof
+
+
+$ coqc -vio issue_4007.v 
+File "./issue_4007.v", line 6, characters 0-8:
+Error:  (in proof A): Attempt to save an incomplete proof
+
+
+$ cat issue_4007.v
+Section foo.
+Theorem A : False.
+Proof.
+Defined.
+
+End foo.
+```

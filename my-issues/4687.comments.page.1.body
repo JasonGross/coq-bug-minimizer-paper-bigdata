@@ -1,0 +1,5 @@
+Comment author: @JasonGross
+
+"cbv delta [x]" does not support "at 1", and "unfold x at 1" does beta-reduction.  I want something that does *only* delta and supports occurrences.
+
+

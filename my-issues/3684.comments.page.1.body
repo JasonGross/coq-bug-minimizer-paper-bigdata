@@ -1,0 +1,606 @@
+Comment author: @JasonGross
+
+Definition foo : Set.
+  refine ($(abstract admit)$).
+(* Toplevel input, characters 15-42:
+Anomaly: Uncaught exception Not_found(_). Please report. *)
+
+
+Comment author: @herbelin
+
+Remark: When refine typecheck proof, the (abstracted) constant foo_subproof is not found in the environment.
+
+
+Comment author: @gares
+
+This seems another instance of the "the system ought to be functional" syndrome.
+
+My guess is that refine "fixes" the environment in which it will typecheck the term before the abstract tactic updates imperatively the one in Global and updates the one in the tactic monad. The other possibility is that the updates made during ltac argument interpretation, that here involve calling a tactic, are somehow lost (PMP, the state of tactic monad for $(..)$ is retained?).
+
+Using abstract is bad (even outside the STM/Paral-ITP business, that here really cannot play a role).  Using abstract inside $(stuff)$ is really a recipe for a disaster.
+
+Independently of the fix, I think we should add a msg_warning to abstract. Something like "this tactic is broken, don't use it in new code!".
+At least users (not reading my complaints on the bugzilla) would be warned.
+
+Best,
+
+
+Comment author: @JasonGross
+
+Do we have an evar-map-compactification tactic yet that can serve as a replacement for [abstract] in the realm of memory-management in opaque proofs?
+
+I also don't think [abstract] should be deprecated until there's a good story for an alternative way of marking some part of the term as "this term is frozen, and has already been typechecked, so you don't need to look inside of it for subterm selection, and you don't need to retypecheck it.
+
+
+Comment author: @herbelin
+
+Enrico: since "abstract" (and apparently even "abstract using") do not survive the Qed/Defined as part of the global env, would it make sense to declare it to the goal env only? Then, we could turn (by need) those "imperative" functions looking for the abstract name in the global env to functions taking an env as argument and pass them the goal env instead of the global env?
+
+
+Comment author: @gares
+
+@ Hugo: yes, it would make sense.  But note that "Defined" does behave as in 8.4:
+abstracted sub proofs are not inlined but declared globally during "Defined".
+There was request for that.  In any case I cannot postpone Defined proofs, so
+from the STM point of view, I lose nothing doing that.  Still, the "future proof
+computation" produces a proof and a list of side effects that are declared during
+Defined on top of the original env (not the one imperatively modified on the go),
+see declare.ml, declare_constant and then declare_sideff.
+
+@ Jason:
+- I will push a vernacular to compact th evar map and call the GC of OCaml to
+  give a weapon to people fighting high memory usage.  It can't be a tactic, sorry.
+- ssr has an "abstract:" tactic (since 1.5).  Would you mind trying it?  It uses
+  the context (as in the logic) to cache the typing, and variables to provide
+  opacity.  But abstracted subproofs are scoped, there is no global magic.  One
+  declares an "abstract variable" and later on assigns to it a type and a proof.
+  It is just a creative use of "cut" and evars, and was motivated for very 
+  different purposes (proof refactoring, sub-proof extrusion in particular)
+  but if it works for you I'm ready to code it again in Coq.
+
+I hope abstract has no other useful "side effect".
+Once more, that tactic is broken in 8.5, its current semantics fundamentally
+clashes with the new proof engine and the STM.  Both components try to make
+sense of things giving a purely functional interpretation to tactics/proofs.
+"abstract" is one of the few imperative  bits still standing in the way.
+
+We must tell our users that it is (and IMO will always be) buggy.
+As you correctly point out, we should provide valid alternatives.
+Fixing bugs related to abstract is, in my opinion, a waste of time.
+
+
+Comment author: @JasonGross
+
+> ssr has an "abstract:" tactic (since 1.5)
+
+Remind me where I can get ssr 1.5 that works with trunk?  (Actually, one that works with e8726550e01e51ef3ccf8602f2ecbe2b3737cca3, trunk from about a month ago, would be preferred; we're waiting to bump the version of trunk HoTT is tied to until the massive slowdown of bug [BZ#3783](https://github.com/coq/coq/issues?q=is%3Aissue%20%22Original%20bug%20ID%3A%20BZ%233783%22) has some kind of resolution.)  I'll run a diff on the difference between using [abstract], using [abstract:], and not using anything at all, is.
+
+Using ssr 1.5 with 8.4pl3, I cannot figure out how to use [abstract:]
+
+Goal True.
+  abstract: exact I. (* Error: No such section variable or assumption: exact. *)
+  abstract: (exact I). (* Anomaly: Uncaught exception Option.IsNone. Please report. *)
+  abstract: I. (* Error: No such section variable or assumption: I. *)
+  pose proof I as j.
+  abstract: j. (* Error: not an abstract constant: j *)
+  
+In any case, here is an example of where I want [abstract] to speed things up.  If replacing [abstract] with [abstract:] does not change the performance, then I'm happy to use it as a replacement in my cases:
+
+Fixpoint twos (n : nat) (A : Type) :=
+  match n with
+    | 0 => A
+    | S n' => twos n' (prod A A)
+  end.
+
+Definition twos_trans : Type.
+  let x := constr:(let n := 11 in twos n Set = twos n Set) in
+  let x' := (eval compute in x) in
+  exact x'.
+Defined.
+
+Definition twos_qed : Type.
+  let x := constr:(let n := 11 in twos n Set = twos n Set) in
+  let x' := (eval compute in x) in
+  exact x'.
+Qed.
+
+Definition twos_abs : Type.
+  let x := constr:(let n := 11 in twos n Set = twos n Set) in
+  let x' := (eval compute in x) in
+  abstract exact x'.
+Defined.
+
+Goal twos_qed. hnf. Time match goal with |- ?G => set (H := G) end. Abort. (* 0 s *)
+Goal twos_abs. hnf. Time match goal with |- ?G => set (H := G) end. Abort. (* 0 s *)
+Goal twos_trans. hnf. Time match goal with |- ?G => set (H := G) end. Abort. (* 2.041 s *) (* grows with the size of [n] *)
+
+
+Comment author: @gares
+
+> Using ssr 1.5 with 8.4pl3, I cannot figure out how to use [abstract:]
+
+It is not unexpected if you don't read the doc...
+
+As I was saying, abstract constants in ssr are scoped, they born and die inside a single proof (they born with a [: foo ] intro pattern and die with abstract:).  If what you posted is not an oversimplification of your real code,
+then abstract: has no use for you.  Your abstracted constants are global.
+
+A real example would anyway help, here I see no $( )$ and the statements you obtain in the opaque variants are not provable, so I'm a bit puzzled.  I'm also not surprised that manipulating a goal that grows as n has a cost that depends on n.
+
+Best,
+
+
+Comment author: @JasonGross
+
+I've stared at the examples on page 34 of https://hal.inria.fr/inria-00258384v15/document, and still can't figure out [abstract:].  The furthest I've gotten is:
+
+Definition twos_abs : Type.
+  let x := constr:(let n := 11 in twos n Set = twos n Set) in
+  let x' := (eval compute in x) in
+  have [:x0] @ i : Set := x'; first exact x'. abstract: x0. (* Error: abstract constant x0 already used *)
+Defined.
+
+And I should go to sleep and stop bashing my head against [abstract:].
+
+> Your abstracted constants are global.
+
+What do you mean?
+
+
+> A real example would anyway help
+
+I don't have any real examples involving [$(abstract ...)$]; I'm worried about my use-case of [abstract] (no tactics in terms).
+
+There are two completely disjoint reasons that I know of to use [abstract].  One is memory usage, as in bedrock, and, as I understand it, the evar-map-compactification vernacular will handle this.
+
+The other use is to hide proof terms from the type-checker.
+
+> I'm also not surprised that manipulating a goal that grows as n has a cost that depends on n.
+
+Indeed, which is why I want [abstract].  The typical use-case is
+
+Definition foo : foo_type.
+Proof.
+  refine (computational part).
+  abstract (tactic to generate a humongous proof term to solve a moderately large type that's ugly and painful to copy/paste).
+Defined.
+
+Definition bar : type_involving_foo.
+Proof.
+  unfold foo.
+  rewrite baz.
+  ...
+Qed.
+
+If [unfold]ing [foo] results in a gigantic term showing up in my goal, then [rewrite] (and [set] and everything else) will be unreasonably slow.  So whatever this abstract-replacement does, I need it to be the case that when I [unfold foo], subsequent manipulations aren't slowed down by the size of the [abstract]ed term.
+
+
+Comment author: @gares
+
+Your use case works in trunk, this bug is about $( .. abstract .. )$.
+
+You constants are global because they survive the end of a proof.
+
+The very same problems you face can happen inside a proof, you define a dependent pair hiding the proof to the rest of the proof script, and
+abstract: deals with it.
+
+@ Hugo, what is the status of $()$ in turnk?
+It its semantics settled?  If not we should not recommend using it.
+
+
+Comment author: @gares
+
+Maybe I was not clear.
+
+"abstract" in a 8.4 proof script ending with Defined must work as before, and shall continue to work like that.
+
+"abstract" in conjunction with any other 8.5 feature should be avoided.
+
+The new vernacular I'll commit will make abstract not to be used for dealing with memory management.
+
+"abstract" is broken, and there are "hacks" to make it work on Defined proofs.
+I don't want to pollute the system with other hacks to make it work in other contexts, especially in new (w.r.t. 8.4)  ones.
+
+I hope I made myself clear this time.
+
+
+Comment author: @herbelin
+
+> what is the status of $()$ in turnk?
+
+It is somehow up to us. If it is too fragile, we can tag it as experimental. It is basically PMP who has the expertise on this feature, so let's ask him.
+
+(Maybe should we aim at a IMO less "hackish" syntax too, I think there were proposals like ?[_:=tac] or something like that).
+
+Enrico, I'm otherwise wondering what you exactly mean by "abstract is broken". Do you mean that it is conceptually a bad solution to a real problem, or that the Coq implementation is not functional enough to make abstract robust enough, or that it breaks modularity (and that e.g. we should add something like "Defined using (foo_subproof1 : typ1) (foo_subproof2 : typ2)." to support modular reuse of abstracted proofs), or that it is the more general possibility to issue global declarations in the middle of a proof script which you would like to revise, or some other reasons, ...? In particular, assuming we had unlimited time resources, what would you suggest to do?
+
+
+Comment author: @gares
+
+@ Hugo, sorry for the long message, but I hope summing up will help taking a final decision on abstract.
+
+For the STM, the execution of the text between Proof..Qed is represented with a pure computation, pure like in haskell, very pure.  Only a pure computation can be run when one wants and in the context (system state) one wants.  (OK, internally the code is not pure, but via freze/unfree one can simulate that, and it is also what is imposed
+by multi-proces parallelism: a side effect in a worker process is simply lost, it will never reach the master).
+The only output of a pure computation is what it returns, that is a proof term.
+
+An output "returned" via a global side effect does not fit.
+
+The tactic monad represents  proof steps as pure functions, and here again the imperative behavior of abstract does not fit well.  Just to be clear, the tactic monad carries an env, but env in Coq is too much stuff.  IMO it should only carry the "local context" part of the env.
+
+w.r.t. the STM, abstract is "supported", in the sense that internally a pure proof computation returns the proof term + the list of global constants, and
+if the proof ends with Qed such constants are inlined, if it ends with Define the execution of Defined declares in one go all these extra lemmas plus the main one (simulating the old imperative behavior).  
+
+w.r.t. the tactic monad I don't know, I thought that having tclSIDEFF also update the env in the monad was enough to make the whole thing as correct as the STM, but it is not sufficient.  This bug shows that the problem is more fine grained for the tactic monad (I did not investigate, but somehow the side effect of the abstract inside $()$ is lost or not seen by refine).  Maybe this is the last bug standing, maybe not.
+
+What it is clear is that any tactic that has an effect different from manipulating the evar map is not a tactic in the new sense, that I think is the correct one.  Abstract, as it is today, is not a tactic.
+
+Now, as far as I know abstract is used to:
+1 avoid evarmap explosion by cutting it.  At some extent this can be coded with a vernacular,
+  I had the patch attached to another bugreport, I'll try to resurrect the code next week.
+2 write computable code using tactics but hiding the non-computational parts via abstract.
+  This is bad practice in my humble opinion.  I'd rather have something 
+  like Program taking care of computing the statements, open lemmas/goals form them, an 
+  finally  define the program using the lemmas.  Still this way of doing thing is widespread,
+  Adam does it for example. The STM supports it, in response to his request.
+3 avoid running reflexive tactics twice.  This is a nice trick by Guillame: if you do
+   abstract ( something_no_check ring )
+  the use immediately has the result (success or failure) but the "env" works like a cache
+  and the long computation has not to be redone at Qed time.  I proposed a patch to have
+  the same feature: ask the kernel to add a cast, sign in in a sort of cryptographically
+  sense, and re-accept the term at Qed time is the signature is valid.  No imperative side
+  effect, just a cache.  Unfortunately the code was not that nice, during proof construction
+  one works with Vars while Qed encounters Rels, and the conversion is verbose.  Also the
+  notion of signature I had worked will inside the process boundaries.  In a multi process
+  scenario things have to be done differently (Not with ==, since marshal/demarshal breaks 
+  ==). 
+
+As far as I can tell, 1 is easily fixable, 2 works, 3 does not.
+
+The bug report of jason is a new point, 4, that is abstract + $()$.
+
+Hence my position of telling people to avoid abstract for any new "nice tricks", because
+it is unclear if it can be made to work without piling up too many hacks.
+
+
+Comment author: @gares
+
+This would make abstract useless:
+  "Defined using (foo_subproof1 : typ1) (foo_subproof2 : typ2)"
+
+The point of using abstract is to avoid having to type typ1 and typ2,
+otherwise one could just start by proving the two lemmas, and then
+use them directly without abstract.
+
+Abstract lets people do the exact opposite: pretend they proved the two
+lemmas in advance without stating them (too large statements I guess...).
+
+
+Comment author: @herbelin
+
+I think you are pointing the right question. If the tactic monad were updating not only the evar map but also an environment, then abstract would become pure, since a Proof..Qed or Proof..Defined segment would (functionally) return a proof-term + an extension of the environment.
+
+> This would make abstract useless:
+>   "Defined using (foo_subproof1 : typ1) (foo_subproof2 : typ2)"
+> 
+> The point of using abstract is to avoid having to type typ1 and typ2,
+> otherwise one could just start by proving the two lemmas, and then
+> use them directly without abstract.
+
+I agree that this is probably not what we want (except maybe for "abstract using" - if ever really useful). I guess that for abstract we simply want to forbid to refer to the subproof name, with what your solution to make the abstracted subproofs local to the main proof complies.
+
+Coming back to my question, if I summarize your answer, my understanding is that it is not abstract which is essentially bad but its implementation, i.e. the issue that a Proof..Qed script is not working in a functional way over the environment.
+
+
+Comment author: @JasonGross
+
+> "abstract" in conjunction with any other 8.5 feature should be avoided.
+
+Ah, ok, thanks for rephrasing.  I was under the impression that you wanted to remove, or deprecate, [abstract] entirely.
+
+In particular,
+
+> Independently of the fix, I think we should add a msg_warning to abstract. Something like "this tactic is broken, don't use it in new code!".
+
+I think this is not the best idea if [abstract] in [Defined] proofs is fully supported and the only solution being provided to a particular problem.  (If there's any way to tell when [abstract] is being used in other contexts, I think it's fine to emit warnings in those contexts.)
+
+
+Comment author: @gares
+
+It is already like that. The monad holds (together with the evar map) a copy of the env (and also the list of side effects, that I put in the evar map IIRC).
+
+At Qed time I hide the side effects, I make them local to the proof term.
+If I don't do that, than I cannot produce in advance a system state without
+executing the proof.  Today I assume the env after the Qed has just one extra entry (the one being proved).  By hiding side effects I force the computation to be pure in that sense.  E.g. I cannot know how many extra entries the env and the nametab should have without executing the proof, just imagine "trivial || abstract auto", or a user defined tactic.
+
+This bug is, IMO, due to the fact that refine typechecks the term using an environment that is not the one altered by the interpretation of its argument.
+It is probably fixable...
+
+I guess you are right, if we manage to have abstract do not produce global
+constants, but say just local cuts, then things are way more clean.
+The hard part is that such a cut is not local, one cannot create it by instantiation.  In ssreflect the "abstract" tactic is split into two
+tactics: one does the cut, but without fixing the formula; the other one
+fixes the formula and starts (focuses its proof).  Imagine this pseudo Coq:
+
+  cut ?[f] as f
+  .....
+  here one has     f : ? |- G
+  ....
+  abstract tac as ?f.  (* runs tac in the right context, e.g. no f *)
+  ...
+  here one has     f : T |- G     and f is "opaque" and hides what-tac-does
+  ...
+  the final proofterm is   ...  (fun f : T => ....) (what-tac-does)  ....
+
+
+In this way the scope of f is user provided, and the actual beta redex is
+generated when it is not too late.  When you call abstract in standard Coq
+it is too late, one should pick the proof term, go up some nodes, make the
+beta redex... Not what a tactic in the current (and right) sense can do.
+
+So you really need to split abstract in two steps, unless I'm missing
+something.  We don't have fancy control operators in CIC, but here I'm
+touching a ground I do not master.
+
+I think we can't fix "abstract" as it is today, but a more civilized
+version of abstract can exist, if one makes its scope explicit.
+
+Best,
+
+
+Comment author: @herbelin
+
+Enrico, I understand that you like the abstract from ssreflect. Please feel free to implement an "abstract" of this form.
+
+With respect to the existing abstract, it seems to me that you are making an implicit assumption that if abstract generates global constants, you "cannot produce in advance a system state without executing the proof". I don't see any reason why it would be such.
+
+When you see a "Proof..Qed" block, you are able to produce a system state which is usable for the rest of the compilation even though you are missing the actual body of the theorem. This is working because you're relying here on the weakening property that if "Gamma, c:T, Gamma' |-" is well formed and "Gamma |- t:T" holds, then "Gamma, c:=t:T, Gamma' |-" is well-formed too.
+
+Then, what's wrong in using this very same state "Gamma, c:T, Gamma' |-" for compiling what comes after the Proof..Qed block and to allow adding also global constants produced by the Proof..Qed block, i.e. to rely on the weakening property that if "Gamma, c:T, Gamma' |-" and "Gamma, Delta |- t:T" then "Gamma, Delta, c:=t:T, Gamma' |-" for an arbitrary context Delta of admit's or abstract's produced by the proof?
+
+Of course, I'm not taking here about "abstract using foo" where the user intends to later on refer to "foo". In this case, some form of "Defined using foo : T." would be mandatory.
+
+
+Comment author: @JasonGross
+
+Hugo, you're suggesting that abstracted constants be defined as if with `Local Definition`, and not exported to be usable in other files?  And perhaps declare that that `abstract ... using ...` require a corresponding `Qed using ...`?
+
+
+Comment author: @herbelin
+
+> you're suggesting that abstracted constants be defined as if with `Local 
+> Definition`, and not exported to be usable in other files?  And perhaps 
+> declare that that `abstract ... using ...` require a corresponding `Qed
+> using ...`?
+
+Yes, a possible approach to the unpredictability of which constants may be declared by a proof could have been to introduce a kind of constants tagged as unreferrable (at least from coqc). But I'm fine with Enrico's approach to instead make these global constants local since it fulfills the same needs (and avoid to add such a new kind of private constant).
+
+
+Comment author: @aspiwack
+
+
+> The tactic monad represents  proof steps as pure functions, and here again
+> the imperative behavior of abstract does not fit well.  Just to be clear,
+> the tactic monad carries an env, but env in Coq is too much stuff.  IMO it
+> should only carry the "local context" part of the env.
+
+I don't understand what you mean by "local context" but whatever definition which does not include the whole environment surely cannot work. I mean… tactics need to access the global env, don't they? All of it. Either they do it directly (icky sticky ugly side effect), or I pass the global env as an argument.
+
+> w.r.t. the tactic monad I don't know, I thought that having tclSIDEFF also
+> update the env in the monad was enough to make the whole thing as correct as
+> the STM, but it is not sufficient.  This bug shows that the problem is more
+> fine grained for the tactic monad (I did not investigate, but somehow the
+> side effect of the abstract inside $()$ is lost or not seen by refine). 
+> Maybe this is the last bug standing, maybe not.
+
+The capacity to modify the environment during a tactic is sufficient internally to a tactic, but not to a proof. We would need to modify the proof to carry the updated environment which is not done at the time. But it presumably wouldn't be hard (and even better as [Global.env] would only be called at proof creation: fewer icky sticky ugly side effects).
+
+> What it is clear is that any tactic that has an effect different from
+> manipulating the evar map is not a tactic in the new sense, that I think is
+> the correct one.  Abstract, as it is today, is not a tactic.
+
+I beg to differ: any function which as an effect which is not clearly delineated by the type of the monad's "run" is not a tactic. But it can do (and does) plenty of other stuff than updating an [evar_map].
+
+I would be fine with updating the environment. And I like, for instance, Hugo's suggestion of using "private constant".
+
+
+Comment author: @gares
+
+@ Arnaud: The local context is for me the context (rel_context + var_context).
+The env is much more, it is also the set of global constants.
+
+We all agree that tactics have to access the environment, but they
+also have to access much more of the system state.  They access the
+various data bases of hints, of coercions, of type classes, of canonical 
+structures, nametab, ... there are even tactics that do not work with an
+empty libstack.
+
+I don't know why you added the env to the monad, but "because tactics
+need it" is not a good reason.  They need much more.  If you added it
+to make "abstract work" then I'm afraid you were too optimistic: there is
+code reading/writing global.env.  I think that, after the patch that
+makes tclSIDEFF also update the env in the monad, tactics are ok (the
+global.env  and the monad env should be in sync, or at least all the
+tactic code that writes global.env, according to my knowledge, now also
+updates the monad).
+
+In my view, during a proof, the global system state should stay constant.
+
+Unfortunately there are exceptions, like sticking an Hint in the middle of
+a proof script.  I take this as an example, I hope it makes my point more clear:
+If you duplicate in the monad the piece of system state that holds the db of
+hints, things will stop to work: tactics will not see the new hint.  Unless
+the Hint command does also update the monad.  This is what happens today with
+abstract, that calls tclSIDEFF.
+
+IMO, the simplest thing is to put in the monad only the system state tactics
+can write (essentially the evar map) and access the rest globally.
+If one sticks a Hint in the middle of tactics, the effect will just be visible
+to the tactics running afterwards.
+Of course I would prefer not to have a global state at all, and pass to .run
+a read only component (the system state).  The STM already has a notion of
+system state, but the only way it has to "pass it" to vernac (hence tactic)
+interp is to install it globally.
+
+@ Hugo: I agree that it is logically consistent, but:
+1) it works only if you make these extra constants private (not visible via
+   the nametab for example, otherwise the nametab for the rest of the file
+   would be incomplete).  
+2) it requires to change the data structure and add special cases
+   to the type checker: where does it looks for these constants? Not in
+   the env.  Are they named using a regular kernel name?
+Following this path may fix problem 3. in my long message, but requires some
+extra coding effort.  We thought (with Bruno) about adding a notion of
+sub-constants to represent the side effects of abstract, but inlineing seemed
+a simpler solution.
+Also it is odd: one can Print a proof term, that displays
+foo_subproof, but can't Print foo_subproof because it is not a valid name.
+Or a specific naming like foo#subproof1 that Print can follow, but not the
+nametab.  It is not that clean IMO.
+
+
+Best,
+
+
+Comment author: @herbelin
+
+As far as abstract is concerned, as I said, I'm fine with pushing the subproofs as local definitions at toplevel of the proof, as far as users are satisfied with it.
+
+Regarding the dilemma between the need for private names and the expected reparsability of terms (whether these are names of constants or simply of goal variables), it is a general issue to which I don't know a "good" solution.
+Using a private name space or a private subset of Id.t? Allowing to parse private names only with an explicit warning, allowing to parse them only in an interactive session, allowing to parse them only by giving some kind of "SesameAfficheToi" prefix to the command, ...?
+
+Otherwise, as far as I'm concerned, I'm satisfied by the clarification of your point of view about abstract and by my understanding of the conclusions that seem to come out of the discussion: 
+
+- abstract is not "bad"
+- it might be the case, considering the work you already made with tclSIDEFF, 
+that the here-discussed bug is only a local fixable bug of $()$ (PMP?)
+- that having the proof state made functional over the (logical) environment would simplify the implementation of abstract by not let it enter the global environment until Qed/Defined is reached, with the question whether we need (even for Defined) to have the abstracted subproofs turned into global rather than local definitions still possibly under discussion
+- that the status of global logical and not logical declarations in the middle of a proof script remains unclear, whether we want to allow them, whether they have to be interpreted both locally for the proof and globally for the rest of the session, etc.
+- that the need for and status of "abstract using" is yet to be clarified.
+
+I also looked a bit at ssreflect's "locally scoped abstract" but I'm unsure I seized the interest of it compared to Coq's "unscoped abstract" (you somehow said it was for proof refactoring and subproof extrusion - do you think it can be of general interest for Coq users?).
+
+
+Comment author: @gares
+
+> I also looked a bit at ssreflect's "locally scoped abstract" but I'm unsure I 
+> seized the interest of it compared to Coq's "unscoped abstract" (you somehow 
+> said it was for proof refactoring and subproof extrusion - do you think it can 
+> be of general interest for Coq users?).
+
+It has two uses:
+1) put in the context a dependent pair hiding the proof part:
+ 
+   pn : P n
+   n : subtype-something := (n, pn)
+   ======
+   Goal
+
+2) reuse a "deeply nested subproof" pulling it out at the toplevel
+
+I guess the most readable explanation is here:
+
+  https://sympa.inria.fr/sympa/arc/ssreflect/2014-04/msg00009.html
+
+The effects (display + efficiency) are only there during proof construction.
+
+If one ends such a proof with Defined, these these beta redexes don't truly hide
+the proof (they will end up in head position).  So it is only OK for "proofs".
+
+You are right in arguing that Coq's abstract is "more powerful".  It is just that it
+is not a "tactic" in the sense I explained (evar instantiation procedure), this is the
+root of all problems.
+
+That is all for your question about abstract: in ssr.
+
+Back to "abstract".
+
+I think the preferred style for "building programs via tactics" should be
+a different vernacular (that the STM would not optimize, or would optimize differently)
+that enables a special "tactic" (preferably just a vernacular, but I don't know 
+if that would suffice) to declare a sub-proof to be hidden.
+Exactly like Definition/Defined today, but with the clear intent of generating a
+bunch of global constants in an unpredictable number, of an unknown type.
+This to make "abstract" not available in "normal" proofs, and have a pure notion
+of tactics.  (It would not change much from the implementation side I guess, but
+would make it clear that one is doing something special).
+
+I don't know if Program can already be used for that, or if it can easily extended to
+let one manually declare the subterms/subgoals that have to be turned into obligations.
+If so, then I would strongly recommend driving users in this direction, and warning out
+a message if one uses abstract elsewhere.
+
+Reusing an abstracted proof later on without naming it explicitly should be forbidden
+(today it works only if you end Defined, Qed just hides things).  And as you suggested it
+should be named in a Vernacular, like Defined exporting bla, bar. to make it easy to
+know it statically.
+In any case I had the impression that what people really miss is a language to produce the
+goals one abstract beforehand.  You can do it in ML, like Program kind of does.  But not in
+Ltac, since you can't start a Lemma in Ltac.  But this is way a more complicated feature,
+it seems way simpler to make Program more general (if possible).
+
+Best,
+
+
+Comment author: @herbelin
+
+Enrico, let me first continue with the controversy. If one takes as definition of a tactic, code which modifies a state of evars, you can see "abstract" (the local but unscoped version of it) as a tactic: just set an initial evar of type a polymorphic list at the start of proof, refine it with the pair of a subproof and of a new evar standing for a residual list everytime you call abstract, and fills the residual evar with unit at Qed time. So, the feature that a local unscoped abstract provides could be implemented as a tactic in your sense.
+
+This being said, I agree that "abstract" is in some sense unsatisfactory and that we might want for instance a more declarative interface to abstracting subproofs, which is your concern if I understand your message correctly.
+
+I cannot resist seizing this opportunity to wonder why there is so little interest and investment in C-zar, as if everyone de facto validated the procedural style - for its efficiency? out of habit? by homogeneity of style with what other people do? because easier to learn? for its programmability? for its flexibility? -, even though the scripts are hardly readable back. I wish further good features of a declarative style could eventually be supported (re-readability, ability to choose the order in which proving the goals, support for natural language, ...). Maybe some features that should actually be provided by a GUI?
+
+Incidentally, I observed that "abstract using foo" does not necessarily generate a lemma named foo but only a lemma with prefix foo (i.e. foo0 if foo is already taken, and so on). Is there some interest into this? Why not to fail if foo is already taken? Any use case of it is welcome.
+
+
+Comment author: @gares
+
+> just set an initial evar of type a polymorphic list at the start of proof...
+
+I'm going a bit off topic but since it is interesting...
+
+Yes and no.  You implementation is OK if you restrict the visibility of abstract constants to the current proof.  In that sense your abstract is still local
+(you pushed things to the root of the proof term, but not "globally" as abstract
+does).
+
+In some sense you are making just one big cut as your first proof step,
+standing for a n-ary conjunction.  That choice makes some things simpler to code,
+but all your proofs/statements are going to be fully generalized, since
+they must be "lifted" up to the empty local context (as abstract constants
+are today, but not necessarily as ssr abstracted constants are, since you
+can make the cut(s) down in the proof term where you actually need them).
+
+I've no strong opinion on czar itself, actually I quite don't know it.
+I've some opinions on proof languages, mostly coming from my work on the Odd Order Theoerm.
+
+In general, if you take the proofs of math comp about complex group theory (the
+only ones I really know) the style is very declarative.  They are made of
+successive forward steps, like "assert".  Then the way we convince Coq of
+these big steps is mostly backward chain + rewrite.  So I think the two styles
+must live together, especially if there is no automation filling these steps
+(and I can hardly imagine automation always filling these gaps...).
+
+In short, my experience suggest that you don't was to use only a
+declarative language (just look at a TLA+ proofs, without code folding you
+never see the end).  Actually as long as the proofs are short the
+rewrite + backchain style is much better.  When complexity rises, you need
+increasingly more sophisticated forms of forward reasoning to declare where
+you are going, since the final goal is too far away.
+
+I want to be honest.  I think I have a personal aversion to "natural languages"
+in the context of computer science, and this may bias my opinion above very much.
+(Among other things because, not being a native speaker, I never know which one I
+should pick among "of", "to", "for" and the like, so "looking like English" does
+not necessarily help).
+
+Best,
+
+
+Comment author: @herbelin
+
+OK, thanks for the discussion. This is probably a good time to make a break (and for the [BZ#3684](https://github.com/coq/coq/issues?q=is%3Aissue%20%22Original%20bug%20ID%3A%20BZ%233684%22) to find back its original purpose... it is still open!).
+
+
+Comment author: @ppedrot
+
+Should be morally fixed in trunk. See the comments of commit 9295b3db to understand that the reality is not that bright, but at least, typical use-case should go through just fine.
+
+

@@ -1,0 +1,19 @@
+cc @herbelin ?
+And the same error message with
+```coq
+assert (H1 : x <= y) by admit.
+eapply Rle_trans with (1:=H1) in H.
+```
+is equally bad, though in a different way; I expect to get instead something like "Unable to apply lemma of type "forall r3 : R, y <= r3 -> x <= r3" on hypothesis of type  "x * x ^ n <= y * y ^ n"."
+example without reals:
+~~~coq
+
+Axiom le_trans : forall a b c, a <= b -> b <= c -> a <= c.
+Lemma foo a b c (H: a + b <= c) : True.
+Proof.
+  eapply le_trans with (1:=True) in H.
+  (* Error: Unable to apply lemma of type "forall a b c : nat, a <= b -> b <= c -> a <= c"
+on hypothesis of type "a + b <= c".
+   *)
+~~~
+At https://github.com/coq/coq/blob/d0daa35952c6674c3911173b8737e237c2c1eaa6/tactics/tactics.ml#L1895 an exception `CannotUnify (Prop, (le ?M150 (add a b)), None))` becomes a non informative `None` (with my example).

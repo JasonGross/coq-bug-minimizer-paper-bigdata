@@ -1,0 +1,27 @@
+Comment author: @JasonGross
+
+Ltac foo tac := tac.
+Ltac bar := foo idtac.
+Print Ltac bar.
+
+This gives "Ltac bar := foo ltac:idtac" where it should give "Ltac bar := foo 
+ltac:(idtac)"
+
+
+Comment author: @JasonGross
+
+Note that it's also wrong when it prints "ltac:()", which should be "ltac:(())"
+
+Additionally, this one is also wrong:
+Ltac foo x := pose x.
+Ltac bar := let v := constr:((1, 2)) in foo v.
+Print Ltac bar.
+(* Ltac bar := let v := (1, 2) in
+            foo v *)
+
+
+Comment author: @silene
+
+Fixed by commit a277da2 for the "ltac:" part.
+
+

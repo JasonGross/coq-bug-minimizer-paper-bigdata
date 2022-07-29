@@ -1,0 +1,17 @@
+Comment author: @JasonGross
+
+Goal True.
+  refine match O with
+         | O => _
+         | O => _
+         | _ => _
+         end.
+
+If I have a few dozen branches, this is very annoying to track down.
+
+
+Comment author: @herbelin
+
+I pushed to branch v8.6 an empirical patch to fix this regression.
+
+

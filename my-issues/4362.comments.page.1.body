@@ -1,0 +1,14 @@
+Comment author: @JasonGross
+
+Set Printing Universes.
+Definition foo : Type.
+Proof.
+  Definition bar : Type := Type.
+  exact bar. (* Error: Conversion test raised an anomaly *)
+
+
+Comment author: @JasonGross
+
+Fixed in 8.5pl1 (not sure which commit fixed it)
+
+

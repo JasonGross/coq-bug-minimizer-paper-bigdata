@@ -1,0 +1,87 @@
+Comment author: @JasonGross
+
+Chrome reports that the server certificate is for www.lix.polytechnique.fr, but the bug tracker is at https://coq.inria.fr/bugs/.  Additionally, Chrome tells me that "the server presented a certificate issued by an entity that is not trusted by your computer's operating system."
+
+
+Comment author: @herbelin
+
+Hi, coq.inria.fr is an alias for www.lix.polytechnique.fr. Nothing wrong here. I don't follow closely the business around certificates but it is indeed possible that the certificates issued by CNRS for www.lix.polytechnique.fr is not trusted by the OS of your computer (CNRS is the the main French public research agency). This does not worry more than needed.
+
+
+Comment author: @JasonGross
+
+I've been told that the certificate name mis-match [though not the lack of trust] is something to be fixed on your end, and that you "should fix the CN mismatch by getting CNRS to issue a certificate for coq.inria.fr and putting it in the vhost."
+
+
+Comment author: @braibant
+
+I think this is a valid bug that should be fixed: Jason bug is not about a trust issue (there is no worry that the Coq website has been hacked), but about an usability issue (having to override the security warning of our browsers each time we want to see/report a bug).
+
+
+Comment author: @JasonGross
+
+Any chance that someone can get this fixed by asking CNRS to issue a certificate directly for coq.inria.fr?
+
+
+Comment author: @andersk
+
+It is indeed true that coq.inria.fr is an alias (CNAME) for www.lix.polytechnique.fr, and the server has a certificate that’s valid for www.lix.polytechnique.fr.
+
+However, since DNSSEC is not widely deployed (and inria.fr has no DNSSEC signatures anyway), it would be quite easy for an attacker to spoof DNS responses to make it look like coq.inria.fr is an alias for evilattacker.biz, which points to a server with a certificate that’s valid for evilattacker.biz.  They could then replace displayed content, steal user passwords, etc.
+
+There is no way that browsers could tell the difference between these two scenarios, which is why browsers are not allowed to take DNS aliases into account when validating certificates.  See RFC 2818.  All major browsers (not just Chrome) present this situation as a certificate mismatch, and they are correct to do so.
+
+The server needs to be fixed to send a certificate that’s valid for coq.inria.fr.  If you’re unable to do this for some reason, please at least remove the redirect from http://coq.inria.fr/bugs/ to https://coq.inria.fr/bugs/ which makes it appear as if HTTPS were correctly supported, because the current situation is worse than useless.
+
+
+Comment author: @pirbo
+
+This is a political obligation to have the Coq bug tracker accessible under a coq.inria.fr/... and it is a material reality that the machine used is a machine inside polytechnique.fr domain !
+
+1/ I've try to say to the bugzilla "Lets expose the truth: rewrite coq.inria.fr/bugs into www.lix.polytechnique.fr/coq/bugs" but this creates a loop in the apache proxy/rewriting rules of the server and I don't have any power on that.
+2/ INRIA provides certificates only for machine in the inria domain and the one of the bugtracker is not. So inria won't provide a certificates for this machine.
+
+As we all experience, www.polythecnique.fr is very very fragile and we think about putting coq.inria.fr on a real (virtual) machine inside the inria domain. But this will not be done for the bugzilla (and all the perl cgi stuff it implies in a very near futur)
+
+
+Comment author: @andersk
+
+There are still ways to deal with this problem; it is not unique to you.  The logical hostname in the URL much match the certificate, but there is no requirement for it to match the physical hostname of the server machine.
+
+Your version of Apache is new enough to support Server Name Indication, which means you can install multiple certificates on the same server for different logical hostnames.  You can get a valid certificate for coq.inria.fr from any CA (you can even get it for free from https://cert.startcom.org/ or https://www.globalsign.com/ssl/ssl-open-source/ ), and configure it inside the VirtualHost block for coq.inria.fr.
+
+I'm happy to take a look at the Apache configuration and offer further guidance.
+
+
+Comment author: @JasonGross
+
+Any chance of this getting fixed sometime soonish?  Chrome now requires two clicks instead of just one to get to the bug tracker, which is twice as annoying.
+
+
+Comment author: @andersk
+
+Like I said, the certificate problem is totally solvable, and I’m still willing to help.  But if that isn’t going to happen for some reason, please remove the HTTPS redirect and allow the bug tracker to be served on plain HTTP.  The current certificate provides zero security because anyone in the world can make up a certificate that looks just as good.  And the extra clicks aren’t just annoying; they also reinforce terrible security habits on the part of every visitor that could eventually lead to real private data being stolen on other websites.
+
+
+Comment author: @herbelin
+
+The site coq.inria.fr will be moved soon to another server on which we have administration access. We'll care about this issue after the move.
+
+
+Comment author: @letouzey
+
+Hi
+
+The migration mentioned by Hugo has happened : coq.inria.fr has been moved to a new server, located in the inria.fr domain, and with a valid certificate.
+
+Jason, do you confirm that the issue is solved ?
+
+Best regards,
+Pierre Letouzey
+
+
+Comment author: @JasonGross
+
+Yes, the certificate presented is now valid for coq.inria.fr.
+
+

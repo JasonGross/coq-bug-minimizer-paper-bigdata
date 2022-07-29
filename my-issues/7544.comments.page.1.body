@@ -1,0 +1,1 @@
+I think what is going on here is that `?n` gets typed as `F ?a -> nat` and `?e0` is available in the context of `?a` and my guess is that the evar restriction(?) function correctly clears `?e0` from the context of `?n` and `?f` but incorrectly fails to recurse into evars present in the types of `?n` and `?f` to clear `?e0` from their contexts.  Is something like this going on?

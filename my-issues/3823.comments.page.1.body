@@ -1,0 +1,37 @@
+Comment author: @JasonGross
+
+The following code should work:
+
+Goal forall n : nat, exists n0, match n with 0 => 0 | S n' => S n' end = n0.
+Proof.
+  intros.
+  eexists.
+  evar_aware_destruct n as [|n']; [ reflexivity | ].
+  instantiate (1 := n'). (* Error: Instance is not well-typed in the environment of ?589 *)
+
+
+My simple attempt at writing this in Ltac fails, and it's extremely frustrating to use evars in the presence of this failure of Ltac
+
+Ltac evar1_aware_destruct_nat n :=
+  instantiate (1 := match n with 0 => _ | _ => _ end);
+  let n' := fresh "n'" in
+  destruct n as [|n'].
+
+
+Comment author: @gares
+
+As Guillame correctly explains on coq-club, evars are associated to a context.
+You are trying to assign to an evar a variable that is not bound in its context.
+The wrong term you try to build is something like:
+
+   fun n =>
+     ex_intro ?589 (match n with O => .. | S n' => ...)
+
+and you want to assign n' to ?589, that does not see it, since in 
+"| S n' =>" then n' is a binder.  Internally the second branch of the match
+is represented as (fun n' => ...).  I hope the explicit lambda makes it clear
+where n' is visible and where it is not.
+
+I close the bug.
+
+

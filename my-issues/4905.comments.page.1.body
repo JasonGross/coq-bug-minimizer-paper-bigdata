@@ -1,0 +1,26 @@
+Comment author: @JasonGross
+
+Here is code that works in 8.4 but fails in 8.5:
+
+Definition s (n : Set) := Some Set.
+Arguments s / n .
+Goal match s nat with
+     | Some v => fun _ : Type => True
+     | None => fun _ : Type => True
+     end Set.
+  progress match goal with
+           | [ |- context[s ?v] ]
+             => let k := constr:(s v) in
+                let k' := (eval simpl s in k) in
+                change k with k'
+           end || fail 0 "too early".
+  progress simpl s. (* failed to progress *)
+
+Note that setting [SimplIsCbn] does not change this deficiency.
+
+
+Comment author: @silene
+
+This might have worked in 8.4, but I consider it a bug it did. You are asking Coq to simplify a subterm whose head symbol is "s". There is no such subterm, so Coq does not do anything. As far as I can tell, this is the behavior we want.
+
+

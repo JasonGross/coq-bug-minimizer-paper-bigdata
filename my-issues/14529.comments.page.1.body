@@ -1,0 +1,15 @@
+The problem is not so much `Import`, rather it's that there is no way to specify that a qualified name should be considered absolute. At the time of the `Import` command the toplevel module has been shadowed, but if we could refer to it in an absolute way there would be no problem.
+I do not think this would solve the problem (and in fact being able to declare imports as absolute would create more headaches for the bug minimizer).  The issue instead is that what used to be an absolute (and unshadowable) name before module inlining is now supposed to refer to a different (non-absolute and shadowable) name after inlining.  I guess I can try to adjust the minimizer to have a variant of module inlining where it simultaneously absolutizes all references to constants in the given module with new names...
+
+But in fact the best solution to my headaches with the bug minimizer would be to grant https://github.com/coq/coq/issues/4455, allowing something like `AbsoluteModuleDirectory Foo.Bar.Baz.` which has the effect of setting the path component of the DirPath.t of anything inside of it (perhaps only `Module`s should be allowed) to `Foo.Bar.Baz`, mimicking the ability to have a directory structure inside of a single file.
+See also https://github.com/coq/coq/issues/3171
+Another choice for the minimizer is to mangle names, not the ideal thing, but for example when doing composed builds in some cases there is no way to escape mangling :(
+> Another choice for the minimizer is to mangle names
+
+@ejgallego What do you mean?  What would this proposal look like, concretely?
+> @ejgallego What do you mean? What would this proposal look like, concretely?
+
+Everytime you inline, you mangle all module or section names to a unique identifier, this is done by many compilers to avoid naming collisions on inlining, but however, likely not so easy to do in Coq I'm afraid as scoping is not so well defined. Was just an idea.
+Oh, it's quite easy to do that sort of mangling, I just wrap each file in a module with a mangled name and export that module.  The problem is that it's not easy to ensure that all references to the names get updated accordingly.  (And note that if you change names too much, you'll change the names of automatically generated variables whose type is given by that name, and then proof scripts will fail.). The mangling scheme I have already works most of the time, but fails in cases like the one of this issue. I can probably use the glob files to find which references refer to the relevant modules, but I've sometimes run into issues where the information isn't accurate or complete or the byte positions are miscomputed, so I'm hesitant to unconditionally qualify everything.
+Related is #14423 
+I just went to try to implement the solution I proposed, but it turns out that `Import` statements do not emit anything to .glob files (which seems to perhaps be a bug in its own right), so I cannot even hope to resolve this issue from the bug minimizer side.

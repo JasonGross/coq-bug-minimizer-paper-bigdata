@@ -1,0 +1,22 @@
+There is one: https://coq.inria.fr/refman/error-index.html
+What more do you need?
+The index of error messages seems incomplete. I couldn't find "There are pending proofs" error.
+Much like we are fixing issues of undocumented syntax, commands and tactics thanks to the tool that @jfehrle created to analyze the actual Coq grammar and compare it to what is documented in the manual, it is likely that we will need such a tool to ensure that the documentation of errors is exhaustive (see #7373). In the meantime, I have encouraged contributors adding or changing existing user messages to document them, and the addition (made by @JasonGross IIRC) to the PR template to remind about this has also been useful. I don't think that there is much point in keeping this very issue opened any longer though (contrarily to #7373).
+@Zimmi48 Coq could actually dump the list of warning it knows about pretty easily; we can just add a `--list-warnings` option to `coqc` , then process the output.
+
+So we could start playing with this right away if someone is interested.
+If you can produce a fully-formatted list of messages, it would be easy for doc_grammar to read them and report those that are added or missing in the documentation.
+
+It would need to do something clever with insertions, e.g. the manual lists `@qualid is not a module.`.  Perhaps a format string of sorts that can be used both to generate the message and go into this output file.  Another case to consider (line breaks not needed, Sphinx mostly ignores them):
+
+```
+strbrk "Require inside a module is" ++
+                              strbrk " deprecated and strongly discouraged. " ++
+                              strbrk "You can Require a module at toplevel " ++
+                              strbrk "and optionally Import it inside another one."
+```
+
+We should continue this discussion in another PR, perhaps #7373?
+
+To get the plugin messages, maybe a) use a command to dump the messages and b) create a short .v file that loads all the plugins before dumping the messags.
+And prefix with ".. warn:: " or ".. exn:: ".  Not sure how we'd use category info.  Knowing what command/tactic/feature produced the error would help in figuring out where to put it in the manual.  It may be tedious to figure that out for each added message from reading code.

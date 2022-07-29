@@ -1,0 +1,37 @@
+Comment author: @JasonGross
+
+Here is some code that works in 8.4 and not in 8.5:
+
+Ltac foo :=
+  match goal with
+    | [ |- ?b ] => pose (fun b : Set => b)
+  end.
+
+Goal True.
+  foo.
+
+I think the error should be raised at the definition of [foo], rather than at its execution; this makes it easier to catch incompatibilities.  (This error is always possible to identify at Ltac "compilation" time, right?)
+
+
+Comment author: @aspiwack
+
+It should. But I don't know how to do so. I'm not even sure it's possible without an unreasonable amount of change in the implementation of pretty much all of Coq.
+
+Does anyone have thoughts on this?
+
+
+Comment author: @JasonGross
+
+Here's an example that makes this hard without changing some semantics:
+
+Require Coq.Arith.EqNat.
+Goal True.
+  let x := lazymatch (eval compute in (EqNat.beq_nat 5 (Nat.pow 5 1))) with
+           | false => fresh
+           | true => constr:(1)
+           end in
+  pose (fun x : nat => x).
+
+(this is an error, but if you switch false and true, it goes through fine)
+
+

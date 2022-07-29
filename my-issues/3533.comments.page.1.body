@@ -1,0 +1,27 @@
+Comment author: @JasonGross
+
+Polymorphic Record foo {T U : Type} := { bar : T -> U }.
+Fail Definition baz (dummy : (Type@ {i} : Type@ {j})) (x : @ foo unit unit) (y : @ foo Set Set)
+  := x = y. (* Good: Toplevel input, characters 96-97:
+Error:
+In environment
+dummy : Type
+x : foo
+y : foo
+The term "y" has type "@ foo Set Set" while it is expected to have type
+ "@ foo unit unit". *)
+Fail Definition qux (dummy : (Type@ {i} : Type@ {j}))
+     (x : @ foo Type@ {i} Type@ {j}) (y : @ foo Type@ {j} Type@ {j})
+  := x = y. (* Bad: Error:
+In environment
+dummy : Type
+x : foo
+y : foo
+The term "y" has type "foo" while it is expected to have type "foo". *)
+
+
+Comment author: @ppedrot
+
+There is already everything to do this, actually. It is just a matter of the choice of the list of flags recursively used...
+
+

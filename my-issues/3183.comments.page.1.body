@@ -1,0 +1,9 @@
+Comment author: @JasonGross
+
+Goal forall (f : nat -> nat -> nat), f (1 + 1) 2 = f 2 3.
+  intros.
+  reflexivity.
+
+The code above informs me (rightly) that it's impossible to unify [f 2 3] with [f (1 + 1) 2].  This is all well and good, because I can see that [1 + 1] and [2] unify easily.  But if [f] takes ten or twenty arguments, and most of them unify, but not obviously, it's a pain to figure out which don't unify.  At the very least, tell me which argument of [f] is wrong.  Even better, give me a trace of the path I need to take to get to the things that don't unify ("impossible to unify "f 2 3" with "f (1 + 1) 2" because second arguments "3" and "2" do not unify because "S O" does not unify with "O"" or something)
+
+

@@ -1,0 +1,8 @@
+cc @ejgallego 
+This is an internal tool that I don't want to document; moreover it will go away likely in 8.13.
+
+We could install it in the private binary prefix of Coq instead of /usr/bin but IMHO not worth the effort.
+Sounds good.  Feel free to resolve this as wontfix, then.  I only noticed it because my debian packages broke, due to the list of things installed going out of date.
+This is IMO a legitimate bug so it should be resolved in some form. It is just IMHO very low priority, but definitively we should fix it [my preference is by deprecating / removing the tool altogether]
+
+I've added to the Dune tracking page so it is the build system roadmap.

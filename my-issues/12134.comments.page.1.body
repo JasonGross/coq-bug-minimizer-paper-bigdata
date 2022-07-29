@@ -1,0 +1,13 @@
+Thanks for opening the discussion, I have personally no idea of the right answer, but I would appreciate consistency. Note that in the manual, `|Ltac|` is defined to be transformed into ``` `L`:sub:`tac` ```, but some places contain `Ltac` instead. There is also the question of the naming. Ltac is generally referred to as Ltac1 in most of the Ltac2 chapter for disambiguation. Should it be the case in the rest of the manual?
+FTR, I don't have any typographical preference neither for Ltac(1) nor for Ltac2.
+In the rsts, I see 164 uses of `Ltac` vs 34 uses of `|Ltac|`.  Even if we
+change all the `Ltac` to `|Ltac|` at this time, I expect there will be a
+tendency for `Ltac` to creep back in.
+
+In the rsts, I see 164 uses of `Ltac` vs 34 uses of ` |Ltac|`.  Even if we change all the `Ltac` to ` |Ltac|` at this time, I expect there will be a tendency for `Ltac` to creep back in.
+
+
+That's possible, but until today, as a documentation maintainer, I did not pay any attention to `Ltac` vs `|Ltac|` and I even used `Ltac` instead of `|Ltac|` when I was the one writing. If we decide to go for ``` `L`:sub:`tac` ```, then I can start paying attention to the use of `|Ltac|`. If we decide to go for `Ltac` without any styling, then we just have to remove the `|Ltac|` macro.
+
+Note that it is the same for `|Coq|` and `|CoqIDE|` (see also #11924).
+I would vote for standardizing on `|Ltac|` with the script styling, though I don't care all that much.  (I asked this question in the first place because I'm working on my thesis and want to have proper styling of things.)

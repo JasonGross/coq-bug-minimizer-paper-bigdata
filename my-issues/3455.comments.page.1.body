@@ -1,0 +1,95 @@
+Comment author: @JasonGross
+
+Goal 1 = 2.
+match goal with
+  | [ |- context G[2] ] => let x := constr:(fun T (x : T) =>
+                                              $(let G' := context G[x] in
+                                                exact G')$) in
+                           pose x
+end.
+(* I get [P := fun (T : Type) (x : T) => 1 = x : forall T : Type, T -> Set] *)
+
+match goal with
+  | [ |- context G[2] ] => let x := constr:(fun T (x : T) =>
+                                              $(let G' := context G[x] in
+                                                exact G')$) in
+                           pose (x _)
+end.
+(* Error: Cannot infer this placeholder. *)
+
+match goal with
+  | [ |- context G[2] ] => let x := constr:(fun T (x : T) =>
+                                              $(let G' := context G[x] in
+                                                exact G')$) in
+                           evar (T : Type);
+                             let x' := constr:(x T) in
+                             let x'' := (eval cbv beta delta [T] in x') in
+                             pose x''; subst T
+
+end.
+(* now I get [P := fun x : ?6 => 1 = x : ?6 -> Set] *)
+
+How do I tell Coq that [?6] can be inferred by retypechecking the term, and that it should do so?
+
+
+Comment author: @aspiwack
+
+Does this problem show up without managing to smuggle-in an ill-typed term in the middle of a tactic? Because otherwise, I'm afraid it will probably not be considered urgent. In particular considering that a bug fix may come and just prevent you from writing your first line to begin with.
+
+
+Comment author: @JasonGross
+
+Does the following count?  It shows up as
+
+Goal 1 = 2.
+match goal with
+  | [ |- context G[2] ] => let y := constr:(fun x =>
+                                              $(let G' := context G[x] in
+                                                exact G')$) in
+                           pose y
+end.
+
+telling me that it can't infer the type of [x].  I want a way to say "no, really, you can infer the type of [x]".
+
+
+Comment author: @aspiwack
+
+I see. My guess is that the type inference for the type of [x] happens before the tactics in term are ran. I think the type classes do something about that. Maybe Matthieu could comment?
+
+
+Comment author: @JasonGross
+
+I don't think it's that; the following works fine:
+
+Goal 1 = 2.
+match goal with
+  | [ |- context G[2] ] => let y := constr:(fun x => $(exact (@ eq Set x x))$) in
+                           pose y
+end.
+
+
+I think the issue is that [context] doesn't do any typing, and so Coq doesn't know that [x] is used.
+
+
+Comment author: @ppedrot
+
+There is some unification step missing somewhere. The error is raised on the following evarmap, which should be solvable by unification:
+
+sigma: Evd.evar_map = EVARS:
+   ?3==[ |- Type@ {bug.1}] (type of x)
+   ?2==[
+         |- eq nat (CSTR.nat._0._2 CSTR.nat._0._1)
+              (CSTR.nat._0._2 (CSTR.nat._0._2 CSTR.nat._0._1))]
+         (internal placeholder)
+   ?5==[(x : ?3 (* [] *)) |- ?4 (* [x] *)
+         => eq nat (CSTR.nat._0._2 CSTR.nat._0._1) x] (internal placeholder)
+   ?4==[(x : ?3 (* [] *)) |- Type@ {bug.2} => Prop] (internal placeholder)
+  
+Is there any unification guru who knows how to solve this properly? The Evarconv.consider_remaining_unif_problems raises an exception itself...
+
+
+Comment author: @ppedrot
+
+Indeed context was not retyping the term...
+
+

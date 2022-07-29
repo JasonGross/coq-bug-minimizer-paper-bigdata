@@ -1,0 +1,25 @@
+Comment author: @JasonGross
+
+Goal True.
+  par:abstract (abstract exact I). (* Anomaly: Uncaught exception Not_found. 
+Please report at http://coq.inria.fr/bugs/. *)
+
+
+Comment author: @ejgallego
+
+Hard to tell from the backtrace, it looks like the side-effects may not be properly propagated... There is hope to fix that in 8.7.
+
+
+Comment author: @gares
+
+IIRC:
+- par: abstract tac
+  is handled in an ad-hoc way
+- par: tac-whatever ... abstrac ...
+  is simply not handled, because the data type sent by the worker
+  does not carry side effects
+
+Nothing is impossible, but this requires some non trivial coding.
+
+
+I think we could either inline or error on side effects around https://github.com/coq/coq/blob/911f33f0a0ff648082d329841388f59e8cecf231/stm/stm.ml#L1914

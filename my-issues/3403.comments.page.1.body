@@ -1,0 +1,42 @@
+Comment author: @JasonGross
+
+```coq
+Tactic Notation "foo" := let x := constr:(I) in x.
+Goal True.
+  Fail foo.
+  (* Toplevel input, characters 0-3:
+Error: Value is a term. Expected a tactic. *)
+  Fail let x := foo in exact x.
+ (* Toplevel input, characters 37-38:
+Error: variable x should be bound to a term. *)
+  ```
+
+I expect the second of these to work.
+
+[Fail let x := foo in exact x.] tells me it's a <tactic>.
+
+
+Comment author: @ppedrot
+
+*** Bug [BZ#3861](https://github.com/coq/coq/issues?q=is%3Aissue%20%22Original%20bug%20ID%3A%20BZ%233861%22) has been marked as a duplicate of this bug. ***
+
+
+Comment author: @JasonGross
+
+Here is a more useful example that I would like to work:
+```coq
+Ltac hyp := multimatch goal with H : _ |- _ => constr:H end.
+Tactic Notation "hyp" ":" open_constr(T) := let H := hyp in constr:(H : T).
+Goal False -> True -> False -> True.
+  intros.
+  let H := hyp : _ in exact H.
+```
+Due to bug [BZ#3952](https://github.com/coq/coq/issues?q=is%3Aissue%20%22Original%20bug%20ID%3A%20BZ%233952%22), we the more verbose version doesn't even work:
+```coq
+Ltac hyp := multimatch goal with H : _ |- _ => constr:H end.
+Tactic Notation "hyp" ":" open_constr(T) := let H := hyp in exact (H : T).
+Goal False -> True -> False -> True.
+  intros.
+ let H := constr:($(hyp : _)$) in exact H. (* fails because [constr:($(...)$)] acts like [once] *)
+```
+

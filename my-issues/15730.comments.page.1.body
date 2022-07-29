@@ -1,0 +1,5 @@
+Not an authoritative answer, but there are workarounds such as globally adding `(jobs 1)` in `.config/dune/config`, calling `Makefile.dune` with `DUNEOPT=-j1`, calling `Makefile.install` with `_DOPT=-j1`. 
+Yes we need to polish this; on the originis of the dune infrastructure, we understood that dune would get support for make's jobserver; but unfortunately in the end it was decided that such feature couldn't work well, so our original plan fell apart.
+
+c.f. https://github.com/ocaml/dune/pull/4331
+Note that I think we can improve this without having to implement the jobserver protocol in dune. Will provide more details next week.

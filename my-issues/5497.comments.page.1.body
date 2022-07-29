@@ -1,0 +1,82 @@
+Comment author: @JasonGross
+
+This code works in Coq 8.6 (released), but not v8.6 
+(221690b132ad3d836a79179b58f3f9ffafc4f392):
+
+Axiom A : Type.
+Axiom tuple : nat -> Type.
+Axiom hd : forall n, tuple (S n) -> A.
+Axiom tl : forall n, tuple (S n) -> tuple n.
+Fixpoint nth_default {m} (d:A) n (x: tuple m) : A :=
+  match m, n with
+  | O, _ => d
+  | S m', O => @ hd m' x
+  | S m', S n' => nth_default d n' (@ tl m' x)
+  end.
+(* Error:
+In environment
+nth_default : forall (m : nat) (d : A), ?X4@ {__:=m; __:=d} -> tuple m -> A
+m : nat
+d : A
+n : nat
+x : tuple m
+m' : nat
+n0 : nat
+The term "x" has type "tuple m" while it is expected to have type
+ "tuple (S m')".
+ *)
+
+
+Comment author: @JasonGross
+
+Bisect says:
+
+007ab31b4d1b9457d2758a614aed5a49dee53b62 is the first bad commit
+commit 007ab31b4d1b9457d2758a614aed5a49dee53b62
+Author: Hugo Herbelin <Hugo.Herbelin@ inria.fr>
+Date:   Sat Apr 8 18:35:03 2017 +0200
+
+    Fixing [BZ#5460](https://github.com/coq/coq/issues?q=is%3Aissue%20%22Original%20bug%20ID%3A%20BZ%235460%22) (limitation in computing deps in pattern-matching compilation).
+    
+    This was assuming dependencies occurring in configurations of
+    the form x:A, y:B x, z:C x y |- match x, y, z with ... end".
+    
+    But still work to do for better management of dependencies in general...
+
+:040000 040000 b2d0c473a0875635c64cb5c353ad472f64b880e3 
+3c834cbfc2ceef0797cbaea61638835ebf5d712b M	pretyping
+:040000 040000 7dd436c84cab825d6dcec03491a422b17ab53cbd 
+047f798a97a0f545e7d717f93dbf2828f0401ff0 M	test-suite
+
+
+Comment author: @herbelin
+
+Actually, your example was working because of a de Bruijn bug which was computing a dependency in x (hence a generalization to do), while it was supposed to find a generalization over the type n (which is unknown at this time hence possibly dependent on m).
+
+For instance, in released 8.6 (or 8.5), it fails with the following small change
+
+Require Import Vector.
+Fixpoint nth_default {A m} (d:A) (x: Vector.t A m) n : A :=
+  match m, n with
+  | O, _ => d
+  | S m', O => @ hd A m' x
+  | S m', S n' => nth_default d (tl x) n'
+  end.
+
+Of if you change it to
+
+Require Import Vector.
+Fixpoint nth_default {A m} (d:A) (n:nat) (x: Vector.t A m) : A :=
+  match m, n with
+  | O, _ => d
+  | S m', O => @ hd A m' x
+  | S m', S n' => nth_default d n' (tl x)
+  end.
+
+I'm sorry, but I guess that, until compilation of pattern-matching improves, we have to accept the failure of your example...
+
+We can reconsider it as a wish for pattern-matching improvement, or as invalid.
+
+it also fails.
+
+

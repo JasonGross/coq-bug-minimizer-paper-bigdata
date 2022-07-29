@@ -1,0 +1,10 @@
+Related to #12004.
+The regression appeared between 8.9 and 8.10.
+Seems to come from a8b3c907c which dropped the test checking that a proof state is defined.
+> Seems to come from [a8b3c90](https://github.com/coq/coq/commit/a8b3c907cb2d6da16bdeea10b943552dc9efc0ed) which dropped the test checking that a proof state is defined.
+
+This seems not intended indeed, @herbelin would you mind pointing out the place the check was done so I can try to provide a fix?
+> would you mind pointing out the place the check was done so I can try to provide a fix?
+
+In `vernac_require_open_proof` which was called by `modify_pstate`, both in `Vernacentries`.
+Maybe replacing the `Option.map` with `with_pstate` in `VtModify` could be enough (up to the changes that occurred afterwards).

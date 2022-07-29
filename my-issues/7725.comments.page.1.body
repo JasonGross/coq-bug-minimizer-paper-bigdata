@@ -1,0 +1,9 @@
+See also #4949, #8175
+This can probably be done fairly easily by changing https://github.com/coq/coq/blob/d47ba657bb4ec33f44402142161610955194ae61/theories/Init/Tauto.v#L104
+to 
+~~~coq
+Ltac intuition_solver := auto with *.
+Ltac intuition := with_uniform_flags ltac:(fun flags => intuition_gen flags ltac:(intuition_solver)).
+~~~
+then the Set is `Ltac intuition_solver ::= other tactic.`
+Oh, neat!  Yes, we should do this.  Probably we want `ltac:(idtac; intuition_solver)`, though, so if someone starts the solver with a `match` things don't go awry

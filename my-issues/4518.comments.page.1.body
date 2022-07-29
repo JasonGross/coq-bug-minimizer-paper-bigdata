@@ -1,0 +1,50 @@
+Comment author: @JasonGross
+
+Set Universe Polymorphism.
+Section foo.
+  Let foo@ {i} := Type@ {i}. (* Syntax error: [vernac:def_body] expected after 
+[Prim.identref] (in [vernac:gallina]). *)
+End foo.
+
+
+Comment author: @ppedrot
+
+I'm not sure that polymorphic Let-definitions make sense, just as you can't have polymorphic section variables. Why would you want this to work?
+
+
+Comment author: @JasonGross
+
+If I write
+  Let foo := (Type * Type)%type.
+I get something that mentions two universe levels. If I write
+  Let foo := Eval hnf in let T := Type in (T * T)%type.
+I (expect to) get the same, but with one universe level.  I want to do the same thing by writing somehing like
+  Let foo := (Type@ {i} * Type@ {i})%type.
+
+
+Comment author: @ppedrot
+
+Yes, but what term should be elaborated when the section is closed? Universe polymorphism can only be specified on toplevel constants, not inside terms, so that the transformation
+
+Let foo := bar. Definition baz := P.
+
+into
+
+Definition baz := let foo := bar in P.
+
+is not well-typed in general.
+
+
+Comment author: @silene
+
+As Pierre-Marie explained, "Let" is translated to a let-in construct, which is not polymorphic with respect to universes. So it does not make sense to allow the "@ {}" syntax on "Let". However, you can use the "Universe" command to quantify over universes; it was designed for this purpose.
+
+Set Universe Polymorphism.
+Section foo.
+  Universe i.
+  Let foo := (Type@ {i} * Type@ {i})%type.
+  Definition bar := foo.
+End foo.
+Print bar.
+
+

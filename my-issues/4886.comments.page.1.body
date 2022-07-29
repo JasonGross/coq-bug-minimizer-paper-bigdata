@@ -1,0 +1,27 @@
+Comment author: @JasonGross
+
+Fail Create Hintdb. (* illegal begin of vernac *)
+(* contrast with *)
+Fail Existing. (* Syntax error: 'Instance' or 'Instances' or 'Class' expected after 'Existing' (in [vernac:gallina_ext]). *)
+Fail Create HintDb foo discrminated. (* Syntax error: '.' expected after [vernac:command] (in [vernac_aux]). - this is not a sane error message when the problem is a spelling mistake. *)
+
+
+Comment author: @ppedrot
+
+Hmm, I'm afraid we can't do much for this one. We essentially get the errors raised by CAMLPX which are not helpful here... I might be wrong though.
+
+
+Comment author: @silene
+
+I think you are right. And I am not even sure camlpx could be modified to produce better error messages. Let us see:
+
+- "Create Hintdb". Because grammar rules are left-factored by camlpx, these two words are seen as a single token. (This camlpx feature is non-negotiable, as Coq would break badly without it.) That is why the error message does not say that 'HintDb' is expected after 'Create'. It would say so only if there was another rule that started with 'Create'. I guess some kind of terminal distance could be implemented in camlpx to give a better error message here, but that is no small change.
+
+- "Create HintDb foo discrminated". The first three words were successfully parsed and the grammar rule was reduced. At this point, the parser is in a state where only '.' can make it progress. The important point is that it is no longer in the middle of the Create HintDb rule and thus cannot report any error related to it. Note that this is not specific to camlpx; any parser that I know of (e.g. yacc, menhir) would have behaved in the exact same way. The only way to fix it would be to modify Coq's grammar so that each vernacular rule incorporates its final dot. That would be a huge change and I am not even sure it would be backward-compatible.
+
+
+Comment author: @ppedrot
+
+Therefore, this is a WONTFIX. Jason, you can still provide a brand new parsing engine that would solve that kind of issue if you happen to have this, but beware of the retrocompatibility!
+
+

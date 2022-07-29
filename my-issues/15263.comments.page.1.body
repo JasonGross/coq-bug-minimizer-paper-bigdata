@@ -1,0 +1,2 @@
+We could also stop deleting them, or delete at exit instead of immediately after use.
+Delete at exit sounds fine.  Neglecting to delete them fills up `/tmp` way too quickly, see https://github.com/coq/coq/issues/10495

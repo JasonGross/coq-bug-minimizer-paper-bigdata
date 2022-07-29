@@ -1,0 +1,49 @@
+Comment author: @JasonGross
+
+(* File reduced by coq-bug-finder from original input, then from 2078 lines to 131 lines, then from 142 lines to 140 lines, then from 95 lines to 29 lines *)
+Structure foo := { bar : Type; baz : bar }.
+Canonical Structure foon := {| bar := nat ; baz := 0 |}.
+
+Definition qux := nat.
+Definition z : qux := 0.
+
+Check (eq_refl : baz _ = z).
+
+Section x.
+  Canonical Structure local_foo (b : Type) (p : b) (bad : False) := {| bar := b ; baz := p |}.
+End x.
+
+Goal True.
+pose z as z'.
+unfold qux, z in *.
+Fail Fail pose (eq_refl : baz _ = z').
+pose (eq_refl : baz _ = z'). (* Anomaly: Signature and its instance do not match. Please report. *)
+
+If I remove the [Fail Fail pose ...], the anomaly on the following [pose] goes away.  I also managed to get "Error: Conversion test raised an anomaly" on the following with ssreflect 1.4:
+
+Require Ssreflect.tuple.
+Import Ssreflect.ssrbool.
+Import Ssreflect.eqtype.
+Import Ssreflect.ssrnat.
+Import Ssreflect.tuple.
+Definition DWORD  := 32.-tuple bool.
+
+Section IO.
+  Variable Chan: Type.
+  Hypothesis Chan_eq : @ Equality.mixin_of Chan.
+
+  Canonical chan_eqType := Eval hnf in EqType _ Chan_eq.
+End IO.
+Goal forall l : DWORD, True.
+intro l.
+pose (@ eq_op (tuple_eqType (S 31) bool_eqType) l l).
+unfold DWORD in *.
+Fail Fail pose (l == l).
+pose (l == l).
+
+
+Comment author: @ppedrot
+
+Fixed in trunk.
+
+

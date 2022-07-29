@@ -1,0 +1,99 @@
+Perhaps the example below adds some clairty.
+```
+Definition x3 : nat := dlet x := 1 in dlet x := 2 in let x := 3 in x.
+Print x3.
+(*
+x3 = 
+dlet _ : nat := 1 in
+dlet _ : nat := 2 in
+let x1 := 3 in x1
+     : nat
+*)
+```
+
+Note that the binders in `dlet _ := n in ...` still get names, they are just hidden. So alpha-renamed for printing, we have `dlet x := 1 in dlet x0 := 2 in let x1 := 3 in x1`, as evidenced by printing of the native `let` showing the binder name. The current algorithm for generating these successive numeric suffices is quadratic in the number of binders (a linear scan for the next available name) if I remember correctly (code in [namegen](https://github.com/coq/coq/blob/efe60d3c1b09bc059053b7383e068ddc05248dac/engine/namegen.ml#L245)). A more efficient algorithm might partition the identifier space into slices for each non-numeric prefix, and then track both the first unused suffix and a sparse set of used suffices above that, but that would require a more complicated data-structure than just a set of ids for tracking used names (though it could have the same interface, plus an efficient "next unused id with given prefix" operation)
+
+Depending on the algorithm used, the decision whether or not to show the binder name could also be a source of quadratic behavior, if each binder searches the sub-tree for uses.
+
+Hopefully the experts will correct me if this is off topic.
+Is this true even when there is absolutely no renaming?  When I hand-code all of the names (I have to do it in two chunks because otherwise Coq's parser stack overflows), I get about 8 s for printing 5000 binders and about 32 s for printing 10000 binders.  So removing the actual renaming cuts out half the time (which is enormous).
+
+I am confused why Coq's linear scan is so slow; here is an implementation of the renaming bit I think you're talking about, in Python, that's about 3x faster:
+```python
+#!/usr/bin/env python
+
+s = set()
+for i in range(10000):
+    j = 0
+    while 'x%d' % j in s:
+        j += 1
+    s.add('x%d' % j)
+```
+(about 21 s, compared to Coq's 60, to print).  If I remove the string manipulation, and just store integers, then it goes down to 3.7 seconds.   (This is still Python, and it's still quadratic.)
+
+So, if this is indeed the bottleneck, then I propose augmenting the context with a map of prefix to potential first unused id.  Then you just start the linear scan from this location (as long as the context-names have O(1) membership check).  Something like the following in python, which runs in 0.06 s:
+```python
+#!/usr/bin/env python
+
+d = dict()
+s = set()
+for i in range(10000):
+    if 'x' not in d.keys(): d['x'] = 0
+    j = d['x']
+    while 'x%d' % j in s:
+        j += 1
+    s.add('x%d' % j)
+    d['x'] = j
+```
+Oh, ew, is Coq's linear scan slow because it's *reparsing* the string identifier to increment it on every subiteration?  This is https://github.com/coq/coq/blob/master/engine/nameops.ml#L77-L101
+There are a couple reasons why the current Coq algorithm might be slower than the Python algorithm you gave, other than just implementation details. For one, it looks like Coq is using an ordered tree rather than a hash table like Python does (and the log factor of doing comparisons at every level of the tree might be expensive). Another possible reason is that the logic for computing the next id is [pretty complicated](https://github.com/coq/coq/blob/efe60d3c1b09bc059053b7383e068ddc05248dac/engine/nameops.ml#L63), and of course while people are still relying on the specifics of the automatic name generation algorithm (another reason for me to fix the remaining bugs with `-mangle-names`...) changing this to be faster or simpler introduces potential problems with compatibility.
+
+The potential issue with the quadratic algorithm to identify which binders should be printed and which shouldn't would still remain.
+Since native let always show the binder name, replacing `dlet` with `let` in the experiment might allow you to distinguish how much of a problem that is causing, if at all (there should be a linear algorithm to do the same thing, and Coq might already be using that in which case this line of inquiry is off target).
+
+(I'll also add that none of my speculation is backed up by profiling.)
+Indeed, printing of nested binders is at least quadratic and even cubic in some cases IIRC. It's a well-known source of slowness, and I have been looking at this code for a long time. The problem is that it is hard to change it while being 100% backwards-compatible or without rewriting detyping from scratch. If you want a non-backward compatible patch that will hopefully speed up things a lot, try replacing all of the `RenamingElsewhereFor` / `RenamingForCasesPattern` in Detyping with `RenamingForGoal`.
+
+Indeed printing is a very heavyweight operation and involves multiple layers including serialization, document building, and of course detyping, externalization, and printing itself.
+
+IMHO the printing system is in general not optimized to handle large terms, so the first TODO would be to instrument your use case to see where time is spent. 
+> Indeed printing is a very heavyweight operation and involves multiple layers including serialization, document building, and of course detyping, externalization, and printing itself.
+
+The current problem has little to do with this printing stack, which amounts for negligible amounts of time on @JasonGross examples. Maybe the former matters in interactive use, but here it's just that detyping sacrifices algorithmic efficiency to have allegedly nice-looking terms. It is trivial to fix it using a dumber algorithm, but this breaks backwards compatibility.
+
+Is backward compat of printing important?
+
+Gaëtan Gilbert
+
+On 06/11/2018 15:53, Pierre-Marie Pédrot wrote:
+>     Indeed printing is a very heavyweight operation and involves
+>     multiple layers including serialization, document building, and of
+>     course detyping, externalization, and printing itself.
+> 
+> The current problem has little to do with this printing stack, which 
+> amounts for negligible amounts of time on @JasonGross 
+> <https://github.com/JasonGross> examples. Maybe the former matters in 
+> interactive use, but here it's just that detyping sacrifices algorithmic 
+> efficiency to have allegedly nice-looking terms. It is trivial to fix it 
+> using a dumber algorithm, but this breaks backwards compatibility.
+> 
+> —
+> You are receiving this because you are subscribed to this thread.
+> Reply to this email directly, view it on GitHub 
+> <https://github.com/coq/coq/issues/8909#issuecomment-436280061>, or mute 
+> the thread 
+> <https://github.com/notifications/unsubscribe-auth/ACWQ7AS6vCBuNCJGCPNY2u5hrXwqT2vlks5usaJqgaJpZM4YPhoE>.
+> 
+
+> Is backward compat of printing important?
+
+Dunno. I remember that we already discussed this issue somewhere, maybe on gitter, and people were not really thrilled by the intricate details of Coq output. @herbelin is probably the specialist around, so let's summon him.
+> The current problem has little to do with this printing stack, which amounts for negligible amounts of time on @JasonGross examples.
+
+Umm, even when @JasonGross avoided the problematic quadratic function the factor was still far from linear.
+@JasonGross I have written a patch available on [this branch](https://github.com/ppedrot/coq/tree/faster-namegen) that provides a `Fast Name Printing` option. Turning it on makes the various examples from the bug reports run instantaneously on my machine. Can you try it on actual issues from e.g. fiat-crypto?
+
+@JasonGross Any progress on this front?
+@ppedrot I've spun up a test build of fiat-crypto; the commit at the tip of https://github.com/JasonGross/fiat-crypto/tree/fast-namegen should have a profile log in about an hour or so.  Probably the only interesting files in the diff are `Experiments/NewPipeline/SlowPrimeSynthesisExamples.vo` and `Experiments/NewPipeline/Toplevel2.vo`.
+It does look pretty efficient on the top file...
+Yeah.  Moreso when you consider that a lot of the time in that file is spent in vm_compute.  I haven't checked how much of the time in that file is still spent in printing, but I wouldn't be surprised if the answer is "almost none of it"

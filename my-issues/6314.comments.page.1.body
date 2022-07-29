@@ -1,0 +1,5 @@
+A quick emacs macro fixes those.
+Uh, I'm viewing GitHub in Chrome (or sometimes on my android phone), not in emacs, presently.
+I edit github comments in emacs using the "Edit with Emacs" extension.
+Yeah, sorry about that. I thought I had included some protections against this in the script but apparently that didn't work. Whenever I see this, I fix it by hand but if people want to do a massive fix, feel free to look into it. It would require browsing through the entire comment base through GitHub API, and replacing this type of strings automatically. However ideally, one would want the link to be to the corresponding comment on GitHub (we don't want to introduce links to Bugzilla that might be dead in a few months from now). This would require some more API calls to get the identifier of the corresponding comment.
+Too hard to fix

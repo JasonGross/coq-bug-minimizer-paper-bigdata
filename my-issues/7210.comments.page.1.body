@@ -1,0 +1,151 @@
+Note that the standard workaround for the first issue here is the rather verbose:
+```coq
+Goal True.
+  lazymatch constr:(fun a b : nat => a + a) with
+  | (fun x y : ?A => ?f)
+    => let f' := fresh in
+       pose (fun (x y : A) => match f return _ with
+                              | f' => ltac:(let f := (eval cbv delta [f'] in f') in
+                                            clear f';
+                                            exact f)
+                              end)
+  end.
+```
+
+Note that the `return _` is so that Coq will not backtrack on failures causing exponential blowup, and the `clear f'` is so that we don't get an explosion in the size of the context as we recurse.
+Note that this is a very severe issue which makes it essentially impossible to pass *any* constrs through tactics in terms because there is no guarantee that the names bound in a constr will refer to the same thing.  Moreover, this breakage is silent, and doesn't show up until you run a term through `type of`, which is quite bad.  Here is an example that shows that this problem makes any complex use of tactics in terms essentially unreliable:
+<details>
+```coq
+Require Import Coq.Lists.List.
+Ltac under_forall_Type term ctx cont :=
+  lazymatch term with
+  | forall T : Type, ?P
+    => let t := fresh "t" in
+       let P' := fresh in
+       let ctx' := fresh in
+       constr:(fun t : Type
+               => match cons t ctx return _ with
+                  | ctx'
+                    => match List.hd t ctx' return _ with
+                       | T
+                         => match P return _ with
+                            | P'
+                              => ltac:(let ctx := (eval cbv delta [ctx' T P'] in ctx') in
+                                       let P := (eval cbv delta [ctx' T P'] in P') in
+                                       clear ctx' T P';
+                                       let res := under_forall_Type P ctx cont in
+                                       exact res)
+                            end
+                       end
+                  end)
+  | ?term => cont ctx term
+  end.
+
+Ltac under_binders term cont :=
+  lazymatch term with
+  | forall x : ?T, ?P
+    => let P' := fresh in
+       constr:(fun x : T
+               => match P return _ with
+                  | P' => ltac:(let P := (eval cbv delta [P'] in P') in
+                                let res := under_binders P cont in
+                                exact res)
+                  end)
+  | ?term => cont term
+  end.
+
+Ltac foo cont :=
+  let v := under_forall_Type
+             (forall (A : Type) (t : nat), t = t)
+             (@nil Type)
+             ltac:(fun ctx term
+                   => under_binders
+                        term
+                        ltac:(fun term'
+                              => cont ctx term')) in
+  pose v.
+
+Goal True.
+  foo ltac:(fun ctx term' => constr:(True)). (* success *)
+  foo ltac:(fun ctx term' => constr:(True)). (* success *)
+  foo ltac:(fun ctx term' => let t := type of ctx in constr:(True)).
+  (* Error:
+In nested Ltac calls to "foo", "under_forall_Type",
+"(fun t : Type =>
+  match t :: ctx with
+  | ctx' => match hd t ctx' with
+            | T => match P with
+                   | P' => _
+                   end
+            end
+  end)" (with term:=Type -> forall t : nat, t = t, ctx:=nil,
+P:=forall t : nat, t = t), "under_forall_Type", "cont" (bound to
+fun ctx term => under_binders term ltac:(fun term' => cont ctx term')),
+"under_binders", "(fun x : T => match P with
+                                | P' => _
+                                end)" (with x:=t, term:=
+forall t : nat, t = t, T:=nat, P:=x = x), "under_binders",
+"cont" (bound to fun term' => cont ctx term') and "cont" (bound to
+fun ctx term' => let t := type of ctx in
+                 True), last call failed.
+Illegal application:
+The term "@cons" of type "forall A : Type, A -> list A -> list A"
+cannot be applied to the terms
+ "Type" : "Type"
+ "t" : "nat"
+ "nil" : "list Type"
+The 2nd term has type "nat" which should be coercible to
+"Type".
+   *)
+```
+</details>
+cc @ppedrot 
+~~Ltac2 is not affected by this, right? is there any chance we could have ltac2 in the Linux version of coq, appropriately labeled as an experiment/preview/beta as necessary?~~
+No, I think Ltac2 is just as affected by this as Ltac1.  Perhaps a bit less so, because it is easier to pick a different name when recursing under binders, perhaps?
+
+One solution to this is to never ever mix reuse of binder names with tactics in terms.  That is, always use the pattern
+
+```coq
+match term with
+| (fun x : ?T => ?f)
+=> let y := fresh in
+   constr:(fun y : T
+             => ltac:(let f := constr:(match y with x => f end) in
+                      ...))
+end
+```
+rather than putting the match outside the tactic; this would mean that if we want to preserve binder names, we need to add an extra `match ` to adjust that after the fact.
+Hmm, I am not sure what is going on here in that case. Could you explain what each command does, (in particular, what names the body of `f` refers to at various points) and how they are represented? I totally thought it was just ltac treating the new `fun x` => in a way that ignores the old name bound to x...
+Ah, it is possible that the new example deserves a new issue, because the repeating of names is a bit subtle.  Let me go for a lite explanation of what happens, and if that is not enough, then I will explain in more depth.
+
+Very roughly the issue is that the following two `pose`s behave differently:
+```coq
+Goal forall n : nat, True.
+  intro n.
+  let v := constr:(n) in
+  pose (fun n : Set => v); (* fun _ : Set => n : Set -> nat *)
+    pose (fun n : Set => ltac:(exact v)). (* fun n : Set => n : Set -> Set *)
+```
+That is, whenever you pass from `constr` to tactics, all existing constrs in the Ltac environment are effectively treated as open terms over the existing context.  As far as I'm aware, all of the methods for recursing under binders in Ltac2 suffer from the same issue, but perhaps @ppedrot will tell me that `Constr.in_context` (the Ltac2-version of "recurse under binders") is better-behaved.  (Just from the design of the system, though, I am dubious about this; my intuition boils down to the fact that `constr`s in Ltac(2) identify variables in the proof context by name rather than by pointer.)
+
+In the particular example I have, this issue arises because the tactic:
+1. creates a new variable name with `fresh "t"` (which is the identifier `t` because there is no `t` in the context),
+2. recurses under a fresh binder of this name (`t`) and builds a `constr` containing `t : Type`,
+3. recurses under all the forall-binders in a constr `forall t : nat, ....`, *preserving names*
+4. tries to use the `constr` from 2 containing `t : Type`, which is now ill-typed because the most-recent binder `t` has type `nat`
+
+Note that this issue showed up in the wild in reifying rewrite rules in fiat-crypto.
+I am guessing that there is a thing that is done when dynamically casting Ltac variables to `constr` when inside a `constr` that has them evaluated in the proof context outside the `constr` before inserting them into the new `constr` underneath whatever binders are created.  I imagine the same transformation could occur on all Ltac variables which hold `constr` things (and hopefully Ltac thunks just work *crosses fingers*)?  @ppedrot , can you comment on this?
+Quoting @ppedrot on gitter, in response to me asking about the two `pose`s (as well as the variants with `ident:`, `uconstr:`, and `open_constr:` in place of `constr:` (only `uconstr` behaves differently; and it makes both behave like the `ltac:(exact ...)` version))
+> the reason is that the evaluation of the v variable doesn't happen in the same context
+in the first case, you're evaluating `Var(n)` under a context `Var(n) : nat | n : Set ⊢`
+the fun n is a DeBruijn rel, not a var
+so there is no possible capture
+in the second case, the ltac:(...) expression triggers a generation of a fully var-named context
+so that you get `Var(n0) : nat, Var(n) : Set | ⊢`
+in particular, no rel
+so capture happens
+regarding the additional genargs, the only one that behaves differently is uconstr, and the reason is that uconstr builds a proper closure (in a somewhat hackish way but that's not the issue)
+typechecking a uconstr is like evaluating a tactic thunk
+
+And @ppedrot confirms "yeah, unfortunately you're going to have the same issue with Ltac2"

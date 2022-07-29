@@ -1,0 +1,50 @@
+Comment author: @JasonGross
+
+This means that https://github.com/coq/coq/pull/241 will not work that well.
+```coq
+Module A. Module B. Notation mynat := nat. Notation nat := nat. End B. End A.
+Locate nat.
+(* Inductive Coq.Init.Datatypes.nat
+Notation Top.A.B.nat (shorter name to refer to it in current context is A.B.nat) *)
+Print A.B.nat. (* Notation A.B.nat := nat *)
+Import A.
+Locate mynat. (* Notation Top.A.B.mynat (shorter name to refer to it in current context is B.mynat) *)
+Print B.mynat.
+Locate nat.
+(* Inductive Coq.Init.Datatypes.nat
+Notation Top.A.B.nat (shorter name to refer to it in current context is A.B.nat) *)
+(* Um, what? *)
+Print B.nat. (* Error: B.nat not a defined object. *)
+```
+
+
+Comment author: @ppedrot
+
+It looks like there is dedicated code in Syntax_def to actually trigger this behaviour. I'm wondering what is the intended semantics...
+
+
+Comment author: @JasonGross
+
+What's the origin of the code?  Is it possible the answer is "premature optimization gone wrong"?
+
+
+Comment author: @ppedrot
+
+The commit that introduced that behaviour justified it as follows:
+
+commit 8659ff43db85c43df644da6ac08509374aabcad4
+Author: herbelin <herbelin@ 85f007b7-540e-0410-9357-904b9bb8a0f7>
+Date:   Wed Nov 11 10:55:32 2009 +0000
+
+    Improving abbreviations/notations + backtrack of semantic change in r12439
+    - Deactivation of short names registration and printing for
+      abbreviations to identical names, what avoids printing uselessly
+      qualified names binding where the short name is in fact equivalent.
+    [...]
+
+
+Comment author: @ppedrot
+
+Fixed by f0ba692.
+
+

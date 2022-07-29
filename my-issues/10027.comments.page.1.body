@@ -1,0 +1,1 @@
+The fact it *can* refold doesn't mean it *will* always refold. This machine is used by unification without the refolding flags, so you essentially get a (slow) fancy call-by-name reduction (AFAIR, that's beta-iota + delta on matches or something like that).

@@ -1,0 +1,49 @@
+Comment author: @JasonGross
+
+(* File reduced by coq-bug-finder from original input, then from 8669 lines to 91 lines, then from 51 lines to 34 lines *)
+(* coqc version trunk (August 2014) compiled on Aug 31 2014 10:12:32 with OCaml 4.01.0
+   coqtop version cagnode17:/afs/csail.mit.edu/u/j/jgross/coq-trunk,trunk (437b91a3ffd7327975a129b95b24d3f66ad7f3e4) *)
+Class Contr_internal (A : Type) := { center : A }.
+Arguments center A {_}.
+Inductive trunc_index := minus_two | trunc_S (_ : trunc_index).
+Fixpoint IsTrunc_internal (n : trunc_index) (A : Type) : Type :=
+  match n with
+    | minus_two => Contr_internal A
+    | trunc_S n' => forall (x y : A), IsTrunc_internal n' (x = y)
+  end.
+Class IsTrunc (n : trunc_index) (A : Type) : Type := Trunc_is_trunc : IsTrunc_internal n A.
+Notation Contr := (IsTrunc minus_two).
+Hint Extern 0 => progress change Contr_internal with Contr in * : typeclass_instances.
+Notation "!" := (fun _ => center _).
+Inductive Unit : Set := tt.
+Instance contr_unit : Contr Unit | 0.
+Admitted.
+Record TruncType (n : trunc_index) :=
+  BuildTruncType {
+      trunctype_type :> Type ;
+      istrunc_trunctype_type : IsTrunc n trunctype_type
+    }.
+Global Existing Instance istrunc_trunctype_type.
+Axiom pushout : forall {A B C : Type} (f : A -> B) (g : A -> C), Type.
+Definition cone {A B} (f : A -> B) : Type.
+  pose (@ pushout _ _ Unit f !).
+  exact (pushout f !). (* Toplevel input, characters 15-37:
+Error:
+Cannot infer an internal placeholder of type "TruncType minus_two" in environment:
+
+A : Type
+B : Type
+f : A -> B
+T := pushout f ! : Type
+.
+ *)
+
+
+This occurs in both Coq 8.4 and tunk.  Removing the [Existing Instance istrunc_trunctype_type.] fixes this problem.  Adding instances should not break typeclass resolution like this.
+
+
+Comment author: @Zimmi48
+
+This is working in 8.6.
+
+

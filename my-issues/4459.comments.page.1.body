@@ -1,0 +1,23 @@
+Comment author: @JasonGross
+
+Axiom proof_admitted : False.
+Goal True.
+  unshelve refine (let x := _ in _).
+  par: case proof_admitted.
+(* Toplevel input, characters 15-40:
+Error: The solution is not ground *)
+
+
+Comment author: @gares
+
+Suggestions?
+
+I think I chose ground because "ground term" is the standard way to name
+a "term" with no variables.
+
+
+Comment author: @JasonGross
+
+Sure, it makes sense, and might be reasonable for the reference manual, but doesn't really help the average user fix the problem.  I'd probably say something like "Uninstantiated existential variables remain" if you want a short error message, or "The par selector requires a tactic that fully solves all goals and leaves no unresolved existentials.  The following existentials remain unsolved: [list of unsolved existentials]".
+
+

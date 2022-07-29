@@ -1,0 +1,24 @@
+Comment author: @JasonGross
+
+Set Primitive Projections.
+Class foo {A} {a : A} := { bar := a; baz : bar = bar }.
+Arguments bar {_} _ {_}.
+Instance: forall A a, @ foo A a.
+intros; constructor.
+abstract reflexivity.
+Defined.
+Goal @ bar _ Set _ = (@ bar _ (fun _ : Set => Set) _) nat.
+Proof.
+  change (bar (fun _ : Set => Set)) with (bar Set). (* Error: Conversion test raised an anomaly *)
+
+
+Comment author: @mattam82
+
+This is not linked to primitive projections. Change didn't check that the types of the two terms were convertible before trying to convert them, so bang. I'm trying to make that happen.
+
+
+Comment author: @herbelin
+
+Now fixed in trunk and 8.4.
+
+

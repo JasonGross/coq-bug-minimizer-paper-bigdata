@@ -1,0 +1,5 @@
+Comment author: @JasonGross
+
+[Let foo : Type. Admitted.] adds an axiom [foo] to the global scope, even inside a section.  This might be considered unexpected behavior, as [Let] is otherwise for section-local things (and when used at top-level, outside a section, there's the warning "Warning: foo is declared as a local definition").
+
+

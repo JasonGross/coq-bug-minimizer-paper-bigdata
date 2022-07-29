@@ -1,0 +1,74 @@
+Comment author: @JasonGross
+
+$ (echo 'Set Printing Width 114.'; echo 'Bint Scope mylist_scope with mylist.') | coqtop -emacs
+Welcome to Coq jgross-Leopard-WS:/home/jgross/Documents/repos/coq,more-test-suite-1 (47bf10e0216f7736ffe7921ce74d620594bcfcba)
+
+<prompt>Coq < 1 || 0 < </prompt>
+<prompt>Coq < 2 || 0 < </prompt>
+<prompt>Coq < 2 || 0 < </prompt>
+Toplevel input, characters 0-4:
+> Bint Scope mylist_scope with mylist.
+> ^^^^
+Syntax error: illegal begin of vernac.
+$ (echo 'Set Printing Width 113.'; echo 'Bint Scope mylist_scope with mylist.') | coqtop -emacs
+Welcome to Coq jgross-Leopard-WS:/home/jgross/Documents/repos/coq,more-test-suite-1 (47bf10e0216f7736ffe7921ce74d620594bcfcba)
+
+<prompt>Coq < 1 || 0 < </prompt>
+<prompt>Coq < 2 || 0 < </prompt>Toplevel input, characters 0-4:
+> Bint Scope mylist_scope with mylist.
+> ^^^^
+Syntax error: illegal begin of vernac.
+
+<prompt>Coq < 2 || 0 < </prompt>
+
+
+Comment author: @JasonGross
+
+*** Bug [BZ#4772](https://github.com/coq/coq/issues?q=is%3Aissue%20%22Original%20bug%20ID%3A%20BZ%234772%22) has been marked as a duplicate of this bug. ***
+
+
+Comment author: @ejgallego
+
+This is due to PR#179, the fix is trivial, I'll try to have a patch ready in a couple of days.
+
+
+Comment author: @ejgallego
+
+Hi Jason, PR 193 should help: https://github.com/coq/coq/pull/193
+
+Let me know how it goes now.
+
+The real problem IMO is that the toplevel is using format incorrectly, as clearly stated in Format's manual, printing without a top-level enclosing box results in undefined behavior, but sadly such use is pervasive in Coq's codebase.
+
+
+Comment author: @gares
+
+Jason, could you please try this:
+  https://github.com/coq/coq/pull/193
+
+
+Comment author: @JasonGross
+
+Seems to work.  Thanks!
+
+
+Comment author: @ejgallego
+
+So after thinking a bit this is really a new bug: "duplicate error printing paths in coqloop", I'll file it separately.
+
+
+Comment author: @ejgallego
+
+Fix is in trunk now.
+
+
+Comment author: @ppedrot
+
+So this is fixed, right?
+
+
+Comment author: @ejgallego
+
+Indeed thanks!
+
+

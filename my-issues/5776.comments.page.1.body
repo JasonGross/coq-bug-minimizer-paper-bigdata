@@ -1,0 +1,71 @@
+Comment author: @JasonGross
+
+This is with 8.7+beta2.  I think it comes from 
+
+CAMLLIB:=$(shell "$(OCAMLFIND)" printconf stdlib)
+
+together with
+```
+$ d:/Coq-8.7/bin/coqtop -config
+LOCAL=0
+COQLIB=D:\Coq-8.7/lib/
+DOCDIR=D:\Coq-8.7/doc/
+OCAMLFIND=C:\coq64_inst\bin/ocamlfind.exe
+CAMLP4=camlp5
+CAMLP4O=C:\coq64_inst\bin/camlp5o.exe
+CAMLP4BIN=C:\CoqSDK-v8.6-win64-1\SDK\bin/
+CAMLP4LIB=/dev/null
+CAMLP4OPTIONS=-loc loc
+CAMLFLAGS=-thread -rectypes -w +a-4-9-27-41-42-44-45-48-50  -safe-string
+HASNATDYNLINK=true
+COQ_SRC_SUBDIRS=config dev lib kernel library engine pretyping interp parsing 
+proofs tactics toplevel printing intf grammar ide stm vernac plugins/btauto 
+plugins/cc plugins/derive plugins/extraction plugins/firstorder plugins/fourier 
+plugins/funind plugins/ltac plugins/micromega plugins/nsatz plugins/omega 
+plugins/quote plugins/romega plugins/rtauto plugins/setoid_ring plugins/ssr 
+plugins/ssrmatching plugins/syntax plugins/xml
+```
+Comment author: @maximedenes
+
+How do you get CAMLP4BIN=C:\CoqSDK-v8.6-win64-1\SDK\bin/ ? Looks very suspicious.
+
+
+I believe I fixed this in 8.7.0.
+I am still seeing this issue.  I am on Windows 10 with Coq 8.7.0 installed in D:/Coq by the Windows installer.  I have GNU make and ocaml installed under Cygwin.  I have a fresh copy of the Bignums library and am attempting to build it by typing "make" in a Cygwin bash terminal window, but it fails with the error message that is the title of this issue.  coqtop -config has OCAMLFIND=C:\coq64_inst\bin/ocamlfind.exe, but C:/coq64_inst does not exist.   Setting OCAMLFIND=/usr/bin/ocamlfind in the environment does not make a difference.  I will attempt to fix Makefile.coq.conf by hand but that does not seem very satisfactory.
+Can you tell us what you see in the generated `Makefile`, at the line where `ocamlfind` is called?
+I have attached all the files that seem relevant, including the output from "make VERBOSE=1"
+
+In Makefile.coq.conf I see "COQMF_OCAMLFIND=C:\coq64_inst\bin/ocamlfind.exe"
+In Makefile.coq I see "OCAMLFIND := $(COQMF_OCAMLFIND)" and later various things like 
+"CAMLC       ?= "$(OCAMLFIND)" ocamlc   -c" and "CAMLLIB:=$(shell "$(OCAMLFIND)" printconf stdlib 2> /dev/null)"  
+
+[Makefile.coq.conf.txt](https://github.com/coq/coq/files/1422697/Makefile.coq.conf.txt)
+[Makefile.coq.txt](https://github.com/coq/coq/files/1422698/Makefile.coq.txt)
+[Makefile.txt](https://github.com/coq/coq/files/1422699/Makefile.txt)
+[make_log.txt](https://github.com/coq/coq/files/1422686/make_log.txt)
+
+
+
+
+Oh, I hadn't realized that `bignums` contains an ML plugin. So the fact that the message is still shown is a bug, but that workflow (compiling plugins through `coq_makefile` on Windows) is not supported, as a message in `Makefile.coq` tries to explain.
+
+I don't know what was the story for distribution on Windows of `bignums` when it was split from the standard library. @letouzey ?
+OK.  
+
+For the record, after correcting Makefile.coq.conf manually I get the message 
+"Error: /cygdrive/d/Coq/lib/vernac/mltop.cmi is not a compiled interface for this version of OCaml.
+It seems to be for an older version of OCaml.".  My ocaml is 4.04.2.
+
+You can always try opam for windows and install Coq from source., it will make your life much easier.
+I tried compiling coq from source under Cygwin yesterday and it failed with a segmentation fault.  I might report that properly later if I can find the energy.
+Compiling plugins on Windows is not supported? As in, there is no way to install external plugins on Windows? If that's the case we certainly should have never taken Bignums out of the main distrib!
+@Zimmi48 FTR, that was a limitation encountered by @RalfJung at some point (they wanted ppedrot/coq-string-ident in Iris for Windows users), but it seems to be fixed by now. Not sure exactly how and with which toolchain, you should ask.
+Sorry for a digression, but I'd incidentally be a supporter of integrating `ppedrot/coq-string-ident` to the main archive. Wondering if others +1 are around.
+Right, Coq 8.7 and coq-string-ident compile fine with <https://fdopen.github.io/opam-repository-mingw/installation/>. I have however not tried to marry this Coq with any kind of IDE.
+
+Coq 8.6 does not work because of a bug in coq_makefile. Ssreflect 1.6.2 does not work because <https://github.com/math-comp/math-comp/pull/143> only got merged into master.
+> Ssreflect 1.6.2 does not work because math-comp/math-comp#143 only got merged into master.
+
+In fact, it is worse than that. An 1.6.3 tag has been created (because the math-comp build for Coq 8.4 was broken), but that critical fix was not backported. I notified @CohenCyril , hopefully he'll see it in time to do a new tag before announcing the release.
+@gares and @maximedenes I do not have the appropriate test platform for windows. I would be glad it one of you can do the backport and the testing. Sounds 1.6.4 will not be for today.
+I can also test, if you give me a commit to try.

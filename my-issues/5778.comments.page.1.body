@@ -1,0 +1,36 @@
+Comment author: @JasonGross
+
+```coq
+Ltac a _ := pose (I : I).
+Ltac b _ := a ().
+Ltac abs _ := abstract b ().
+Ltac c _ := abs ().
+Goal True.
+  Fail c (). (* The command has indeed failed with message:
+In nested Ltac calls to "c", "abs", "b", "a", "pose (I : I)" and 
+"(I : I)", last term evaluation failed.
+The term "I" has type "True" which should be Set, Prop or Type. *)
+```
+
+I expect to see
+```coq
+(* The command has indeed failed with message:
+In nested Ltac calls to "c", "abs", "abstract b ()", "b", "a", "pose (I : I)" 
+and 
+"(I : I)", last term evaluation failed.
+The term "I" has type "True" which should be Set, Prop or Type. *)
+```
+Note that fixing this will also have the beneficial side effect of making 
+abstract nodes appear correctly in the Ltac profile.
+
+
+Comment author: @ejgallego
+
+Isn't this a duplicate of https://coq.inria.fr/bugs/show_bug.cgi?id=3608 ?
+
+
+Comment author: @JasonGross
+
+Of "Global environment should be synchronized with tactic backtrack", no.  This bug is just that the backtrace book keeping machinery doesn't get called in the tclABSTRACT (or its underlying functions) (even though it is called on tactics used to prove the abstracted lemma).
+
+

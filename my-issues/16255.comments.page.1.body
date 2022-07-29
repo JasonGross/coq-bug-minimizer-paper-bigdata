@@ -1,0 +1,17 @@
+Indeed `make install` is not supported anymore, as the message indicates. (And it can't be fixed as we don't manage install at all ourselves now)
+
+The recommended sequence for packagers is: `configure && make dunestrap && dune build -p coq-core,coq-stdlib,coq && dune install coq-core coq-stdlib coq $args` where args include destdir and other parameters such as prefix.
+```
+./configure # configure script
+make dunestrap # generate coq rules
+dune build -p coq-core,coq-stdlib,coq # build coq packages in release mode
+dune install coq-core coq-stdlib coq $args # install coq packages
+```
+So indeed, to clarify what is going on, Coq's configure just now sets where `coqc` _does expect_ the stdlib to be present.
+
+The build now produces *.install files which can be used by any opam-compatible install tool, dune install is just one of these tools.
+
+@JasonGross the Coq packages in unstable have been updated to follow this scheme I understand.
+`./configure` should still receive the `-prefix` option, right? (In your command summary, you both seem to suggest it shouldn't.)
+@Zimmi48 `-prefix` is taken by configure, but only set's the search path for coqlib, it doesn't affect install. So a contract you have is that you gotta pass the same `-prefix` to configure and `dune install`.
+It seems that coqc is no longer able to find its standard library even when the same prefix is passed to `./configure` and `dune install`, if the root of the install does not exactly match the prefix it was configured with (e.g., downloading an artifact from the CI, configuring to `./debian/tmp/usr/...` and then relocating that to `/usr/...`.  This seems like a regression...

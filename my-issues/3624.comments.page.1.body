@@ -1,0 +1,103 @@
+Comment author: @JasonGross
+
+Set Implicit Arguments.
+Module NonPrim.
+  Class foo (m : Set) := { pf : m = m }.
+  Notation pf' m := (pf (m := m)).
+End NonPrim.
+
+Module Prim.
+  Set Primitive Projections.
+  Class foo (m : Set) := { pf : m = m }.
+  Notation pf' m := (pf (m := m)). (* Wrong argument name: m. *)
+End Prim.
+
+
+Comment author: @mattam82
+
+Uhoh, that one won't work, that's when you need the eta expanded form.
+
+
+Comment author: @JasonGross
+
+Why do we need the eta-expanded form?  Since [foo] is a class and the record argument is implicit and maximally inserted, the notation should be equivalent to [pf (_ : foo m)], except that when you [Set Printing All], you shouldn't see the extra [: foo m], and that it should be reversible (i.e., [pf x] should display as [pf' m] where [m] is taken from the type of [x]).
+
+
+Comment author: @mattam82
+
+Hmm, I agree the parsing could be done like that, actually you can already define it like that. The printing/inversion of notation I don't see how to implement without adding casts to every projection. Inversion of notations is done on the intermediate glob_constr type which has no typing information.
+
+
+Comment author: @JasonGross
+
+Does anything go wrong if you have projections carry around their implicit arguments (e.g., in some auxiliary field), but not use them for term comparison?
+
+
+Comment author: @JasonGross
+
+I suppose it would be a terrible idea to have notation inversion do type inference?
+
+
+Comment author: @mattam82
+
+This could be done for the intermediate representation, it's just that detyping will need to recompute that info.
+
+
+Comment author: @mattam82
+
+Yes, that's a no go :)
+
+
+Comment author: @JasonGross
+
+Can the detyped version of primitive projections keep around the detyped versions of the arguments?
+
+
+Comment author: @mattam82
+
+Ok, I've bitten the bullet, and backtracked on projections being recognizable at user level. We'll see if it impacts performance in any way, I hope not much. When compiling at least, there shouldn't be any printing which is the only place that could be more expensive compared to the previous version. All fully applied projections get elaborated to primitive applications during type inference, the other ones stay as applications of the eta-expanded version. There should be no more differences at parsing/printing time, and no more nasty bugs hopefully :) This one is closed.
+
+
+Comment author: @JasonGross
+
+Great, thanks!  Unfortunately, Travis is suggesting that HoTT/theories/categories/Grothendieck/PseudofunctorToCat.v is now taking 6m52.98s, where it used to take 0m01.66s.  None of the other files seem to have slowed down much, though, so perhaps this is just a bug somewhere?
+
+
+Comment author: @mattam82
+
+Hmm, that's a huge slowdown. Maybe it suggests that in some places we have the eta-expanded form where the primitive projections used to appear, can you try to track it down?
+
+
+Comment author: @JasonGross
+
+The following code, which used to be necessary, now loops:
+
+  repeat match goal with
+           | [ |- context[@ compose ?C ?s ?d ?d' ?m1 ?m2] ]
+             => progress change (@ compose C s d d' m1 m2)
+                with (compose (C := C) (s := s) (d := d) (d' := d') m1 m2)
+         end
+
+This is bug [BZ#3593](https://github.com/coq/coq/issues?q=is%3Aissue%20%22Original%20bug%20ID%3A%20BZ%233593%22).
+
+
+Comment author: @mattam82
+
+Hmm, how can I test this? Bug [BZ#3593](https://github.com/coq/coq/issues?q=is%3Aissue%20%22Original%20bug%20ID%3A%20BZ%233593%22) does not apply anymore in the trunk.
+
+
+Comment author: @mattam82
+
+Nevermind, I found the culprit. This has to do with universes.
+
+
+Comment author: @JasonGross
+
+Ok, great!  Do you have a test case for the test suite, or do you want me to try to minimize the one I have?
+
+
+Comment author: @mattam82
+
+The compose case is really the same as 3593, I think that's enough for the test-suite.
+
+

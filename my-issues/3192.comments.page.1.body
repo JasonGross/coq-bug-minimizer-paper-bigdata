@@ -1,0 +1,17 @@
+Comment author: @JasonGross
+
+I would like to be able to change the absolute path of constants in a module/file when I import them.  For example, I would like to be able to do
+```coq
+Require Foo.Bar (as Baz.Qux).
+```
+and get the same effect as if I had renamed `Foo/Bar.v` to `Baz/Qux.v` and then did `Require Baz.Qux.`
+
+Similarly, I would like to be able to do something like
+```coq
+Import Foo.Bar (into Baz.Qux).
+```
+and there-after be able to refer to `Foo.Bar.x` as `Baz.Qux.x`.
+
+This is similar to https://coq.inria.fr/bugs/show_bug.cgi?id=3173, mostly because I don't have a sharp idea of what the best semantics to use for namespacing are, but I know how I'm unsatisfied with the current ones.
+
+

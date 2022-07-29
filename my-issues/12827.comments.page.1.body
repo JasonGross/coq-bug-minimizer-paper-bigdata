@@ -1,0 +1,5 @@
+`lazy_match! goal with [ |- ?g ] => let evar := open_constr:(_ : $g) in exact $evar end` should work.
+Oh, I realize the example is maybe a tad too minimal: you are looking for a way to allow arbitrary `_` in the term?
+Yes, and to write a tactic / tactic notation that has this behavior.
+Indeed, exact should probably take a `preterm`. We don't have a lot of API for those yet, so before making these changes it might be better to implement the former.
+Note that since then, the OCaml exact tactic was modified to take a glob_constr indeed. It's mostly a matter of exposing that to the Ltac2 world.

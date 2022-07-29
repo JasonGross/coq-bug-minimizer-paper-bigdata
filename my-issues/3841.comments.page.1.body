@@ -1,0 +1,31 @@
+Comment author: @JasonGross
+
+Class A := { a : False }.
+Definition foo {a : A} {T} := fun x : T => x.
+Goal True = True.
+Proof.
+  eapply foo.
+  reflexivity.
+
+This occurs in both 8.4 and trunk.  When a tactic loses an unresolved typeclass evar, almost every subsequent tactic decides that it's its job to try to find that instance, and complains.  I think the evar should probably show up as an uninstantiated evar at the end of the proof.  If nothing else, [eapply] should warn, or probably just error, if it loses a typeclass evar.
+
+(Apologies if I already reported this; I seem to recall tracking this down over the summer, but cannot find the report.)
+
+
+Comment author: @ppedrot
+
+We should mark all evars as resolvable at the end of a tactic, I think.
+
+
+Comment author: @aspiwack
+
+Probably.
+
+In [Proof.run_tactic], I grab the "future goals" from the evar map, and add them to the shelve. They should be also be turned into goals and marked unresolvable at that point. I'll try to do that soon.
+
+
+Comment author: @aspiwack
+
+Fixed in trunk ( a5ccde6f22deb1a1a2d59d3b532f74c217a05aee ).
+
+

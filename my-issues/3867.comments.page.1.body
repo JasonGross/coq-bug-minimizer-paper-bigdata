@@ -1,0 +1,20 @@
+Comment author: @JasonGross
+
+Commit 607503b28fca50f4b76b2237d5ca13802b8252fa incorrectly fixed 4843 three days ago; the commands are $(INSTALLSH) dir files, or $(INSTALLBIN) files dir, but the commit changed from $(INSTALLSH) dir files to $(INSTALLBIN) dir files, which fails.
+
+
+Comment author: @pirbo
+
+Sorry for that
+
+
+Comment author: @JasonGross
+
+I guess it should actually be 3843, as 4*** does not yet exist.  In any case, thanks for fixing that bug!
+
+
+Comment author: @JasonGross
+
+Also, I think $(INSTALLBIN) flattens the directory structure, so it's not as simple as switching the argument order, apparently.
+
+

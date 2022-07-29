@@ -1,0 +1,94 @@
+Comment author: @JasonGross
+
+Consider the code
+
+Require Import Setoid Morphisms RelationClasses Equivalence.
+
+Goal forall T (R : relation T) x y z, Transitive R -> R x y -> R y z -> R x z.
+Proof.
+  intros T R x y z Tr H1 H2.
+  evar (z' : T -> T).
+  transitivity (z' z).
+  setoid_rewrite H1.
+
+It works fine.  If I [subst z'], though, as in
+
+Require Import Setoid Morphisms RelationClasses Equivalence.
+
+Goal forall T (R : relation T) x y z, Transitive R -> R x y -> R y z -> R x z.
+Proof.
+  intros T R x y z Tr H1 H2.
+  evar (z' : T -> T).
+  transitivity (z' z).
+  subst z'.
+  setoid_rewrite H1.
+
+then setoid_rewrite gets confused:
+
+Toplevel input, characters 0-17:
+Error:
+Tactic failure:setoid rewrite failed: Unable to satisfy the rewriting constraints.
+
+Could not find an instance for "Proper (R ==> R ==> Basics.flip Basics.impl)
+                                  R" in environment:
+
+T : Type
+R : relation T
+x : T
+y : T
+z : T
+Tr : Transitive R
+H1 : R x y
+H2 : R y z
+do_subrelation := do_subrelation : apply_subrelation
+
+
+Comment author: @ppedrot
+
+Surely related to bug [BZ#3141](https://github.com/coq/coq/issues?q=is%3Aissue%20%22Original%20bug%20ID%3A%20BZ%233141%22). The subst tactic is known for its evar-intolerance.
+
+
+Comment author: @JasonGross
+
+The problem is with setoid_rewrite, not subst.  I can make it work again by doing
+
+Require Import Setoid Morphisms RelationClasses Equivalence.
+
+Goal forall T (R : relation T) x y z, Transitive R -> R x y -> R y z -> R x z.
+Proof.
+  intros T R x y z Tr H1 H2.
+  evar (z' : T -> T).
+  transitivity (z' z).
+  subst z'.
+  match goal with
+    | [ |- appcontext[?E] ] => is_evar E; let E' := fresh in set (E' := E)
+  end.
+  setoid_rewrite H1.
+
+And I can break it without subst:
+
+Require Import Setoid Morphisms RelationClasses Equivalence.
+
+Goal forall T (R : relation T) x y z, Transitive R -> R x y -> R y z -> R x z.
+Proof.
+  intros T R x y z Tr H1 H2.
+  evar (z' : T -> T).
+  transitivity (z' z).
+  unfold z'; clear z'.
+  setoid_rewrite H1.
+
+
+I do not think it's related to https://coq.inria.fr/bugs/show_bug.cgi?id=3141; that talks about [subst] (which substitutes equalities), whereas [subst] here simply removes a [let ... in ...] in the proof tree.
+
+
+Comment author: @herbelin
+
+The evar has a dependency in x. So, when trying to replace x with y in the goal, the x in the instance of the evar is also to be replaced. Since evar is undefined, setoid_rewrite does not find a "Proper" lemma and fails (if you look at the error message, it is looking at a "R ==> R ==> flip impl" relation and not a "R ==> eq ==> flip impl" what hints that there is a rewriting attempt going on in the evar).
+
+To get what you want, do instead "setoid_rewrite H1 at 1".
+
+One could imagine that occurrences in evars are skipped by default, but I don't know how universal it would be to go this direction.
+
+I don't know what Matthieu would like to do here. Maybe the error message could be improved, maybe reporting something like "cannot rewrite x at occurrence 2", but in the meantime, I mark it as invalid.
+
+

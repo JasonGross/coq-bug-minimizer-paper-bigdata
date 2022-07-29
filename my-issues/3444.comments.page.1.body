@@ -1,0 +1,5 @@
+Comment author: @JasonGross
+
+It would be nice if make checkproofs TIMED=1 and make vi2vo TIMED=1 gave per-file timing stats.
+
+

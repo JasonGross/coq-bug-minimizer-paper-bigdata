@@ -1,0 +1,73 @@
+Comment author: @JasonGross
+
+The setoid_rewrite error messages are essentially useless.  At the very least, they should mention "Set Typeclasses Debug".  Better, they should list the first and final inferred instance for each top-level [Proper] class problem, noting which ones had no inferrable instances.  I suspect this would handle something like 80% of the cases I run into.
+
+
+Comment author: @JasonGross
+
+*** Bug [BZ#4847](https://github.com/coq/coq/issues?q=is%3Aissue%20%22Original%20bug%20ID%3A%20BZ%234847%22) has been marked as a duplicate of this bug. ***
+
+
+Comment author: @JasonGross
+
+Here is a simple strategy for creating better setoid_rewrite error messages:
+
+1. Add an option [Set SetoidRewrite Timeout n] such that, if [setoid_rewrite] 
+takes longer than [n] seconds, it will fail with an error message about what it 
+was unable to resolve in that time, as specificed in steps 2 and 3.
+
+2. Write this code:
+Ltac evar_to_underscore term :=
+  let is_ev := constr:(ltac:(first [ is_evar term; exact true | exact false ])) 
+in
+  let has_ev := constr:(ltac:(first [ has_evar term; exact true | exact false 
+])) in
+  lazymatch has_ev with
+  | false => term
+  | true
+    => lazymatch is_ev with
+       | true => uconstr:(_)
+       | false
+         => lazymatch term with
+            | ?f ?x
+              => let f' := evar_to_underscore f in
+                 let x' := evar_to_underscore x in
+                 uconstr:(f' x')
+            | _ => term
+            end
+       end
+  end.
+Ltac Morphisms.proper_subrelation ::=
+  match goal with
+    [ H : Morphisms.apply_subrelation |- ?G ] => clear H ;
+                                       Init.class_apply 
+@ Morphisms.subrelation_proper;
+                                       [ let G' := evar_to_underscore G in
+                                         idtac "Warning: No direct instance 
+for" G' | .. ]
+  end.
+
+3. In any block of existential instance that fails to resolve, print the first 
+such Warning, preferably including the top-level subgoal number (so, e.g., 3, 
+in "Debug: 3.1.4.1.5.9:")
+
+Alternatively, stick such a printing in partial_application_tactic, but I think 
+it works better in proper_subrelation.
+
+This is based on the assumption that, generally, if a Proper instance fails to 
+resolve, then it is because you're missing an explicit instance for that 
+function, and you want to give the most general form possible.
+
+I'm not sure if you want to modify proper_subrelation, or add a hook into the 
+setoid_rewrite machinery, or something, but this sort of printout is massively 
+better than the current "Could not resolve existential instances" or whatever, 
+with a blob of subgoals which are hard to decipher.  It might make sense to 
+leave the current printout as a "more verbose" error message option, but I've 
+yet to meet anyone (including myself) who gleans useful information from the 
+current error message, where as this error message would cut my setoid_rewrite 
+debugging time by roughly an order of magnitude.
+
+N.B. A friend of mine wrote a Python script implementing a similar strategy at 
+https://github.com/asya-bergal/setoid_rewrite_debug/blob/master/setoid_rewrite_debug.py.
+
+

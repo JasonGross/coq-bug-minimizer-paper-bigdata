@@ -1,0 +1,6 @@
+Comment author: @JasonGross
+
+I'd like a variant of [econstructor] that doesn't shelve the dependent fields (like [econstructor]) and doesn't reorder them (like [unshelve econstructor]).
+
+
+That would sure be nice to have.

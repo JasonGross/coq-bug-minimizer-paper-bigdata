@@ -1,0 +1,8 @@
+Somehow, the [reduction-effect](https://github.com/herbelin/reduction-effects) plugin should do the work for `cbv` (but I did not complete the packaging of it yet and that's not fully sure that it compiles with 8.8).
+
+For `lazy`, something remains to be done. Actually, the code for `Set Debug Cbv` could just be moved to `cClosure.ref_value_cache` so that it would automatically work for both `cbv` and `lazy` (and conversion as well)...
+> Actually, the code for `Set Debug Cbv` could just be moved to `cClosure.ref_value_cache` so that it would automatically work for both `cbv` and `lazy` (and conversion as well)...
+
+I would be interested in having this happen.
+
+Also, all of these features would be useful for `simpl` and `cbn` as well.

@@ -1,0 +1,48 @@
+Comment author: @JasonGross
+
+I'd like to be able to define inductive types (or, at least, inductive records) 
+with negative occurrences, which can not be consumed by [fix] nor created by 
+[cofix].
+
+For example, following 
+https://www.cs.cmu.edu/~aldrich/papers/objects-essay.pdf, I'd like to be able 
+to write
+
+BiInductive FiniteNatSet := 
+  { contains : nat -> bool ; is_subset_of : FiniteNatSet -> bool }.
+
+
+Comment author: @silene
+
+As I mentioned on github, this is trivially inconsistent as long as constructors are injective.
+
+
+Comment author: @JasonGross
+
+Oh, I see.  The proof goes like this? (Untested)
+
+BiInductive P := wrap { unwrap : P -> bool }.
+Definition diagonal {T} (f : T -> (T -> bool)) : T -> bool
+  := fun x => negb (f x x).
+Lemma diagonal_false {T} f x
+  : @ diagonal T f <> f x.
+Proof.
+  unfold diagonal; intro H.
+  apply (f_equal (fun g => g x)) in H.
+  simpl in H.
+  destruct (f x x); compute in H; congruence.
+Qed.
+Definition bad : False
+  := diagonal unwrap (wrap (diagonal unwrap)) eq_refl.
+
+
+Comment author: @JasonGross
+
+Wait, no, that proof doesn't work, that merely proves that P is uninhabited.  What's the diagonalization proof you had in mind?
+
+
+Comment author: @JasonGross
+
+Argh, this is why I need an external type checker.  I think it does work, though I typoed diagonal instead of diagonal_false on the last line.
+
+

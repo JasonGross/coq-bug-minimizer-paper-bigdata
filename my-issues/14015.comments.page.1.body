@@ -1,0 +1,15 @@
+My guess is that there's a missing check for relevance in the discriminee of match statements, or else that relevance is miscomputed when a `match` returns an SProp?
+It's not really about relevance, it's more that conversion incorrectly handles the stack.
+There probably aren't false positives but it's incomplete.
+Will need to think about a fix.
+This also doesn't work even though it should
+~~~coq
+Inductive sF : SProp := .
+
+Definition ff (x y:sF) : match x return nat with end = match y with end := eq_refl.
+~~~
+We should really push the SProp-as-an-exception approach, I believe. I can unearth my POC patch maybe?
+Can you sketch out the exception approach?  It sounds interesting.
+When performing conversion, any SProp term is turned at runtime into a dedicated fconstr node that computationally behaves as a call-by-name exception. In particular, it kills the stack up to the next shift in relevance. With this view we don't have to check for irrelevance after the fact when two terms are not convertible but instead do this in a more streamlined fashion.
+Doesn't that require to do `relevance_of_term` at every constr -> fconstr translation though?
+@mattam82 no, we should only do that on wh-normal terms I believe, even probably less.

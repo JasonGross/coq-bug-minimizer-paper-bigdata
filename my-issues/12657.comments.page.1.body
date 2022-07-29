@@ -1,0 +1,5 @@
+Let's indeed try to bump the pin to start with.
+FTR these errors are also happening on `v8.12`. I'm currently ignoring them to not block the backporting process but this should be solved ASAP.
+Bumping seems to do the trick: the macOS build for #12672 has passed the previously failing step.
+This is still a problem , let's hope we can fix it in the next release.
+The milestone of this issue was changed to reflect the one of the pull request that closed it.

@@ -1,0 +1,31 @@
+Comment author: @JasonGross
+
+```coq
+(* File reduced by coq-bug-finder from original input, then from 7251 lines to 6610 lines, then from 476 lines to 47 lines, then from 36 lines to 20 lines *)
+(* coqc version trunk (September 2014) compiled on Sep 11 2014 14:48:8 with OCaml 4.01.0
+   coqtop version cagnode17:/afs/csail.mit.edu/u/j/jgross/coq-trunk,trunk (580b25e05c7cc9e7a31430b3d9edb14ae12b7598) *)
+Set Implicit Arguments.
+Axiom admit : forall {T}, T.
+Record PreCategory := { object : Type ; morphism : object -> object -> Type ; identity : forall x, morphism x x }.
+Local Set Primitive Projections.
+Record Functor (C D : PreCategory) :=
+  { object_of : object C -> object D;
+    morphism_of : forall s d, morphism C s d -> morphism D (object_of s) (object_of d);
+    identity_of : forall x, morphism_of _ _ (identity _ x) = identity _ _ }.
+Definition functor_category C D : PreCategory
+  := @ Build_PreCategory (Functor C D) admit admit.
+Goal forall (H0 H2 C : PreCategory) (H3 : Functor H0 (functor_category C H2))
+            (H6 : object H0) (x : object C),
+       morphism_of (object_of H3 H6) x x (identity C x) = identity _ _.
+Proof.
+  intros.
+  rewrite (identity_of (object_of H3 _)) || fail "bad".
+  Undo.
+  rewrite identity_of.
+```
+
+Comment author: @mattam82
+
+Fixed in trunk
+
+

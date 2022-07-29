@@ -1,0 +1,18 @@
+Comment author: @JasonGross
+
+Is there a good reason [Definition] is permitted in the middle of proofs?  Should this ability be hidden behind a compatibility flag (e.g., -permit-poor-definition-style), and without this flag, [Definition] should trigger an error if you're in the middle of a proof.
+
+If the reason is that it's convenient to not have to back up during preliminary development, perhaps we could have a [Temporary Definition] vernacular, explicitly meant to be used only during development?
+
+
+Comment author: @JasonGross
+
+One benefit of this is that if your code changes and an [Instance] that used to be fully solved is no longer fully solved, this error would be caught earlier than the end of the section/module/file.
+
+
+Solved by #7451
+Not fully tho, reopening.
+@ejgallego Why isn't this solved fully?
+> @ejgallego Why isn't this solved fully?
+
+I don't exactly recall why, sorry. Let's close then.

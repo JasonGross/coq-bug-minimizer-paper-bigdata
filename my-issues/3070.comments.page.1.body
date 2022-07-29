@@ -1,0 +1,58 @@
+Comment author: @JasonGross
+
+Created attachment 408
+buggy file
+
+coq'ing the attached file gives
+
+Identifier 'o' now a keyword
+File "./bug_subst_small_03.v", line 99, characters 4-9:
+Error: Illegal application (Type Error): 
+The term "Compose1" of type
+ "forall s d d' : Object0, Morphism1 d d' -> Morphism1 s d -> Morphism1 s d'"
+cannot be applied to the terms
+ "s0" : "Object0"
+ "d0" : "Object0"
+ "d'0" : "Object0"
+ "m2" : "Morphism0 d d'"
+ "m1" : "Morphism0 s d"
+The 4th term has type "Morphism0 d d'" which should be coercible to
+ "Morphism1 d0 d'0".
+
+Replacing the final [subst] with [subst Object1] succeeds.
+
+> Attached file: [bug_subst_small_03.v](https://coq.inria.fr/bugfiles/attachment.cgi?id=408) (text/x-verilog, 3172 bytes)
+> Description:   buggy file
+
+
+Comment author: @ppedrot
+
+Now it fails with "Error: Cannot mix universe polymorphic and monomorphic declarations in sections."
+
+
+Comment author: @JasonGross
+
+That's still wrong; subst should not fail when subst foo succeeds.
+
+
+Comment author: @ppedrot
+
+But by the magic of this newly introduced bug, the "subst foo" command also fails!
+
+
+Comment author: @silene
+
+Here is a reduced testcase.
+
+Lemma foo (a1 a2 : Set) (b1 : a1 -> Prop)
+  (Ha : a1 = a2) (c : a1) (d : b1 c) : True.
+Proof.
+Fail subst.
+subst a2.
+
+
+Comment author: @herbelin
+
+Fixed in v8.6 branch (bc7ffd3687, 17 Aug 2016).
+
+

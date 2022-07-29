@@ -1,0 +1,44 @@
+It auto generalizes so eg
+~~~coq
+Goal forall n, n = 0 -> n = n.
+intros n H.
+destruct n. (* H : 0 = 0 |- 0 = 0 *)
+Undo.
+case n. (* n : nat, H : n = 0 |- 0 = 0 *)
+~~~
+Therefore it can't be better than linear in size of context.
+
+Full test file with notation to avoid measuring goal printing time
+~~~coq
+Require Import ZArith.
+
+Definition hide := True /\ True -> True. (* used to be able to do intro X with constant name *)
+Fixpoint mkgoal (n : nat) : Prop
+  := match n with
+     | O => hide
+     | S n => Z.div_eucl = Z.div_eucl -> mkgoal n
+     end.
+
+Notation "===" := (_ = _).
+
+Goal mkgoal 64.
+  lazy -[hide];intros; intro X. (* 3.3s *)
+  Time  destruct X. (* 0.3s *)
+~~~
+I'm more concerned by the time of that `intros` that anything else, btw.
+intros seems to spend a lot of time in https://github.com/coq/coq/blob/d627f2d7f8a0699c4497847a4882b0d38cbad703/tactics/tactics.ml#L320
+`b` is closed but huge
+
+
+>There are no dependent types and the proof term is not large
+
+The context is huge because the fully reduced `Z.div_eucl` is huge
+@SkySkimmer right now `intros` is quadratic because it's essentially n times `simple_intro` which is O(n). It feels like we should be able to make something slightly more efficient by delaying the substitution.
+> It auto generalizes [...] Therefore it can't be better than linear in size of context.
+
+@SkySkimmer But there are no indices and the hypothesis being destructed is free in all other hypotheses.  If `destruct` cannot do better than linear in the size of the context, than neither can `clear`, but `clear` is effectively instantaneous here while `destruct` is not. 
+@JasonGross the fact that it appears instantaneous doesn't mean it's not linear.
+
+EDIT: are you trying to clear the last hypothesis or the first one? In the latter case it's not that instantaneous on my machine (0.3s for destruct but 0.15s for clear).
+The last one.  But I'm also trying to destruct the last one.  Perhaps `destruct` should have the same optimization that `clear` does for not checking hypotheses that come before the one being destructed / the last hypothesis in the term being substituted
+Btw, there's a separate issue open for the performance bottlenecks in `intros`: https://github.com/coq/coq/issues/8244

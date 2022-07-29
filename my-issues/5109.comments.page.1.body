@@ -1,0 +1,54 @@
+Comment author: @JasonGross
+
+Consider
+
+Set Warnings "-deprecated-appcontext".
+Set Warnings "-notation-overridden".
+
+Goal True.
+  match goal with |- appcontext[True] => idtac end.
+Abort.
+
+This issues a warning.  There should be a way to append to the warnings string. 
+ If I want to suppress a warning in a given place, I shouldn't have to drop 
+user-given warning suppressions.  Furthermore, -w on the command line should 
+append things to the warnings string, not simply use the last string given.  
+Without this, -w is unusable in _CoqProject, because it breaks PG.  See 
+https://github.com/ProofGeneral/PG/issues/113.
+
+
+Comment author: @silene
+
+Agreed, the "Set Warnings" command should not override the warning string, but simply append to it. Unfortunately, the "Set" machinery does not allow for such cumulative options, it is an all-or-nothing mechanism, so that would be no small change to add the feature.
+
+
+Comment author: @herbelin
+
+There is a "Add/Remove" machinery which allows to define sets of objects.
+
+
+Comment author: @silene
+
+Right, I had forgotten it was generic. Unfortunately, it comes with its own set of problems, a blocking one being that it does not respect locality, if I remember correctly.
+
+
+Comment author: @cpitclaudel
+
+Here's a small request: could the syntax of -w be changed to allow -w -warning1,-warning2 instead of -w '-warning1 -warning2'? Using a comma would save us from a word of trouble having splitting shell-quoted strings.
+
+
+Comment author: @maximedenes
+
+@ Clément: the syntax already allows that, doesn't it?
+
+
+Comment author: @maximedenes
+
+This problem is fixed by Guillaume's PR#305 which has been merged.
+
+
+Comment author: @cpitclaudel
+
+@ Maxime: does it? Great :)
+
+

@@ -1,0 +1,14 @@
+Comment author: @JasonGross
+
+The attached file implements a dependent counterpart to equal_f.
+
+
+Comment author: @JasonGross
+
+Created attachment 409
+equal_f_dep implementation
+
+> Attached file: [functional_extensionality.diff](https://coq.inria.fr/bugfiles/attachment.cgi?id=409) (text/plain, 792 bytes)
+> Description:   equal_f_dep implementation
+
+

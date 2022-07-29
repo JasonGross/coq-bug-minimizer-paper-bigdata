@@ -1,0 +1,37 @@
+Comment author: @JasonGross
+
+Welcome to Coq cagnode15:/afs/csail.mit.edu/u/j/jgross/coq-trunk,trunk (90ed6636dea41486ddf2cc0daead83f9f0788163)
+
+Coq < Ltac bar := fail.
+bar is defined
+
+Coq < Goal True.
+
+Unnamed_thm < bar.
+Toplevel input, characters 0-3:
+> bar.
+> ^^^
+In nested Ltac calls to "bar", last call failed.
+In nested Ltac calls to "bar", last call failed.
+Error: Tactic failure.
+
+
+Comment author: @herbelin
+
+Apparently due to the stm. The error is launched first from Stm.interp then from Stm.vernac_interp.
+
+
+Comment author: @gares
+
+Yep, I'm calling Hooks.(call process_error...) twice.
+
+It seems process_vernac_interp_error tries to be
+resilient to this by wrapping the exception in
+EvaluatedError, but something else must go wrong.
+
+
+Comment author: @gares
+
+I'll push the commit soon
+
+

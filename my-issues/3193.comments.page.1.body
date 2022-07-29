@@ -1,0 +1,33 @@
+Comment author: @JasonGross
+
+Section foo.
+  Let typeof {T} (_ : T) := T.
+  Fail Goal typeof 1 = nat.
+  (* Toplevel input, characters 31-32:
+Error:
+In environment
+typeof := fun (T : Type) (_ : T) => T : forall T : Type, T -> Type
+The term "1" has type "nat" while it is expected to have type 
+"Type". *) 
+  Arguments typeof {T} _.
+  Goal typeof 1 = nat.
+
+
+I shouldn't need the explicit [Arguments], because I put [T] in curlie braces.
+
+
+Comment author: @gares
+
+The same: https://coq.inria.fr/bugs/show_bug.cgi?id=3194
+
+
+Comment author: @JasonGross
+
+It would be nice if I got at least a warning that curlie braces don't work as I'd expect them for [Let].
+
+
+Comment author: @herbelin
+
+Now fixed in trunk and branch 8.4.
+
+

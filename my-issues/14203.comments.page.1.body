@@ -1,0 +1,20 @@
+As I understand it, we'd need to give coqc/coqtop an `-async-proofs-jobserver` argument which is a pipe on Unix and a named semaphor on Windows, and it'd need to synchronize the creation/termination of processes with reading/writing on this pipe on Unix and decrementing/incrementing the semaphor on Windows.
+Parallelism in dune happens at the level of the scheduler, with a job queue; TTBOMU it is not possible to perform this kind of delegation as of today. It is actually a quite tricky problem in terms of finding the best schedule if you have some freedom to partition the available job queue.
+@ejgallego How do you see `par:` working with `dune`, then?  This seems to me to make it a non-starter to port Coq developments using `par` to `dune`.  For example, for fiat-crypto, I cannot use multi-threaded `opam install` because the build will non-deterministically OOM, cf https://github.com/mit-plv/fiat-crypto/pull/966/checks?check_run_id=2514865861#step:9:72
+
+I might try my hand at writing integration with the make jobserver so that I can build fiat-crypto multi-threaded
+@gares Is there any chance that `coqworkmgr` somehow already supports this mode of interaction?
+Well, I think it was really never used by many people, but coqworkmgr was coded exactly for that. It's a process which sits there and gives an upper bound to the workers spawned by Coq. It should work even if dune is running. It won't be super precise, but you can get a bound on CPU intensive jobs at least (e.g. you can't consider memory pressure).
+IIRC it prints some env variables when it demonizes; you should export them and then run dune. Then coq workers won't run unless they get a token. You can select how many tokens are in the pool. If you have 8 cpus dune may run up to 8 coqc I guess. If you enable 12 tokens, then par workers should be limited, globally, to 4 more.
+(I hope I documented it because I don't recall much more than that)
+I can use this to limit the number of processes globally, but what I actually want is that when a `par` worker goes looking for a token, it looks at how many tokens are available on make's jobserver and asks for all of those.
+
+It seems that `coqworkmgr` uses a socket and make uses a file descriptor, and they speak different protocols.  I guess I want a flag to tell `coqworkmgr` "here's the filedescriptor for Make's jobserver" and then have it execute the following algorithm:
+- when a request for n tokens comes in on the socket, do a non-blocking read of up to n bytes of the input filedescriptor.  Then return to the socket with however many bytes were successfully read, and remember the bytes that have been read.
+- when n tokens are released on the socket, write n of the bytes remembered to the output file descriptor
+
+Would it be reasonable to add such a flag to `coqworkmgr`, perhaps `--make-jobserver-fds=R,W`
+> @ejgallego How do you see par: working with dune, then?
+
+As of today there are no plans to support `par:` in dune in any specific way.
+I don't know how th Make job server works, but I'm not against your proposal. Btw, I'm pretty sure par does not default to the number of CPUs, but rather a fixed number. 

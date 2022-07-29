@@ -1,0 +1,114 @@
+Comment author: @JasonGross
+
+In 8.6, Show starts with, e.g.,
+3 subgoals, subgoal 1 (ID 144978)
+In trunk:
+3 subgoals (ID 144978)
+
+Another example:
+In 8.6:
+1 focused subgoal
+(unfocused: 15), subgoal 1 (ID 144782)
+In trunk:
+1 subgoal (ID 61206)
+
+I suggest you add printing/output tests for the output of [Show] in -emacs mode.
+
+
+Comment author: @psteckler
+
+Interestingly, the Makefile in test-suite filters out uses of "-emacs" in coq-prog-args.
+
+
+Comment author: @psteckler
+
+In PR 589, we got rid of the "-emacs" flags in coq-prog-args in all test suite files. Those were getting filtered out in the test-suite Makefile, so the flag had no effect.
+
+So maybe the thing to do is to remove the filter, so we can use "-emacs" for this Show test. Does that sound right?
+
+
+Comment author: @ejgallego
+
+Please add a test case.
+
+
+Comment author: @psteckler
+
+PR [BZ#653](https://github.com/coq/coq/issues?q=is%3Aissue%20%22Original%20bug%20ID%3A%20BZ%23653%22) created.
+
+
+Comment author: @ejgallego
+
+I meant to the bug so we can bisect.
+
+
+Comment author: @ejgallego
+
+Likely the goals are put in the buffer for the problems that (#640 fixes).
+
+Anyways, as long as PG keeps using that fragile goal printing mode, problems are gonna keep popping up.
+
+
+Comment author: @psteckler
+
+PG uses a regexp to recognize whether a response is a goal, or something else.
+
+The test I added is per Jason's original request. Emilio, you want a test case in test-suite/bugs/opened/ ?
+
+
+Comment author: @ejgallego
+
+Let's rather bisect this. Unfortunately I am away from my main machine until ...
+
+
+Comment author: @JasonGross
+
+Bisect says:
+1fe73e6af81759fa8b78c8660745492ed886d477 is the first bad commit
+commit 1fe73e6af81759fa8b78c8660745492ed886d477
+Author: Pierre Courtieu <Pierre.Courtieu@ cnam.fr>
+Date:   Wed Apr 26 11:57:58 2017 +0200
+
+    Adding an option "Printing Unfocused".
+    
+    Off by default.
+    
+    + small refactoring of emacs hacks in printer.ml.
+
+:040000 040000 5dbc0c9ec5babf3aa5e0fac7b6dad571cd177304 5fca1a963438a4db17378984c6d9d6bcf8c46e4f M      ide
+:040000 040000 3c80295432ecbff889efd376ec43d43a7c0c0bd7 47191788b0082b061b620861dfa8820961b01a00 M      printing
+:040000 040000 23170d6b2dfaebee73861898c3075cf131c5f277 2eb78b0745a0ed3a9bdb99250715ecfc124bfbc8 M      toplevel
+
+
+Comment author: @Matafou
+
+Thanks for reporting! I will fix it.
+P.
+
+
+Comment author: @Matafou
+
+Actually to be consistent with v8.6 it would need that I reintroduce an test on option -emacs in this part of the code. I would rather avoid that and say that this name of the goal (together with the name of the corresponding evar) are only printed when Printing Goal Name is set.
+
+The third way is to either always print goal names and evars in emacs mode, which is a bit ugly, or add one more printing option for the goal name vs the goal evar.
+
+Jason do you see a reason to not let it like this?
+
+
+Comment author: @psteckler
+
+Pierre, it's not so much consistency with 8.6 that's required, but the ability of Proof General to recognize there's a goal.
+
+I already added one test in the test-suite, output/Show.v, which uses the -emacs flag. I had to change the Makefile to allow that flag, which had been filtered out before. Another test would be OK, which doesn't have to provide 8.6 compatibility, just PG compatibility.
+
+
+Comment author: @psteckler
+
+Since the goal headers in coq trunk and the latest PG appear to work together, as reported in (closed) PR 665, can we close this bug?
+
+
+Comment author: @ejgallego
+
+Paul, indeed it makes sense.
+
+

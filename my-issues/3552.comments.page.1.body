@@ -1,0 +1,19 @@
+Comment author: @JasonGross
+
+I'd like a [fail_with_context] variant of [fail], which gives the
+"""
+Error:
+In environment
+<context>
+Tactic failure: <error message>
+"""
+
+message rather than just
+
+"""
+Error: Tactic failure: <error message>
+"""
+
+This is useful for giving nice error messages in tactics that are meant to fail gracefully.
+
+

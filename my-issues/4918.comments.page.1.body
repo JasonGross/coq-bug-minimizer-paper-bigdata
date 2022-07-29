@@ -1,0 +1,17 @@
+Comment author: @JasonGross
+
+In Coq 8.4:
+
+Require Import Coq.micromega.Psatz.
+Goal 1 + 1 = 2.
+  lia.
+
+gives Anomaly: Uncaught exception Unix.Unix_error(_, "lockf", ""). Please 
+report.
+
+
+Comment author: @maximedenes
+
+If this is fixed in 8.5, I don't think we are going to backport a fix.
+
+

@@ -1,0 +1,10 @@
+Comment author: @JasonGross
+
+Inductive quotient {A : Type@ {i}} {B : Type@ {j}} : Type@ {max(i, j)} := .
+
+
+Comment author: @mattam82
+
+Fixed in trunk, this now gives the expected result.
+
+

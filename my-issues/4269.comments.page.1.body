@@ -1,0 +1,102 @@
+Comment author: @JasonGross
+
+Created attachment 595
+A "proof" of False that prints as closed under the global context
+
+Definition lob : False := Lob'.lob.
+Definition lob' : False := Eval hnf in lob.
+Print Assumptions lob.
+(* Closed under the global context *)
+Print Assumptions lob'.
+(* Axioms:
+PreL'.oops : False *)
+
+
+See the attached file.  Sorry, it's a bit long.
+
+I suspect the issue has something to do with module includes, or module type includes.
+
+> Attached file: [bug_print_assumptions_bad_03.v](https://coq.inria.fr/bugfiles/attachment.cgi?id=595) (application/octet-stream, 42164 bytes)
+> Description:   A "proof" of False that prints as closed under the global context
+
+
+Comment author: @gares
+
+Interestingly, coqchk complains:
+
+Anomaly: Module bug_print_assumptions_bad_03.Lob_DOT_bug_print_assumptions_bad_02.Lob.bug_print_assumptions_bad_02.LobsTheoremPreProof.Lob1H.Lob1'.PretermPrimitives' is already defined.
+
+
+Comment author: @maximedenes
+
+There seems to be at least two bugs related to modules here. The more serious one is that Print Assumptions doesn't follow Includes. Here is a (much) smaller example:
+
+Module M.
+Axiom foo : False.
+End M.
+
+Module N.
+Include M.
+End N.
+
+Print Assumptions N.foo.
+(* Closed under the global context *)
+
+
+Comment author: @maximedenes
+
+The second bug is illustrated by the following example:
+
+Module Type T.
+End T.
+
+Module F (X : T).
+End F.
+
+Module G (X : T).
+Print F.
+(* Anomaly: X already exists. Please report. *)
+
+
+Comment author: @maximedenes
+
+The checker is not affected by the first bug, but probably by the second (or a variant of it).
+
+
+Comment author: @JasonGross
+
+Thanks!, Maxime, for minimizing my example.
+
+The second bug is [BZ#3975](https://github.com/coq/coq/issues?q=is%3Aissue%20%22Original%20bug%20ID%3A%20BZ%233975%22).
+
+
+Comment author: @maximedenes
+
+And the winner is:
+
+commit ef2c3cc02409949f19c70903a86a8181f4ed03e7
+Author: letouzey <letouzey@ 85f007b7-540e-0410-9357-904b9bb8a0f7>
+Date:   Tue Oct 25 17:27:34 2011 +0000
+
+    First attempt at making Print Assumption compatible with opaque modules (fix [BZ#2168](https://github.com/coq/coq/issues?q=is%3Aissue%20%22Original%20bug%20ID%3A%20BZ%232168%22))
+    
+     We replace Global.lookup_constant by our own code that looks for a module
+     and enters its implementation. This is still preliminary work, I would prefer
+     to understand more completely the part about module substitutions when
+     entering an applied functor. But this code already appears to work quite well.
+     Anyway, since we only search for constants, we don't need to reconstitute a
+     100% accurate environment, as long as the same objects are in it.
+    
+     Note:
+    
+      - Digging inside module structures is slower than just using
+        Global.lookup_constant. Hence we try to avoid it as long as we could.
+        Only in front of axioms (or in front of constant unknown to Global)
+        do we check whether we have an inner-module implementation for this
+        constant. There is some memoization of the search for internal
+        structure_body out of a module_path.
+    
+      - In case of inner-module axioms, we might not be able to print
+        its type, but only its long name.
+
+

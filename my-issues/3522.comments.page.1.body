@@ -1,0 +1,201 @@
+Comment author: @JasonGross
+
+Top-level Imports of Modules defined in the same file are broken, in that they cause the file to export anything exported by the imported module.
+
+Here are some files that compile:
+
+jgross@ cagnode17:/tmp/bar$ cat bar.v
+Definition qux := Type.
+jgross@ cagnode17:/tmp/bar$ cat foo.v
+Require bar.
+Module baz.
+  Export bar.
+End baz.
+Import baz.
+jgross@ cagnode17:/tmp/bar$ cat quxx.v
+Require Import foo.
+Check qux.
+jgross@ cagnode17:/tmp/bar$ coq_makefile  bar.v foo.v quxx.v -R . Top > Makefile
+jgross@ cagnode17:/tmp/bar$ make clean; make
+"coqdep" -c -R . Top "foo.v" > "foo.v.d" || ( RV=$?; rm -f "foo.v.d"; exit ${RV} )
+rm -f bar.vo foo.vo quxx.vo bar.vi foo.vi quxx.vi bar.g foo.g quxx.g bar.v.d foo.v.d quxx.v.d bar.v.beautified foo.v.beautified quxx.v.beautified bar.v.old foo.v.old quxx.v.old
+rm -f all.ps all-gal.ps all.pdf all-gal.pdf all.glob bar.glob foo.glob quxx.glob bar.tex foo.tex quxx.tex bar.g.tex foo.g.tex quxx.g.tex all-mli.tex
+rm -rf html mlihtml uninstall_me.sh
+"coqdep" -c -R . Top "quxx.v" > "quxx.v.d" || ( RV=$?; rm -f "quxx.v.d"; exit ${RV} )
+"coqdep" -c -R . Top "foo.v" > "foo.v.d" || ( RV=$?; rm -f "foo.v.d"; exit ${RV} )
+"coqdep" -c -R . Top "bar.v" > "bar.v.d" || ( RV=$?; rm -f "bar.v.d"; exit ${RV} )
+"coqc"  -q  -R . Top   bar
+"coqc"  -q  -R . Top   foo
+"coqc"  -q  -R . Top   quxx
+qux
+     : Type
+
+
+
+However, if I inline all of the files into a single one, then that file fails to compile:
+
+Module bar.
+  Definition qux := Type.
+End bar.
+
+Module foo.
+  Import bar.
+  Module Import baz.
+    Export bar.
+  End baz.
+End foo.
+
+Module quxx.
+  Import foo.
+  Check qux. (* Toplevel input, characters 6-9:
+Error: The reference qux was not found in the current environment. *)
+End quxx.
+
+
+
+I believe the inlined behavior is correct, and the non-inlined behavior is wrong.  I care about this primarily because it breaks my bug-minimizer.
+
+
+Comment author: @ppedrot
+
+I agree with your analysis. I'll have a look...
+
+
+Comment author: @ppedrot
+
+The fishy line is in library/library.ml, I guess. The requiring of modules differs when at toplevel, or in a module:
+
+if Lib.is_module_or_modtype () then
+  begin
+    add_anonymous_leaf (in_require (needed,modrefl,None));
+    Option.iter (fun exp ->
+      List.iter (fun dir -> add_anonymous_leaf (in_import(dir,exp))) modrefl)
+      export
+  end
+else
+  add_anonymous_leaf (in_require (needed,modrefl,export));
+
+I don't know why this is done this way...
+
+
+Comment author: @ppedrot
+
+This behaviour has been introduced by commit e7f9bc39, allegedly to fix bug [BZ#335](https://github.com/coq/coq/issues?q=is%3Aissue%20%22Original%20bug%20ID%3A%20BZ%23335%22). I doubt this make any sense nowadays, and anyway Require inside modules should be prohibited...
+
+
+Comment author: @maximedenes
+
+The code PMP mentions is unrelated to Jason's problem, which doesn't involve Require inside modules.
+
+I've just removed this code, Jason's problem still here.
+
+
+Comment author: @herbelin
+
+This problem is the same reason why 
+
+Section A.
+Require Import B.
+End A.
+
+works differently from
+
+Section A.
+Require B. Import B.
+End B.
+
+This can be fixed (by removing the test PMP is highlighting) but we would loose an optimization which is made on successive Export of libraries at toplevel:
+
+Export Library1.
+Export Library2.
+
+imports only once the libraries imported by both Library1 and Library2.
+Don't know if users can accept this overhead which might require them
+to reorganize libraries so that the dependencies are tree-like (i.e.
+not dag-like).
+
+Alternatively, to move this optimization from a library level one to a
+module level one would require some work on modules.
+
+A typical observable instance of the non-existence of this
+optimization for import of modules is the following:
+
+Module A. Notation "++" := 0. End A.
+Module B. Export A. End B.
+Module C. Export A. End C.
+Import B C.
+(* Gives: Notation ++ was already used *)
+
+
+Comment author: @herbelin
+
+Actually, the implementation of the optimization I mentioned in the previous comment is questionable, as it breaks the relative order of Export for commands which do side-effects:
+
+$ cat A.v
+Class U.
+
+$ cat B.v
+Require Import A.
+Instance b : U.
+
+$ cat C.v
+Require Export A.
+Instance a : U.
+Require Export B.
+
+Then, under coqtop:
+
+Require Import C.
+Goal forall P : U -> Prop, P _.
+(* Goal forall P : U -> Prop, P a. *)
+
+while if the last line had been in C.v, one would have had:
+(* Goal forall P : U -> Prop, P b. *)
+
+
+Comment author: @ppedrot
+
+The exact order in which toplevel Exports are processed when a module is require-imported is not specified. This is somewhat important, as witnessed by Hugo. We should probably remove this optimization so as to recover a predictible behaviour.
+
+
+Comment author: @klara-zielinska
+
+There is still a problem with import-export system, but I'm not sure if the cause is the same as here. Please check the example below.
+
+I believe the below behavior is not valid according to the documentation of Require Import from here
+
+https://coq.inria.fr/refman/Reference-Manual008.html#hevea_command114
+
+
+qwerty@ qwerty:~/Pobrane/bug$ cat A.v
+Inductive A := a.
+
+qwerty@ qwerty:~/Pobrane/bug$ cat AA.v
+Inductive AA := a.
+
+qwerty@ qwerty:~/Pobrane/bug$ cat B.v
+Module BB.
+  Require Export A.
+End BB.
+
+qwerty@ qwerty:~/Pobrane/bug$ cat C.v
+Require Import B.
+        Import B.BB.
+
+qwerty@ qwerty:~/Pobrane/bug$ cat D.v
+Require Import AA C.
+
+Definition id (x : AA) := x.
+Definition fail := id a.
+
+qwerty@ qwerty:~/Pobrane/bug$ coqc A.v
+qwerty@ qwerty:~/Pobrane/bug$ coqc AA.v
+qwerty@ qwerty:~/Pobrane/bug$ coqc B.v
+qwerty@ qwerty:~/Pobrane/bug$ coqc C.v
+qwerty@ qwerty:~/Pobrane/bug$ coqc D.v
+File "./D.v", line 4, characters 22-23:
+Error: The term "a" has type "A" while it is expected to have type "AA".
+
+
+@maximedenes wasn't this fixed by #10476?
+I think so. Let's close.

@@ -1,0 +1,32 @@
+Comment author: @JasonGross
+
+Consider the following script:
+```
+
+$ cat ./make.sh
+#!/usr/bin/env bash
+rm -rf foo
+mkdir -p foo/subdir
+cd foo
+touch a.v subdir/a.v
+cat > _CoqProject <<EOF
+-R . foo
+a.v
+subdir/a.v
+EOF
+${COQBIN}coq_makefile -f _CoqProject -o Makefile
+make
+echo "broken" > subdir/a.vo
+make validate
+$ COQBIN="$HOME/.local64/coq/coq-trunk/bin/" ./make.sh
+COQDEP subdir/a.v
+COQDEP a.v
+COQC a.v
+COQC subdir/a.v
+"/home/jgross/.local64/coq/coq-trunk/bin/coqchk" -silent -o -R . foo  a a
+
+```
+Note that the validate target passes even though I've broken `subdir/a.vo`.
+
+
+Fixed since bbe7b785787ff3f13e5c2809a67241981b06e1db (#6276).

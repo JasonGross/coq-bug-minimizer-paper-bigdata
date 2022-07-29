@@ -1,0 +1,55 @@
+Comment author: @JasonGross
+
+let t := constr:(2) in
+let x := (pattern 1 in t) in
+let y := match x with ?F _ => constr:(F) end in
+pose y.
+(* Error: Must evaluate to a closed term
+offending expression: 
+x
+this is a VFun with body 
+pattern 1 in t
+instantiated arguments 
+t, uninstantiated arguments 
+. *)
+
+
+This is eventually decodable, but "VFun" is confusing.  Does "VFun" mean tactic?  Tactic with arguments?
+
+
+Comment author: @aspiwack
+
+Basically VFun are Ltac's thunks: either functions or tactics waiting to be executed. The recursive tactics are VRec-s though.
+
+The bug is also in trunk.
+
+The message is printed out in Tacinterp.pr_inspect. What vocabulary should we use instead?
+
+
+Comment author: @JasonGross
+
+I'd go with something like:
+
+Error: Expected a closed term, or a tactic evaluating to a closed term.  The expression
+"x"
+expands to a tactic with body
+"pattern 1 in t"
+which does not evaluate to a closed term.
+
+(Perhaps replacing "tactic" with "recursive tactic" in the VRec case.)  I don't think the instantiated/uninstantiated arguments should show up, except in cases where the error is caused by arguments being uninstantiated (in which case there should be some text to hint that this is the case).
+
+
+Comment author: @ppedrot
+
+I have fixed this in trunk, and explicited the fact it was a closure indeed. The new error message is:
+
+
+Error: Must evaluate to a closed term
+offending expression: 
+x
+this is a closure with body 
+pattern 1 in t
+in environment 
+t : constr
+
+

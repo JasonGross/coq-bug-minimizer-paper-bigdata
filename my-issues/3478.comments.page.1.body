@@ -1,0 +1,26 @@
+Comment author: @JasonGross
+
+Set Primitive Projections.
+Record foo := { foom :> Type }.
+Canonical Structure default_foo := fun T => {| foom := T |}.
+Record bar T := { bar1 : T }.
+Goal forall (s : foo) (x : foom s), True.
+Proof.
+  intros.
+  Timeout 1 pose (x : bar _) as x'. (* Timeout! or Stack overflow *)
+
+
+Comment author: @JasonGross
+
+This seems possibly related to https://coq.inria.fr/bugs/show_bug.cgi?id=3438, but, unlike that bug, this one is still open in trunk.
+
+
+Comment author: @silene
+
+I cannot reproduce this issue, so it might have been fixed.
+
+  The term "x" has type "foom s" while it is expected to have type "bar ?T".
+
+If you have another testcase, please submit it.
+
+

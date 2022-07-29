@@ -1,0 +1,12 @@
+I observed myself various failures when testing Metacoq.
+
+- on Coq CI (e.g. https://gitlab.com/coq/coq/-/jobs/1317743234), there are `COQDEP` failures (probably related to the report from @JasonGross):
+   - `File "gen-src/signature.mli", line 1: No such file or directory`
+   - `Anomaly "Uncaught exception: Sys_error("../template-coq/build: No such file or directory")."`
+
+- When compiling locally to Coq using `make ci-metacoq`, I get this error `File "src/g_metacoq_safechecker.mlg", line 10, characters 5-21: Error: Unbound module PCUICSafeChecker`. Maybe it is that should use a dune target instead?
+
+- If I compile locally with ``export COQBIN=`pwd`/_build/install/default/bin/; cd _build_ci/metacoq; make``, it fails when compiling `src/g_metacoq_erasure.ml` with `The files ../template-coq/build/metacoq_template_plugin.cmi and /Volumes/EXTRA/.opam/4.06.1/lib/coq//vernac/mltop.cmi make inconsistent assumptions over interface Vmvalues`, apparently because `$COQBIN` is not used by the erasure coq_makefile-generated makefile (I did not investigate more).
+
+cc @coq/ci-maintainers ?
+This is a metacoq issue, we are not responsible for their build system.

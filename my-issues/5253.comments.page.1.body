@@ -1,0 +1,63 @@
+Comment author: @JasonGross
+```coq
+Require Import Coq.Classes.Morphisms.
+
+Global Instance:Proper iff True | 2 Proof.
+compute; tauto.
+Qed. (* Proper_instance_0 is defined
+Error: The reference Proof was not found in the current environment. *)
+```
+Very confusing error message to denote a missing period...  What's going on 
+here?
+
+
+Comment author: @silene
+
+Nothing special here. "2 Proof" is an instance hint, which is handled only at the time the instance is registered, that is, at Qed time, at which point Coq finally notices that "Proof" is an unknown identifier.
+
+I am not closing the report though, since it might be possible to detect earlier than the hint is invalid.
+
+
+Comment author: @JasonGross
+
+Yes, I think it should ideally be caught earlier.  Unless you want users doing 
+silly things like
+
+Require Import Coq.Classes.Morphisms.
+Global Instance foo : Proper iff True | 2 foo.
+Proof.
+  compute; tauto.
+Qed.
+
+Also, is this documented?  I don't see it in 
+https://github.com/coq/coq/blob/v8.6/doc/refman/Classes.tex ....
+
+
+Comment author: @Zimmi48
+
+Indeed, it doesn't appear as documented.
+What is this syntax for?
+
+
+Comment author: @JasonGross
+
+It lets you specify patterns, e.g.,
+
+        Instance foo {A} (x : A) : eq x x | 2 (eq ?a ?a).
+        Proof. reflexivity. Defined.
+        Print HintDb typeclass_instances.
+
+
+Comment author: @Zimmi48
+
+OK, that was my guess. So there are two things that are not documented actually.
+The pattern part, and the unnamed instance part.
+In particular, I dislike the syntax for the unnamed instance, which is inconsistent with the Lemma / Goal dichotomy.
+Is it really useful to allow unnamed instances?
+
+
+Comment author: @JasonGross
+
+I use unnamed instances when I intend to never give them by hand.  It's less typing, when I really don't care what the instance is named.
+
+

@@ -1,0 +1,28 @@
+Comment author: @JasonGross
+
+Consider this development:
+$ cat _CoqProject
+-R . Top
+Definition.v
+$ cat Definition.v
+Axiom a : Set.
+$ coq_makefile -f _CoqProject -o Makefile
+$ make
+COQDEP Definition.v
+COQC Definition.v
+
+Suppose I then run this:
+ Require Top.Definition.
+ Locate a. (* Constant Top.Definition.a (shorter name to refer to it in current 
+context is Definition.a) *)
+ Set Search Output Name Only.
+ SearchPattern _ inside Top.Definition. (* Definition.a *)
+
+Both Locate and SearchPattern are giving me invalid names, since [Definition.a] 
+is not valid.  Worse, I cannot feed the output of [SearchPattern] into 
+[Locate], because [Locate Definition.a] is a syntax error.
+
+Context: Fiat-Crypto has some files named Definition.v, and I'm trying to write 
+a tool that lists all identifiers that are not closed under the global context.
+
+

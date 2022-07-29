@@ -1,0 +1,34 @@
+Comment author: @JasonGross
+
+```
+Require Import Coq.Setoids.Setoid Coq.Classes.Morphisms.
+(* Is there a reason this isn't in the standard library?  It's needed to make 
+the first setoid_rewrite go through. *)
+Global Instance: forall T r, @ Reflexive T r -> subrelation eq r.
+Proof.
+  repeat intro; subst.
+  reflexivity.
+Qed.
+Goal forall (T : Type) (x y : T) (h : T -> T) (f : T -> T) (g : T -> T),
+    f = g -> f y = h y.
+Proof.
+  intros ?????? H.
+  rewrite H.
+  Undo.
+  setoid_rewrite H.
+Abort.
+Goal forall (T : Type) (x y : T) (h : T -> T) (f : T -> T -> T) (g : T -> T),
+    f x = g -> f x y = h y.
+Proof.
+  intros ?????? H.
+  rewrite H.
+  Undo.
+  setoid_rewrite H. (* Error: Tactic failure: setoid rewrite failed: Nothing to 
+rewrite. *)
+
+```
+
+Although [rewrite] works, it is insufficient, because it means we cannot 
+rewrite under binders.  (And [rewrite_strat] is similarly broken)
+
+

@@ -1,0 +1,42 @@
+Comment author: @JasonGross
+
+(* -*- mode: coq; coq-prog-args: ("-emacs" "-R" "." "Fiat" "-top" "SplitterFromParserADT" "-R" "." "Top") -*- *)
+(* File reduced by coq-bug-finder from original input, then from 4286 lines to 550 lines, then from 570 lines to 34 lines *)
+(* coqc version 8.5beta2 (August 2015) compiled on Aug 19 2015 19:14:3 with OCaml 4.01.0
+   coqtop version cagnode12:/afs/csail.mit.edu/u/j/jgross/coq-8.5,v8.5 (15e6e2d666252cad3c1e0de4622ef51c2830b6b8) *)
+Require Coq.Program.Program.
+Require Coq.Strings.String.
+Export Coq.Program.Program.
+Class StringLike {Char : Type} :=
+  {
+    String :> Type;
+    take : nat -> String -> String
+  }.
+
+Arguments StringLike : clear implicits.
+Axiom proof_admitted : False.
+Section foo.
+  Context (T : Type) (P : T -> Prop).
+
+  Notation StringT := { r : T | P r } (only parsing).
+  Axiom mtake : nat -> T -> T.
+
+  Local Obligation Tactic := idtac.
+  Local Program Instance adt_based_StringLike : StringLike Ascii.ascii
+    := { String := StringT;
+         take n str := mtake n str }.
+  Next Obligation.
+  Admitted. (* Toplevel input, characters 20-29:
+Error: Illegal application:
+The term "proj1_sig" of type
+ "forall (A : Type) (P : A -> Prop), {x : A | P x} -> A"
+cannot be applied to the terms
+ "T" : "Type"
+ "fun r : T => P r" : "T -> Prop"
+ "str" : "{r : T | P r}"
+The 1st term has type "Type@ {SplitterFromParserADT.5}"
+which should be coercible to "Type@ {Coq.Init.Specif.16}".
+ *)
+
+
+Fixed in master.

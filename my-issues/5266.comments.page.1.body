@@ -1,0 +1,29 @@
+Comment author: @JasonGross
+
+Where do I download the SDK needed to compile plugins?
+
+
+Comment author: @gares
+
+The SDK is no more shipped in pre compiled format.
+There are scripts in the sources of Coq, in dev/ , to generate it.
+
+I leave the bug open because we may want to check this is documented in the website or in the source tarball.
+
+
+Is this issue still relevant?
+If the bug is "how does one build a Coq plugin on Windows?", then yes it's still relevant.
+
+cc @MSoegtropIMC (I'll let you decide if you want to close this or re-assign it to yourself)
+I guess the current incarnation of this issue is: should we provide a pre-built SDK?
+
+The `.bat` scripts in `dev/buid/win` *both* create the SDK and compile Coq. We make an installer of the latter, we could as well "zip" the former.
+
+Creating the SDK takes some time, so this would be more of a commodity rather than a real bug fix.
+@jfehrle and me discussed on CoqDev (subject: Methods for running Coq on Windows / building the installer) that we want to enhance the Windows setup build scripts so that they can also create a useful Coq development environment + corresponding documentation.
+
+Right now I don't think it makes a lot of sense to create a downloadable SDK, because reusing the existing build scripts is much less effort.
+
+I created ticket #7157 for this. So I think this ticket can be closed.
+
+Mid term I am working on a Cygwin less OCaml for Coq native compute on Windows. This would also help to develop plugins. As soon as we have this, we can again discuss a downloadable SDK. But it will take a while. 

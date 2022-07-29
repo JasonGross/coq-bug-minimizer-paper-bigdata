@@ -1,0 +1,42 @@
+Comment author: @JasonGross
+
+$ cat /tmp/foo.v
+Local Obligation Tactic := idtac.
+Definition a := 1.
+Definition b := 1.
+Definition c := 1.
+Definition d := 1.
+$ coqwc /tmp/foo.v
+     spec    proof comments
+        1        4        0 /tmp/foo.v
+
+
+Comment author: @psteckler
+
+The lexer spec contains:
+--
+let proof_start =
+  "Theorem" | "Lemma" | "Fact" | "Remark" | "Goal" | "Correctness" | "Obligation" | "Next"
+--
+which explains the behavior.
+
+From the "Solving Obligations" section of the manual, it looks like the keyword "Obligation" can start a proof in two ways:
+
+- Obligation num [of ident]
+- Next Obligation [of ident]
+
+So the lexer should be looking for those.
+
+
+Comment author: @psteckler
+
+Submitted PR:
+
+  https://github.com/coq/coq/pull/1099
+
+
+Comment author: @psteckler
+
+I think this can be marked RESOLVED/FIXED, since [BZ#1099](https://github.com/coq/coq/issues?q=is%3Aissue%20%22Original%20bug%20ID%3A%20BZ%231099%22) has been merged.
+
+

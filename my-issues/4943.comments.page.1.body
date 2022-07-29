@@ -1,0 +1,24 @@
+Comment author: @JasonGross
+
+On every single file:
+
+COQC src/Common/List/PermutationFacts.v
+Warning:
+assuming D:\Documents\GitHub\coq-v8.6/theories to be a Unix path even if 
+looking like a Win32 path.
+Warning:
+assuming D:\Documents\GitHub\coq-v8.6/plugins to be a Unix path even if looking 
+like a Win32 path.
+Warning:
+assuming D:\Documents\GitHub\coq-v8.6/ide to be a Unix path even if looking 
+like a Win32 path.
+
+Possibly only when configured with -local; I haven't checked.  There should be 
+some sort of path normalization that happens.
+
+
+Comment author: @herbelin
+
+This warning is supposed to alert that something might go wrong with option -R and -Q. If your system has to problem for Unix.stat (from OCaml's Unix library) to decode "D:\Documents\GitHub\coq-v8.6/theories", the warning is certainly useless. Under "ocaml unix.cma", what gives Sys.os_type and "Unix.stat D:\Documents\GitHub\coq-v8.6/theories" on your system?
+
+

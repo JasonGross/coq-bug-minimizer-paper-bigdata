@@ -1,0 +1,20 @@
+Comment author: @JasonGross
+
+It would be nice to bring qualified names into scope locally in terms.  Since 
+Coq already has scopes, I propose the ability to bind modules to scopes, and 
+automatically import the qualified names (only the Gallina identifiers, not the 
+tactics, nor the coercions, and probably not the instances, but maybe the 
+notations) for the duration of that scope.  Another alternative would be 
+something like [(expression)%%Module.Name] to bring the identifiers into scope.
+
+
+Comment author: @maximedenes
+
+PMP, do you know how hard it would be to implement this?
+
+
+Comment author: @ppedrot
+
+I would say quite easy. That's mostly messing with the nametab.
+
+

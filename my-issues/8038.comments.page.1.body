@@ -1,0 +1,5 @@
+What is the use case of conflicting `-Q` and `-R` directives?
+The most important use-case is when I have files in `foo/` and I have `-Q foo foo`, and then I add a file in `.` (as happens, e.g., if you run my bug-minimizer with an input file in the root of a project), and `coq_makefile` automatically adds `-R . Top`, which conflicts with `-Q foo foo`.
+(Note that I'd be fine with, say, `coq_makefile` adding `-Q . Top` when the list of `-Q` flags contains a subdirectory of `.`, and adding `-R . Top` otherwise, or something like that.)
+TBH it seems like we should just prefer the most specific -Q or -R regardless of order.
+I've just run into this problem, too. It would be great if there were a way to stop `coq_makefile` from saying `-R` at all; my project compiles fine without it, but gets stuck with the trailing `-R . Top`.

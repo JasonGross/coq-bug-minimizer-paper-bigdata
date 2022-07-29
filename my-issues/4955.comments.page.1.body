@@ -1,0 +1,206 @@
+Comment author: @JasonGross
+
+(* File reduced by coq-bug-finder from original input, then from 8783 lines to 
+169 lines, then from 183 lines to 169 lines, then from 96 lines to 55 lines, 
+then from 69 lines to 56 lines *)
+(* coqc version trunk (July 2016) compiled on Jul 20 2016 11:8:10 with OCaml 
+4.02.3
+   coqtop version .../coq/coq-v8.6,v8.6 
+(a341d13067a3de78e351e079938c46733109cae8) *)
+Notation "{ x : A | P }" := (sigT (fun x:A => P)) : type_scope.
+Notation "( x ; y )" := (existT _ x y) : fibration_scope.
+Open Scope fibration_scope.
+Notation "p @  q" := (eq_trans p q) (at level 20).
+Notation "p ^" := (eq_sym p) (at level 3).
+Definition transport {A : Type} (P : A -> Type) {x y : A} (p : x = y) (u : P x) 
+: P y :=
+  match p with eq_refl => u end.
+Notation "p # x" := (transport _ p x) (right associativity, at level 65, only 
+parsing).
+Definition ap {A B:Type} (f:A -> B) {x y:A} (p:x = y) : f x = f y
+  := match p with eq_refl => eq_refl end.
+Definition apD {A:Type} {B:A->Type} (f:forall a:A, B a) {x y:A} (p:x=y): p # (f 
+x) = f y
+  := match p with eq_refl => eq_refl end.
+Axiom transport_compose
+  : forall {A B} {x y : A} (P : B -> Type) (f : A -> B) (p : x = y) (z : P (f 
+x)),
+    transport (fun x => P (f x)) p z  =  transport P (ap f p) z.
+Delimit Scope morphism_scope with morphism.
+Delimit Scope category_scope with category.
+Delimit Scope object_scope with object.
+Record PreCategory := { object :> Type ; morphism : object -> object -> Type }.
+Delimit Scope functor_scope with functor.
+Record Functor (C D : PreCategory) :=
+  { object_of :> C -> D;
+    morphism_of : forall s d, morphism C s d -> morphism D (object_of s) 
+(object_of d) }.
+Arguments object_of {C%category D%category} F%functor c%object : rename, simpl 
+nomatch.
+Arguments morphism_of [C%category] [D%category] F%functor [s%object d%object] 
+m%morphism : rename, simpl nomatch.
+Section path_functor.
+  Variable C : PreCategory.
+  Variable D : PreCategory.
+
+  Local Notation path_functor'_T F G
+    := { HO : object_of F = object_of G
+       | transport (fun GO => forall s d, morphism C s d -> morphism D (GO s) 
+(GO d))
+                   HO
+                   (morphism_of F)
+         = morphism_of G }
+         (only parsing).
+  Definition path_functor'_sig_inv (F G : Functor C D) : F = G -> 
+path_functor'_T F G
+    := fun H'
+       => (ap object_of H';
+             (transport_compose _ object_of _ _) ^ @  apD (@ morphism_of _ _) H').
+(* Error:
+In environment
+C, D : PreCategory
+F : Functor C D
+G : Functor C D
+H' : F = G
+The term "apD (morphism_of (D:=D)) H'" has type "transport (fun F : Functor C D 
+=> forall s d : C, morphism C s d -> morphism D (F s) (F d)) H' (morphism_of F) 
+= morphism_of G"
+while it is expected to have type "transport (fun x : Functor ?C ?D => ?T0 x) 
+?e ?y0 = ?z".
+ *)
+
+
+Comment author: @herbelin
+
+A bisection would help, if possible.
+
+
+Comment author: @JasonGross
+
+Bisecting between 8.5pl1 (success) and 8.5pl2 (failure) on the file:
+
+
+(* -*- coq-prog-args: ("-emacs" "-nois" "-boot") -*- *)
+Reserved Notation "x -> y" (at level 99, right associativity, y at level 200).
+Reserved Notation "x = y  :>  T" (at level 70, y at next level, no associativity).
+Reserved Notation "x = y" (at level 70, no associativity).
+Reserved Notation "{ x : A  |  P }" (at level 0, x at level 99).
+Notation "A -> B" := (forall (_ : A), B) : type_scope.
+Delimit Scope type_scope with type.
+Delimit Scope function_scope with function.
+Delimit Scope core_scope with core.
+Open Scope core_scope.
+Open Scope function_scope.
+Open Scope type_scope.
+Record sigT {A} (P : A -> Type) := existT { projT1 : A ; projT2 : P projT1 }.
+Arguments sigT {A} P.
+Arguments existT {A} P _ _.
+Notation "{ x : A | P }" := (sigT (fun x:A => P)) : type_scope.
+Notation "( x ; y )" := (existT _ x y) : fibration_scope.
+Open Scope fibration_scope.
+Inductive eq (A:Type) (x:A) : A -> Prop := eq_refl : x = x :>A
+where "x = y :> A" := (@ eq A x y) : type_scope.
+Notation "x = y" := (x = y :>_) : type_scope.
+Arguments eq {A} x _.
+Arguments eq_refl {A x} , [A] x.
+Definition eq_sym {A} {x y : A} (p : x = y) : y = x
+  := match p with eq_refl => eq_refl end.
+Definition eq_trans {A} {x y z : A} (p : x = y) (q : y = z) : x = z
+  := match p, q with eq_refl, eq_refl => eq_refl end.
+Notation "p @  q" := (eq_trans p q) (at level 20).
+Notation "p ^" := (eq_sym p) (at level 3).
+Definition transport {A : Type} (P : A -> Type) {x y : A} (p : x = y) (u : P x)
+: P y :=
+  match p with eq_refl => u end.
+Notation "p # x" := (transport _ p x) (right associativity, at level 65, only
+parsing).
+Definition ap {A B:Type} (f:A -> B) {x y:A} (p:x = y) : f x = f y
+  := match p with eq_refl => eq_refl end.
+Definition apD {A:Type} {B:A->Type} (f:forall a:A, B a) {x y:A} (p:x=y): p # (f
+x) = f y
+  := match p with eq_refl => eq_refl end.
+Axiom transport_compose
+  : forall {A B} {x y : A} (P : B -> Type) (f : A -> B) (p : x = y) (z : P (f
+x)),
+    transport (fun x => P (f x)) p z  =  transport P (ap f p) z.
+Delimit Scope morphism_scope with morphism.
+Delimit Scope category_scope with category.
+Delimit Scope object_scope with object.
+Record PreCategory := { object :> Type ; morphism : object -> object -> Type }.
+Delimit Scope functor_scope with functor.
+Record Functor (C D : PreCategory) :=
+  { object_of :> C -> D;
+    morphism_of : forall s d, morphism C s d -> morphism D (object_of s)
+(object_of d) }.
+Arguments object_of {C%category D%category} F%functor c%object : rename, simpl
+nomatch.
+Arguments morphism_of [C%category] [D%category] F%functor [s%object d%object]
+m%morphism : rename, simpl nomatch.
+Section path_functor.
+  Variable C : PreCategory.
+  Variable D : PreCategory.
+
+  Local Notation path_functor'_T F G
+    := { HO : object_of F = object_of G
+       | transport (fun GO => forall s d, morphism C s d -> morphism D (GO s)
+(GO d))
+                   HO
+                   (morphism_of F)
+         = morphism_of G }
+         (only parsing).
+  Definition path_functor'_sig_inv (F G : Functor C D) : F = G ->
+path_functor'_T F G
+    := fun H'
+       => (ap object_of H';
+             (transport_compose _ object_of _ _) ^ @  apD (@ morphism_of _ _) H').
+End path_functor.
+
+
+
+
+gives:
+
+5ea2539d4a7d12938787a74a12112e76aaf2a4ee is the first bad commit
+commit 5ea2539d4a7d12938787a74a12112e76aaf2a4ee
+Author: Hugo Herbelin <Hugo.Herbelin@ inria.fr>
+Date:   Thu Jun 9 14:41:14 2016 +0200
+
+    Fixing [BZ#4644](https://github.com/coq/coq/issues?q=is%3Aissue%20%22Original%20bug%20ID%3A%20BZ%234644%22) (regression of unification on evar-evar problems with a match).
+    
+    Typically, a problem of the form "?x args = match ?y with ... end" was
+    a failure even if miller-unification was applicable.
+
+:040000 040000 6dcfebaea3b2ff8db791075fa4fabe9c011c5af2 68a6f2cdda4b070603167a44273946248fe66589 M	pretyping
+:040000 040000 d5ff99af001d3571ee14c90c0f6569531bb9ebb8 796c89186dced60a89f9f24180a0d44f1bda98f4 M	test-suite
+
+
+Note that the example here runs fine in both 8.4pl6 and 8.5pl1, but not 8.5pl2 nor v8.6.
+
+
+Comment author: @herbelin
+
+At some point, first-order unification is triggering a problem of the form "object_of ?x == ?x", with both occurrences having the same instance. This could be caught by a function called "occur_rigidly" but it doesn't.
+
+To be continued...
+
+
+Comment author: @maximedenes
+
+Any hope to fix this in 8.6? A regression in unification between two pl (here 8.5pl1 and 8.5pl2) sounds like something went really wrong, doesn't it?
+
+
+Comment author: @herbelin
+
+This is fixed by 62fd23efb (PR [BZ#322](https://github.com/coq/coq/issues?q=is%3Aissue%20%22Original%20bug%20ID%3A%20BZ%23322%22)).
+
+
+Comment author: @maximedenes
+
+Oh sorry, I missed it, great!
+
+
+Comment author: @herbelin
+
+It is me who should be sorry, I forgot to close the report!
+
+

@@ -1,0 +1,317 @@
+Comment author: @JasonGross
+```coq
+$ cat foo.v
+(* -*- coq-prog-args: ("-debug") -*- *)
+Goal True.
+  do 3 simple refine (let _ := _ in _).
+  { Time Require Import Coq.micromega.Lia Coq.omega.Omega. Undo. idtac "undone".
+    Time Require Import Coq.micromega.Lia Coq.omega.Omega. Undo. idtac "undone".
+    Time Require Import Coq.micromega.Lia Coq.omega.Omega. Undo. idtac "undone".
+    Time Require Import Coq.micromega.Lia Coq.omega.Omega. Undo. idtac "undone".
+    Time Require Import Coq.micromega.Lia Coq.omega.Omega. Undo. idtac "undone".
+    Time Require Import Coq.micromega.Lia Coq.omega.Omega. Undo. idtac "undone".
+    Time Require Import Coq.micromega.Lia Coq.omega.Omega. Undo. idtac "undone".
+    Time Require Import Coq.micromega.Lia Coq.omega.Omega. Undo. idtac "undone".
+    Time Require Import Coq.micromega.Lia Coq.omega.Omega. Undo. idtac "undone".
+    Time Require Import Coq.micromega.Lia Coq.omega.Omega. Undo. idtac "undone".
+Abort.
+```
+```
+$ ~/.local64/coq/coq-8.6.1/bin/coqc foo.v
+Finished transaction in 0.32 secs (0.236u,0.083s) (successful)
+Finished transaction in 0.264 secs (0.231u,0.035s) (successful)
+undone
+Finished transaction in 0.202 secs (0.183u,0.02s) (successful)
+Finished transaction in 0.4 secs (0.388u,0.011s) (successful)
+Finished transaction in 0.361 secs (0.351u,0.008s) (successful)
+undone
+Finished transaction in 1.117 secs (1.096u,0.019s) (successful)
+Finished transaction in 0.746 secs (0.728u,0.02s) (successful)
+Finished transaction in 2.556 secs (2.551u,0.004s) (successful)
+Finished transaction in 1.715 secs (1.716u,0.004s) (successful)
+Finished transaction in 3.69 secs (3.676u,0.011s) (successful)
+undone
+Finished transaction in 3.786 secs (3.779u,0.008s) (successful)
+Finished transaction in 5.228 secs (5.219u,0.008s) (successful)
+Finished transaction in 6.258 secs (6.248u,0.012s) (successful)
+Finished transaction in 7.701 secs (7.703u,0.s) (successful)
+Finished transaction in 9.162 secs (9.144u,0.019s) (successful)
+Finished transaction in 10.907 secs (10.896u,0.016s) (successful)
+Finished transaction in 12.912 secs (12.911u,0.004s) (successful)
+undone
+```
+
+
+Comment author: @silene
+
+No need for "Require Import", the behavior is insane with plain tactics too. (Exercise: use Coq's output to draw Koch's snowflake.)
+```coq
+Goal True.
+  idtac "before 1". idtac "1". Undo. idtac "after 1".
+  idtac "before 2". idtac "2". Undo. idtac "after 2".
+  idtac "before 3". idtac "3". Undo. idtac "after 3".
+  idtac "before 4". idtac "4". Undo. idtac "after 4".
+Abort.
+```
+```
+before 1
+1
+before 1
+after 1
+before 2
+2
+before 1
+1
+before 1
+after 1
+before 2
+after 2
+before 3
+3
+before 1
+1
+before 1
+after 1
+before 2
+2
+before 1
+1
+before 1
+after 1
+before 2
+after 2
+before 3
+after 3
+before 4
+4
+before 1
+1
+before 1
+after 1
+before 2
+2
+before 1
+1
+before 1
+after 1
+before 2
+after 2
+before 3
+3
+before 1
+1
+before 1
+after 1
+before 2
+2
+before 1
+1
+before 1
+after 1
+before 2
+after 2
+before 3
+after 3
+before 4
+after 4
+before 1
+before 1
+1
+before 1
+after 1
+before 2
+before 1
+1
+before 1
+after 1
+before 2
+2
+before 1
+1
+before 1
+after 1
+before 2
+after 2
+before 3
+before 1
+1
+before 1
+after 1
+before 2
+2
+before 1
+1
+before 1
+after 1
+before 2
+after 2
+before 3
+3
+before 1
+1
+before 1
+after 1
+before 2
+2
+before 1
+1
+before 1
+after 1
+before 2
+after 2
+before 3
+after 3
+before 4
+
+```
+Comment author: @ejgallego
+
+Can we get a bisect on this?
+
+
+Comment author: @silene
+
+Since this behavior predates 8.5, I guess a bisection will just point to the STM merge.
+
+
+Comment author: @ejgallego
+
+Yup, unfortunately the document traversal has some issues, but we are working on that, a PR is on sight.
+
+
+Comment author: @ejgallego
+
+Well, this bug is a bit subtle as in that there is a tradeoff here. Let's name:
+
++ S/M = time/memory size of command state,
++ K = avg time of command execution,
++ N = number of sentences in the document.
+
+Usually S << K.
+
+Now, Coq has two strategies to keep track of backtracking state:
+
+- in interactive mode, Coq will cache all intermediate states, thus:
+  + memory use = O(M*N)
+  + backtracking time = O(S) ≈ O(1)
+
+- in batch mode, Coq won't cache any intermediate state, thus:
+  + memory use = O(M) ≈ O(1)
+  + backtracking time = O(K*N)
+
+indeed, in batch mode, Undo and friend have to re-execute all previous commands to recreate state. We could improve this, however at a non-trivial memory cost.
+
+I think that a possible compromise could be to add a warning so that `Undo` and friends are discouraged in batch mode. Thoughts?
+
+
+Comment author: @JasonGross
+
+> We could improve this, however at a non-trivial memory cost.
+
+No, it is quite easy to do better with cost roughly O(N): when re-executing commands to perform an Undo, first preprocess the list of commands "executing" only the backtracking ones to get a minimized list of commands without Undo.
+
+
+Comment author: @ejgallego
+
+I am not sure I follow Jason, care to expand on your idea?
+
+Of course my analysis doesn't account for any optimizations, indeed you could have better heuristics for caching if you know the future; but I was implicitly talking about worst-case cost.
+
+
+Comment author: @JasonGross
+
+Suppose you have a list of commands like `A. B. C. Undo. C'. Undo 2. B'. C''.` and now you want to `Undo.`  You need not run `A. B. C. Undo. C'. Undo 2. B'. C''.`, but merely `A. B'. C''`, and computing this list should be cheap compared to the time it takes to execute the commands.
+
+
+Comment author: @ejgallego
+
+I see, thanks. A couple of comments:
+
+- Your proposal is not easy to do with the current codebase of the STM [the function to modify is Reach.known_state]; once we land the new traversal code, IMHO this kind of analysis should be much more feasible, in fact, this is one of the reasons to land it and separate scheduling from document building.
+
+- There is honestly not a lot of motivation to support this rare use case of `Undo` commands appearing in scripts processed by coqc. We could always allow the user to enable the cache if desired.
+
+- Your proposal also has a terrible worst case cost. Undo after 100 commands = 100 commands re-executed.
+
+I indeed wish we could keep the cache, however proof terms may be very large and coqc users will notice.
+
+IMHO, a warning is the way to go.
+
+
+Comment author: @ejgallego
+
+Ok folks, https://github.com/coq/coq/pull/1096
+
+I am very inclined to close this as WONTFIX once the PR lands in trunk. If you want to cache backtracking results then don't use batch mode.
+
+A feature request for an option enabling caching in batch mode would also make sense; but it'll have to be 8.8 material.
+
+
+Comment author: @JasonGross
+
+No, this should not be closed as WONTFIX, because the problem exists even in interactive mode (though only for [Require Import], not for [idtac]), when (it seems) it should not:
+```coq
+$ cat bar.v
+(* -*- coq-prog-args: ("-debug") -*- *)
+Set Silent.
+Goal True.
+  do 3 simple refine (let _ := _ in _).
+  { Time Require Import Coq.micromega.Lia Coq.omega.Omega. Undo. idtac "undone".
+    Time Require Import Coq.micromega.Lia Coq.omega.Omega. Undo. idtac "undone".
+    Time Require Import Coq.micromega.Lia Coq.omega.Omega. Undo. idtac "undone".
+    Time Require Import Coq.micromega.Lia Coq.omega.Omega. Undo. idtac "undone".
+    Time Require Import Coq.micromega.Lia Coq.omega.Omega. Undo. idtac "undone".
+    Time Require Import Coq.micromega.Lia Coq.omega.Omega. Undo. idtac "undone".
+    Time Require Import Coq.micromega.Lia Coq.omega.Omega. Undo. idtac "undone".
+    Time Require Import Coq.micromega.Lia Coq.omega.Omega. Undo. idtac "undone".
+    Time Require Import Coq.micromega.Lia Coq.omega.Omega. Undo. idtac "undone".
+    Time Require Import Coq.micromega.Lia Coq.omega.Omega. Undo. idtac "undone".
+Abort.
+```
+```
+$ ~/.local64/coq/coq-master/bin/coqtop < bar.v
+Welcome to Coq jgross-Leopard-WS:/home/jgross/Downloads/coq/coq-master,master (3072bd9d080984833f5eb007bf15c6e9305619e3)
+
+Coq < Coq <
+Coq <
+Unnamed_thm <
+Unnamed_thm <
+Finished transaction in 0.273 secs (0.232u,0.04s) (successful)
+Finished transaction in 0.286 secs (0.252u,0.036s) (successful)
+
+
+undone
+
+Unnamed_thm < Finished transaction in 0.21 secs (0.199u,0.011s) (successful)
+Finished transaction in 0.558 secs (0.544u,0.016s) (successful)
+
+
+undone
+
+Unnamed_thm < Finished transaction in 0.957 secs (0.944u,0.011s) (successful)
+Finished transaction in 0.646 secs (0.619u,0.023s) (successful)
+
+
+undone
+
+Unnamed_thm < Finished transaction in 1.699 secs (1.68u,0.019s) (successful)
+Finished transaction in 2.458 secs (2.452u,0.008s) (successful)
+
+
+undone
+
+Unnamed_thm <
+...
+
+```
+Comment author: @ejgallego
+
+I agree that there is a bug in the interactive case.
+
+
+> `A. B. C. Undo. C'. Undo 2. B'. C''`., but merely `A. B'. C''`
+
+Note that this optimization is unsound if, for example, `C'` fails.
+
+
+If `C'` fails it should be dropped from the log of statements that have happened.  I'm not saying to skip it the first time through, just to skip it on replay, when you have enough information to do so.

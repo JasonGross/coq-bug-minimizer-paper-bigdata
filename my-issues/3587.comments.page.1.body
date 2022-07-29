@@ -1,0 +1,45 @@
+Comment author: @JasonGross
+
+(* File reduced by coq-bug-finder from original input, then from 10805 lines to 729 lines, then from 790 lines to 288 lines, then fro\
+m 348 lines to 17 lines *)
+(* coqc version trunk (September 2014) compiled on Sep 6 2014 6:15:6 with OCaml 4.01.0
+   coqtop version cagnode17:/afs/csail.mit.edu/u/j/jgross/coq-trunk,trunk (3ea6d6888105edd5139ae0a4d8f8ecdb586aff6c) *)
+Module NonPrim.
+  Record sigT {A} (P : A -> Type) := existT { projT1 : A ; projT2 : P projT1 }.
+  Arguments projT1 {_ _} _ / .
+  Arguments existT {_} _ _ _.
+  Axiom f : sigT (fun x => x) -> Type.
+  Axiom foo : forall x y, f (existT _ x y) = x.
+  Goal forall x y, f (existT _ x y) = x.
+    intros.
+    rewrite foo.
+    match goal with
+      | [ |- context[projT1 (existT _ ?a ?b)] ] => fail 1 "still a projT1"
+      | _ => idtac
+    end.
+  Admitted.
+End NonPrim.
+
+Module Prim.
+  Set Primitive Projections.
+  Record sigT {A} (P : A -> Type) := existT { projT1 : A ; projT2 : P projT1 }.
+  Arguments projT1 {_ _} _ / .
+  Arguments existT {_} _ _ _.
+  Axiom f : sigT (fun x => x) -> Type.
+  Axiom foo : forall x y, f (existT _ x y) = x.
+  Goal forall x y, f (existT _ x y) = x.
+    intros.
+    rewrite foo.
+    match goal with
+      | [ |- context[projT1 (existT _ ?a ?b)] ] => fail 1 "still a projT1"
+      | _ => idtac
+    end. (* fails *)
+  Admitted.
+End Prim.
+
+
+Comment author: @mattam82
+
+Does not apply anymore, there's no projT1 around here.
+
+

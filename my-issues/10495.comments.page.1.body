@@ -1,0 +1,2 @@
+Looks like this one is in @maximedenes ballpark, maybe an `at_exit Sys.remove` can just do it.
+@JasonGross can you try https://github.com/coq/coq/pull/11081 ?

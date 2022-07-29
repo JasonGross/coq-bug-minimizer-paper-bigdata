@@ -1,0 +1,45 @@
+Comment author: @JasonGross
+
+Goal True.
+  match constr:(fun x => x + x) with
+  | (fun y : ?T => ?f) => let c := constr:(fun (y : T) (x : nat) => f + f) in 
+pose c as v
+  end.
+  lazymatch eval cbv delta [v] in v with
+  | fun x _ => x + x + (x + x) => idtac
+  | fun _ x => x + x + (x + x) => fail 0 "broken shadowing"
+  end. (* fails in 8.5, 8.6 *)
+  (* workaround: *)
+  match constr:(fun x => x + x) with
+  | (fun y : ?T => ?f) => let y_name := fresh y in let not_y := fresh y let c 
+:= constr:(fun (y : T) (x : nat) => f + f) in pose c as v'
+  end.
+  Fail lazymatch eval cbv delta [v'] in v' with
+  | fun x _ => x + x + (x + x) => idtac
+  | _ => fail 0 "broken shadowing"
+  end.
+
+This code works in 8.4, but fails in 8.5, 8.6, because Ltac binders bind 
+underlying names, and Ltac confuses underlying names with ltac variable names
+
+
+Comment author: @ppedrot
+
+I honestly think this deserves a WONTFIX. Sorry, we can't provide at the same time capture of names for terms and proper scoping in the current Ltac mess (we've kind of asked for it if you want my opinion)... If you think there is another way out, please manifest yourself.
+
+
+Comment author: @ppedrot
+
+Nobody complained, thus I close this bug.
+
+
+Comment author: @JasonGross
+
+Will this be fixed in Ltac 2.0?
+
+
+Comment author: @ppedrot
+
+That's part of the plan of having a proper notion of variables and sane quotations.
+
+

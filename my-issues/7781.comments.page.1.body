@@ -1,0 +1,1 @@
+There was an issue about having `Definition x.` or `Definition x : _.` give a goal with two evars (which I am failing to track down right now). Do you actually need this to happen specifically in program mode?

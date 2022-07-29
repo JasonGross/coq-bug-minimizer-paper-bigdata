@@ -1,0 +1,252 @@
+Comment author: @JasonGross
+
+Emilio shared a patch on gitter that might or might not fix this, so I'm 
+assigning it to him.  Example file is coming in the next comment, sorry it's a 
+bit long at a few hundred lines.
+
+File "./bug_anom_sig_02.v", line 144, characters 6-699:
+Error:
+Anomaly "Signature and its instance do not match."
+Please report at http://coq.inria.fr/bugs/.
+frame @  file "toplevel/coqtop.ml", line 652, characters 6-22
+frame @  file "list.ml", line 73, characters 12-15
+frame @  file "toplevel/vernac.ml", line 345, characters 2-13
+frame @  file "toplevel/vernac.ml", line 308, characters 14-75
+raise @  file "lib/exninfo.ml", line 63, characters 8-15
+frame @  file "lib/flags.ml", line 149, characters 19-40
+raise @  file "lib/exninfo.ml", line 63, characters 8-15
+frame @  file "lib/flags.ml", line 11, characters 15-18
+raise @  file "lib/exninfo.ml", line 63, characters 8-15
+frame @  file "toplevel/vernac.ml", line 167, characters 6-16
+frame @  file "toplevel/vernac.ml", line 151, characters 26-39
+frame @  file "stm/stm.ml", line 2364, characters 2-35
+raise @  file "lib/exninfo.ml", line 63, characters 8-15
+frame @  file "stm/stm.ml", line 2354, characters 4-48
+frame @  file "stm/stm.ml", line 2320, characters 4-100
+raise @  file "lib/exninfo.ml", line 63, characters 8-15
+frame @  file "stm/stm.ml", line 830, characters 6-10
+frame @  file "stm/stm.ml", line 2195, characters 12-118
+raise @  unknown
+frame @  file "stm/stm.ml", line 2139, characters 10-14
+raise @  file "lib/exninfo.ml", line 63, characters 8-15
+frame @  file "stm/stm.ml", line 973, characters 8-81
+raise @  unknown
+frame @  file "vernac/vernacentries.ml", line 2199, characters 10-389
+frame @  file "lib/flags.ml", line 149, characters 19-40
+raise @  file "lib/exninfo.ml", line 63, characters 8-15
+frame @  file "lib/flags.ml", line 11, characters 15-18
+raise @  file "lib/exninfo.ml", line 63, characters 8-15
+frame @  file "vernac/vernacinterp.ml", line 69, characters 4-10
+frame @  file "plugins/ltac/g_ltac.ml4", line 378, characters 15-536
+frame @  file "proofs/proof_global.ml", line 164, characters 24-36
+frame @  file "plugins/ltac/g_ltac.ml4", line 383, characters 6-82
+raise @  unknown
+frame @  file "proofs/pfedit.ml", line 138, characters 28-67
+frame @  file "proofs/proof.ml", line 351, characters 4-30
+frame @  file "engine/proofview.ml", line 216, characters 12-42
+raise @  unknown
+frame @  file "engine/logic_monad.ml", line 114, characters 8-12
+frame @  file "engine/logic_monad.ml", line 64, characters 36-42
+raise @  unknown
+frame @  file "engine/logic_monad.ml", line 257, characters 6-27
+frame @  file "engine/logic_monad.ml", line 189, characters 38-43
+raise @  unknown
+frame @  file "engine/proofview.ml", line 1068, characters 10-34
+frame @  file "engine/proofview.ml", line 1063, characters 40-52
+frame @  file "plugins/ltac/tacinterp.ml", line 1735, characters 10-84
+frame @  file "plugins/ltac/tacinterp.ml", line 630, characters 4-67
+raise @  unknown
+frame @  file "plugins/ltac/tacinterp.ml", line 216, characters 6-9
+frame @  file "pretyping/pretyping.ml", line 1241, characters 19-62
+frame @  file "pretyping/pretyping.ml", line 382, characters 14-65
+frame @  file "pretyping/pretyping.ml", line 370, characters 32-73
+frame @  file "pretyping/typeclasses.ml", line 554, characters 7-59
+raise @  unknown
+frame @  file "tactics/class_tactics.ml", line 1524, characters 9-26
+raise @  unknown
+frame @  file "tactics/class_tactics.ml", line 1521, characters 12-63
+frame @  file "tactics/class_tactics.ml", line 1365, characters 14-42
+raise @  unknown
+frame @  file "tactics/class_tactics.ml", line 1346, characters 11-49
+frame @  file "engine/proofview.ml", line 215, characters 23-51
+frame @  file "engine/logic_monad.ml", line 189, characters 38-43
+raise @  unknown
+frame @  file "engine/proofview.ml", line 1068, characters 10-34
+frame @  file "engine/proofview.ml", line 1063, characters 40-52
+frame @  file "tactics/class_tactics.ml", line 1251, characters 17-77
+frame @  file "tactics/class_tactics.ml", line 998, characters 16-54
+frame @  file "tactics/class_tactics.ml", line 988, characters 11-44
+frame @  file "lib/cList.ml", line 291, characters 6-15
+ frame @  file "kernel/constr.ml", line 506, characters 18-26
+frame @  file "engine/eConstr.ml", line 102, characters 31-49
+frame @  file "engine/eConstr.ml", line 82, characters 16-40
+raise @  unknown
+frame @  file "engine/eConstr.ml", line 76, characters 11-43
+frame @  file "engine/evd.ml", line 249, characters 13-47
+frame @  file "engine/evd.ml", line 229, characters 38-66
+frame @  file "engine/evd.ml", line 229, characters 38-66
+frame @  file "engine/evd.ml", line 229, characters 38-66
+frame @  file "engine/evd.ml", line 229, characters 38-66
+frame @  file "engine/evd.ml", line 229, characters 38-66
+frame @  file "engine/evd.ml", line 229, characters 38-66
+frame @  file "engine/evd.ml", line 229, characters 38-66
+frame @  file "engine/evd.ml", line 229, characters 38-66
+frame @  file "engine/evd.ml", line 229, characters 38-66
+frame @  file "engine/evd.ml", line 229, characters 38-66
+frame @  file "engine/evd.ml", line 229, characters 38-66
+frame @  file "engine/evd.ml", line 229, characters 38-66
+frame @  file "engine/evd.ml", line 229, characters 38-66
+frame @  file "engine/evd.ml", line 229, characters 38-66
+frame @  file "engine/evd.ml", line 229, characters 38-66
+frame @  file "engine/evd.ml", line 229, characters 38-66
+frame @  file "engine/evd.ml", line 229, characters 38-66
+frame @  file "engine/evd.ml", line 229, characters 38-66
+raise @  file "lib/loc.ml", line 71, characters 22-23
+
+
+Comment author: @JasonGross
+
+Created attachment 846
+buggy file
+
+> Attached file: [bug_anom_sig_09.v](https://coq.inria.fr/bugfiles/attachment.cgi?id=846) (text/plain, 13819 bytes)
+> Description:   buggy file
+
+
+Comment author: @ejgallego
+
+Indeed the patch seems to fix the issue.
+
+
+Comment author: @ejgallego
+
+https://github.com/coq/coq/pull/727
+
+
+Comment author: @ejgallego
+
+Wait, I am having trouble reproducing this in a2a98a4015311af83edcf8fc87aa30a5318bead8 , can you confirm the bug does still happen there?
+
+
+Comment author: @ejgallego
+
+Yup, definitively I can't seem to hit the bug with your example.
+
+
+Comment author: @JasonGross
+
+Using a slightly smaller example:
+
+$ git log -1
+commit a2a98a4015311af83edcf8fc87aa30a5318bead8
+Merge: fa517c3 ac41250
+Author: Maxime Dénès <mail@ maximedenes.fr>
+Date:   Fri Jun 2 23:19:31 2017 +0200
+
+    Merge PR#720: Reformat Makefile.ci
+$ make bin/coqtop
+make --warn-undefined-variable --no-builtin-rules -f Makefile.build bin/coqtop
+make[1]: Entering directory '/home/jgross/Documents/repos/coq2'
+make[1]: 'bin/coqtop' is up to date.
+make[1]: Leaving directory '/home/jgross/Documents/repos/coq2'
+$ cat ../coq-bisect/bug_5578.v
+(* -*- mode: coq; coq-prog-args: ("-emacs" "-R" "src" "CrossCrypto" "-R" 
+"fcf/src/FCF" "FCF" "-R" "fcf/src/HMAC" "HMAC" "-top" "bug_anom_sig_08" "-R" 
+"." "Top") -*- *)
+(* File reduced by coq-bug-finder from original input, then from 1549 lines to 
+298 lines, then from 277 lines to 133 lines, then from 985 lines to 138 lines, 
+then from 206 lines to 139 lines, then from 203 lines to 142 lines, then from 
+262 lines to 152 lines, then from 567 lines to 151 lines, then from 3746 lines 
+to 151 lines, then from 577 lines to 151 lines, then from 187 lines to 151 
+lines, thenfrom 981 lines to 940 lines, then from 938 lines to 175 lines, then 
+from 589 lines to 205 lines, then from 3797 lines to 205 lines, then from 628 
+lines to 206 lines, then from 238 lines to 205 lines, then from 1346 lines to 
+213 lines, then from 633 lines to 214 lines, then from 243 lines to 213 lines, 
+then from 5656 lines to 245 lines, then from 661 lines to 272 lines, then from 
+3856 lines to 352 lines, then from 1266 lines to 407 lines, then from 421 lines 
+to 406 lines, then from 424 lines to 91 lines, then from 105 lines to 91 lines, 
+then from 85 lines to 55 lines, then from 69 lines to 55 lines *)
+(* coqc version trunk (May 2017) compiled on May 30 2017 13:28:59 with OCaml 
+4.02.3
+   coqtop version jgross-Leopard-WS:/home/jgross/Downloads/coq/coq-trunk,trunk 
+(fd36c0451c26e44b1b7e93299d3367ad2d35fee3) *)
+
+Class Proper {A} (R : A -> A -> Prop) (m : A) := mkp : R m m.
+Definition respectful {A B} (R : A -> A -> Prop) (R' : B -> B -> Prop) (f g : A 
+-> B) := forall x y, R x y -> R' (f x) (g y).
+Set Implicit Arguments.
+
+Class EqDec (A : Set) := {
+  eqb : A -> A -> bool ;
+  eqb_leibniz : forall x y, eqb x y = true <-> x = y
+}.
+
+Infix "?=" := eqb (at level 70) : eq_scope.
+
+Inductive Comp : Set -> Type :=
+| Bind : forall (A B : Set), Comp B -> (B -> Comp A) -> Comp A.
+
+Open Scope eq_scope.
+
+Goal forall (Rat : Set) (PositiveMap_t : Set -> Set)
+            type (t : type) (interp_type_list_message interp_type_rand 
+interp_type_message : nat -> Set),
+    (forall eta : nat, PositiveMap_t (interp_type_rand eta) -> 
+interp_type_list_message eta -> interp_type_message eta) ->
+    ((nat -> Rat) -> Prop) ->
+    forall (interp_type_sbool : nat -> Set) (interp_type0 : type -> nat -> Set),
+      (forall eta : nat,
+          (interp_type_list_message eta -> interp_type_message eta) -> 
+PositiveMap_t (interp_type_rand eta) -> interp_type0 t eta)
+      -> (forall (t0 : type) (eta : nat), EqDec (interp_type0 t0 eta))
+      -> (bool -> Comp bool) -> False.
+  clear.
+  intros Rat PositiveMap_t type t interp_type_list_message interp_type_rand 
+interp_type_message adv negligible interp_type_sbool
+         interp_type interp_term_fixed_t_x
+         EqDec_interp_type ret_bool.
+  assert (forall f adv' k
+                 (lem : forall (eta : nat) (evil_rands rands : PositiveMap_t 
+(interp_type_rand eta)),
+                     (interp_term_fixed_t_x eta (adv eta evil_rands) rands
+                                            ?= interp_term_fixed_t_x eta (adv 
+eta evil_rands) rands) = true),
+             (forall (eta : nat), Proper (respectful eq eq) (f eta))
+             -> negligible
+                  (fun eta : nat =>
+                     f eta (
+                         (Bind (k eta) (fun rands =>
+                          ret_bool (interp_term_fixed_t_x eta (adv' eta) rands 
+?= interp_term_fixed_t_x eta (adv' eta) rands)))))).
+  Undo.
+  assert (forall f adv' k
+                 (lem : forall (eta : nat) (rands : PositiveMap_t 
+(interp_type_rand eta)),
+                     (interp_term_fixed_t_x eta (adv' eta) rands ?= 
+interp_term_fixed_t_x eta (adv' eta) rands) = true),
+             (forall (eta : nat), Proper (respectful eq eq) (f eta))
+             -> negligible
+                  (fun eta : nat =>
+                     f eta (
+                         (Bind (k eta) (fun rands =>
+                          ret_bool (interp_term_fixed_t_x eta (adv' eta) rands 
+?= interp_term_fixed_t_x eta (adv' eta) rands)))))).
+$ ./bin/coqc -q ../coq-bisect/bug_5578.v
+File "../coq-bisect/bug_5578.v", line 46, characters 2-583:
+Error:
+Anomaly "Signature and its instance do not match."
+Please report at http://coq.inria.fr/bugs/.
+
+
+Comment author: @psteckler
+
+Is this the same issue as 5558, which involves the same error message, and re-doing a command?
+
+
+Comment author: @ejgallego
+
+Yup, almost sure it is; marking as duplicate.
+
+*** This bug has been marked as a duplicate of bug [BZ#5558](https://github.com/coq/coq/issues?q=is%3Aissue%20%22Original%20bug%20ID%3A%20BZ%235558%22) ***
+
+

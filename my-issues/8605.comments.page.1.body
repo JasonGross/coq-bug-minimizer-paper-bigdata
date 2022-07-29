@@ -1,0 +1,2 @@
+Note that doing `eapply (A2 (fun x => _))` and doing `refine (A2 (fun x => _) _ _)` both succeed even without the `cbv beta`.
+Note that the first `refine (A2 _ _ _).` succeeds since Coq 8.10.

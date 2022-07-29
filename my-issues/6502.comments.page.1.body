@@ -1,0 +1,35 @@
+This was fixed in 8.8 and 8.9, but is broken again in 8.10.  Here is the updated test-case to account for numeral notations on large `nat`s:
+```coq
+Reserved Notation "'dlet' x .. y := v 'in' f"
+         (at level 200, x binder, y binder, f at level 200, format "'dlet'  x .. y  :=  v  'in' '//' f").
+Definition Let_In {A P} (v : A) (f : forall x : A, P x) : P v
+  := let x := v in f x.
+Notation "'dlet' x .. y := v 'in' f" := (Let_In v (fun x => .. (fun y => f) .. )).
+Fixpoint big (a : nat) (sz : nat) : nat
+  := match sz with
+     | O => a
+     | S sz' => dlet a' := a * a in big a' sz'
+     end.
+
+
+Notation "'hide'" := (_ = _).
+Notation "'hide'" := (_ = _) : core_scope.
+Notation "'hide'" := (_ = _) : type_scope.
+
+Ltac do_time n :=
+  try (
+      once (assert (exists e, e = big 1 n);
+            [ cbv -[big]; cbv [big];
+              time pattern Nat.mul, S, O, (@Let_In nat (fun _ => nat))
+            | ]);
+      fail).
+
+
+Goal True.
+  do_time 1024. (* 0.068 *)
+  do_time 2048. (* 0.141 *)
+  do_time 4096. (* 0.444 *)
+  do_time 8192. (* 1.363 *)
+  do_time 16384. (* 4.963 *)
+```
+The milestone of this issue was changed to reflect the one of the pull request that closed it.

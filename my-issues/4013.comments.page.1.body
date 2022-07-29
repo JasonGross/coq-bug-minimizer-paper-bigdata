@@ -1,0 +1,66 @@
+Comment author: @JasonGross
+
+It would be nice to have, e.g., a [par_deferred: ] selector so that [par_deferred: foo] was equivalent to [par: abstract foo] in synchronous mode, but such that [foo] wasn't run in quick mode, and instead deferred for later.  (Alternatively, [par: abstract (...)] could have this behavior, or it could even be a vernacular.  The syntax doesn't matter much to me.)
+
+The main use-case I currently have in mind is that when porting developments from 8.4 (bedrock, in this case), I want to first get all the definitions working, and then work out the tactics/proofs later.  This is easier if I can do a batch replace of
+  Definition foo.
+  Proof.
+    tac1; abstract tac2.
+  Defined.
+with
+  Definition foo.
+  Proof.
+    tac1.
+    par_deferred: tac2.
+  Defined.
+rather than having to manually replace some proofs with [admit], or factor out the proofs into separate theorems.
+
+
+Comment author: @gares
+
+Cant you just use "all: admit" ? (and comment out the proofs)
+
+Defined lemmas cannot be processed asynchronously.  It is a hard constraint.
+
+
+Comment author: @JasonGross
+
+I would prefer to have the proof errors show up in make vio2vo, if possible.
+
+I know that the bodies of [Defined] lemmas cannot be processed asynchronously.  However, the bodies of the opaque [foo_subproof*] should be able to be processes asynchronously, right?
+
+
+Comment author: @gares
+
+Sorry, I can't do that.
+
+The point is that I don't know their types.  If you know their types in advance (without executing the tactics) and you write explicit lemmas for them
+then they can parallelized or postponed by stocking them in the .vio files.  
+
+Probably the message is:
+"opaque + explicit type = asynchronous"
+The "par:" thing is parallel but synchronous.
+The ".vio" thing is asynchronous and parallel.
+
+
+Comment author: @JasonGross
+
+Why can't the types be automatically inferred from the state after executing the synchronous tactics up to that point?  That is, if we have:
+
+Section foo.
+  Context ...
+  Definition foo : bar.
+  Proof using ...
+    some tactics.
+    par_abstract: finish.
+  Defined.
+End foo.
+
+We already know, at the point of par_abstract (having executed [some tactics.], but not [finish.]), what the type of each theorem-to-be-generated is going to be, and we can finish the definition of [foo] without filling in the proof terms, even though the user has not made those types explicit.  The fact that we have to evaluate the [some tactics.] to get to this point doesn't seem any different to me than having to evaluate [Notation]s or previous transparent definitions to make sense of the type of a new definition statement, or that you have to evaluate Ltac code to make [Theorem baz : $(qux)$. Proof using ... ... Qed.] parallel.
+
+
+Comment author: @gares
+
+You are right, now that you make me think about it, in this particular case it could.  But not with a 5 lines patch, so I'm afraid it will not make it for 8.5.
+
+

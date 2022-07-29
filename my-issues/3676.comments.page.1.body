@@ -1,0 +1,35 @@
+Comment author: @JasonGross
+
+jgross@ cagnode16:/tmp/foo$ cat foo.v
+Module bar.
+  Require foo.bar.
+  Include foo.bar.
+End bar.
+jgross@ cagnode16:/tmp/foo$ cat foo/bar.v
+Axiom baz : Set.
+jgross@ cagnode16:/tmp/foo$ coq_makefile -R . Top foo.v foo/bar.v | make -f -
+"coqdep" -c -R . Top "foo/bar.v" > "foo/bar.v.d" || ( RV=$?; rm -f "foo/bar.v.d"; exit ${RV} )
+"coqdep" -c -R . Top "foo.v" > "foo.v.d" || ( RV=$?; rm -f "foo.v.d"; exit ${RV} )
+"coqc"  -q  -R . Top   foo/bar
+"coqc"  -q  -R . Top   foo
+File "./foo.v", line 2, characters 2-18:
+Anomaly: Top.foo.bar already exists. Please report.
+make: *** [foo.vo] Error 1
+
+Note that
+
+Require foo.bar.
+Module bar.
+  Include foo.bar.
+End bar.
+
+is just an Error.
+
+Coq needs better namespacing.  I'm trying to recreate the directory [foo] in a file [foo.v], so that the namespace [foo] consists of some definitions (included from various files in foo/), together with some modules (which are files in foo/).  I want it to be the case that if you [Require Top.foo. Include Top.foo], you get all of the definitions I want exposed, and you also get new names for all of the modules in foo/ that I'm trying to present.
+
+
+Comment author: @maximedenes
+
+This anomaly is now a regular error, so I'm closing the bug. If you need some more features in Coq's namespacing (that are not given by -Q and the like), please create a separate feature request.
+
+

@@ -1,0 +1,17 @@
+Comment author: @JasonGross
+
+Class Foo.
+Definition bar `{Foo} (x : Set) := Set.
+Instance: Foo.
+Definition bar1 := bar nat.
+Definition bar2 := bar $(admit)$. (* Toplevel input, characters 34-37:
+Error: Cannot infer the implicit parameter H of
+bar.
+Could not find an instance for "Foo". *)
+
+
+Comment author: @ppedrot
+
+Fixed in trunk.
+
+

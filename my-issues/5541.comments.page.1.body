@@ -1,0 +1,18 @@
+Comment author: @JasonGross
+
+I'd like an option telling Coq to not erase [Prop]s, as a work-around to 
+https://coq.inria.fr/bugs/show_bug.cgi?id=5540.  (It also seems like it might 
+be independently useful.)
+
+
+Comment author: @JasonGross
+
+Another thought/request: a mode where all Props are extracted to __, rather 
+than being fully erased.
+
+
+Comment author: @JasonGross
+
+This would be most useful when extracting modules or module functors.
+
+

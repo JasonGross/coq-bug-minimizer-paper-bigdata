@@ -1,0 +1,18 @@
+Comment author: @JasonGross
+
+The behavior of this code is very confusing in 8.5:
+
+Require Import Coq.Program.Tactics.
+Generalizable All Variables.
+Obligation Tactic := idtac.
+Class Foo := { x : True }.
+Class Bar (f : Foo) := { y : True }.
+Program Instance foo : Foo := { }.
+Program Instance bar : Bar foo := { }.
+Next Obligation.
+
+
+In 8.4, it helpfully errors with the message "Error: More than one program with unsolved obligations".  But in 8.5, it silently gives me the first obligation of [bar], which is of type [Foo -> True], because [foo] was implicitly generalized over.
+
+
+Seems to be fixed as of 302334cd0e3961a8476e8071ca4482318e0dce6f.

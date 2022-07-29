@@ -1,0 +1,5 @@
+Comment author: @JasonGross
+
+I would like to see which problems are subproblems of other printed problems.  More importantly, I'd like to see which problems resulted in backtracking and which ones didn't.  Something similar to the x.y.z.w labels of [Typeclasses eauto := debug], together with notes on when backtracking happened, would be sufficient.
+
+

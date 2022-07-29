@@ -1,0 +1,19 @@
+Comment author: @JasonGross
+
+The following should work:
+
+Goal True /\ True /\ False.
+Proof.
+  split; [ | split ].
+  par: try exact I.
+
+Currently, it says something like "Error: no progress".
+
+(It would be nice to support partial progress on goals, too, but if this is too hard, I'd be fine with having to wrap my tactics with [try solve [ ... ]] to get them to work nicely with [par:].)
+
+
+Comment author: @maximedenes
+
+This seems fixed in 8.6.
+
+

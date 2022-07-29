@@ -1,0 +1,42 @@
+Comment author: @JasonGross
+
+```coq
+Set Primitive Projections.
+Set Implicit Arguments.
+Record prod A B := pair { fst : A ; snd : B }.
+Goal forall A B : Set, True.
+Proof.
+  clear.
+  intros A B.
+  evar (a : prod A B); evar (f : (prod A B -> Set)).
+  unify (f a) (f (@ pair _ _ (fst a) (snd a))). (* success *)
+  let a' := (eval unfold a in a) in
+  let f' := (eval unfold f in f) in
+  unify (f' a') (f' (@ pair _ _ (fst a') (snd a'))). (* Error: Tactic failure: Not unifiable. *)
+```
+
+Comment author: @mattam82
+
+Fixed in apply's unification, for evarconv we're trying to find the best way to handle the eta-with-evar case.
+
+
+Comment author: @JasonGross
+
+What's the issue with the eta-with-evars case in evarconv?
+
+
+Comment author: @JasonGross
+
+What's the issue with the eta-with-evars case in evarconv?
+
+
+Comment author: @mattam82
+
+The issue is that it applies in cases where evarconv currently fails due to occur-checks so it's a matter of doing it at the right time without breaking existing code. I think I got it right now.
+
+
+As a side remark, I recently noticed that, despite apparences, the above example actually does not require eta.
+
+Indeed, it is enough to instantiate `?a` with `(fst ?x, snd ?y)` so that the equation `?a` ≣ `(fst ?a, snd ?a)` holds, using only the reduction rules for projections.
+
+This is implemented in #14746.

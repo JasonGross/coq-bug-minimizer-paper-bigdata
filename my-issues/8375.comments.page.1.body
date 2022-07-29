@@ -1,0 +1,19 @@
+We could revert 0be785a5832177efa4ec396a421a4eb367b81914
+@SkySkimmer only the part changing `ci-common.sh` right? Do you think that's the best solution? If yes, I can open a PR.
+What was the point of sourcing `ci-basic-overlay.sh` before BTW?
+IIRC I wanted to simplify the `: ${foo:=bar}` to `foo=bar` but someone 
+didn't want it so it just ended up quoted.
+
+Gaëtan Gilbert
+
+On 01/09/2018 11:05, Théo Zimmermann wrote:
+> What was the point of sourcing |ci-basic-overlay.sh| before BTW?
+> 
+> —
+> You are receiving this because you were mentioned.
+> Reply to this email directly, view it on GitHub 
+> <https://github.com/coq/coq/issues/8375#issuecomment-417844654>, or mute 
+> the thread 
+> <https://github.com/notifications/unsubscribe-auth/ACWQ7Jx1eifOhkQTNc5oRt6UNvOu7osNks5uWk3rgaJpZM4WWIsG>.
+> 
+

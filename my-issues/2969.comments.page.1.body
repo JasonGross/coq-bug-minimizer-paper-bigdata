@@ -1,0 +1,80 @@
+Comment author: @JasonGross
+
+The following code produces "Toplevel input, characters 0-5: Anomaly: type_of: variable x unbound. Please report." on the last [admit]
+
+    Set Implicit Arguments.
+    Local Close Scope nat_scope.
+    Local Open Scope type_scope.
+
+    Local Ltac inst_1 :=
+      match goal with | [ |- appcontext[?E] ] => is_evar E;
+                                                let H := fresh in
+                                                first [ assert (H : E = (fun xyz => (fst (fst xyz), (snd (fst xyz), snd xyz)))) by reflexivity
+                                                      | assert (H : E = (fun xyz => ((fst xyz, fst (snd xyz)), snd (snd xyz)))) by reflexivity ];
+                                                  clear H
+      end.
+
+    Local Ltac inst_2 :=
+      try ((instantiate (1 := (fun _ xyz => (fst (fst xyz), (snd (fst xyz), snd xyz)))))
+             || (instantiate (1 := (fun _ xyz => ((fst xyz, fst (snd xyz)), snd (snd xyz)))))).
+
+    Ltac evar_evar_Type t :=
+      let T := fresh in evar (T : Type); evar (t : T); subst T.
+
+    Goal  {NaturalIsomorphism_Transformation
+           : {ComponentsOf'
+              : forall c : Type * Type * Type,
+                  fst (fst c) * snd (fst c) * snd c ->
+                  fst (fst c) * (snd (fst c) * snd c) &
+                                                      forall (s d : Type * Type * Type)
+                                                             (m : (fst (fst s) -> fst (fst d)) * (snd (fst s) -> snd (fst d)) *
+                                                                  (snd s -> snd d)),
+                                                        (fun x : fst (fst s) * snd (fst s) * snd s =>
+                                                           ComponentsOf' d
+                                                                         (fst (fst m) (fst (fst x)), snd (fst m) (snd (fst x)),
+                                                                          snd m (snd x))) =
+                                                        (fun x : fst (fst s) * snd (fst s) * snd s =>
+                                                           (fst (fst m) (fst (ComponentsOf' s x)),
+                                                            (snd (fst m) (fst (snd (ComponentsOf' s x))),
+                                                             snd m (snd (snd (ComponentsOf' s x))))))} &
+                                                                                                       forall x : Type * Type * Type,
+                                                                                                         {Inverse
+                                                                                                          : fst (fst x) * (snd (fst x) * snd x) ->
+                                                                                                            fst (fst x) * snd (fst x) * snd x |
+                                                                                                          (fun x0 : fst (fst x) * snd (fst x) * snd x =>
+                                                                                                             Inverse (projT1 NaturalIsomorphism_Transformation x x0)) =
+                                                                                                          (fun x0 : fst (fst x) * snd (fst x) * snd x => x0) /\
+                                                                                                          (fun x0 : fst (fst x) * (snd (fst x) * snd x) =>
+                                                                                                             projT1 NaturalIsomorphism_Transformation x (Inverse x0)) =
+                                                                                                          (fun x0 : fst (fst x) * (snd (fst x) * snd x) => x0)}}.
+    repeat esplit; try
+                     match goal with | [ |- appcontext[?E] ] => is_evar E;
+                                                               match type of E with
+                                                                 | sigT ?P =>
+                                                                   let A := fresh in
+                                                                   let B := fresh in
+                                                                   let H := fresh in
+                                                                   evar_evar_Type A;
+                                                                     evar_evar_Type B;
+                                                                     assert (H : E = existT P A B) by reflexivity;
+                                                                     clear H
+                                                               end
+                     end;
+    simpl in *;
+    repeat (inst_2 || inst_1); instantiate; simpl;
+    repeat match goal with | [ H := _ |- _ ] => subst H end;
+    repeat match goal with | [ H : prod _ _ |- _ ] => destruct H; simpl in * end.
+    admit.
+    admit.
+    Grab Existential Variables.
+    admit.
+
+
+Sorry that it's a bit long.
+
+
+Comment author: @herbelin
+
+Bug was related to the new proof engine. It is fixed in trunk and v8.4. Thanks for reporting.
+
+

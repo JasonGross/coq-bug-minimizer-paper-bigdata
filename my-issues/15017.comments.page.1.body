@@ -1,0 +1,21 @@
+Are you aware of https://github.com/coq/coq/pull/14892
+That's orthogonal to name importing so far.
+So if I had a module like
+```coq
+Module A.
+  Axiom Foo : Type.
+  Axiom Bar : Type.
+End A.
+```
+by doing
+```coq
+Import A(-Foo).
+```
+your suggestion makes only `A.Foo and Bar` visible? Are we basically turning (-X) into a local definition?
+Yes @Alizter — `A.Foo` is already visible and `Import A(-Foo).` makes only `Bar` visible. OTOH that is not equivalent to local definitions, since a later `Import A(Foo)` or `Import A(-Bar).` would make `Foo` visible as well.
+
+More formally, the OP seems to imply a full specification (but I'm probably missing some corner cases):
+
+> `Import foo(-(id, compose))`, which has the effect of adding everything not in the inner parentheses.
+
+IOW, if `foo` contains a set `X` of (non-local) members, `Import foo(-Y)` should import identifiers in the the set `Z = X - Y` from `foo` — just like `Import foo(Z).`

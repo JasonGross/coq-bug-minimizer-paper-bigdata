@@ -1,0 +1,15 @@
+Comment author: @JasonGross
+
+```
+Ltac foo := let v := constr:(@ nil True) in pose v.
+Set Printing All.
+Print Ltac foo.
+(* Ltac foo := let v := (@ nil True) in
+            pose v *)
+Ltac foo2 := let v := (@ nil True) in
+            pose v. (* Error:
+Syntax error: [tactic:tactic_expr] expected after '(' (in 
+[tactic:tactic_expr]). *)
+```
+
+See #6113 for a fix to this v8.6 regression.

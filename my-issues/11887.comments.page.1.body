@@ -1,0 +1,3 @@
+Could it be `magicaly_constant_of_fixbody`?
+Nope, it's `Cst_stack.best_replace` in `Reductionops.reduce_and_refold_fix`.
+Erm, `Termops.replace_term` and `Termops.subst_term`, the former being called by refolding, are algorithmically horrible. They gladly lift their pattern everytime they go under a binder. Since the pattern in the example is the big fixpoint, well, you got it.

@@ -1,0 +1,29 @@
+Comment author: @JasonGross
+
+"The following section variable are used but not declared" can be confusing to people who've never used [Proof using] before, and encounter it in an existing code base.  The error message should mention [Proof using], and probably instruct the user as to how this error can be fixed by updating the [Proof using] list on such-and-such a line.  (e.g.,
+"""
+The following section variable are used but not declared:
+ua
+You can either update your proof to not depend on ua, or you can update line nnn from
+Proof using <existing list>.
+to
+Proof using <existing list> ua.
+"""
+)
+
+
+Comment author: @herbelin
+
+Enrico, can I let you take a decision on this one?
+
+
+Comment author: @ejgallego
+
+https://github.com/coq/coq/pull/738
+
+
+Comment author: @maximedenes
+
+Fix merged, thanks!
+
+

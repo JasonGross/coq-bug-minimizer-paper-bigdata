@@ -1,0 +1,24 @@
+Comment author: @JasonGross
+
+Require Import Setoid.
+Goal forall x y : Set, x = y -> x = y.
+intros x y H.
+rewrite_strat subterms H.
+
+
+
+rewrite_strat subterm H. tells me that one_subterm is unknown.
+
+
+Comment author: David M. Cooke &lt;<david.m.cooke@gmail.com>&gt;
+
+This is a duplicate of [BZ#3232](https://github.com/coq/coq/issues?q=is%3Aissue%20%22Original%20bug%20ID%3A%20BZ%233232%22) (which has a patch).
+
+
+Comment author: @JasonGross
+
+
+
+*** This bug has been marked as a duplicate of bug [BZ#3232](https://github.com/coq/coq/issues?q=is%3Aissue%20%22Original%20bug%20ID%3A%20BZ%233232%22) ***
+
+

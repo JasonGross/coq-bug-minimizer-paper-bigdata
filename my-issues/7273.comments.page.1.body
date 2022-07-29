@@ -1,0 +1,398 @@
+Where can I find the `Crypto.Util.Option` module (or alternatively, can you inline it in the example)?
+Urg, that didn't get inlined?  There's probably a bug in my bug minimizer somewhere...  Anyway, it's at https://github.com/mit-plv/fiat-crypto/blob/master/src/Util/Option.v and I'll plan to make a new version of the file with this inlined within the next day.
+Updated version with everything inlined: 
+[bug_slow_vm_PHOAS_08.zip](https://github.com/coq/coq/files/1926164/bug_slow_vm_PHOAS_08.zip)
+
+Here's an even smaller example of this issue:  [bug_slow_vm2_04.zip](https://github.com/coq/coq/files/1926758/bug_slow_vm2_04.zip)
+Note that the version that calls `Red2` without pre-reducting `FromFlat` is 10x slower than any of the other versions.
+And here's the inline version, since this one is relatively short:
+```coq
+(* -*- mode: coq; coq-prog-args: ("-emacs" "-R" "." "Top" "-top" "bug_slow_vm2_01") -*- *)
+(* File reduced by coq-bug-finder from original input, then from 4431 lines to 3382 lines, then from 3059 lines to 2535 lines, then from 2589 lines to 2515 lines, then from 2606 lines to 2524 lines, then from 2682 lines to 2570 lines, then from 2715 lines to 2585 lines, then from 2720 lines to 2585 lines, then from 2644 lines to 2585 lines, then from 2675 lines to 2585 lines, then from 2687 lines to 2585 lines, then from 3027 lines to 2585 lines, then from 2715 lines to 2585 lines, then from 2685 lines to 2585 lines, then from 2763 lines to 2585 lines, then from 2647 lines to 2585 lines, then from 2692 lines to 2595 lines, then from 2781 lines to 2612 lines, then from 2700 lines to 2688 lines, then from 4973 lines to 2642 lines, then from 2758 lines to 2642 lines, then from 2728 lines to 2642 lines, then from 2806 lines to 2642 lines, then from 2690 lines to 2642 lines, then from 2717 lines to 2642 lines, then from 2701 lines to 2642 lines, then from 2667 lines to 2642 lines, then from 3356 lines to 464 lines, then from 375 lines to 362 lines, then from 378 lines to 362 lines *)
+(* coqc version 8.7.1 (December 2017) compiled on Dec 22 2017 15:56:58 with OCaml 4.02.3
+   coqtop version 8.7.1 (December 2017) *)
+Require Coq.FSets.FMapPositive.
+
+Global Set Asymmetric Patterns.
+Reserved Notation "A <- X ; B" (at level 70, X at next level, right associativity, format "'[v' A  <-  X ; '/' B ']'").
+Definition bind {A B} (v : option A) (f : A -> option B) : option B
+  := match v with
+     | Some v => f v
+     | None => None
+     end.
+Delimit Scope option_scope with option.
+Notation "A <- X ; B" := (bind X (fun A => B%option)) : option_scope.
+Reserved Infix "@" (left associativity, at level 11).
+Reserved Infix "@@" (left associativity, at level 11).
+Reserved Notation "'λ' x .. y , t" (at level 200, x binder, y binder, right associativity, format "'λ'  x .. y , '//' t").
+Import Coq.ZArith.ZArith.
+Import Coq.FSets.FMapPositive.
+Module type.
+  Variant primitive := unit | Z | nat.
+  Inductive type := type_primitive (_:primitive) | prod (A B : type) | arrow (s d : type).
+  Module Export Coercions.
+    Global Coercion type_primitive : primitive >-> type.
+  End Coercions.
+
+  Fixpoint interp (t : type)
+    := match t with
+       | unit => Datatypes.unit
+       | prod A B => interp A * interp B
+       | arrow A B => interp A -> interp B
+       | nat => Datatypes.nat
+       | type_primitive Z => BinInt.Z
+       end%type.
+
+  Fixpoint try_transport (P : type -> Type) (t1 t2 : type) : P t1 -> option (P t2)
+    := match t1, t2 return P t1 -> option (P t2) with
+       | unit, unit
+       | Z, Z
+       | nat, nat
+         => @Some _
+       | prod A B, prod A' B'
+         => fun v
+            => (v <- try_transport (fun A => P (prod A B)) A A' v;
+                  try_transport (fun B => P (prod A' B)) B B' v)%option
+       | arrow s d, arrow s' d'
+         => fun v
+            => (v <- try_transport (fun s => P (arrow s d)) s s' v;
+                  try_transport (fun d => P (arrow s' d)) d d' v)%option
+       | unit, _
+       | Z, _
+       | nat, _
+       | prod _ _, _
+       | arrow _ _, _
+         => fun _ => None
+       end.
+
+  Module Export Notations.
+    Export Coercions.
+    Bind Scope ctype_scope with type.
+    Notation "()" := unit : ctype_scope.
+    Notation "A * B" := (prod A B) : ctype_scope.
+    Notation "A -> B" := (arrow A B) : ctype_scope.
+    Notation type := type.
+  End Notations.
+End type.
+Export type.Notations.
+Module Export expr.
+  Inductive expr {ident : type -> type -> Type} {var : type -> Type} : type -> Type :=
+  | Var {t} (v : var t) : expr t
+  | TT : expr type.unit
+  | AppIdent {s d} (idc : ident s d) (args : expr s) : expr d
+  | App {s d} (f : expr (s -> d)) (x : expr s) : expr d
+  | Pair {A B} (a : expr A) (b : expr B) : expr (A * B)
+  | Abs {s d} (f : var s -> expr d) : expr (s -> d).
+
+  Definition Expr {ident : type -> type -> Type} t := forall var, @expr ident var t.
+  Bind Scope expr_scope with expr.
+  Delimit Scope expr_scope with expr.
+
+  Infix "@" := App : expr_scope.
+  Infix "@@" := AppIdent : expr_scope.
+  Notation "( x , y , .. , z )" := (Pair .. (Pair x%expr y%expr) .. z%expr) : expr_scope.
+  Notation "'λ'  x .. y , t" := (Abs (fun x => .. (Abs (fun y => t%expr)) ..)) : expr_scope.
+End expr.
+Module ident.
+  Import type.
+  Inductive ident : type -> type -> Set :=
+  | primitive {t : type.primitive} (v : interp t) : ident () t
+  | Let_In {tx tC} : ident (tx * (tx -> tC)) tC
+  | Nat_succ : ident nat nat
+  | fst {A B} : ident (A * B) A
+  | snd {A B} : ident (A * B) B
+  | nat_rect {P} : ident ((unit -> P) * (nat * P -> P) * nat) P
+  | pred : ident nat nat
+  .
+End ident.
+Notation ident := ident.ident.
+Notation expr := (@expr ident).
+Section invert.
+  Context {var : type -> Type}.
+  Local Notation if_prod f
+    := (fun t => match t return Type with
+                 | type.prod A B => f A B
+                 | _ => True
+                 end).
+
+  Definition invert_Pair {A B} (e : @expr var (type.prod A B)) : option (@expr var A * @expr var B)
+    := match e in expr.expr t return option (if_prod (fun A B => expr A * expr B)%type t) with
+       | Pair A B a b
+         => Some (a, b)
+       | _ => None
+       end.
+End invert.
+Module Export primitive.
+  Definition default {t : type.primitive} : type.interp t
+    := match t with
+       | type.unit => tt
+       | type.Z => (-1)%Z
+       | type.nat => 0%nat
+       end.
+End primitive.
+Section with_var.
+  Context {var : type -> Type}.
+  Fixpoint default {t : type} : @expr var t
+    := match t with
+       | type.type_primitive x
+         => AppIdent (ident.primitive primitive.default) TT
+       | type.prod A B
+         => (@default A, @default B)
+       | type.arrow s d => Abs (fun _ => @default d)
+       end.
+End with_var.
+Module Flat.
+  Inductive expr : type -> Set :=
+  | Var (t : type) (n : positive) : expr t
+  | TT : expr type.unit
+  | AppIdent {s d} (idc : ident s d) (arg : expr s) : expr d
+  | App {s d} (f : expr (s -> d)) (x : expr s) : expr d
+  | Pair {A B} (a : expr A) (b : expr B) : expr (A * B)
+  | Abs (s : type) (n : positive) {d} (f : expr d) : expr (s -> d).
+End Flat.
+
+Definition ERROR {T} (v : T) : T.
+exact v.
+Qed.
+
+Fixpoint to_flat' {t} (e : @expr (fun _ => PositiveMap.key) t)
+         (cur_idx : PositiveMap.key)
+  : Flat.expr t
+  := match e in expr.expr t return Flat.expr t with
+     | Var t v => Flat.Var t v
+     | TT => Flat.TT
+     | AppIdent s d idc args
+       => Flat.AppIdent idc (@to_flat' _ args cur_idx)
+     | App s d f x => Flat.App
+                        (@to_flat' _ f cur_idx)
+                        (@to_flat' _ x cur_idx)
+     | Pair A B a b => Flat.Pair
+                         (@to_flat' _ a cur_idx)
+                         (@to_flat' _ b cur_idx)
+     | Abs s d f
+       => Flat.Abs s cur_idx
+                   (@to_flat'
+                      d (f cur_idx)
+                      (Pos.succ cur_idx))
+     end.
+
+Fixpoint from_flat {t} (e : Flat.expr t)
+  : forall var, PositiveMap.t { t : type & var t } -> @expr var t
+  := match e in Flat.expr t return forall var, PositiveMap.t { t : type & var t } -> expr t with
+     | Flat.Var t v
+       => fun var ctx
+          => match (tv <- PositiveMap.find v ctx;
+                      type.try_transport var _ _ (projT2 tv))%option with
+             | Some v => Var v
+             | None => ERROR default
+             end
+     | Flat.TT => fun _ _ => TT
+     | Flat.AppIdent s d idc args
+       => let args' := @from_flat _ args in
+          fun var ctx => AppIdent idc (args' var ctx)
+     | Flat.App s d f x
+       => let f' := @from_flat _ f in
+          let x' := @from_flat _ x in
+          fun var ctx => App (f' var ctx) (x' var ctx)
+     | Flat.Pair A B a b
+       => let a' := @from_flat _ a in
+          let b' := @from_flat _ b in
+          fun var ctx => Pair (a' var ctx) (b' var ctx)
+     | Flat.Abs s cur_idx d f
+       => let f' := @from_flat d f in
+          fun var ctx
+          => Abs (fun v => f' var (PositiveMap.add cur_idx (existT _ s v) ctx))
+     end.
+
+Definition to_flat {t} (e : expr t) : Flat.expr t
+  := to_flat' e 1%positive.
+Definition ToFlat {t} (E : Expr t) : Flat.expr t
+  := to_flat (E _).
+Definition FromFlat {t} (e : Flat.expr t) : Expr t
+  := let e' := @from_flat t e in
+     fun var => e' var (PositiveMap.empty _).
+Open Scope Z_scope.
+
+Fixpoint value var (t : type)
+  := match t with
+     | type.prod A B as t => @expr var t + value var A * value var B
+     | type.arrow s d => value var s -> value var d
+     | type.type_primitive _ as t
+       => @expr var t + type.interp t
+     end%type.
+Fixpoint reify {var t} : value var t -> @expr var t
+  := match t with
+     | type.prod A B
+       => fun v
+          => match v with
+             | inl e => e
+             | inr (a, b) => Pair (@reify var A a) (@reify var B b)
+             end
+     | type.arrow s d
+       => fun f => Abs (fun v => @reify var _ (f (@reflect var _ (Var v))))
+     | type.type_primitive _ as t
+       => fun v
+          => match v with
+             | inl e => e
+             | inr v => ident.primitive v @@ TT
+             end%expr
+     end
+with reflect {var t} : @expr var t -> value var t
+     := match t with
+        | type.prod A B
+          => fun v
+             => match invert_Pair v with
+                | Some (a, b) => inr (@reflect var A a, @reflect var B b)
+                | None => inl v
+                end
+        | type.arrow s d
+          => fun f v
+             => @reflect var _ (App f (@reify var _ v))
+        | type.type_primitive _ as t
+          => fun v
+             => inl v
+        end.
+
+Definition red'_ident {var s d} (idc : ident s d) : value var s -> value var d
+  := match idc in ident s d return value var s -> value var d with
+     | ident.fst A B as idc
+       => fun v
+          => match v with
+             | inr (a, b) => a
+             | inl _ => reflect (AppIdent idc (reify v))
+             end
+     | ident.snd A B as idc
+       => fun v
+          => match v with
+             | inr (a, b) => b
+             | inl _ => reflect (AppIdent idc (reify v))
+             end
+     | ident.primitive t v => fun _ => inr v
+     | ident.Nat_succ as idc
+       => fun v => match v with
+                   | inr v => inr (S v)
+                   | inl _ => reflect (AppIdent idc (reify v))
+                   end
+     | idc
+       => fun v => reflect (AppIdent idc (reify v))
+     end.
+
+Definition red'_ident2 {var s d} (idc : ident s d) : value var s -> value var d
+  := match idc in ident s d return value var s -> value var d with
+     | ident.fst A B as idc
+       => fun v
+          => match v with
+             | inr (a, b) => a
+             | inl _ => reflect (AppIdent idc (reify v))
+             end
+     | ident.snd A B as idc
+       => fun v
+          => match v with
+             | inr (a, b) => b
+             | inl _ => reflect (AppIdent idc (reify v))
+             end
+     | ident.primitive t v => fun _ => inr v
+     | ident.Nat_succ as idc
+       => fun v => match v with
+                   | inr v => inr (S v)
+                   | inl _ => reflect (AppIdent idc (reify v))
+                   end
+     | ident.nat_rect P as idc
+       => fun v
+          => match v with
+             | inr (inr (N, C), inr n)
+               => nat_rect
+                    (fun _ => value var P)
+                    (N (inr tt))
+                    (fun n' v => C (inr (inr n', v)))
+                    n
+             | _ => reflect (AppIdent idc (reify v))
+             end
+     | idc
+       => fun v => reflect (AppIdent idc (reify v))
+     end.
+
+Fixpoint red' {var}
+         (red'_ident : forall {s d}, ident s d -> value var s -> value var d)
+         {t} (e : @expr (value var) t) : value var t
+  := match e in expr.expr t return value var t with
+     | Var t v => v
+     | TT => inr tt
+     | App s d f x
+       => @red' var (@red'_ident) _ f (@red' var (@red'_ident) _ x)
+     | AppIdent _ _ idc args
+       => red'_ident idc (@red' var (@red'_ident) _ args)
+     | Pair A B a b => inr (@red' var (@red'_ident) A a, @red' var (@red'_ident) B b)
+     | Abs s d f => fun v => @red' var (@red'_ident) d (f v)
+     end.
+
+Definition Red {t} (e : Expr t) : Expr t
+  := fun var => reify (red' (@red'_ident _) (e _)).
+Definition Red2 {t} (e : Expr t) : Expr t
+  := fun var => reify (red' (@red'_ident2 _) (e _)).
+
+Definition prek''
+  := fun var : type -> Type =>
+       (λ (_ : var type.unit),
+        ident.nat_rect
+          @@ ((λ _ x1,
+               (Var x1)
+                 @ (λ x2,
+                    ident.snd @@ Var x2 @ (ident.primitive (t:=type.Z) 0 @@ TT))),
+              (λ x0 x1,
+               (ident.snd @@ Var x0)
+                 @ (λ x2,
+                    (Var x1)
+                      @ (λ x3,
+                         ident.nat_rect
+                           @@ ((λ _ x5,
+                                Var x5 @ (ident.primitive (t:=type.Z) 0 @@ TT)),
+                               (λ x4 x5,
+                                (ident.snd @@ Var x4)
+                                  @ (λ _,
+                                     Var x2 @ ((ident.fst @@ Var x4),
+                                               (λ x7, Var x5 @ Var x7)))),
+                               ident.fst @@ Var x3)
+                           @ (λ x4, ident.snd @@ Var x3 @ Var x4)))),
+              ident.primitive (t:=type.nat) 10%nat @@ TT)
+          @ (λ x0,
+             Var x0 @ ((ident.primitive (t:=type.nat) 10%nat @@ TT),
+                       (λ x1, Var x1))))%expr.
+Definition k'' := Eval cbv in ToFlat prek''.
+Definition ToFlatFFromFlat_Slow2 (_ : unit) := ToFlat (Red2 (FromFlat k'')).
+Definition ToFlatFFromFlat_Fast2 (_ : unit) := ToFlat (Red (FromFlat k'')).
+Time Definition k''' := Eval vm_compute in FromFlat k''. (* 0.007 s *)
+Definition ToFlatFFromFlat_Slow2' (_ : unit) := ToFlat (Red2 k''').
+Definition ToFlatFFromFlat_Fast2' (_ : unit) := ToFlat (Red k''').
+Time Definition x0 := Eval vm_compute in ToFlatFFromFlat_Slow2. (* 0.061 s *)
+Time Definition x1 := Eval vm_compute in ToFlatFFromFlat_Fast2. (* 0.006 s *)
+Time Definition x0' := Eval vm_compute in ToFlatFFromFlat_Slow2'. (* 0.006 s *)
+Time Definition x1' := Eval vm_compute in ToFlatFFromFlat_Fast2'. (* 0.006 s *)
+```
+
+The term we are looking at here is a reified and cps'd version of
+```coq
+nat_rect
+  (fun _ => nat -> Z)
+  (fun _ => 0)
+  (fun xs rec (v:nat)
+   => nat_rect (fun _ => Z) 0 (fun ys _ => rec ys) v)
+  k
+  k
+```
+
+
+As a general remark, It is not unexpected that on functional terms first VM-reducing the argument before the function can be faster. The reason is that contrarily to mere weak cbv reduction, the VM also performs strong reduction and for that it needs to reify the resulting values, which may lead to exponential behaviour as the reifying function doesn't take advantage of sharing.
+
+In your particular case, I think that it might be further worsened by a suboptimal implementation of function reification. In the VM functions can be n-ary (the `GRAB` code takes an integer argument), but the `Vnorm.nf_fun` function doesn't seem to take that into account as it simply abstracts over one variable at at time. Might be worth to trick that.
+
+Also summoning @maximedenes and @bgregoir, they probably know more.
+Forget everything I have said above, I think this is just call-by-value semantics. Your example boils down to the following observation: `f (fun () -> e)` can be way slower than `let x = e in f (fun () -> x)`, assuming they have the same semantics (which is the case because Coq is pure).
+
+In your case, the `Expr` type represents higher-order computations, so that they are thunked and never computed upfront. Calling cbv simply allows for partial reduction and thus computation sharing inside that thunk. The main contender for the slowness you experience here seems to be the `value` function, which I found perfing `native_compute`, and that seems to repeatedly compute its environment argument.
+
+I'd personally dismiss this bug as INVALID.
+If you dismiss this as invalid, could you grant https://github.com/coq/coq/issues/7159 ?  I don't see any other way to work around this without the ability to demand that a function be fully computed early.
+
+I'm also confused by your comment about `value`.  It takes a `var` argument which should remain thunked, a type code argument which should be small, and produces a `Type`.  If most of the time is spent computing `value` (rather than computing things of type `value`), that seems wrong.
+I think I'll close this issue, there is the other report for the wish.

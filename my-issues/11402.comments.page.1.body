@@ -1,0 +1,7 @@
+But apparently this works fine:
+```coq
+Reserved Notation "A ||->{ f } B" (at level 50, left associativity). 
+Infix "||->{ f }" := f.
+```
+Apparently `Reserved Infix` is just broken?
+`Infix` was not intended to have extra parameters inside the infix list of symbols but this is actually a good idea. The generalization actually comes for free. It is in PR #14379.

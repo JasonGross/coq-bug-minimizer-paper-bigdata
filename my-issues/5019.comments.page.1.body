@@ -1,0 +1,73 @@
+Comment author: @JasonGross
+
+Require Import Coq.ZArith.ZArith.
+Goal forall (T0 : Z -> Type) (k : nat) d (P : T0 (Z.of_nat (S k)) -> Prop), P d.
+  clear; intros.
+  Timeout 1 zify. (* timeout *)
+
+After 3 iterations of [repeat zify_nat_op; unfold Z_of_nat' in *], subsequent 
+invocations of [zify_nat] keep adding more hypotheses of type [(0 <= Z.succ 
+(Z.of_nat k))%Z].  This is because the case
+
+  (* S -> number or Z.succ *)
+  | H : context [ Z.of_nat (S ?a) ] |- _ =>
+     let isnat := isnatcst a in
+     match isnat with
+      | true => simpl (Z.of_nat (S a)) in H
+      | _ => rewrite (Nat2Z.inj_succ a) in H
+     end
+
+in [zify_nat_op] fails because [rewrite] fails, so 
+
+  | _ : context [ Z.of_nat ?a ] |- _ =>
+    pose proof (Nat2Z.is_nonneg a); hide_Z_of_nat a
+
+keeps posing the same lemma over and over again.
+
+One solution is to add two cases to the [match isnat with ... end], to change
+
+  (* S -> number or Z.succ *)
+  | H : context [ Z.of_nat (S ?a) ] |- _ =>
+     let isnat := isnatcst a in
+     match isnat with
+      | true => simpl (Z.of_nat (S a)) in H
+      | _ => rewrite (Nat2Z.inj_succ a) in H
+     end
+  | |- context [ Z.of_nat (S ?a) ] =>
+     let isnat := isnatcst a in
+     match isnat with
+      | true => simpl (Z.of_nat (S a))
+      | _ => rewrite (Nat2Z.inj_succ a)
+     end
+
+into
+
+  (* S -> number or Z.succ *)
+  | H : context [ Z.of_nat (S ?a) ] |- _ =>
+     let isnat := isnatcst a in
+     match isnat with
+      | true => simpl (Z.of_nat (S a)) in H
+      | _ => rewrite (Nat2Z.inj_succ a) in H
+      | _ => change (Z.of_nat (S a)) with (Z_of_nat' (S a)) in H
+     end
+  | |- context [ Z.of_nat (S ?a) ] =>
+     let isnat := isnatcst a in
+     match isnat with
+      | true => simpl (Z.of_nat (S a))
+      | _ => rewrite (Nat2Z.inj_succ a)
+      | _ => change (Z.of_nat (S a)) with (Z_of_nat' (S a))
+     end
+
+though I'm not completely sure this is what you want to do.
+
+
+Comment author: @fajb
+
+Pierre Letouzey, who is (I think) the designer of zify, would be a better assignee for this bug.
+
+
+Comment author: @letouzey
+
+Fixed in v8.6, see PR 705 : https://github.com/coq/coq/pull/705
+
+

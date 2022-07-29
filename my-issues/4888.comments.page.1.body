@@ -1,0 +1,5 @@
+Comment author: @JasonGross
+
+If the standard library ever gets cleaned, these two tactics should both leave side-conditions after the main goal (or before it, if that's the decision made), and a compatibility wrapper should be added for -compat 8.6 mode (or whatever) that cycles the goals.
+
+

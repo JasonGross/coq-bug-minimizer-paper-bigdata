@@ -1,0 +1,13 @@
+Comment author: @JasonGross
+
+The chapter on romega mentions:
+"
+Support for nat and N is obtained by pre-processing the goal with the zify tactic.
+"
+
+
+You mean the chapter about "micromega". In this chapter, `romega` is similarly mentioned but not documented. There is a reference to the chapter about `omega` where `romega` is not even mentioned. In particular, `zify` and `romega` do not appear in the tactic index.
+@letouzey can you update the milestone to reflect your current schedule on this? Thanks!
+Didn't hear back, removing the milestone.
+`romega` has been removed in #8419 and now `zify` is documented here:
+https://coq.github.io/doc/master/refman/addendum/micromega.html#coq:tacn.zify

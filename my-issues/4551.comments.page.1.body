@@ -1,0 +1,5 @@
+Since this is the first Google search result for "Set Keyed Unification" for me, I'll leave here a pointer to what I found the most helpful: https://lists.gforge.inria.fr/pipermail/coq-commits/2014-September/013300.html
+You may as well put just the commit hash 3fe4912b568916676644baeb982a3e10c592d887 and let GitHub pretty-display it.
+`Set Keyed Unification` has been documented, but that's not yet the case of `Declare Equivalent Keys`.
+
+@mattam82 Do you intend to address this in the foreseeable future? If not, please remove your assignment.

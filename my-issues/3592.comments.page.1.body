@@ -1,0 +1,15 @@
+Comment author: @JasonGross
+
+One way to do this is to teach [rewrite] and [apply] how to identify eta-expanded primitive projections with non-eta-expanded primitive projections.  Another way is to make [Hint Rewrite], [Hint Resolve], and [Hint Immediate] register hints with the given type, with all projections replaced with eta-expanded versions, and with all eta-expanded projections replaced with non-eta-expanded versions.
+
+Set Primitive Projections.
+Set Implicit Arguments.
+Record foo := { x : Set ; y : Set ; z : x = y }.
+Hint Resolve z : foo_db.
+Goal forall f, x f = y f.
+Proof.
+  intro f.
+  change (x f) with (@ x f).
+  Fail solve [ auto with foo_db nocore ].
+
+

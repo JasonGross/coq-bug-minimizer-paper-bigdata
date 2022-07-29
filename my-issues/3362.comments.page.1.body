@@ -1,0 +1,26 @@
+Comment author: @JasonGross
+
+The .. seems to have no effect here:
+
+Goal True /\ True.
+Proof with easy.
+  split; [..|].
+
+
+Similarly with [|..].  More surprisingly, [..|..] is a syntax error.  What does .. do?
+
+
+Comment author: @aspiwack
+
+http://coq.inria.fr/refman/Reference-Manual011.html#hevea_tactic178
+
+(see the variants)
+
+There is at most one '..' (or more generaly 't ..') per branching expression, as there should.
+
+In your case: [|..] applies idtac to the first generated subgoal and idtac to every other generated subgoal.
+
+
+I'm closing the bug as I don't believe there is more to do about this.
+
+

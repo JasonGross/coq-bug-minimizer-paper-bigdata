@@ -1,0 +1,15 @@
+Comment author: @JasonGross
+
+The most recent commit on trunk was the result of my bug report at https://github.com/HoTT/coq/issues/28.  
+
+The following code serves as a regression test for this bug (at least for now), if you want to include it as a test case
+
+Goal forall (O obj : Type) (f : O -> obj) (x : O) (e : x = x)
+     (T : obj -> obj -> Type) (m : forall x0 : obj, T x0 x0),
+   match eq_sym e in (_ = y) return (T (f y) (f x)) with
+   | eq_refl => m (f x)
+   end = m (f x).
+intros.
+try case e.
+
+

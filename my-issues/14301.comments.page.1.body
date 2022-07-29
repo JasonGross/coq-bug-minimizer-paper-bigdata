@@ -1,0 +1,194 @@
+cc @ppedrot @janno
+Disclaimer: I don't understand the code of apply.
+
+So there is something weird, we're performing a lot of unifications where I would't have expected that many. Most of the time is spent by unification in the call to `res_pf` in `Tactics.induction_tac`. What surprises me is that we repeatedly call this unification procedure on what seems to be the goal. The CPS-style used by apply is not here to help, maybe there is a missing sharing or something?
+
+cc @herbelin 
+Using `refine` rather than `apply` cuts the time roughly in half, but it's still ~20x slower than I think it should be
+Here is an example where `refine` is pretty slow:
+```coq
+Set Implicit Arguments.
+Definition ex_proj1 :=
+  fun {A : Prop} {P : A -> Prop} (x : exists y, P y) => match x with ex_intro _ a _ => a end.
+Definition ex_proj2 :=
+  fun {A : Prop} {P : A -> Prop} (x : exists y, P y) => match x return P (ex_proj1 x) with ex_intro _ _ a => a end.
+Axiom eq_sigT
+  : forall {A : Type} {P : A -> Type} (u v : {a : A & P a}) (p : projT1 u = projT1 v),
+    eq_rect (projT1 u) (fun a : A => P a) (projT2 u) (projT1 v) p = projT2 v -> u = v.
+Axiom eq_sigT_rect_uncurried :
+  forall {A : Type} {P : A -> Type} {u v : {a : A & P a}} (Q : u = v -> Type),
+    (forall pq : exists p : projT1 u = projT1 v, eq_rect (projT1 u) (fun a : A => P a) (projT2 u) (projT1 v) p = projT2 v,
+        Q (eq_sigT u v (ex_proj1 pq) (ex_proj2 pq))) -> forall p : u = v, Q p.
+Axiom ex_rect :
+  forall [A : Prop] [P : A -> Prop] (P0 : (exists y, P y) -> Type),
+    (forall (x : A) (p : P x), P0 (ex_intro P x p)) -> forall e : exists y, P y, P0 e.
+Section inversion_sigma.
+  Unset Implicit Arguments.
+  Context A (B B' : A -> Prop) (C C' : forall a, B a -> Prop)
+          (D : forall a b, C a b -> Prop) (E : forall a b c, D a b c -> Prop)
+          (F : forall a b c d, E a b c d -> Prop) (G : forall a b c d e, F a b c d e -> Prop)
+          (H : forall a b c d e f, G a b c d e f -> Prop) (I : forall a b c d e f g, H a b c d e f g -> Prop)
+          (J : forall a b c d e f g h, I a b c d e f g h -> Prop)
+          (K : forall a b c d e f g h i, J a b c d e f g h i -> Prop)
+          (L : forall a b c d e f g h i j, K a b c d e f g h i j -> Prop).
+
+  Goal forall (x y : { a : A & { b : { b : B a & C a b } & { d : D a (projT1 b) (projT2 b) & { e : E _ _ _ d &
+     { f : F _ _ _ _ e & { g : G _ _ _ _ _ f & { h : H _ _ _ _ _ _ g & { i : I _ _ _ _ _ _ _ h & { j : J _ _ _ _ _ _ _ _ i &
+     { k : K _ _ _ _ _ _ _ _ _ j & { l : L _ _ _ _ _ _ _ _ _ _ k & True } } } } } } } } } } })
+              (p : x = y), p = p.
+  Proof.
+    intros x y p; repeat match goal with H : sigT _ |- _ => destruct H end; cbn [projT1 projT2] in *.
+    revert p.
+    Time refine (@eq_sigT_rect_uncurried _ _ _ _ _ _).
+    (* Finished transaction in 0.328 secs (0.324u,0.003s) (successful) *)
+```
+And here's a parameterized test-case, if you want to play with much larger things. 
+```coq
+Set Implicit Arguments.
+Definition ex_proj1 :=
+  fun {A : Prop} {P : A -> Prop} (x : exists y, P y) => match x with ex_intro _ a _ => a end.
+Definition ex_proj2 :=
+  fun {A : Prop} {P : A -> Prop} (x : exists y, P y) => match x return P (ex_proj1 x) with ex_intro _ _ a => a end.
+Axiom eq_sigT
+  : forall {A : Type} {P : A -> Type} (u v : {a : A & P a}) (p : projT1 u = projT1 v),
+    eq_rect (projT1 u) (fun a : A => P a) (projT2 u) (projT1 v) p = projT2 v -> u = v.
+Axiom eq_sigT_rect_uncurried :
+  forall {A : Type} {P : A -> Type} {u v : {a : A & P a}} (Q : u = v -> Type),
+    (forall pq : exists p : projT1 u = projT1 v, eq_rect (projT1 u) (fun a : A => P a) (projT2 u) (projT1 v) p = projT2 v,
+        Q (eq_sigT u v (ex_proj1 pq) (ex_proj2 pq))) -> forall p : u = v, Q p.
+Axiom ex_rect :
+  forall [A : Prop] [P : A -> Prop] (P0 : (exists y, P y) -> Type),
+    (forall (x : A) (p : P x), P0 (ex_intro P x p)) -> forall e : exists y, P y, P0 e.
+Section inversion_sigma.
+  Unset Implicit Arguments.
+  Context A (B B' : A -> Prop) (C C' : forall a, B a -> Prop)
+          (D : forall a b, C a b -> Prop).
+  Ltac head v :=
+    lazymatch v with
+    | ?f _ => head f
+    | _ => v
+    end.
+  Ltac mk_next_ty H :=
+    let T := type of H in
+    lazymatch (eval cbv beta in T) with
+    | ?T -> Prop => let a := fresh "a" in
+                    constr:(forall a : T, H a -> Prop)
+    | forall a : ?A, @?P a
+      => let a := fresh "a" in
+         constr:(forall a : A,
+                    ltac:(let T := type of H in
+                          let v := mk_next_ty (H a) in
+                          exact v))
+    end.
+  Ltac app_underscore v n :=
+    lazymatch n with
+    | O => v
+    | S ?n => app_underscore uconstr:(v _) n
+    end.
+  Ltac mk_ty t K n0 n :=
+    lazymatch n with
+    | O => let T := K ltac:(fun _ => constr:(True)) in
+           (*let __ := match goal with _ => idtac "T:" T end in*)
+           constr:(forall (x y : T) (p : x = y), p = p)
+    | S ?n
+      => let T := type of t in
+         let T' := mk_next_ty t in
+         let T' := (eval cbv beta in T') in
+         let T0 := fresh "T" in
+         constr:(forall T0 : T',
+                    ltac:(let res := mk_ty
+                                       T0
+                                       ltac:(fun k => (*let __ := match goal with _ => idtac "K" t K n0 n end in*)
+                                                      K ltac:(fun t0
+                                                              => (*let __ := match goal with _ => idtac "k" t K n0 n t0 end in*)
+                                                                 let t := fresh "t" in
+                                                                 let T1 := app_underscore T0 n0 in
+                                                                 (*let __ := match goal with _ => idtac "k1" t K n0 n T1 t0 end in*)
+                                                                 constr:({ t : T1 t0 & ltac:(let v := k t in exact v) })))
+                                       (S n0) n in
+                          exact res))
+    end.
+  Ltac mk_full_ty n := mk_ty D ltac:(fun k => (*let __ := match goal with _ => idtac "fin" end in*)
+                                       constr:({ a : A & { b : { b : B a & C a b } & { d : D a (projT1 b) (projT2 b) &
+                                                ltac:((*idtac "in fin"; *)let v := k d in exact v) } } })) 3 n.
+
+  Ltac test n :=
+    let v := mk_full_ty n in
+    assert_succeeds
+      (assert v;
+       [ intros;
+         repeat match goal with H : sigT _ |- _ => destruct H end; cbn [projT1 projT2] in *;
+         let p := lazymatch goal with p : _ = _ |- _ => p end in
+         revert p;
+         assert_succeeds once (time "refine" refine (@eq_sigT_rect_uncurried _ _ _ _ _ _));
+         time "find" lazymatch goal with
+                     | |- forall p : @eq (@sigT ?A ?P) ?u ?v, @?Q p => idtac
+                     end;
+         restart_timer;
+         let val := lazymatch goal with
+                    | |- forall p : @eq (@sigT ?A ?P) ?u ?v, @?Q p => open_constr:(@eq_sigT_rect_uncurried A P u v Q _)
+                    end in
+         finish_timing ( "inst" );
+         time "fast refine" refine val
+       | ]).
+  Goal True.
+    test 1. (* Tactic call ran for 0.017 secs (0.017u,0.s) (success) *)
+    test 2. (* Tactic call ran for 0.03 secs (0.03u,0.s) (success) *)
+    test 3. (* Tactic call ran for 0.075 secs (0.068u,0.007s) (success) *)
+    test 4. (* Tactic call ran for 0.088 secs (0.088u,0.s) (success) *)
+    test 5. (* Tactic call ran for 0.174 secs (0.174u,0.s) (success) *)
+    test 6. (* Tactic call ran for 0.199 secs (0.191u,0.007s) (success) *)
+    test 7. (* Tactic call ran for 0.274 secs (0.261u,0.012s) (success) *)
+    test 8. (* Tactic call ran for 0.416 secs (0.408u,0.008s) (success) *)
+    test 9. (* Tactic call ran for 0.432 secs (0.432u,0.s) (success) *)
+    test 10. (* Tactic call ran for 0.575 secs (0.55u,0.023s) (success) *)
+    test 11. (* Tactic call ran for 0.761 secs (0.761u,0.s) (success) *)
+```
+Note that `refine` with holes is over 100x slower at size 11 than the "fast refine" call where I fill in all the holes myself, despite the fact that the unification problem is trivial.  Where is it spending its time.
+`refine` passes most of its time βι-normalizing the goal. You can side-step this using `simple refine` instead.
+... I'm still confused why `refine` with holes is so much slower than `refine` without.  Does it normalize multiple times?  What part of the process involves normalizing that differs between these two calls?
+If I had to guess, I'd blame evars, but I haven't checked.
+The number of evars is constant across the calls, though, there's only six of them...
+> ... I'm still confused why refine with holes is so much slower than refine without. Does it normalize multiple times? What part of the process involves normalizing that differs between these two calls?
+
+Correction, it has nothing to do with evars. The difference lies in the fact that explicit refining shelves the remaining goal, while refining with holes does not. The call to βι-normalization is immediate in the first case because there is literally nothing to normalize, while there is a huge goal under focus in the latter case.
+@herbelin Do you have any insight on what magic `induction`/`apply` is doing here that makes things slow?  (We ended up wanting your expertise right after you left the Coq call.)
+My current understanding of the state of things: `apply`/`induction` is ~2x slower than `refine` for unknown reasons.  Furthermore, we do βι-normalization after `refine`/`apply`/`induction`, and in fact when we use sigma types to bundle hypotheses and then deconstruct them later, rather than special-casing to deconstruct the terms with just a single call to `induction`, the terms are big enough that this extra βι costs a lot.
+And it seems that `induction` is 3x--9x slower than `apply` in
+```coq
+  Goal True.
+    let v := mk_full_ty 2 in
+    assert v;
+      [ intros;
+        repeat match goal with H : sigT _ |- _ => destruct H end; cbn [projT1 projT2] in *
+      | ].
+    Time induction p as [p] using eq_sigT_rect_uncurried.
+    cbn [projT1 projT2] in p.
+    Time induction p using (@ex_rect _ _). (* Finished transaction in 0.99 secs (0.99u,0.s) (successful) *)
+    Undo.
+    revert p.
+    Time apply (@ex_rect _ _). (* Finished transaction in 0.24 secs (0.24u,0.s) (successful) *)
+    Undo.
+    Time apply (@ex_rect _ _ _). (* Finished transaction in 0.113 secs (0.113u,0.s) (successful) *)
+    Undo.
+    Time refine (@ex_rect _ _ _ _). (* Finished transaction in 0.092 secs (0.092u,0.s) (successful) *)
+```
+Strangely enough, if I change `in p` to `in *` in the `cbn`, things are much much much faster:
+```coq
+  Goal True.
+    let v := mk_full_ty 2 in
+    assert v;
+      [ intros;
+        repeat match goal with H : sigT _ |- _ => destruct H end; cbn [projT1 projT2] in *
+      | ].
+    Time induction p as [p] using eq_sigT_rect_uncurried.
+    cbn [projT1 projT2] in *.
+    Time induction p using (@ex_rect _ _). (* Finished transaction in 0.039 secs (0.039u,0.s) (successful) *)
+    Undo.
+    revert p.
+    Time apply (@ex_rect _ _). (* Finished transaction in 0.015 secs (0.015u,0.s) (successful) *)
+    Undo.
+    Time apply (@ex_rect _ _ _). (* Finished transaction in 0.008 secs (0.008u,0.s) (successful) *)
+    Undo.
+    Time refine (@ex_rect _ _ _ _). (* Finished transaction in 0.003 secs (0.003u,0.s) (successful) *)
+```

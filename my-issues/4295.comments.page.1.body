@@ -1,0 +1,15 @@
+Comment author: @JasonGross
+
+Ctrl+Alt+arrow key is already bound to changing the screen orientation in Windows.  The default proof navigation shortcuts on Windows should not use these.
+
+
+Comment author: @silene
+
+They should not be used on Linux systems either, since most window managers grab ctrl+alt by default.
+
+
+Comment author: @silene
+
+Fixed by commit 0ac3a2f.
+
+

@@ -1,0 +1,10 @@
+Comment author: @JasonGross
+```coq
+Inductive eq' {A} (x : A) : A -> Prop := eq_refl : eq' x x.
+Lemma foo {A} (x y z : A) (H : eq' x y) (H' : eq' y z) : eq' x z.
+Proof.
+  par:abstract (rewrite H, H'; constructor). (* Anomaly: Universe Top.6 
+undefined. Please report at http://coq.inria.fr/bugs/. *)
+Qed.
+```
+

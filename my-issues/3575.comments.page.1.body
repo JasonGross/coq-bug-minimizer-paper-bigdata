@@ -1,0 +1,34 @@
+Comment author: @JasonGross
+
+Ltac loop := loop.
+Ltac long := timeout 1 loop.
+Goal True.
+Proof.
+  Timeout 1 long. (* Timeout! *)
+  timeout 1 long. (* Error: Tactic failure: Error: Tactic timeout!. *)
+  long. (* ... loops forever *)
+
+
+Comment author: @ppedrot
+
+I think that the current implementation forbids timeout to be scoped like you're trying to do.
+
+
+Comment author: @JasonGross
+
+What do you mean by "scoped"?
+
+
+Comment author: @silene
+
+I had to modify the test slightly because I was getting a stack overflow. Now all the tactics are behaving the same: "Error: Tactic failure: Error: Tactic timeout!." So it seems like the bug got fixed.
+
+Ltac loop := let v := eval compute in (fact 8) in idtac ; loop.
+Ltac long := timeout 1 loop.
+Goal True.
+Proof.
+  Timeout 1 long.
+  timeout 1 long.
+  long.
+
+

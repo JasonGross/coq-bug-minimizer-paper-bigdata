@@ -1,0 +1,10 @@
+Comment author: @JasonGross
+
+This is wrong.  It should be "\coqdockw{Parameters}", not "\coqdockw{Parameter}\coqdocvar{s}".
+
+
+Comment author: @silene
+
+Fixed in commit ffeefb4.
+
+

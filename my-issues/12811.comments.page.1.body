@@ -1,0 +1,4 @@
+As explained in Sphinx' documentation, a potential solution is to use Google's search engine instead of the builtin one:
+1. Create a search engine on https://cse.google.com/cse/all
+2. Dump the produced code into `doc/sphinx/_templates/searchbox.html`.
+3. Modify accordingly `html_sidebars` in `doc/sphinx/conf.py`.

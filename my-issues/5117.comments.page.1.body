@@ -1,0 +1,17 @@
+Comment author: @JasonGross
+
+[Opaque] works, but I want something that doesn't prevent me from [unfold]ing 
+the constant.
+
+
+Comment author: @JasonGross
+
+[Typeclasses Opaque] does not work, at least not in [Keyed Unification] mode 
+with plain [rewrite]
+
+
+Comment author: @mattam82
+
+I guess we should generalize the use of the Hint Transparent/Opaque foo : rewrite databases. It's used only by setoid_rewrite right now I think.
+
+

@@ -1,0 +1,162 @@
+If I compile all of the module setup in one file and then perf just `Require Import` of that file and `Time Extraction "A7.ml" A7.empty.` in another file, I get [slow-extraction-a7.perf.data.zip](https://github.com/coq/coq/files/8886326/slow-extraction-a7.perf.data.zip) [flame graph in slow-extraction-a7.svg.gz](https://github.com/coq/coq/files/8886380/slow-extraction-a7.svg.gz)
+
+```
+Samples: 61K of event 'cpu-clock:uhpppH', Event count (approx.): 15328500000
+  Children      Self  Command       Shared Object                       Symbol
++   98.75%     0.00%  coqc          coqc                                [.] camlFlags__with_modified_ref_inner_288
++   98.65%     0.00%  coqc          coqc                                [.] camlVernacinterp__interp_typed_vernac_344
++   98.65%     0.00%  coqc          coqc                                [.] camlVernacinterp__fun_1367
++   98.63%     0.00%  coqc          coqc                                [.] camlVernacinterp__interp_gen_1036
++   98.62%     0.00%  coqc          coqc                                [.] camlVernacinterp__fun_1471
++   98.58%     0.00%  coqc          coqc                                [.] camlStm__step_8361
++   98.57%     0.00%  coqc          coqc                                [.] camlStm__define_inner_9584
++   98.48%     0.00%  coqc          coqc                                [.] camlStm__reach_inner_10490
++   98.42%     0.00%  coqc          coqc                                [.] camlStm__observe_6390
++   98.29%     0.00%  coqc          coqc                                [.] camlVernac__interp_vernac_224
++   98.24%     0.00%  coqc          extraction_plugin.cmxs              [.] camlExtraction_plugin__Extract_env__extract_structure_2480
++   98.23%     0.00%  coqc          coqc                                [.] camlSystem__with_time_1197
++   98.21%     0.00%  coqc          extraction_plugin.cmxs              [.] camlExtraction_plugin__Extract_env__full_extr_3527
++   98.18%     0.00%  coqc          extraction_plugin.cmxs              [.] camlExtraction_plugin__Extract_env__extract_module_2484
++   98.18%     0.00%  coqc          extraction_plugin.cmxs              [.] camlExtraction_plugin__Extract_env__extract_msignature_spec_2317
++   98.18%     0.00%  coqc          extraction_plugin.cmxs              [.] camlExtraction_plugin__Extract_env__extract_structure_spec_2314
++   98.17%     0.00%  coqc          coqc                                [.] camlStdlib__list__rmap_f_253
++   98.17%     0.00%  coqc          extraction_plugin.cmxs              [.] camlExtraction_plugin__Extract_env__fun_4728
++   98.17%     0.00%  coqc          extraction_plugin.cmxs              [.] camlExtraction_plugin__Extraction__extract_constant_spec_3810
++   98.12%     2.47%  coqc          extraction_plugin.cmxs              [.] camlExtraction_plugin__Extraction__extract_type_2708
++   97.90%     0.69%  coqc          extraction_plugin.cmxs              [.] camlExtraction_plugin__Extraction__fun_4736
++   97.90%     0.58%  coqc          extraction_plugin.cmxs              [.] camlExtraction_plugin__Extraction__extract_type_app_2709
++   97.76%     0.00%  coqc          coqc                                [.] camlVernac__loop_324
++   97.41%     0.00%  coqc          coqc                                [.] camlVernac__load_vernac_core_253
++   96.90%     0.00%  coqc          coqc                                [.] camlVernac__load_vernac_1043
++   96.37%     0.00%  coqc          coqc                                [.] camlCcompile__compile_344
++   96.17%     1.77%  coqc          coqc                                [.] camlStdlib__list__fold_right_278
++   95.54%     0.00%  coqc          coqc                                [.] camlCcompile__compile_file_1117
++   94.57%     0.00%  coqc          coqc                                [.] camlCoqc__coqc_main_140
++   93.34%     0.00%  coqc          coqc                                [.] camlCoqc__coqc_run_248
++   91.98%     0.00%  coqc          coqc                                [.] camlDune__exe__Coqc_bin__entry
++   91.39%     0.00%  coqc          extraction_plugin.cmxs              [.] camlExtraction_plugin__Extraction__record_constant_type_3292
++   90.23%     0.00%  coqc          coqc                                [.] caml_startup__code_begin
++   88.20%     0.00%  coqc          coqc                                [.] caml_start_program
++   85.88%     0.00%  coqc          coqc                                [.] caml_startup
++   83.41%     0.00%  coqc          coqc                                [.] main
++   80.72%     0.00%  coqc          libc-2.31.so                        [.] __libc_start_main
++   40.49%     0.88%  coqc          coqc                                [.] camlRetyping__sort_family_of_1961
++   30.86%     0.30%  coqc          coqc                                [.] camlRetyping__type_of_global_reference_knowing_parameters_1543
++   28.99%     1.65%  coqc          coqc                                [.] camlRetyping__type_of_1541
++   28.18%     0.81%  coqc          coqc                                [.] camlInductive__type_of_inductive_gen_1677
++   27.03%     0.87%  coqc          coqc                                [.] camlInductive__instantiate_universes_1657
++   22.51%     0.96%  coqc          coqc                                [.] camlInductive__make_1626
++   19.91%     0.64%  coqc          coqc                                [.] camlRetyping__fun_2482
++   16.67%     1.42%  coqc          extraction_plugin.cmxs              [.] camlExtraction_plugin__Mlutil__expand_2536
++   16.05%     0.31%  coqc          coqc                                [.] camlRetyping__anomaly_on_error_483
++   13.29%     0.92%  coqc          coqc                                [.] camlReductionops__red_of_state_red_3904
++   13.20%     0.61%  coqc          coqc                                [.] camlEnviron__lookup_constant_key_1446
++   12.25%     0.84%  coqc          extraction_plugin.cmxs              [.] camlExtraction_plugin__Extraction__mlt_env_2714
++   10.76%     0.84%  coqc          coqc                                [.] camlStdlib__map__find_opt_280
++   10.19%     0.99%  coqc          coqc                                [.] camlCList__map_802
++   10.01%     1.58%  coqc          coqc                                [.] camlUniv__subst_univs_universe_5335
++    9.17%     1.24%  coqc          coqc                                [.] camlEvd__kind_3908
++    7.77%     0.44%  coqc          coqc                                [.] camlCList__map_loop_795
++    7.69%     1.77%  coqc          coqc                                [.] camlHMap__find_opt_1821
++    7.37%     0.07%  coqc          coqc                                [.] camlArguments_renaming__rename_type_of_constant_1412
++    7.22%     0.29%  coqc          coqc                                [.] camlTypeops__type_of_constant_in_1430
++    6.66%     0.33%  coqc          coqc                                [.] camlEnviron__lookup_mind_key_1498
++    6.46%     2.51%  coqc          coqc                                [.] camlUniv__fun_7183
++    6.44%     2.30%  coqc          coqc                                [.] camlHMap__find_1815
++    5.46%     1.81%  coqc          coqc                                [.] camlCList__compare_496
++    5.46%     0.42%  coqc          coqc                                [.] camlRetyping__concl_of_arity_1040
++    5.38%     5.38%  coqc          coqc                                [.] camlInt__find_opt_1428
++    4.68%     1.37%  coqc          coqc                                [.] camlConstr__map_with_binders_2478
++    4.53%     2.44%  coqc          coqc                                [.] camlReductionops__whrec_3562
++    3.82%     0.34%  coqc          extraction_plugin.cmxs              [.] camlExtraction_plugin__Extraction__flag_of_type_733
++    3.78%     0.42%  coqc          coqc                                [.] camlEnviron__template_polymorphic_ind_2705
++    3.71%     0.22%  coqc          coqc                                [.] camlUnivSubst__aux_650
++    3.66%     0.41%  coqc          coqc                                [.] camlRetyping__subst_type_1023
++    3.56%     0.73%  coqc          coqc                                [.] camlSorts__sort_of_univ_245
++    3.56%     1.69%  coqc          coqc                                [.] camlCList__equal_505
++    3.51%     0.29%  coqc          coqc                                [.] camlUnivSubst__find_716
++    3.42%     3.42%  coqc          coqc                                [.] caml_string_compare
++    3.37%     3.37%  coqc          coqc                                [.] camlEvd__whd_evar_3934
++    2.93%     0.10%  coqc          coqc                                [.] camlReductionops__aux_3127
++    2.89%     0.48%  coqc          coqc                                [.] camlStdlib__string__compare_333
++    2.79%     0.55%  coqc          coqc                                [.] camlCArray__map_1659
++    2.73%     2.73%  coqc          coqc                                [.] caml_apply2
++    2.57%     0.29%  coqc          coqc                                [.] camlReductionops__decrec_4785
++    2.49%     0.25%  coqc          extraction_plugin.cmxs              [.] camlExtraction_plugin__Extraction__type_sign_1692
++    2.49%     0.07%  coqc          extraction_plugin.cmxs              [.] camlExtraction_plugin__Extraction__extract_ind_2711
++    2.28%     0.19%  coqc          coqc                                [.] camlRetyping__sort_of_arity_with_constraints_1013
++    2.27%     0.86%  coqc          coqc                                [.] camlNames__compare_2670
++    2.14%     0.23%  coqc          coqc                                [.] camlInductive__lookup_mind_specif_340
++    2.03%     0.14%  coqc          coqc                                [.] camlReductionops__splay_arity_4823
++    1.78%     0.15%  coqc          extraction_plugin.cmxs              [.] camlExtraction_plugin__Extraction__applistc_1355
++    1.76%     0.99%  coqc          extraction_plugin.cmxs              [.] camlExtraction_plugin__Mlutil__subst_1309
++    1.72%     0.87%  coqc          coqc                                [.] camlReductionops__whrec_3828
++    1.65%     1.65%  coqc          coqc                                [.] caml_page_table_lookup
++    1.59%     0.00%  coqc          coqc                                [.] caml_alloc_small_dispatch
++    1.59%     0.00%  coqc          coqc                                [.] caml_call_gc
++    1.56%     1.56%  coqc          libc-2.31.so                        [.] __memcmp_avx2_movbe
++    1.55%     1.12%  coqc          coqc                                [.] camlNames__compare_2155
++    1.45%     0.24%  coqc          coqc                                [.] camlStdlib__array__of_list_192
++    1.42%     0.41%  coqc          coqc                                [.] camlArguments_renaming__rename_type_1386
++    1.39%     0.25%  coqc          coqc                                [.] camlStdlib__list__fold_left_272
++    1.29%     1.29%  coqc          coqc                                [.] camlInt__find_1412
++    1.23%     0.00%  coqc          coqc                                [.] caml_major_collection_slice
++    1.23%     0.31%  coqc          extraction_plugin.cmxs              [.] camlExtraction_plugin__Table__lookup_typedef_1985
++    1.18%     0.82%  coqc          coqc                                [.] camlHMap__add_1651
++    1.14%     0.47%  coqc          coqc                                [.] camlReductionops__fun_6807
++    1.10%     1.10%  coqc          coqc                                [.] camlCDebug__pp_597
+Cannot load tips.txt file, please install perf!
+```
+ 
+@ppedrot How do you debug why `camlExtraction_plugin__Extraction__extract_type_app` is taking so much time here?
+Simplified:
+~~~coq
+Module Type T.
+Parameter t : Type.
+End T.
+
+Module F (X:T).
+  (* number of occurences determines the exponential: here 4 *)
+  Definition t : Type := X.t * X.t * X.t * X.t.
+End F.
+
+Require Import Coq.extraction.Extraction.
+
+Module A0. Definition t := nat. End A0.
+
+Module A1 := F A0.
+Module A2 := F A1.
+Module A3 := F A2.
+Module A4 := F A3.
+Module A5 := F A4.
+Module A6 := F A5.
+Module A7 := F A6.
+Module A8 := F A7.
+
+Time Recursive Extraction A5.t. (* 0.03s *)
+Time Recursive Extraction A6.t. (* 0.09s *)
+Time Recursive Extraction A7.t. (* 0.38s *)
+Time Recursive Extraction A8.t. (* 1.55s *)
+~~~
+It's related to this recursion https://github.com/coq/coq/blob/4287924381a7b10ad81efea98dbe58b76b5faf46/plugins/extraction/extraction.ml#L313-L315 as indeed replacing the whole parenthesized block by `mlt` goes fast.
+I don't know what issue the comment refers to.
+@SkySkimmer I don't think that's a fair comparison.  The fully reduced version of your type is of size 4^n, while the fully reduced version of my type is of size n.
+Are you sure?
+~~~coq
+Set Printing All.
+Eval lazy [OptionPositiveMap.t A2.t] in A2.t nat.
+(*      = prod (option (@sig (A1.t nat) (fun m : A1.t nat => not (@A1.Empty nat m))))
+         (PositiveMap.t (@sig (A1.t nat) (fun m : A1.t nat => not (@A1.Empty nat m))))
+*)
+~~~
+there are 2 `A1.t` in there (eval on A1.t produces messy results because A0.t and OptionPositiveMap.t are the same ref so get same transparency)
+Ah, I see, the product on in the Option combines with the nesting in the Prod to generate an exponentially sized type.  So it makes a bit more sense, but given that the types are still relatively small and the code generated is not insane, I think the performance should be much better.  At the very least, the results of this call should be cached so that the overhead doesn't build when I fill all the other parameters.  (In my real example, which contains approximately 6 layers of ProdMap, it takes about 90 minutes to extract the code.)
+The comment originates in https://github.com/coq/coq/commit/8109673237ab65997465743632db07ecb033f068, which is not especially informative, btw
+Can a flag be added to disable this optimization?
+What makes you think it's an optimization and not a bugfix?
+I would believe it's a bug fix, but given it's enormous performance cost, I'd like the ability to disable it and instead manually inline the relevant things.  (Alternatively, if caching the result of this function makes extraction in https://github.com/mit-plv/fiat-crypto/pull/1293 not take 90 minutes, I'd be satisfied with that)
+
+However, it seems like this call is being invoked for types that show up nowhere in the .ml file (because they will just be functor instantiations), so maybe the use of this procedure on applied functors should be fixed instead?
+Also, I don't think disabling this check can result in incorrect code that compiles, only in code that fails to compile
+Given the comments of some commits (d504428276e30d31f8c39cfa1bccc9021c154b3a) around this piece of code I can't say this looks very principled...
+Let's try just removing it and see what happens

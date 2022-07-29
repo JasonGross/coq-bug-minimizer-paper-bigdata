@@ -1,0 +1,22 @@
+Comment author: @JasonGross
+
+I want a version of an opaque constant that "eats its arguments"; if you apply 
+this opaque constant to an argument, then the resulting application should 
+never be decomposed by any part of Coq's machinery.  In particular, this would 
+allow opaque proofs that don't make [compute] run very slowly (because 
+[compute] would know to not peek inside of them).  I think this could be 
+accomplished with a kind of reduction-blocking construct.  So you could say 
+something like
+
+Definition irrelevant_proof x y z := block_reduction (some large proof term 
+involving x, y, and z).
+
+and then if you unfolded irrelevant_proof and performed beta reduction, you'd 
+substitute x, y, and z, and block further reduction, perhaps.
+
+
+Comment author: @JasonGross
+
+Another option might be having a global table of "opaque constants that eat their arguments" in some sort of hash map indexed by the terms, and whenever you apply one of these to an argument, you see if it's already in the table, and if it's not, you make a fresh constant and stick it in the table.
+
+

@@ -1,0 +1,5 @@
+Apparently, `command` works better in some NixOS context — or whenever `env` is not installed (`command` is a non-optional shell builtin).
+
+6548d0c05bc started using `env` in both, and then 5239af30618 in #7973 changed `tools/CoqMakefile.in` to use `command` — because the other wasn't working apparently. Hence, `command` should be better.
+
+The point of either one is to use the GNU `time` binary instead of the `time` shell builtin, but according to the original comments, `env` was not working. I assume that's because `/usr/bin/env` is not installed there, while `command` is a builtin mandated by POSIX (https://pubs.opengroup.org/onlinepubs/007904975/utilities/command.html).

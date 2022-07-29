@@ -1,0 +1,39 @@
+Comment author: @JasonGross
+
+This code works fine without the -time flag, but fails with the -time flag:
+
+```
+Lemma foo : forall _ : Type, Type.
+Proof (fun x => x).
+```
+
+With -time, I get the output (I think the first is from my rc file):
+
+```
+Chars 0 - 36 [Unset~Printing~Dependent~Evars...] 0. secs (0.u,0.s)
+Chars 0 - 34 [Lemma~foo~:~forall~_~:~Type,~T...] 0. secs (0.u,0.s)
+Chars 35 - 54 [Proof~fun~x~=>~x.] File "./qux.v", line 2, characters 0-19:
+Error: Attempt to save an incomplete proof (in proof foo)
+```
+Comment author: @JasonGross
+
+Bisecting gives:
+make[1]: Leaving directory '/home/jgross/Documents/repos/coq-bisect/coq'
+There are only 'skip'ped commits left to test.
+The first bad commit could be any of:
+2265dfad7543f0abce7e50751c650f8e5fb92683
+8e57267d4a08103506ebd6dd99b21c1f13813461
+f8970ec2140662274bb10f0eb8d3ca72924835c7
+We cannot bisect more!
+
+
+The first of these is nano_PG, the second is a fix for bug [BZ#3201](https://github.com/coq/coq/issues?q=is%3Aissue%20%22Original%20bug%20ID%3A%20BZ%233201%22), and the third 
+is "Proof_using: new syntax + suggestion"
+
+
+Comment author: @Zimmi48
+
+This is fixed by https://github.com/coq/coq/pull/748
+
+
+This bug is fixed in 8.7.0.

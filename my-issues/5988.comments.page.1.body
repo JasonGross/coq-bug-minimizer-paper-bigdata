@@ -1,0 +1,232 @@
+Is this due to filesystem trashing? How many FS calls does `strace` show?
+
+IMHO, Coq should not trash the filesystem at every invocation.
+Which are the filesystem calls?  The calls in `strace` for `xargs coqdep` are:
+```
+access
+arch
+brk
+chdir
+close
+execve
+exit
+fcntl
+fstat
+getcwd
+getdents
+getrlimit
+lseek
+mmap
+mprotect
+munmap
+open
+read
+readlink
+rt
+set
+sigaltstack
+stat
+write
+```
+For `xargs coqdep` with around 3617 files, the counts are:
+```
+70140   getcwd
+70138   chdir
+22683   stat
+14538   read
+8130    open
+8130    close
+7240    lseek
+7234    fcntl
+3617    write
+1772    getdents
+1234    brk
+896     fstat
+45      mmap
+20      mprotect
+12      rt
+12      access
+4       set
+2       sigaltstack
+2       readlink
+2       munmap
+2       getrlimit
+2       exit
+2       execve
+2       arch
+```
+
+For an invocation of coqdep with a single file, the call counts are:
+```
+14009   getcwd
+14008   chdir
+9536    stat
+886     getdents
+450     open
+450     close
+448     fstat
+21      mmap
+10      mprotect
+9       read
+7       brk
+6       rt
+6       access
+5       lseek
+2       set
+2       fcntl
+1       write
+1       sigaltstack
+1       readlink
+1       munmap
+1       getrlimit
+1       exit
+1       execve
+1       arch
+```
+For two invocations of coqdep with 1 (different) file each, the call counts are:
+```
+28006   getcwd
+28004   chdir
+19074   stat
+1772    getdents
+900     open
+900     close
+896     fstat
+42      mmap
+20      mprotect
+18      read
+14      brk
+12      rt
+12      access
+10      lseek
+4       set
+4       fcntl
+2       write
+2       sigaltstack
+2       readlink
+2       munmap
+2       getrlimit
+2       exit
+2       execve
+2       arch
+```
+This looks really bad; we are `stat`ing thousand of entries... for a single file.
+IMHO the first thing to do is to look what is causing so much filesystem load.
+I think the `-o` solution is a valid one BTW, but it could be even better if we could optimize FS access.
+It looks like coqdep first creates a hashtable of every file bound to an identifier by the options, and then only after that looks for the modules in the file.  I think it should instead accumulate all of the requires in files, and build the hash table based on that information, and then compute the dependencies for each file.  In particular, if files contain only fully qualified imports, coqdep should be able to navigate directly to the files to check if they exist.  If files contain partially qualified imports, coqdep should not touch any files which could not possibly match any of the imports.
+Correct, that should also be the strategy for Coq too.
+The behavior today is that `coqdep` can take many files as input, and just prints everything to `stdout`?
+My understanding of the code is:
+- each file on the command line gets added to a queue, paired with its absolute filename (one use of `getcwd` apparently)
+- there are two calls to `traite_fichier_Coq` for each queue item, so the file is apparently scanned twice (ugh); the difference is a passed suffix which can appear in the output; checking a set for membership does appear to reduce some duplicate computation, though
+- in those duplicated calls, the code is looking for `Require`, `Declare`, and `Load`
+- On the first call, the passed suffix is `.vo`, or a user-defined one; on the second call, it's always `.vio`
+
+What's the reason for scanning the file twice? Couldn't the information needed for output be recorded in one pass?
+
+> The behavior today is that coqdep can take many files as input, and just prints everything to stdout?
+
+Yes
+
+> What's the reason for scanning the file twice?
+
+This is not the bottleneck.  The bottleneck is that `coqdep` walks the entire directory tree (potentially tens of thousands of files) and calls `stat` on each one, even when most of the walking doesn't correspond to anything that it could possibly be looking for.  If you run `coqdep` on
+```coq
+Require Import Coq.Init.Datatypes.
+```
+it should not touch the file tree, at all, unless you pass `-nois -R . Coq` or similar.  Even if you do, it should then walk the folders, but only stat files named `Datatypes.v` in `./Init/` and directories of the form `./**/Coq/Init/`.
+Yes, `treat_file` has this line:
+
+```Array.iter (treat_file (Some newdirname)) (Sys.readdir complete_name))```
+
+I'll see what might be changed.
+
+Update: no, this code is only called if you pass a directory on the command-line (I think).
+
+
+Maybe we could use _CoqProject when present, since it already has the list of files?
+
+>it should not touch the file tree, at all, unless you pass -nois -R . Coq or similar. Even if you do, it should then walk the folders, but only stat files named Datatypes.v in ./Init/ and directories of the form ./**/Coq/Init/.
+
+Doesn't that force it to stat everything in `.` recursively in order to treat the `**`?
+I don't know what happens when you have a directory with a `.` in its name, so maybe that could let us skip .v files and compilation artifacts when looking for a directory.
+More software archeology. These lines:
+
+```
+add_rec_dir_import add_coqlib_known (coqlib//"theories") ["Coq"];
+add_rec_dir_import add_coqlib_known (coqlib//"plugins") ["Coq"];
+```
+add entries to a hash table for `.vo` and `.vio` files, by traversing the theories and plugins directories.
+(There's another table for `.v` files that seems to get the file passed on the command line, and then plugin and theory `.v` files if the `-boot` option is passed.)
+
+If there's a `Require`, there's a lookup in the `.v` table, which will fail in the non-boot case; then there's a lookup in the `.vo/.vio` table. If that fails, there's a warning printed.
+
+So the fix would be: don't create the `.vo/.vio` table, in place of the hash table lookup, look for the `.vo` or `.vio` file in `theories` and `plugins`.
+
+Sound right?
+I guess the disadvantage would be, if you pass several files to coqdep that `Require` the same files, you'll end up `stat`ing those files several times, instead of lookup them up in the the hash table. 
+
+The current Coq Makefile passes one file at a time to coqdep, as far as I can see, so that's not an issue there.
+Note that Coq itself uses `coqdep_boot`, a separate program from `coqdep`. That one works like `coqdep -boot`, so it builds the table of `.v` files, and not the `.vo/.vio` table.
+Apparently, `coqc` will accept any of:
+```
+Require Import Coq.Init.Datatypes.
+Require Import Init.Datatypes.
+Require Import Datatypes.
+```
+each with the same meaning. The hash table that `coqdep` creates an entry for all the sub-paths to `.vo` files, making it easy to find the full or partial paths.
+
+So if we want to `stat` the `.vo` file, what's the search algorithm here? 
+
+Maybe it's better not to mess with this hash table business, and just add the suggested `-o` feature, suffering the overhead of the directory traversals just once.
+
+
+> Maybe we could use _CoqProject when present, since it already has the list of files?
+
+I like this idea, but note that it does not contain the names of any installed libraries, or files picked up via COQPATH
+
+> Doesn't that force it to stat everything in . recursively in order to treat the **?
+
+Ugh, that's right.  I think we can fix this by splitting the two things that coqdep does: currently it warns on ambiguous `Require`s.  I think there should be a mode where you pass it a list of all the .v files, where it does scan the entire directory tree, and warns once for every ambiguity.
+
+Separately, it should have a mode where it takes advantage of not needing to warn by picking a deterministic ordering for where it looks for files: it should look for the shortest path that matches the given library name.  This way, each fully qualified `Require` will only incur `(# of entries in COQPATH) + (# of -R bindings to the top-level library)` file-system calls.
+
+@psteckler 
+> Maybe it's better not to mess with this hash table business, and just add the suggested -o feature, suffering the overhead of the directory traversals just once.
+
+Certainly, that's a simpler solution (though it will require some makefile wrangling), and I'd be fine with it.
+The -o solution means we have to regenerate the dependencies for every .v every time one changes though.
+
+>I like this idea, but note that it does not contain the names of any installed libraries, or files picked up via COQPATH
+
+If we start using _CoqProject when present it could be installed along with vos (sort of like the ocamlfind META files I guess). I don't know how COQPATH works.
+
+> I think there should be a mode where you pass it a list of all the .v files [...]
+
+Something like
+- for `coqdep` a `-known-files path` which disables filesystem scanning and instead loads the list of files from the file at `path`
+- a command `coqfind` which translates `-Q/-R/-I/$COQPATH` into a `find` invocation (does `coqdep` look for something more complicated than for each `-R foo bar` `find foo -type f -name '*.v'`? Plus I guess it has some rules like skipping `.git` directories.)
+
+> a command coqfind which translates -Q/-R/-I/$COQPATH into a find invocation (does coqdep look for something more complicated than for each -R foo bar find foo -type f -name '*.v'? 
+
+Will that work on Windows? OS X?
+
+I can start with the `-o` idea. I think the flag should be something else, since `-o` in UnixLinuxLand is typically used to name a single output file. 
+
+How about `--with-file-outputs`?
+> The -o solution means we have to regenerate the dependencies for every .v every time one changes though.
+
+This is not a bottleneck that I have ever seen.  I don't know of any recipe that depends on one `.v.d` without depending on all of them.  
+
+> a command coqfind which translates -Q/-R/-I/$COQPATH into a find invocation (does coqdep look for something more complicated than for each -R foo bar find foo -type f -name '*.v'? Plus I guess it has some rules like skipping .git directories.)
+
+Yeah, that should work.
+
+> Will that work on Windows? OS X?
+
+Oh, you mean, do we have to ship a version of `find`... hmm...  We could just take the directory-walking logic from coqdep and have our own version of `coqfind` in ocaml...
+
+> I can start with the -o idea. ... How about --with-file-ouputs?
+
+Sounds good to me
+Created #6099.

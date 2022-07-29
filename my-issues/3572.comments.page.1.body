@@ -1,0 +1,79 @@
+Comment author: @JasonGross
+
+On Windows, using the script https://coq.inria.fr/bugs/attachment.cgi?id=501 from bug [BZ#3275](https://github.com/coq/coq/issues?q=is%3Aissue%20%22Original%20bug%20ID%3A%20BZ%233275%22), with a fresh clone of Coq trunk 8287733d5df1bd673a38e92f23c47e95d1bb7a91:
+
+$ ./configure -local -opt
+You have GNU Make 4.0. Good!
+You have OCaml 4.01.0. Good!
+You have Camlp5 6.11. Good!
+Error while running 'ocamlopt.opt -version' (Unix.Unix_error(20, "create_process", "ocamlopt.opt"))
+Configuration script failed!
+
+
+Comment author: @siegebell
+
+I can confirm this, and furthermore, this error is default in the v8.5 branch now that '-opt' is obsolete (unless the -bytecode switch is given).
+
+$ ./configure -local
+You have GNU Make 4.0. Good!
+You have OCaml 4.01.0. Good!
+You have Camlp5 6.11. Good!
+Error while running 'ocamlopt.opt -version' (Unix.Unix_error(20, "create_process", "ocamlopt.opt"))
+Configuration script failed!
+
+version: 0e35acf14e0289b5a531d385eaf0506db4430da4
+
+
+Comment author: @siegebell
+
+Unix.create_process is happy with running:
+1. "ocamlopt"
+2. "C:/CoqSDK-0/bin/ocamlopt.opt"
+3. "ocamlopt.opt.exe"
+
+But cannot run "ocamlopt.opt"
+
+This could be a bug in either Cygwin's or Ocaml's handling of filename extensions on Windows.
+
+For now, either configure.ml needs to be explicit about the path, or else try appending ".exe" in addition to ".opt".
+
+
+Comment author: @gares
+
+I've been configuring coq on windows the whole day and I've not encountered this bug.  Which is your setup?  Are you using this sdk: https://coq.inria.fr/distrib/8.5beta1/ ? What does `which ocalmopt` say?
+
+
+Comment author: @siegebell
+
+
+> I've been configuring coq on windows the whole day and I've not encountered
+> this bug.  Which is your setup?  Are you using this sdk:
+> https://coq.inria.fr/distrib/8.5beta1/ ? What does `which ocalmopt` say?
+
+I'm running branch v8.5 of 0e35acf14e0289b5a531d385eaf0506db4430da4 with the CoqSDK-0 that I installed a few months ago.
+
+$ which ocamlopt
+/cygdrive/c/CoqSDK-0/bin/ocamlopt
+
+I am able to run "ocamlopt -version" and "ocamlopt.opt -version" from cygwin's bash just fine.
+
+
+...
+
+I just installed CoqSDK-85-1 from the link you gave and am still getting the same results.
+
+$ which ocamlopt
+/cygdrive/c/CoqSDK-85-1/bin/ocamlopt
+
+
+I last updated cygwin on Sep. 3rd 2014. I'll try updating it to see if this fixes the issue...
+
+
+Comment author: @siegebell
+
+> I last updated cygwin on Sep. 3rd 2014. I'll try updating it to see if this
+> fixes the issue...
+
+I just updated cygwin and am still seeing the error.
+
+

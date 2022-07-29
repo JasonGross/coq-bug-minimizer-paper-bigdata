@@ -1,0 +1,8 @@
+Doesn't it already update just the specific `REMOTE=$(git config --get "branch.$CURRENT_LOCAL_BRANCH.remote")`?
+Oh, my, this is hilarious
+
+The [docs](https://git-scm.com/docs/git-remote) say:
+> update
+> Fetch updates for remotes or remote groups in the repository as defined by remotes.<group>. If neither group nor remote is specified on the command line, the configuration parameter remotes.default will be used; if remotes.default is not defined, all remotes which do not have the configuration parameter remote.<name>.skipDefaultUpdate set to true will be updated. (See git-config[1]).
+
+Consider what happens if the name I gave to the remote of `master` is `default`...

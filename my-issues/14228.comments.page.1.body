@@ -1,0 +1,29 @@
+No idea what is going on, seems your OCaml env got botched somehow; note that in this case the error is at link time for the coqworkmgr which is a install dep but it doesnt get build on `world`
+
+Coq's CI is testing this target by the way.
+You can try doing `dune build coq-core.install` in the build step to see if the error is due to different run phases.
+Coq's CI is testing install to ` "$(pwd)/_install_ci"`.  I believe changing this to `/use/local` is enough to break the CI target, since I literally copy-pasted from Coq's CI otherwise.  Is there any reason that the CI tests an install to ` "$(pwd)/_install_ci"` rather than a global location?
+I would be very surprised if the problem would be due to that, as it arises even before any use for prefix is done.
+
+>This is very wonky, why does the install target try to open zarith?
+
+It's called install but it really means build.
+
+>Coq's CI is testing install to "$(pwd)/_install_ci". I believe changing this to /use/local is enough to break the CI target, since I literally copy-pasted from Coq's CI otherwise. Is there any reason that the CI tests an install to "$(pwd)/_install_ci" rather than a global location?
+
+Because artifacts must be subdirectories.
+> It's called install but it really means build.
+
+Indeed it builds the list of files to install, which depends on the files themselves, `world` misses this coqwrkmgr` file, we could add it of course to coqbinaries
+> I would be very surprised if the problem would be due to that, as it arises even before any use for prefix is done.
+
+Is it because I'm not setting `MACOSX_DEPLOYMENT_TARGET: "10.11"` when installing OCaml dependencies?  (That variable is set but not explicitly used, so I have no idea what it does, and did not copy it over.)  Moving on to more unlikely hypotheses, is it because I `set -e` when installing OCaml dependencies? Or because I neglect to `make byte` before `make`?  Or because I call `make install` rather than `make install install-byte`?  Or can you spot any relevant difference between
+https://github.com/mit-plv/fiat-crypto/blob/98864bbde575242334b97e5a9059e6224e82be76/.github/workflows/coq-macos.yml#L12-L57
+and
+https://github.com/coq/coq/blob/6bd39f29e675e125edfcb1dcb7a0fc5997049741/.github/workflows/ci.yml#L30-L70
+?
+Ah, I think this error results from running `make` under `sudo`.  But if `make install` fails both with and without `sudo` this is very bad.  Does `sudo` reset the opam environment or something?
+Oh, good point; we should strengthen the world target a bit indeed, it has to respect dune's install / build boundaries as `install` may be called with sudo and build not.
+> Is it because I'm not setting `MACOSX_DEPLOYMENT_TARGET: "10.11"` when installing OCaml dependencies?
+
+We shoud clear this up. This was only useful for the dmg bundle.

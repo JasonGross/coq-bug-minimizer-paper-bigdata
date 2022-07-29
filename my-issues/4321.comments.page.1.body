@@ -1,0 +1,31 @@
+Comment author: @JasonGross
+
+Here is code that works in Coq 8.4, but fails in Coq 8.5beta2:
+
+Goal (((fun x => ~ x) False) -> False \/ False) -> True.
+  intro H.
+  destruct H; [ | tauto.. ].
+  match goal with
+    | [ |- (fun x => ~x) False ] => fail 1 "Bad Coq 8.5"
+    | [ |- ~False ] => idtac
+  end.
+  tauto.
+
+
+Note that [tauto] can solve [~False], but cannot solve [(fun x => ~x) False].
+
+
+Comment author: @ppedrot
+
+It seems to me that this is rather a bugfix in 8.5. I do see any good reason for destruct to beta-reduce. AFAIK, it did so in 8.4 for historical implementation details.  I'm sorry it breaks your scripts, but at least it seems more fine-grained.
+
+If you want to complain louder, please reopen this bug.
+
+
+Comment author: @JasonGross
+
+If it's not too much trouble, it'd be nice to have a compatibility flag that re-enables the old behavior, or, better, enough support for grammar rules in tactic notation that this can be done in the compatibility file.
+
+Also, either way, this should certainly be mentioned in COMPATIBILITY.
+
+

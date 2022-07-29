@@ -1,0 +1,86 @@
+Any chance of this being fixed soon?
+I also got an example where it's trying to apply a `Transitive (Basics.flip Basics.impl)` instance to a mix of implications and equalities.  Perhaps there's some bit of code in the rewrite_strat machinery which assumes that every relation on `Prop` is going to be `Basics.flip Basics.impl` or `Basics.impl`?
+Interestingly, the typeclass log for the successful example is
+```coq
+Debug: 1: looking for (Proper (eq ==> ?r ==> Basics.flip Basics.impl) eq) with backtracking
+Debug: 1.1: simple apply @trans_co_eq_inv_impl_morphism on (Proper (eq ==> ?r ==> Basics.flip Basics.impl) eq), 1 subgoal(s)
+Debug: 1.1-1 : (Transitive eq)
+Debug: 1.1-1: looking for (Transitive eq) without backtracking
+Debug: 1.1-1.1: simple apply @eq_Transitive on (Transitive eq), 0 subgoal(s)
+Debug: 2: looking for (ProperProxy eq v) without backtracking
+Debug: 2.1: (*external*) (class_apply @eq_proper_proxy || class_apply @reflexive_proper_proxy) on (ProperProxy eq v), 0 subgoal(s)
+```
+while the typeclass log for the failing example is
+```coq
+Debug: 1: looking for (Proper (eq ==> ?r0 ==> ?r) eq) with backtracking
+Debug: 1.1: simple apply @PER_morphism on (Proper (eq ==> ?r0 ==> ?r) eq), 1 subgoal(s)
+Debug: 1.1-1 : (RelationClasses.PER eq)
+Debug: 1.1-1: looking for (RelationClasses.PER eq) without backtracking
+Debug: 1.1-1.1: simple apply @Equivalence_PER on (RelationClasses.PER eq), 1 subgoal(s)
+Debug: 1.1-1.1-1 : (Equivalence eq)
+Debug: 1.1-1.1-1: looking for (Equivalence eq) without backtracking
+Debug: 1.1-1.1-1.1: simple apply @eq_equivalence on (Equivalence eq), 0 subgoal(s)
+Debug: 2: looking for (ProperProxy eq v) without backtracking
+Debug: 2.1: (*external*) (class_apply @eq_proper_proxy || class_apply @reflexive_proper_proxy) on (ProperProxy eq v), 0 subgoal(s)
+```
+So it seems that `rewrite_strat` kicks off the typeclass search with an underspecified relation when the strategy is sequenced after `eval`...
+So here is a simpler example:
+```coq
+Goal forall x, x + 0 = id x.
+Proof.
+  intros.
+  (rewrite_strat eval cbv [id]); (rewrite_strat subterm <- plus_n_O).
+  Undo.
+  rewrite_strat ((eval cbv [id]); (subterm <- plus_n_O)).
+  (* Error: Ltac call to "rewrite_strat (rewstrategy)" failed.
+       Illegal application (Non-functional construction):
+The expression "@PER_morphism" of type "forall (A : Type) (R : relation A), RelationClasses.PER R -> Proper (R ==> R ==> iff) R"
+cannot be applied to the terms
+ "nat" : "Set"
+ "eq" : "nat -> nat -> Prop"
+ "Equivalence_PER eq_equivalence" : "RelationClasses.PER eq"
+ "x + 0" : "nat"
+ "x" : "nat"
+ "symmetry (plus_n_O x)" : "x + 0 = x"
+ "x" : "nat"
+ "x" : "nat"
+ "eq_proper_proxy x" : "ProperProxy eq x"
+ "?e" : "x = x"
+*)
+```
+I believe the offending line is
+https://github.com/coq/coq/blob/88c77bf369a910e72951b69b4e272dd50a982bf7/plugins/ltac/rewrite.ml#L1226
+The issue is that sequencing an `eval` with anything will kick off the next resolution with `None` for the rewrite relation.  In fact, dropping the second component of `cstr` in
+https://github.com/coq/coq/blob/88c77bf369a910e72951b69b4e272dd50a982bf7/plugins/ltac/rewrite.ml#L1303-L1310
+seems unsound in general.
+
+@mattam82 is this enough debugging for you to know how to fix this issue?
+A kludgy work-around is to force all calls to `eval` to leave evidence in the proof term by picking a type that you know will exist in the goal and wrapping the call to `eval` with a dummy rewrite, like so:
+```coq
+Lemma idA_sig : forall {A} (x : A), { y : A | x = y }.
+Proof. eexists; reflexivity. Qed.
+Definition idA {A} x := proj1_sig (@idA_sig A x).
+Definition insert_idA A x : x = @idA A x := proj2_sig (@idA_sig A x).
+Definition remove_idA A x : @idA A x = x := eq_sym (@insert_idA A x).
+Definition insert_idA_nat x : x = @idA nat x := @insert_idA _ _.
+Definition remove_idA_nat x : @idA nat x = x := @remove_idA _ _.
+Goal forall x, x + 0 = id x.
+Proof.
+  intros.
+  rewrite_strat (subterm insert_idA_nat; eval cbv [id]; subterm remove_idA); (subterm <- plus_n_O).
+```
+A perhaps-slightly-better workaround is to do both rewrites first:
+```coq
+Require Import Coq.Setoids.Setoid.
+Lemma idA_sig : forall {A} (x : A), { y : A | x = y }.
+Proof. eexists; reflexivity. Qed.
+Definition idA {A} x := proj1_sig (@idA_sig A x).
+Definition insert_idA A x : x = @idA A x := proj2_sig (@idA_sig A x).
+Definition remove_idA A x : @idA A x = x := eq_sym (@insert_idA A x).
+Definition insert_idA_nat x : x = @idA nat x := @insert_idA _ _.
+Definition remove_idA_nat x : @idA nat x = x := @remove_idA _ _.
+Goal forall x, x + 0 = id x.
+Proof.
+  intros.
+  rewrite_strat (subterm insert_idA_nat; subterm remove_idA; eval cbv [id]); (subterm <- plus_n_O).
+```

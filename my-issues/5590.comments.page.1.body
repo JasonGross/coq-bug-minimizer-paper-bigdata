@@ -1,0 +1,13 @@
+Comment author: @JasonGross
+
+Seems to happen because plugins/micromega/csdpcert requires omega which is now 
+extracted
+
+
+Comment author: @Zimmi48
+
+I think we can reasonably consider this a duplicate of other bug reports mentioning similar issues with other make targets.
+
+*** This bug has been marked as a duplicate of bug [BZ#5586](https://github.com/coq/coq/issues?q=is%3Aissue%20%22Original%20bug%20ID%3A%20BZ%235586%22) ***
+
+

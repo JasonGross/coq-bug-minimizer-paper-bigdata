@@ -1,0 +1,27 @@
+Comment author: @JasonGross
+
+(* File reduced by coq-bug-finder from original input, then from 4557 lines to 83 lines, then from 77 lines to 11 lines *)
+Set Universe Polymorphism.
+Set Primitive Projections.
+Set Implicit Arguments.
+Record sigT {A} (P : A -> Type) := existT { projT1 : A ; projT2 : P projT1 }.
+Notation "( x ; y )" := (existT _ x y).
+Axiom IsHSet : Type -> Type.
+Record hSet := BuildhSet {setT:> Type; iss :> IsHSet setT}.
+Canonical Structure default_HSet:= fun T P => (@ BuildhSet T P).
+Goal hSet -> sigT (fun x : Type => IsHSet x).
+  exact (fun x => (setT x; iss x)).
+  Undo.
+  Timeout 1 exact (fun x => existT IsHSet (@ setT x) (@ iss x)). (* Timeout! *)
+
+
+Comment author: @mattam82
+
+Not reproducible here, does it still happen for you?
+
+
+Comment author: @JasonGross
+
+No, it seems to be fixed in trunk.  We should probably add a test-suite case, though.
+
+

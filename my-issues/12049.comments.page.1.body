@@ -1,0 +1,18 @@
+I agree we should at least get rid of the ```ocamlformat: Must specify at least one input file, or `-` for stdin``` error. As for the verbosity of the rest, I don't know. @SkySkimmer seemed to think that was fine, while @ppedrot complained about it on Gitter. Maybe there's a way to reduce it a little.
+
+The ```ocamlformat: Must specify at least one input file, or `-` for stdin``` error only appears when no ML files are updated and you have `ocamlformat` in PATH. Similarly, when some ML files are updated and you have the wrong version of `ocamlformat` in PATH, you can get errors like:
+
+```
+ocamlformat: Error while parsing .ocamlformat:
+             For option "version": expecting "0.13.0" but got "0.14.0"
+```
+
+Since the output of `ocamlformat` is rarely interesting anyway, it seems to me that the best way to fix these two issues would be to redirect the output to `/dev/null`. I'll open a PR to do this in a minute.
+>@SkySkimmer seemed to think that was fine
+
+I don't care about commit hook noise because I don't see it. Do not  ask me to judge how important it is because I cannot.
+Oh, because you call it from Emacs?
+>Oh, because you call it from Emacs?
+
+From magit (if I just used shell in emacs I'd see it for instance)
+Same than @SkySkimmer , I never see it unless I need to debug something.

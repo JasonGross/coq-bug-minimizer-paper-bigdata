@@ -1,0 +1,2 @@
+cc @silene , likely due to custom build system on flocq's part.
+https://gitlab.inria.fr/flocq/flocq/-/issues/19 has been resolved by https://gitlab.inria.fr/flocq/flocq/-/commit/d26acf9ff5eca9848c7bd7cfb3fe5c7949138f3b, now all that's left is for Coq's CI to call the `install-glob` target in flocq

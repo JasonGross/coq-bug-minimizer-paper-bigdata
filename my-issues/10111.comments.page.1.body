@@ -1,0 +1,3 @@
+I was looking for this feature too!
+I wonder if it would make more sense to embed something closer to OCamlProf rather than adapting the Ltac2 profiler, given that Ltac2 is closer to OCaml than to Ltac in some sense.  On the other hand, it might be enough to add, roughly, a hook to the beginning and end of the interpretation of each top-level Ltac2 definition.
+As a note for anyone (including my future self in a few months from now :wink:) whose search for an Ltac2 profiler might end here: As long as we don't have one, wrapping some potentially slow calls inside `Control.time` can give some insights into timing.

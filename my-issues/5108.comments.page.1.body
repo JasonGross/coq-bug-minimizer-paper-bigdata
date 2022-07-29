@@ -1,0 +1,13 @@
+Comment author: @JasonGross
+
+It would be nice to be able to separately specify: setoid relations or only 
+Leibniz, modulo delta or not, (possibly) modulo beta/iota/zeta or not, under 
+binders with pointwise relations or not.  Presumably this requires some sort of 
+generic way of specifying optional flags for tactics...
+
+
+Comment author: @mattam82
+
+Yes, I agree completely.
+
+

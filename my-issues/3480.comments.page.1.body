@@ -1,0 +1,86 @@
+Comment author: @JasonGross
+
+(* File reduced by coq-bug-finder from original input, then from 7268 lines to 5182 lines, then from 4588 lines to 4440 lines, then from 4451 lines to 293 lines, then from 206 lines to 90 lines, then from 72 lines to 48 lines *)
+
+Axiom admit : forall {T}, T.
+Notation "( x ; y )" := (existT _ x y) : fibration_scope.
+Open Scope fibration_scope.
+Notation "x .1" := (projT1 x) (at level 3) : fibration_scope.
+Inductive paths {A : Type} (a : A) : A -> Type := idpath : paths a a where "x = y" := (@ paths _ x y) : type_scope.
+Set Implicit Arguments.
+Delimit Scope category_scope with category.
+Record PreCategory := { object :> Type ; morphism : object -> object -> Type }.
+Local Open Scope category_scope.
+Class IsIsomorphism {C : PreCategory} {s d} (m : morphism C s d) := { morphism_inverse : morphism C d s }.
+Class Isomorphic {C : PreCategory} s d := { morphism_isomorphic :> @ morphism C s d ; isisomorphism_isomorphic :> IsIsomorphism morphism_isomorphic }.
+Coercion morphism_isomorphic : Isomorphic >-> morphism.
+Local Infix "<~=~>" := Isomorphic (at level 70, no associativity) : category_scope.
+Definition idtoiso (C : PreCategory) (x y : C) (H : x = y) : Isomorphic x y := admit.
+Record NotionOfStructure (X : PreCategory) := { structure :> X -> Type }.
+Record Smorphism (X : PreCategory) (P : NotionOfStructure X) (xa yb : { x : X & P x }) := { f : morphism X xa.1 yb.1 }.
+Definition precategory_of_structures X (P : NotionOfStructure X) : PreCategory.
+Proof.
+  refine (@ Build_PreCategory _ (@ Smorphism _ P)).
+Defined.
+Section sip.
+  Variable X : PreCategory.
+  Variable P : NotionOfStructure X.
+
+  Let StrX := @ precategory_of_structures X P.
+
+  Definition sip_isotoid (xa yb : StrX) (f : xa <~=~> yb) : xa = yb.
+    admit.
+  Defined.
+
+  Lemma structure_identity_principle_helper (xa yb : StrX)
+        (x : xa <~=~> yb) : Smorphism P xa yb.
+  Proof.
+    refine ((idtoiso (precategory_of_structures P) (sip_isotoid x) : @ morphism _ _ _) : morphism _ _ _).
+(* Toplevel input, characters 24-95:
+Error:
+In environment
+X : PreCategory
+P : NotionOfStructure X
+StrX := precategory_of_structures P : PreCategory
+xa : object StrX
+yb : object StrX
+x : xa <~=~> yb
+The term "morphism_isomorphic:@ morphism (precategory_of_structures P) xa yb"
+has type "@ morphism (precategory_of_structures P) xa yb"
+while it is expected to have type "morphism ?40 ?41 ?42". *)
+
+
+Comment author: @JasonGross
+
+Note: Sometimes, I instead get an error message like
+
+The term "morphism_isomorphic" has type
+ "@ Core.morphism (x9 -> x6) x11 (x24 o x12)%functor"
+while it is expected to have type "Core.morphism ?1167 ?1168 ?1169"
+(unable to find a well-typed instantiation for "?1168": cannot unify
+"Functor x9 x6" and "Core.object ?1167").
+
+
+Filling in the first argument (so, below, replacing [morphism _ _ _] with [morphism (precategory_of_structures P) _ _]) is enough to make it go through.
+
+
+Comment author: @mattam82
+
+This is fixed in trunk.
+
+
+Comment author: @JasonGross
+
+Oops, I forgot a line at the top.  If you add [Set Primitive Projections.] to the top, then you still get it with current trunk (ff884c172697c1452db535cdbd6babceb556c428).
+
+
+Comment author: @mattam82
+
+Fixed again for apply's unification, for evarconv we're trying to find the best way to handle that case.
+
+
+Comment author: @mattam82
+
+Nevermind that comment that applied to another bug. This is fixed.
+
+

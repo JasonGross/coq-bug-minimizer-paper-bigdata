@@ -1,0 +1,73 @@
+Comment author: @JasonGross
+
+Consider how adding [tail_add] swaps the order of [Nat.zero] and [Nat.one] in 
+the following:
+```coq
+Module A.
+  Inductive nat := O | S (_ : nat).
+  Module Nat.
+    Definition zero := S O.
+    Definition one := S (S O).
+    Definition two := S (S (S O)).
+    Fixpoint add n m :=
+      match n with
+      | O => m
+      | S p => S (add p m)
+      end.
+  End Nat.
+  SearchPattern nat.
+  (* O: nat
+Nat.zero: nat
+Nat.two: nat
+Nat.one: nat
+S: nat -> nat
+Nat.add: nat -> nat -> nat *)
+End A.
+Module B.
+  Inductive nat := O | S (_ : nat).
+  Module Nat.
+    Definition zero := S O.
+    Definition one := S (S O).
+    Definition two := S (S (S O)).
+    Fixpoint add n m :=
+      match n with
+      | O => m
+      | S p => S (add p m)
+      end.
+
+    Fixpoint tail_add n m :=
+      match n with
+      | O => m
+      | S n => tail_add n (S m)
+      end.
+  End Nat.
+  SearchPattern nat.
+  (* O: nat
+Nat.one: nat
+Nat.two: nat
+Nat.zero: nat
+S: nat -> nat
+Nat.add: nat -> nat -> nat
+Nat.tail_add: nat -> nat -> nat *)
+End B.
+```
+
+Comment author: @ejgallego
+
+Why is that a problem? A better, dynamic ordering for search is indeed a feature added to 8.7 , see https://github.com/coq/coq/pull/253
+
+
+Comment author: @aspiwack
+
+It's rather amusing. I wonder why it would happen though. I basically let the heap implementation in lib/ do handle the sorting. Items of identical priority don't have guaranteed orders, so the observed behaviour is conform to the semantics. It's still unexpected.
+
+Don't hesitate to suggest a better sorting heuristic.
+
+
+Comment author: @JasonGross
+
+Emilio, the first-level issue is that it creates churn in the output test-suite.  At a more conceptual level, I'd be okay with having it be the case that adding a constant "teaches" Coq that two other constants are more related, but that's not what's happening here; the ordering swaps come because the subordering among similarly-related constants is essentially random.
+
+Arnaud, I suggest that priority ties be broken by either the order in which constants were added, or by lexicographic ordering on their names (either full qualified names, or the displayed names).
+
+

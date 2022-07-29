@@ -1,0 +1,17 @@
+Comment author: @JasonGross
+
+Set Universe Polymorphism.
+Definition foo@ {i} (x : Type@ {i}) : True /\ True.
+Proof.
+  split.
+  - exact I.
+    Set Printing Universes.
+    Show Proof. (* (fun x : Type@ {Top.2} => conj I ?X5@ {__:=x}) *)
+  - Show Proof. (* (fun x : Type@ {i} => conj I ?Goal1) *)
+
+
+Comment author: @herbelin
+
+This is fixed in coming 8.5pl2.
+
+

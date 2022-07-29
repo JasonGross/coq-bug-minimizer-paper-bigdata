@@ -1,0 +1,1 @@
+Note that wrapping the `repeat` in `try` does not eliminate the error, and this seems bogus.  Also the error message is under-informative; where does this constraint come from?

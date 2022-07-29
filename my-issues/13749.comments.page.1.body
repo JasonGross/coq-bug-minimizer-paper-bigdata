@@ -1,0 +1,3 @@
+If I remember correctly, both the strategy expanding the alias and the strategy sharing the alias are used. I'm unsure I thought to the strategy of extruding the `uncurry_rev_cps As` call out of the inner `match`.
+
+Let me add this as a wish. (The work on compiling pattern-matching with small inversion is making big progresses these days, so it may be an opportunity to think at your proposal.)

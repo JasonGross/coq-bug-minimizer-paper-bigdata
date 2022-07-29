@@ -1,0 +1,20 @@
+Comment author: @JasonGross
+
+$ cat bug_time_01.v
+(* -*- mode: coq; coq-prog-args: ("-emacs" "-time" "-R" "src" "Fiat") -*- *)
+(* File reduced by coq-bug-finder from original input, then from 21 lines to 7 lines *)
+(* coqc version 8.4pl6 (June 2016) compiled on Jun 13 2016 21:12:50 with OCaml 4.02.3
+   coqtop version 8.4pl6 (June 2016) *)
+Require Import Coq.FSets.FMapInterface.
+
+Time Module FMapExtensions_fun (E: DecidableType) (Import M: WSfun E). (* Anomaly: Uncaught exception Not_found. Please report. *)
+
+This bug makes it hard to debug when things got slower between 8.4 and 8.5/trunk, so I'd appreciate a fix on the v8.4 branch.
+
+
+Comment author: @JasonGross
+
+*** Bug [BZ#4840](https://github.com/coq/coq/issues?q=is%3Aissue%20%22Original%20bug%20ID%3A%20BZ%234840%22) has been marked as a duplicate of this bug. ***
+
+
+Seems to have been fixed in the meantime.

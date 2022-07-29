@@ -1,0 +1,76 @@
+Comment author: @JasonGross
+
+Here is some code that works:
+```coq
+Module foo.
+  Record foor := { foof : Type }.
+End foo.
+
+Module bar.
+  Import foo.
+  Goal forall x : foor, x = x.
+  Proof.
+    intro x.
+    destruct x.
+    Show.
+    revert foof0.
+    reflexivity.
+  Qed.
+End bar.
+```
+
+The `Show.` gives
+```
+1 subgoal
+
+  foof0 : Type
+  ============================
+   {| foof := foof0 |} = {| foof := foof0 |}
+```
+
+
+
+
+But if I split it into two files, it stops working:
+```bash
+jgross@cagnode17:/tmp/bar$ cat foo.v
+```
+```coq
+Record foor := { foof : Type }.
+```
+```bash
+jgross@cagnode17:/tmp/bar$ cat bar.v
+```
+```coq
+Require foo.
+Import foo.
+Goal forall x : foor, x = x.
+Proof.
+  intro x.
+  destruct x.
+  Show.
+  revert foof0.
+  reflexivity.
+Qed.
+```
+```bash
+jgross@cagnode17:/tmp/bar$ coqc foo bar
+```
+```
+1 subgoal
+
+  foof : Type
+  ============================
+   {| foof := foof |} = {| foof := foof |}
+File "./bar.v", line 9, characters 9-14:
+Error: No such hypothesis: foof0
+```
+
+
+
+I care about this mostly because it breaks my bug-minimizier.
+
+
+Just ran into this again, cc ... @herbelin ?
+Would it be possible to add a deprecated flag that changes the behavior to be uniform (I don't care which behavior is chosen, just that it not depend on the file in which the record is defined), and then set this flag in the compatibility file?  It's straightforward to generate (if not particularly easy to automate) backwards-compatible updates to the CI.
+At the very least, I'd like a variant of `Set Mangle Names` that mangles only the names that would be different if a record defined in another file were instead defined in the current one; this setting would be sufficient to test a development for compatibility with this issue.

@@ -1,0 +1,42 @@
+What about `Check EqInterp1 _ true` ?
+I'm not so sure the "order" is the problem here. The problem is that the relevant data for computing is `T` and you are not passing it. If you pass `BOOL` I think both orders are fine.
+
+You could make it work, IMO, with unification hints (not in Coq), or, by reformulating things with records, using canonical structures (to solve `bool = TYPE_INTERP ?T`).
+I expect `Check EqInterp1 _ true` to fail, with a unification/constraint failure.  The issue here is that I should not have to pass implicit arguments when there is enough information to solve for them with first-order unification.
+
+The model "this is very much an issue with the ordering of unification problems" works well.  For example, this works: `Check (fun x => EqInterp2 x TRUE) true.`
+Let me express my concerns more clearly. Also this seems to be a feature request touching a delicate part of the system, so I take the occasion to discuss the design of the elaborator.
+
+ I know that turning unification problems into a set of constraints solved only when they are lowered to first order seems a good idea. The downside is that it makes the algorithm less predictable (when it does not do what you want). Also, by suspending, you are saying "I'm not able to type check this term fully, let's continue anyway" and there are a few invariants that break, eg well typed terms have a normal form, so you can safely reduce them when they occur in types! Although I'm not very concerned by this one in practice, there are other invariants that are less striking from a theoretical POV but are still broken, eg when you check for convertibility of `(fun x : T => a) === (fun y : S => b)` you skip `T === S` because, if (you checked that) the two original terms had the same type, the source of the function must have the same type too (and the elaborator sometimes passes terms down to the kernel). Another tricky bit is where error should be reported. It is getting too technical I guess, but I hope it is sufficiently clear that "it is not a panacea".
+
+An algorithm that goes "left to right" is simple but predictable: you know in advance which data is available and when (you know T is not available when you typecheck the first argument of `EqInterp*`).
+Being simple the algorithm also looks stupid. My opinion is that there are ways to make it smarter without changing the execution order so drastically. For example by being bidirectional (using the type expected by the context while type checking the term in the context) is very related to reordering unification problems, and in practice can turn many HO problems into first order ones. Another technique I cited and that would solves you problem is the one of unification hints (a generalization of canonical structures). In particular here the hard problem is about inverting a (bijective) function: `INTERP_TYPE ?T = bool`. I know that in your example there is always another unification problem that fixes ?T and that is simpler that this one. But even if there is no extra simple problem fixing ?T, the hard problem has a solution!
+
+Rephrasing your example with canonical structures is convoluted, but can be found in this [paper](https://people.mpi-sws.org/~beta/lessadhoc/) while the more general concept of unification hints is in this [paper](http://www.cs.unibo.it/~sacerdot/PAPERS/tphol09.pdf) and the example of section 4 is not so different from the one you have here IIRC.
+
+I hope to play with the idea of reordering unification problems in elpi, that being a CLP language has decent support for constraints (eg there is a paper by Abel IIRC that express the entire elaboration algorithm in terms of constraints). Actually I have a prototype elaborator for CIC written in elpi, and in some experiment we (or better my colleagues) tried to "suspend" hard unification problems. These experiments turned out into long debugging sessions (mostly by me) and most of the time it was not a bug, it was just that the algorithm would take unexpected decisions (possibilities the algorithm would not have even considered if it had made a, maybe suboptimal, choice earlier). So maybe this explains why I'm skeptical.
+>when you check for convertibility of (fun x : T => a) === (fun y : S => b) you skip T === S
+
+We don't in Reduction and Evarconv AFAICT, do we do that somewhere else?
+No we don't, but we discussed a few times about doing it.  Does it interact badly with sprop?
+As of today, the invariant "the two terms being compared have the same type" is not always true (since Reduction is called in random places), so we did not add this optimization, but we could during "kernel type checking" I believe.
+Not that I know of.
+
+Gaëtan Gilbert
+
+On 10/03/2018 13:17, Enrico wrote:
+> No we don't, but we discussed a few times about doing it. Does it 
+> interact badly with sprop?
+> 
+> —
+> You are receiving this because you commented.
+> Reply to this email directly, view it on GitHub 
+> <https://github.com/coq/coq/issues/6957#issuecomment-372025529>, or mute 
+> the thread 
+> <https://github.com/notifications/unsubscribe-auth/ACWQ7DNMmZVCu-csEYaoHYhCauAgaLzqks5tc8RmgaJpZM4Skz-9>.
+> 
+
+@gares 
+> These experiments turned out into long debugging sessions (mostly by me) and most of the time it was not a bug, it was just that the algorithm would take unexpected decisions (possibilities the algorithm would not have even considered if it had made a, maybe suboptimal, choice earlier). So maybe this explains why I'm skeptical.
+
+It seems like #2229 is possibly an example of such a thing?  In this issue, I'm intending to request a much simpler heuristic: rather than triggering fatal errors in unification, delay the problem.  I agree that there is subtlety in a notion of what constitutes a "hard" problem, and I imagine things would get much hairier if we started having heuristics about which problems have unique solutions, etc.

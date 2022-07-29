@@ -1,0 +1,45 @@
+Comment author: @JasonGross
+
+e.g.,
+Ltac sleep := do 1000 do 1000 idtac.
+Ltac a := sleep.
+Ltac b := sleep; a.
+Ltac c := sleep; b.
+Ltac d := sleep; c.
+Goal True.
+  Set Ltac Profiling.
+  d.
+  Show Ltac Profile.
+
+total time:      3.594s
+ tactic                                    self  total   calls       max
+────────────────────────────────────────┴──────┴──────┴───────┴─────────┘
+─d -------------------------------------   0.0% 100.0%       1    3.594s
+
+─sleep --------------------------------- 100.0% 100.0%       4    0.932s
+
+─c -------------------------------------   0.0%  76.2%       1    2.739s
+
+─b -------------------------------------   0.0%  50.9%       1    1.829s
+
+ tactic                                    self  total   calls       max
+────────────────────────────────────────┴──────┴──────┴───────┴─────────┘
+─d -------------------------------------   0.0% 100.0%       1    3.594s
+ ├─c -----------------------------------   0.0%  76.2%       1    2.739s
+ │ ├─b ---------------------------------   0.0%  50.9%       1    1.829s
+ │ │└sleep -----------------------------  50.9%  50.9%       2    0.932s
+
+ │ └─sleep -----------------------------  25.3%  25.3%       1    0.910s
+
+ └─sleep -------------------------------  23.8%  23.8%       1    0.855s
+
+
+
+I'm not really familiar with the printing architecture; it might be enough to replace "prlist_with_sep fnl" with "prlist_with_sep (fun () -> str "")" or something similar; I'm not sure.
+
+
+Comment author: @ppedrot
+
+Fixed by 7799de3.
+
+

@@ -1,0 +1,60 @@
+Comment author: @JasonGross
+
+$ echo "Axiom f : True. Undo. Backtrack 5 0 0." | coqtop
+Welcome to Coq cagnode15:/afs/csail.mit.edu/u/j/jgross/coq-trunk,(no branch) (884b6cc6c12bd557085cdaa4972d593684c9cc1a)
+
+Coq < f is assumed
+
+
+
+
+
+Toplevel input, characters 22-38:
+> Axiom f : True. Undo. Backtrack 5 0 0.
+>                       ^^^^^^^^^^^^^^^^
+Anomaly: File "lib/stateid.ml", line 18, characters 16-22: Assertion failed.
+Please report.
+
+Coq <
+
+
+Should be an error, presumably, not an anomaly.
+
+
+Comment author: @gares
+
+Unfortunately the code to generate an anomaly is not available there, so I can't  produce an anomaly.
+
+Luckily the code you write is not supposed to be written by a human, but by PG, and I hope it only jumps back to state identifiers produced by Coq (5 was not, hence the assertion).
+
+I don't have a tag "CANTFIX", so I will use "WONTFIX" even if I would fix it if I could...
+
+Best,
+
+
+Comment author: @JasonGross
+
+The code is "Axiom f : True. Undo. Backtrack 5 0 0."; the first like was
+
+  echo "Axiom f : True. Undo. Backtrack 5 0 0." | coqtop
+
+Were you looking for something else?
+
+
+Comment author: @JasonGross
+
+Er, "first line", not "first like".
+
+
+Comment author: @JasonGross
+
+Oh, did you mean, the ml code to generate an error isn't available in line 18 of lib/stateid.ml, so the only thing you can do is have an assertion failure?
+
+
+Comment author: @gares
+
+Exactly.  One could hack around the non circularity of OCaml modules with a ref but that would be just one more hack for very little gain.
+
+I could easily add a print on stderr, but again you are not supposed to type "Backtrack m n o" by hand, it is a very old command used by PG only (moreover, n and o are ignored these days).  So, assuming PG is not broken, no user will ever see the anomaly.
+
+

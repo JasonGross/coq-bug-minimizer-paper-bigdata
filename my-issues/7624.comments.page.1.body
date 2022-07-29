@@ -1,0 +1,1 @@
+@JasonGross: this is a known limitation, when a generalization arrives inbetween (as the `fun idc1` that you can see), the algorithm used to rebuild a nested pattern does not see the nesting. Something has to be done for sure. Don't know if someone would be interested to look at it.

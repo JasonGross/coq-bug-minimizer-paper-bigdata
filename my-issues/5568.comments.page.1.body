@@ -1,0 +1,80 @@
+Comment author: @JasonGross
+
+Module foo.
+  Notation compose := (fun g f => g f).
+  Notation "g & f" := (compose g f).
+End foo.
+Import foo. (* no warnings *)
+Import foo. (* Warning: Notation _ & _ was already used in scope function_scope
+[notation-overridden,parsing] *)
+Import foo. (* Warning: Notation _ & _ was already used in scope function_scope
+[notation-overridden,parsing] *)
+
+This is wrong.  Interestingly, if I change `compose` to be defined as [fun g f 
+=> (g, f)] rather than [fun g f => g f], then the warning goes away.  What is 
+going on here?
+
+
+Comment author: @psteckler
+
+I wonder if there are other bugs lurking here. 
+
+So, the idea is that module imports should be idempotent? The Notation warning suggests that some side-effects associated with import can be repeated, perhaps to ill effect.
+
+Could the fix here be to check whether a module has already been imported, and turn any subsequent import into a no-op, so that no side effects are repeated?
+
+
+Comment author: @JasonGross
+
+Imports should be idempotent but not commutative.  Consider:
+Module A. Definition a := Set. End A.
+Module B. Definition a := nat. End B.
+Import A. Check a.
+Import B. Check a.
+Import A. Check a.
+
+
+Comment author: @JasonGross
+
+I suspect the correct fix is to warn only when the override changes the notation, and to fix the notation comparison function to handle this case if it doesn't already.
+
+
+Comment author: @psteckler
+
+OK, it may be too hard to prevent replay of just the necessary side effects.
+
+I see where the Notation lookup occurs, there's no check for equality. I'll see if I can add that.
+
+
+Comment author: @psteckler
+
+I wrote a fix that works for the case here. But in the test-suite, the OCaml polymorphic equality (=) generates a bunch of exceptions because of function comparisons. Maybe I can hand-roll something to work around that. 
+
+I won't get to that until sometime next week, tho.
+
+
+Comment author: @psteckler
+
+Created PR:
+
+  https://github.com/coq/coq/pull/747
+
+
+Comment author: @psteckler
+
+This bug can be closed, with the merger of PR [BZ#747](https://github.com/coq/coq/issues?q=is%3Aissue%20%22Original%20bug%20ID%3A%20BZ%23747%22).
+
+
+Comment author: @Zimmi48
+
+Paul, you don't have the rights to do this yourself?
+
+
+Comment author: @psteckler
+
+(In reply to Théo Zimmermann from comment [BZ#8](https://github.com/coq/coq/issues?q=is%3Aissue%20%22Original%20bug%20ID%3A%20BZ%238%22))
+> Paul, you don't have the rights to do this yourself?
+
+Nope!
+
+

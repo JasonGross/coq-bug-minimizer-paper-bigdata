@@ -1,0 +1,40 @@
+Comment author: @JasonGross
+
+I expect all four [Check string]s to succeed together or fail together, in the following.  Especially, especially the first and last ones.
+
+Module A.
+  Section HexStrings.
+    Require Import String.
+  End HexStrings.
+  Fail Check string.
+End A.
+
+Module B.
+  Section HexStrings.
+    Require String.
+    Import String.
+  End HexStrings.
+  Fail Check string.
+End B.
+
+Section HexStrings.
+  Require String.
+  Import String.
+End HexStrings.
+Fail Check string.
+
+Section HexStrings'.
+  Require Import String.
+End HexStrings'.
+Check string.
+
+
+Comment author: @maximedenes
+
+First two now forbidden since trunk 6d5b56d97150.
+
+The remainder is a duplicate of [BZ#3556](https://github.com/coq/coq/issues?q=is%3Aissue%20%22Original%20bug%20ID%3A%20BZ%233556%22).
+
+*** This bug has been marked as a duplicate of bug [BZ#3556](https://github.com/coq/coq/issues?q=is%3Aissue%20%22Original%20bug%20ID%3A%20BZ%233556%22) ***
+
+

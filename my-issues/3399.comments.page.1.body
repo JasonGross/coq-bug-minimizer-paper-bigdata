@@ -1,0 +1,22 @@
+Comment author: @JasonGross
+
+Axiom A : Type.
+Axiom B : Type.
+Axiom C : Type.
+
+Notation foo x := A.
+
+Goal A = A.
+match goal with
+  | [ |- context G[foo ?x] ] => pose x
+end.
+(* The reference x was not found in the current environment. *)
+
+This is a somewhat confusing error message, but perhaps understandable given how Ltac and notations work.  I wonder if perhaps there should be a special case in the error code for checking if the pattern was named but disappeared.
+
+
+Comment author: @silene
+
+Interesting, thanks. I somehow doubt that anyone will ever improve the situation, so I prefer to close the report.
+
+

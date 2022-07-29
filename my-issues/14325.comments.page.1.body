@@ -1,0 +1,15 @@
+I think your version doesn't have the changes I made to do this.
+
+By the way, if you click on the arrow, the Messages will appear in a separate window.
+
+![image](https://user-images.githubusercontent.com/1253341/118336493-b2ba2500-b4c6-11eb-8e63-f20658bd3dbd.png)
+
+If you like, I could do a Zoom call so I can see how it behaves.  Just let me know when and send me a link by email.
+Sent you an email, zoom call now?  I'm using 42a77a7adc9df7d6e29c96eeaaa9e541c0bf25b4
+Yes, give me a minute.
+
+The link for the Zoom call is?
+
+>
+
+Now fixed in #14252.  Also, the debugger function keys are now recognized in detached message panels, an alternate way to keep stepping.

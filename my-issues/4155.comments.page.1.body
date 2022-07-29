@@ -1,0 +1,236 @@
+Comment author: @JasonGross
+
+Here is code that worked in 8.4, and does not in 8.5:
+
+(* File reduced by coq-bug-finder from original input, then from 740 lines to 323 lines, then from 330 lines to 139 lines, then from 148 lines to 84 lines, then from 244 lines to 233 lines *)
+(* coqc version 8.5beta1 (March 2015) compiled on Mar 17 2015 12:34:25 with OCaml 4.01.0
+   coqtop version cagnode13:/afs/csail.mit.edu/u/j/jgross/coq-8.5-require-on-the-fly,require-on-the-fly (b0bbfbcfb933b8d99268994376ffcccafa150f9b) *)
+Axiom proof_admitted : False.
+Tactic Notation "admit" := case proof_admitted.
+Require Coq.Sorting.Permutation.
+Require Coq.Strings.String.
+
+Global Set Implicit Arguments.
+
+Lemma filter_map :
+  forall {A B} f g seq,
+    List.filter f (@ List.map A B g seq) =
+    List.map g (List.filter (fun x => f (g x)) seq).
+  admit.
+Defined.
+
+Section IndexedEnsembles.
+
+  Context {ElementType : Type}.
+
+  Record IndexedElement :=
+    { elementIndex : nat;
+      indexedElement : ElementType }.
+
+End IndexedEnsembles.
+
+Section ilist.
+
+  Variable A : Type.
+
+  Variable B : A -> Type.
+
+  Inductive ilist : list A -> Type :=
+  | icons : forall a As, B a -> ilist As -> ilist (a :: As)
+  | inil : ilist nil.
+
+End ilist.
+
+Export Coq.Sorting.Permutation.
+
+Definition BagInsertEnumerate
+           {TContainer TItem: Type}
+           (RepInv : TContainer -> Prop)
+           (benumerate : TContainer -> list TItem)
+           (binsert    : TContainer -> TItem -> TContainer) :=
+  forall inserted container
+         (containerCorrect : RepInv container),
+    Permutation
+      (benumerate (binsert container inserted))
+      (inserted :: benumerate container).
+
+Definition BagEnumerateEmpty
+           {TContainer TItem: Type}
+           (benumerate : TContainer -> list TItem)
+           (bempty     : TContainer) :=
+  forall item, ~ List.In item (benumerate bempty).
+
+Definition BagFindCorrect
+           {TContainer TItem TSearchTerm: Type}
+           (RepInv : TContainer -> Prop)
+           (bfind         : TContainer -> TSearchTerm -> list TItem)
+           (bfind_matcher : TSearchTerm -> TItem -> bool)
+           (benumerate : TContainer -> list TItem) :=
+  forall container search_term
+         (containerCorrect : RepInv container),
+    Permutation
+      (List.filter (bfind_matcher search_term) (benumerate container))
+      (bfind container search_term).
+
+Definition BagCountCorrect
+           {TContainer TItem TSearchTerm: Type}
+           (RepInv : TContainer -> Prop)
+           (bcount        : TContainer -> TSearchTerm -> nat)
+           (bfind         : TContainer -> TSearchTerm -> list TItem) :=
+  forall container search_term
+         (containerCorrect : RepInv container),
+    List.length (bfind container search_term) = (bcount container search_term).
+
+Definition BagDeleteCorrect
+           {TContainer TItem TSearchTerm: Type}
+           (RepInv : TContainer -> Prop)
+           (bfind         : TContainer -> TSearchTerm -> list TItem)
+           (bfind_matcher : TSearchTerm -> TItem -> bool)
+           (benumerate : TContainer -> list TItem)
+           (bdelete    : TContainer -> TSearchTerm -> (list TItem) * TContainer) :=
+  forall container search_term
+         (containerCorrect : RepInv container),
+    Permutation (benumerate (snd (bdelete container search_term)))
+                (snd (List.partition (bfind_matcher search_term)
+                                     (benumerate container)))
+    /\ Permutation (fst (bdelete container search_term))
+                   (fst (List.partition (bfind_matcher search_term)
+                                        (benumerate container))).
+
+Definition BagUpdateCorrect
+           {TContainer TItem TSearchTerm TUpdateTerm : Type}
+           (RepInv : TContainer -> Prop)
+           (ValidUpdate : TUpdateTerm -> Prop)
+           (bfind         : TContainer -> TSearchTerm -> list TItem)
+           (bfind_matcher : TSearchTerm -> TItem -> bool)
+           (benumerate : TContainer -> list TItem)
+           (bupdate_transform : TUpdateTerm -> TItem -> TItem)
+           (bupdate    : TContainer -> TSearchTerm -> TUpdateTerm -> list TItem * TContainer) :=
+  forall container search_term update_term
+         (containerCorrect : RepInv container)
+         (valid_update : ValidUpdate update_term),
+    Permutation (benumerate (snd (bupdate container search_term update_term)))
+                ((snd (List.partition (bfind_matcher search_term)
+                                      (benumerate container)))
+                   ++ List.map (bupdate_transform update_term)
+                   (fst (List.partition (bfind_matcher search_term)
+                                        (benumerate container))))
+    /\ Permutation (fst (bupdate container search_term update_term))
+                   (fst (List.partition (bfind_matcher search_term)
+                                        (benumerate container))).
+
+Definition binsert_Preserves_RepInv
+           {TContainer TItem: Type}
+           (RepInv : TContainer -> Prop)
+           (binsert    : TContainer -> TItem -> TContainer)
+  := forall container item
+            (containerCorrect : RepInv container),
+       RepInv (binsert container item).
+
+Definition bdelete_Preserves_RepInv
+           {TContainer TItem TSearchTerm: Type}
+           (RepInv : TContainer -> Prop)
+           (bdelete    : TContainer -> TSearchTerm -> (list TItem) * TContainer)
+  := forall container search_term
+            (containerCorrect : RepInv container),
+       RepInv (snd (bdelete container search_term)).
+
+Definition bupdate_Preserves_RepInv
+           {TContainer TItem TSearchTerm TUpdateTerm : Type}
+           (RepInv : TContainer -> Prop)
+           (ValidUpdate       : TUpdateTerm -> Prop)
+           (bupdate    : TContainer -> TSearchTerm -> TUpdateTerm -> (list TItem) * TContainer)
+  := forall container search_term update_term
+            (containerCorrect : RepInv container)
+            (valid_update : ValidUpdate update_term),
+       RepInv (snd (bupdate container search_term update_term)).
+
+Class Bag (BagType TItem SearchTermType UpdateTermType : Type) :=
+  {
+
+    bempty            : BagType;
+    bfind_matcher     : SearchTermType -> TItem -> bool;
+    bupdate_transform : UpdateTermType -> TItem -> TItem;
+
+    benumerate : BagType -> list TItem;
+    bfind      : BagType -> SearchTermType -> list TItem;
+    binsert    : BagType -> TItem -> BagType;
+    bcount     : BagType -> SearchTermType -> nat;
+    bdelete    : BagType -> SearchTermType -> (list TItem) * BagType;
+    bupdate    : BagType -> SearchTermType -> UpdateTermType -> (list TItem) * BagType
+  }.
+
+Class CorrectBag
+      {BagType TItem SearchTermType UpdateTermType : Type}
+      (RepInv            : BagType -> Prop)
+      (ValidUpdate       : UpdateTermType -> Prop)
+      (BagImplementation : Bag BagType TItem SearchTermType UpdateTermType) :=
+  {
+
+    bempty_RepInv     : RepInv bempty;
+    binsert_RepInv    : binsert_Preserves_RepInv RepInv binsert;
+    bdelete_RepInv    : bdelete_Preserves_RepInv RepInv bdelete ;
+    bupdate_RepInv    : bupdate_Preserves_RepInv RepInv ValidUpdate bupdate;
+
+    benumerate_empty  : BagEnumerateEmpty benumerate bempty;
+    binsert_enumerate : BagInsertEnumerate RepInv benumerate binsert;
+    bfind_correct     : BagFindCorrect RepInv bfind bfind_matcher benumerate;
+    bcount_correct    : BagCountCorrect RepInv bcount bfind;
+    bdelete_correct   : BagDeleteCorrect RepInv bfind bfind_matcher benumerate bdelete;
+    bupdate_correct   : BagUpdateCorrect RepInv ValidUpdate bfind bfind_matcher benumerate bupdate_transform bupdate
+  }.
+
+Import Coq.Strings.String.
+
+Record Attribute :=
+  { attrName : string;
+    attrType : Type }.
+
+Record Heading :=
+  { AttrList : list Attribute }.
+
+Definition Tuple {heading : Heading} :=
+  ilist attrType (AttrList heading).
+
+Export Coq.Lists.List.
+
+Goal forall (heading : Heading)
+            (SearchTermTypePlus UpdateTermTypePlus BagTypePlus : Type)
+            (BagPlus : Bag BagTypePlus (@ Tuple heading) SearchTermTypePlus
+                           UpdateTermTypePlus) (search_term : SearchTermTypePlus)
+            (x0 : list (@ IndexedElement (@ Tuple heading))),
+       @ Permutation (@ Tuple heading)
+                    (@ map (@ IndexedElement (@ Tuple heading)) (@ Tuple heading)
+                          (@ indexedElement (@ Tuple heading))
+                          (@ filter (@ IndexedElement (@ Tuple heading))
+                                   (fun t : @ IndexedElement (@ Tuple heading) =>
+                                      negb
+                                        (@ bfind_matcher BagTypePlus (@ Tuple heading) SearchTermTypePlus
+                                                        UpdateTermTypePlus BagPlus search_term
+                                                        (@ indexedElement (@ Tuple heading) t))) x0))
+                    (@ map (@ IndexedElement (@ Tuple heading)) (@ Tuple heading)
+                          (@ indexedElement (@ Tuple heading))
+                          (@ filter (@ IndexedElement (@ Tuple heading))
+                                   (fun t : @ IndexedElement (@ Tuple heading) =>
+                                      negb
+                                        (@ bfind_matcher BagTypePlus (@ Tuple heading) SearchTermTypePlus
+                                                        UpdateTermTypePlus BagPlus search_term
+                                                        (@ indexedElement (@ Tuple heading) t))) x0)).
+  intros.
+  let lem := constr:(fun A => @ filter_map A _ (fun t => negb (bfind_matcher search_term t)))
+  in rewrite <- lem.
+  rewrite <- (fun A => @ filter_map A _ (fun t => negb (bfind_matcher search_term t))).
+(* Toplevel input, characters 53-66:
+Error:
+In environment
+heading : Heading
+SearchTermTypePlus : Type
+UpdateTermTypePlus : Type
+BagTypePlus : Type
+BagPlus : Bag BagTypePlus Tuple SearchTermTypePlus UpdateTermTypePlus
+search_term : SearchTermTypePlus
+x0 : list IndexedElement
+Unable to unify "?TItem@ {A:=?M1598}" with "?TItem@ {A:=?A}". *)
+
+
+This is a bug affecting an already old version, and it is unlikely both that we fix it and that it would help you. Therefore I'll close it as WONTFIX.

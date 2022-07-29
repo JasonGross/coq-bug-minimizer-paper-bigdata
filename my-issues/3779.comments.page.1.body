@@ -1,0 +1,71 @@
+Comment author: @JasonGross
+
+Something very wacky is going on....
+Set Universe Polymorphism.
+Record UnitSubuniverse := { x : (Type@ {sm} : Type@ {lg}) ; inO_internal : Type@ {lg} -> Type@ {lg} }.
+Class In (O : UnitSubuniverse@ {sm lg}) (T : Type@ {lg}) := in_inO_internal : inO_internal O T.
+Set Printing Universes.
+Section foo.
+  Universes sm lg.
+  Context (O : UnitSubuniverse@ {sm lg}).
+  Context {A : Type@ {sm}}.
+  Context (H' : forall (C : Type@ {lg}) `{In@ {sm lg} O C} (f : A -> C), In@ {sm lg} O C).
+  Check (H' : forall (C : Type@ {lg}) `{In@ {i j} O C} (f : A -> C), In@ {j i} O C). (* should probably fail, but doesn't *)
+  (* H'
+:forall C : Type@ {lg},
+ In@ {Top.96 Top.97} O C -> (A -> C) -> In@ {Top.96 Top.97} O C
+     : forall C : Type@ {lg},
+       In@ {Top.96 Top.97} O C -> (A -> C) -> In@ {Top.96 Top.97} O C
+(*  |= Top.97 < Top.96
+        Top.96 = Top.98
+        Top.97 = Top.99
+         *)
+
+ *)
+  Fail Check let enforce := Type@ {sm} : Type@ {lg} in
+             (H' : forall (C : Type@ {lg}) `{In@ {i j} O C} (f : A -> C), In@ {j i} O C).
+  (* should have the same behavior as above, since we already have this constraint in [UnitSubuniverse] *)
+  Context (H'' : forall (C : Type@ {lg}) `{In@ {i j} O C} (f : A -> C), In@ {j i} O C). (* should probably fail, but doesn't *)
+  Check H''.  (* H''
+     : forall C : Type@ {lg},
+       In@ {Top.96 Top.97} O C -> (A -> C) -> In@ {Top.96 Top.97} O C *)
+End foo.
+
+
+Comment author: @JasonGross
+
+Mike Shulman pointed out that I got the universe order wrong on ReflectiveSubuniverse.  So I see why the [Fail] line has different behavior, but I still think the [Check]s are wrong to succeed, probably:
+
+Set Universe Polymorphism.
+Set Printing Universes.
+Record UnitSubuniverse := { a : Type@ {sm} ; x : (Type@ {sm} : Type@ {lg}) ; inO_internal : Type@ {lg} -> Type@ {lg} }.
+Class In (O : UnitSubuniverse@ {sm lg}) (T : Type@ {lg}) := in_inO_internal : inO_internal O T.
+Section foo.
+  Universes sm lg.
+  Context (O : UnitSubuniverse@ {sm lg}).
+  Context {A : Type@ {sm}}.
+  Context (H' : forall (C : Type@ {lg}) `{In@ {sm lg} O C} (f : A -> C), In@ {sm lg} O C).
+  Check (H' : forall (C : Type@ {lg}) `{In@ {i j} O C} (f : A -> C), In@ {j i} O C). (* should probably fail, but doesn't *)
+  (* H'
+:forall C : Type@ {lg},
+ In@ {Top.96 Top.97} O C -> (A -> C) -> In@ {Top.96 Top.97} O C
+     : forall C : Type@ {lg},
+       In@ {Top.96 Top.97} O C -> (A -> C) -> In@ {Top.96 Top.97} O C
+(*  |= Top.97 < Top.96
+        Top.96 = Top.98
+        Top.97 = Top.99
+         *)
+
+ *)
+  Context (H'' : forall (C : Type@ {lg}) `{In@ {i j} O C} (f : A -> C), In@ {j i} O C). (* should probably fail, but doesn't *)
+  Check H''.  (* H''
+     : forall C : Type@ {lg},
+       In@ {Top.96 Top.97} O C -> (A -> C) -> In@ {Top.96 Top.97} O C *)
+End foo.
+
+
+Comment author: @ppedrot
+
+Seems to have been fixed in 8.5-dev (probably by the patch taking into account instances in binders).
+
+

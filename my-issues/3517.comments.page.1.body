@@ -1,0 +1,24 @@
+Comment author: @JasonGross
+
+Here is some code that works in 8.4, but fails (with "Command has not failed!") in trunk:
+
+Require Export Coq.Program.Tactics.
+Set Universe Polymorphism.
+Generalizable All Variables.
+Reserved Infix "~" (at level 90).
+Inductive paths {A} (a : A) : A -> Type := refl : paths a a where "x ~ y" := (@ paths _ x y) : type_scope.
+Arguments refl {A a}, [A] a.
+Hint Resolve @ refl.
+Local Obligation Tactic := repeat intros; repeat match goal with | H : _ |- _ => induction H end; auto.
+Program Definition foo : forall a b c : Set, a ~ b -> a ~ b := _.
+Fail Next Obligation.
+
+
+Note that replacing [Fail Next Obligation.] with [Next Obligation. Defined.] makes it work in trunk.  Note that replacing [induction] with [destruct] in [path_induction] makes it work.
+
+
+Comment author: @mattam82
+
+There was buggy handling of universes for obligations solved by tactics, fixed in trunk.
+
+

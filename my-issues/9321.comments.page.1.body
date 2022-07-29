@@ -1,0 +1,11 @@
+I'm encountering the same issue (second code fragment above), and would also really like it to work.
+(same version of Coq)
+My personal belief is that uconstr is a horrible hack, and we shouldn't recommend its use. Furthermore, this particular example is using another well-known half-broken part of Ltac pattern-matching, namely matching against a constr variable (and the infamous `pattern_of_constr`). Thus I wouldn't hold my breath on that being fixed.
+@ppedrot should we close this as a wontfix, then?
+@maximedenes I'd say personally so.
+@JasonGross @toineo I suggest you try to port your code to Ltac2, and open an issue if you encounter the same kind of problems.
+@maximedenes @ppedrot I'd be more enthusiastic about porting to Ltac2 if
+(a) Ltac2 was shipped with Coq by default, like the ssr tactics are
+(b) Ltac2 got `Message.printf ` or some other satisfactory replacement for `idtac` during debugging, and
+(c) Ltac2 would awake from the stasis it seems to be in; I haven't seen much response to issues in the past couple of months, and @ppedrot's most recent non-merge commit is from November
+@JasonGross I haven't had much time for development since around the beginning of December, but this is hopefully going to change soon. Also, Ltac2 is probably going to be merged back into Coq for 8.10 assuming we work around the stdlib-related limitations of the build system. As for `printf`, that's pretty easy to implement using a dedicated parsing scope and an phantom type-annotated payload datatype.

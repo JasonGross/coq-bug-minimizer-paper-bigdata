@@ -1,0 +1,3 @@
+Seems sensible indeed for `coqc -config` to output it, how do OCaml/ocamlfind expose this info ? [They have the same issue AFAICT]
+
+AFAIK they don't expose this info, which is why I'm compiling my own OCaml binary with contents `Printf.printf "%s%!" Sys.os_type` to detect it

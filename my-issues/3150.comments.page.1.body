@@ -1,0 +1,18 @@
+Comment author: @JasonGross
+
+Line 339 should be changed from 
+  MAKEVERSION=`$MAKE -v | head -1 | cut -d" " -f3`
+to
+  MAKEVERSION=`"$MAKE" -v | head -1 | cut -d" " -f3`
+
+
+Comment author: @JasonGross
+
+Pull request to fix this bug at https://github.com/coq/coq/pull/3
+
+
+Comment author: @letouzey
+
+Thanks. Applied to trunk (commit 71bd17b). I'll apply it to 8.4 shortly...
+
+

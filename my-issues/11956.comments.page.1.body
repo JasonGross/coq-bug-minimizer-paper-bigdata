@@ -1,0 +1,40 @@
+Hi @jasongross, I'm not familiar with extraction to Haskell. What would it mean in terms of Coq API. Would it be a new command say `Add Extraction Header "some string".`?
+Yes.  In OCaml, the two things it'd probably be used for are `open` statements and comment/license headers. (In OCaml, `open` statements are not required, but in Haskell, `import` statements generally are required.)  We'd probably want commands to set (or, ideally, to reset and to append), and (for debugging purposes) print.  Note that it needs to be possible to insert newlines into the extraction header.
+Wouldn't it be simpler to handle this at the level of the build system? I.e. have the build system support adding headers / footers providing in other source files to the generated file?
+No, I don't think so.  Handling it in the build system means relying on `sed` and forces copying of the generated file to another location (or else in-place modification).  There are some programs that are literally impossible to extract valid Haskell code for at present.
+
+@tchajed might have more thoughts on this.
+I thought that "header" meant "lines at the beginning of file". If that's the case, then you clearly do not need `sed`. Here's another suggestion that is more adapted to adding multi-line headers:  `Add Extraction Header "some_filename_containing_the_header.hs"`
+> Add Extraction Header "some_filename_containing_the_header.hs"
+
+That's a bit messy I think precisely; it introduces a dependency so coqdep has to be adapted, etc... I guess that given this is a haskell-specific feature the best is to use the configuration of the Haskell extraction to perform the setup.
+
+Tho, if many files share that setting then boilerplate becomes annoying. My general feeling is that extracion could use a bit of full revamp in terms of infrastructure, but yeah, that's a lot of work.
+> I thought that "header" meant "lines at the beginning of file".
+
+Almost.  The Haskell file provided by extraction starts with
+```haskell
+{-# OPTIONS_GHC -cpp -XMagicHash #-}
+{- For Hugs, use the option -F"cpp -P -traditional" -}
+
+module Main where
+
+import qualified Prelude
+```
+
+I need to add some imports here, such as
+```haskell
+import qualified Data.Bits
+import qualified Data.Char
+import qualified Text.Printf
+import qualified System.Environment
+```
+
+After staring at the extraction code, it looks like there is `Set Extraction File Comment`; I was not aware of this.
+
+My request is then just to be able to append to (and reset) the list of opened libraries accessed via
+https://github.com/coq/coq/blob/a74e40142fe60ead855fd16e436e5e4d72eb51e2/plugins/extraction/common.mli#L52
+
+@tchajed would this also fit your needs, or do you need more than this?
+I've started some work on this at https://github.com/JasonGross/coq/tree/extraction-imports, but it doesn't compile yet and there's not too much there
+Duplicate of #4189

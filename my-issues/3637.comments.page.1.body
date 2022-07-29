@@ -1,0 +1,32 @@
+Comment author: @JasonGross
+
+Set Implicit Arguments.
+Set Primitive Projections.
+Record prod A B := pair { fst : A ; snd : B }.
+Goal forall x y : prod Set Set, fst x = fst y.
+  lazymatch goal with
+    | [ |- context[@ fst ?A ?B] ] => pose (@ fst A B) as fst'; progress change (@ fst A B) with fst'
+  end. (* no matching clauses *)
+
+
+Comment author: @JasonGross
+
+Sorry, I forgot intros:
+
+Set Implicit Arguments.
+Set Primitive Projections.
+Record prod A B := pair { fst : A ; snd : B }.
+Goal forall x y : prod Set Set, fst x = fst y.
+  intros.
+  lazymatch goal with
+    | [ |- context[@ fst ?A ?B] ] => pose (@ fst A B) as fst'; progress change (@ fst A B) with fst'
+  end. (* no matching clauses *)
+
+Note that if I match on [@ fst ?A ?B ?x], I get "failed to progress" instead, suggesting that this bug also shows up in [change].
+
+
+Comment author: @mattam82
+
+Both are fixed in trunk. I reworked the matching code, it hopefully handles all cases correctly now (I haven't checked the test-suite yet).
+
+

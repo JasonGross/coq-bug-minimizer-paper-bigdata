@@ -1,0 +1,25 @@
+Comment author: @JasonGross
+
+In 8.5beta2, this fails (it succeeds in 8.4):
+
+Class Foo := foo : Type.
+Instance: Foo := nat -> Set.
+Axiom bar : forall {f : Foo}, f.
+Definition k := bar 1. (* Anomaly: Uncaught exception Term.DestKO. Please report. *)
+
+
+Comment author: @ppedrot
+
+In 8.5-dev, it fails with the following error.
+
+Error: Cannot infer the implicit parameter f
+of bar whose type is
+"Type" in environment:
+x : nat
+
+
+Comment author: @ejgallego
+
+So the anomaly is fixed; please reopen if the problem still persist with variations of the example.
+
+

@@ -1,0 +1,36 @@
+Comment author: @JasonGross
+
+I'll add an example soon, but I report this now, in case knowing that it's a very recent commit that broke this is enough to track down the problem.
+
+
+Comment author: @JasonGross
+
+Here is some code that used to work, but doesn't work anymore:
+
+(* File reduced by coq-bug-finder from original input, then from 1995 lines to 65 lines *)
+(* coqc version trunk (August 2014) compiled on Aug 25 2014 19:32:34 with OCaml 4.01.0
+   coqtop version trunk (August 2014) *)
+Section foo.
+  Context {A:Type} {B : A -> Type}.
+  Context (f : forall x, B x).
+  Goal True.
+    pose (r := fun k => existT (fun g => forall x, f x = g x)
+                               (fun x => projT1 (k x)) (fun x => projT2 (k x))).
+(* Toplevel input, characters 123-135:
+Error:
+In environment
+A : Type
+B : A -> Type
+f : forall x : A, B x
+k : forall x : A, {x : B x & ?14 x}
+x : A
+The term "projT2 (k x)" has type "?14 (projT1 (k x))"
+while it is expected to have type "f x = projT1 (k x)".
+ *)
+
+
+Comment author: @herbelin
+
+Works in trunk.
+
+

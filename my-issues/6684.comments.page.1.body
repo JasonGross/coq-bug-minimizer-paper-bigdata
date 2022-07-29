@@ -1,0 +1,2 @@
+Motivated by StackOverflow question [here](https://stackoverflow.com/questions/48568716/matching-with-ltac-on-a-call-containing-local-variable/48576020). I actually spent over hours trying to figure out what's going on.
+Dang, serendipity: I *just* finished fighting with the same issue. I had already worked around it by replacing `replace expr with (fun j => expr') i.` with `set (f j => expr'). replace expr with f i.`. Thanks for pointing out `change`; my proof just got every so slightly cleaner.

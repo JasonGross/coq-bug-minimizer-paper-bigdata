@@ -1,0 +1,22 @@
+Comment author: @JasonGross
+
+Why doesn't this work?  And can the error message in future versions of Coq tell me why?
+
+Require Import List.
+Functional Scheme fold_right_rect := Induction for fold_right Sort Type.
+Goal forall x ls, fold_right and x ls -> x.
+Proof.
+  intros x ls H.
+  functional induction H using fold_right_rect.
+
+
+Comment author: @herbelin
+
+Wish granted. The new error message is:
+
+Error: Not the right number of induction arguments (expected the function name,
+4 parameters and 1 argument).
+
+which is hopefully more informative.
+
+

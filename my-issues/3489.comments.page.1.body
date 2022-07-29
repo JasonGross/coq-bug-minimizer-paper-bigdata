@@ -1,0 +1,10 @@
+Comment author: @JasonGross
+
+http://coq.inria.fr/pylons/contribs/new says "In order to make your contribution available from the Coq web site, we expect you to select a license that allows us to redistribute it and to keep it compatible with the new versions of Coq. Some hints on how to choose a licence are given here." and links to http://coq.inria.fr/pylons/contribs/licensing.html, which is a 404.
+
+
+Comment author: @Zimmi48
+
+The link for submitting contribs is now a 404 as well. If I'm not mistaken we are not really accepting new contribs nowadays (instead people are expected to submit OPAM packages) so this bug report is obsolete.
+
+

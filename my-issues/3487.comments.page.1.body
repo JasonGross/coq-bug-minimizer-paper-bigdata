@@ -1,0 +1,16 @@
+Comment author: @JasonGross
+
+(* File reduced by coq-bug-finder from original input, then from 14440 lines to 1034 lines, then from 1370 lines to 669 lines, then from 647 lines to 353 lines, then from 250 lines to 178 lines, then from 130 lines to 84 lines, then from 84 lines to 40 lines *)
+Notation bar := $(exact I)$.
+Notation foo := bar (only parsing).
+Class baz := { x : False }.
+Instance: baz.
+Admitted.
+Definition baz0 := ((_ : baz) = (_ : baz)).
+Definition foo1 := (foo = foo).
+Definition baz1 := prod ((_ : baz) = (_ : baz)) (foo = foo).
+(* Toplevel input, characters 26-27:
+Error: Cannot infer this placeholder.
+Could not find an instance for "baz". *)
+
+

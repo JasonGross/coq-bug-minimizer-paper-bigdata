@@ -1,0 +1,116 @@
+cc @ppedrot 
+I'm afraid that the OCaml ecosystem is basically unmaintained in the Debian/Ubuntu world. camlp5 7.01 is 15 months old, so you could try to make them update it.
+
+On the other hand you can build Coq without camlp5 these days; #8856 has the needed machinery, we could commit the configure part it and have you use the Dune build which doesn't need camlp5. IMHO that'd be the right way to proceed.
+Sure, assuming that dune 1.0~beta20 is new enough to build Coq, if you tell me the appropriate arguments to pass to `./configure` to replace
+```
+./configure -arch Linux -prefix /usr -mandir /usr/share/man \
+  -configdir /etc/xdg/coq \
+  -browser "/usr/bin/x-www-browser %s &" \
+  -with-doc no -vmbyteflags "-dllib,-lcoqrun"
+```
+and the appropriate replacement for
+```
+HTMLDOC := doc/stdlib/html/index.html
+$(MAKE) world STRIP=true
+$(MAKE) DOC_TARGETS=$(HTMLDOC) $(HTMLDOC)
+```
+then I'm happy to update my packages to use dune instead.
+> assuming that dune 1.0~beta20 is new enough to build Coq
+
+Ahh, Dune 1.0~beta20 is not new enough to build Coq :( You need Dune 1.4 at least :(
+
+We had #8615 that would solve the problem for you, however it has not been accepted so far...
+
+Would #8615 get in, `make -f Makefile.dune bootstrap-build` should mostly do the trick.
+Note that Dune generates *.install files so you'll have to drop that from the packaging too.
+Maybe for the moment it is easier to just package the newer `camlp5` version?
+
+I hope we can drop the dependency on `camlp5` very soon, even without the need for Dune.
+
+So that wouldn't mean you need to maintain a camlp5 package, but just update the current one for a last time while we complete the transition.
+> I hope we can drop the dependency on camlp5 very soon, even without the need for Dune.
+>
+> So that wouldn't mean you need to maintain a camlp5 package, but just update the current one for a last time while we complete the transition.
+
+Why not just revert the version dependency bump, then?
+
+The issue is that I used `backportpackage` to copy over the existing package, so "updating the package" is not an easy operation.  I expect it'll take at least a day of my time, possibly more, to figure out where to get the newer version and what's changed and how the package is doing things, etc.  I'm not really okay with spending a day or more of my time fixing this right now.  (Note that I have never actually updated the package before, just backported existing packages.)
+> Why not just revert the version dependency bump, then?
+
+I am against reverting as we cannot base our development decisions on a distribution that has very low maintanence of OCaml packages, specially in a development release. Also in this case 8.10 may very likely don't depend on `camlp5` anymore so that's not so much of an issue. OCaml is a different beast.
+
+Compiling / backporting `camlp5` is fairly easy tho; I can prepare a package if you want.
+> I'm afraid that the OCaml ecosystem is basically unmaintained in the Debian/Ubuntu world.
+
+OCaml itself is healthy. Coq is terribly outdated, my fault, and as a consequence camlp5 is not required to be up to date (not many packages use it, actually only Coq and hol-light).
+
+My take on the subject is that Coq should be removed from Debian/Ubuntu.
+Users can easily install it via opam.
+CI can use the docker images from coq-community.
+
+In particular I hope that we will soon stop pretending Coq has no dependency, making it a pain to package in Debian, but still easy to install via opam.
+> OCaml itself is healthy.
+
+Well, for example Dune, which is the core build tool these days, is quite outdated. Experimental/unstable have 4.05.0 which is two major releases behind. So certainly a bit outdated.
+
+> My take on the subject is that Coq should be removed from Debian/Ubuntu.
+
+It may make sense; however I redid the packaging using `git-buildpackage` and it wasn't so painful to maintain. Maybe we could resurrect that? With Dune even install files are generated so it is not so hard to package. Main problem is Sphinx / the manual.
+
+
+
+> In particular I hope that we will soon stop pretending Coq has no dependency, making it a pain to package in Debian, but still easy to install via opam.
+
+What do you mean? As far as I can see Coq itself is quite light, we will even drop camlp5 soon I hope.
+
+lablgtk is a different issue but it is a separate package tho, I mean, we could make it into a separate source package these day?
+
+I did not help more with Debian as becoming a developer is a pain and I don't even have a signed key these days.
+BTW some weeks ago I tried to file a critical bug for Coq [in Debian] saying "the package is too outdated, not fit for release"; however I didn't find the section in the policy that justifies the severity so I couldn't complete the reportbug report.
+@gares: @amahboubi said at the last WG that the install story of Coq was terrible for users of Debian / Ubuntu and we should not expect casual users to learn anything about opam to be able to use Coq. How hard would it be to ensure that Debian packages for Coq are not so terribly out of date?
+Debian releases every 2.5 years. Please tell me what outdated would mean for Coq (we release very 6 months).
+We can provide our own repositories with up to date Coq package, and still have Coq not part of the standard Debian distribution.
+I can do that, I know the mambo-jumbo, but I don't want to be the maintainer of this infrastructure.We may be using ppa for ubuntu (and even Debian "recently" introduced something like that), but it would still need some maintenance work.
+
+For the kind of users @amahboubi talks about I think the only solution is a .tar.gz with the binaries or Coq and many other things. As we do for windows. It could be built by zipping an opam root + a stupid script to launch Coq from there. I think I've proposed this option n times (also for OSX) but I never had the motivation nor the time to make a POC. There are also other (linux only) ways of distributing pre-compiled apps, but I'm not familiar with them.
+
+> BTW some weeks ago I tried to file a critical bug for Coq [in Debian] saying "the package is too outdated, not fit for release"; however I didn't find the section in the policy that justifies the severity so I couldn't complete the reportbug report.
+
+I think we should ask Stephane what he thinks. If he agree we should remove the package then I can do that.
+Would the stupid binary tarball solution be easier to maintain than the self-provided .deb packages? What about using snap?
+> There are also other (linux only) ways of distributing pre-compiled apps, but I'm not familiar with them.
+
+is snap one of these?
+after a bit of googling, I'd say it is a reasonable option
+I think a pre-compiled package with minimal dependencies on system libraries would be the most useful for distributing Coq for Linux. In particular, I see the following advantages:
+
+1) over opam and snap: fewer "heavy" dependencies to install -- somebody just learning about Coq will be able to try it out without installing anything else. The current windows installer seems to satisfy this.
+2) over distribution package managers and opam: minimal dependence on external developments, insulating coq from their issues and delays (e.g. https://github.com/ocaml/opam/issues/2255, [debian#827861](https://bugs.debian.org/cgi-bin/bugreport.cgi?bug=827861)).
+3) over opam or my [coq-bootstrap.sh](https://gist.github.com/andres-erbsen/dc8be6f3db199cccd83db7ddf33532c7): fast installation. This is important for CI, and nice-to-have for smooth onboarding of new users.
+4) over most distribution package managers and snap on some platforms: usable without root privileges. This is important for using shared machines for continous integration, and for smooth onboarding of new users.
+
+However, it is unclear how much effort it would take to make a truly portable pre-compiled package. IIRC, addint `-static` to various places in my `coq-bootstrap.sh` still resulted in a binary that depended on a particular glibc version being present and the particular path it was built at...
+> Debian releases every 2.5 years
+
+That is actually 18 months, isn't it? Even so my definition of "maintained" for Debian would mean that `unstable` gets the latest version in a reasonable period of time.
+
+Dune + OPAM seems the way to go, specially with local switches. Distribution `ocaml` binaries is tricky.
+
+The main problem with Debian is not maintaining Coq itself, but all the other dependencies such as Sphinx / lablgtk, etc... even OCaml tends to lag behind.
+
+> However, it is unclear how much effort it would take to make a truly portable pre-compiled package. IIRC, addint `-static` to various places in my `coq-bootstrap.sh` still resulted in a binary that depended on a particular glibc version being present and the particular path it was built at...
+
+This is an OCaml problem as far as I can see and I understand that it is not going to be easy to solve.
+I don't understand what you mean by opam being the way to go. The current status quo already seems to be "opam or roll your own". And the "roll your own" option seems to be rather popular, suggesting that the opam solution isn't really satisfactory: see the reliance on Ubuntu packages in this issue, my use of `coq-bootstrap.sh` for test runners, the use of docker at https://github.com/coq/coq/issues/7753#issuecomment-435020668, and the folklore of "just build coq from git" (e.g. in fscq).
+
+Here are two guesses for the reason: quite objectively, opam build times are just good enough for CI. More subjectively, my experience suggests would be unwise to put more faith in the maintainers of opam than in the Debian packagers of ocaml packages. A further requirement that I forgot before and that seems to be not that well met by common usage of opam is running multiple coq versions at the same time without interference.
+
+Further, somehow we manage to distribute pre-compiled packages for Windows, so is it really inherently hard, or is it just that packaging for Linux has not received the amount of attention as packaging for Windows? In the worst case, we could bundle glibc.
+I mean the binary packages should be generated by the combination of the dune build and opam for dependencies using a local switch.
+
+Tho, support for vensoring in dune is improving fast so it could be the case that we can do without opam, but that would involve dunerizi g all the deps .
+Thanks, that makes sense. I will continue discussing packaging at #7161.
+I don't think the situation is as dire as we seem to imply here. We have been distributing binary builds of coq for Linux for a long time in the form or artifacts, more recently nix binary cache and docker. So it is not like people lack options, it seems more like a discovery problem with our docs (for example I've gotten dozens of times questions that are answered in the dune readme)
+
+But indeed we are cautious about claiming wide support for these kind of binary images as the tooling wrt to deps is not very stable these days and doing so involves a commitment we should not take.

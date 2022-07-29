@@ -1,0 +1,10 @@
+Comment author: @JasonGross
+
+In a proof [Focus 0] gives "Anomaly: Uncaught exception Proofview.IndexOutOfRange. Please report."
+
+
+Comment author: @aspiwack
+
+Indeed, Focus 0 now returns a proper error message: Invalid goal number: 0. Goal numbering starts with 1.
+
+

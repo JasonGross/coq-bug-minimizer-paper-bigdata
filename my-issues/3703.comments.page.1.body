@@ -1,0 +1,44 @@
+Comment author: @JasonGross
+
+(* File reduced by coq-bug-finder from original input, then from 6746 lines to 4190 lines, then from 29 lines to 18 lines, then fro\
+m 30 lines to 19 lines *)
+(* coqc version trunk (October 2014) compiled on Oct 7 2014 12:42:41 with OCaml 4.01.0
+   coqtop version cagnode16:/afs/csail.mit.edu/u/j/jgross/coq-trunk,trunk (2313bde0116a5916912bebbaca77d291f7b2760a) *)
+Record PreCategory := { identity : forall x, x -> x }.
+Definition set_cat : PreCategory := @ Build_PreCategory (fun T x => x).
+Module UnKeyed.
+  Global Unset Keyed Unification.
+  Goal forall (T : Type) (g0 g1 : T) (k : T) (H' : forall x : T, k = @ identity set_cat T x),
+         ((fun x : T => x) g0) = ((fun x : T => x) g1).
+    intros T g0 g1 k H'.
+    change (identity _ _) with (fun y : T => y) in H';
+      rewrite <- H' || fail "too early".
+    Undo.
+    rewrite <- H'.
+    admit.
+  Defined.
+End UnKeyed.
+Module Keyed.
+  Global Set Keyed Unification.
+  Goal forall (T : Type) (g0 g1 : T) (k : T) (H' : forall x : T, k = @ identity set_cat T x),
+         ((fun x : T => x) g0) = ((fun x : T => x) g1).
+    intros T g0 g1 k H'.
+    change (identity _ _) with (fun y : T => y) in H';
+      rewrite <- H' || fail "too early".
+    Undo.
+    rewrite <- H'.
+    admit.
+  Defined.
+End Keyed.
+
+
+It's not clear to me whether we want to change this or not.  Note that, e.g., if we have [H' : k = @ identity set_cat T g1], then the unkeyed [rewrite <- H'] fails.  So there's something special about the [forall].  Can someone explain that to me, and why [rewrite] works in this first case?
+
+It would be nice, at a minimum, to have some directive I can issue to get the [rewrite <- H'] in the second case working.  Perhaps something that says [identity set_cat] is unfoldable?  I don't know the rewriting infrastructure well enough to know what to suggest here.
+
+
+Comment author: @mattam82
+
+Fixed using [Declare Equivalent Keys (fun x => _) identity].
+
+

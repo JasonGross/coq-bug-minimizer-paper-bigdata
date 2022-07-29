@@ -1,0 +1,77 @@
+Comment author: @JasonGross
+
+This occurs in both 8.4 and trunk:
+
+$ cat A.v
+Record aR := { aF : nat ; another : nat }.
+
+$ cat B.v
+Require Import A.
+
+Module Bar.
+  Definition foo (x : aR) := x.(aF).
+End Bar.
+
+Module Application.
+  Include A.
+  Include Bar.
+End Application.
+
+Extraction "B" Application.
+
+$ coq_makefile -R . Top A.v B.v B.ml B.mli | make -f - all COQSRCLIBS=
+ocamldep -slash  "B.mli" > "B.mli.d" || ( RV=$?; rm -f "B.mli.d"; exit ${RV} )
+ocamldep -slash  "B.ml" > "B.ml.d" || ( RV=$?; rm -f "B.ml.d"; exit ${RV} )
+"coqdep" -c -R "." Top "B.v" > "B.v.d" || ( RV=$?; rm -f "B.v.d"; exit ${RV} )
+"coqdep" -c -R "." Top "A.v" > "A.v.d" || ( RV=$?; rm -f "A.v.d"; exit ${RV} )
+"coqc"  -q  -R "." Top   A
+"coqc"  -q  -R "." Top   B
+ocamlc -c -rectypes -thread    -I /afs/csail.mit.edu/u/j/jgross/.local64/lib/ocaml/camlp5 B.mli
+ocamlc -c -rectypes -thread    -I /afs/csail.mit.edu/u/j/jgross/.local64/lib/ocaml/camlp5 B.ml
+File "B.ml", line 34, characters 6-15:
+Error: Unbound record field Coq__2.aF
+make: *** [B.cmo] Error 2
+
+$ cat B.ml
+type nat =
+| O
+| S of nat
+
+module Coq__1 = struct
+ type aR = { aF : nat; another : nat }
+end
+type aR = Coq__1.aR = { aF : nat; another : nat }
+
+module Coq__2 = struct
+ (** val aF : aR -> nat **)
+
+ let aF x = x.aF
+end
+let aF = Coq__2.aF
+
+module Application =
+ struct
+  type aR = Coq__1.aR = { aF : nat; another : nat }
+
+  (** val aF : aR -> nat **)
+
+  let aF a =
+    a.aF
+
+  (** val another : aR -> nat **)
+
+  let another a =
+    a.another
+
+  (** val foo : Coq__1.aR -> nat **)
+
+  let foo x =
+    x.Coq__2.aF
+ end
+
+
+
+
+From what I can tell, Coq decides to wrap top-level file-modules in their own generate modules when they are later [Include]d (why does Coq do this?).  It incorrectly decides to prefix record field names with the name of the generated module when they are later used.
+
+

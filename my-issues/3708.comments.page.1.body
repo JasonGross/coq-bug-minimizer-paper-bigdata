@@ -1,0 +1,15 @@
+Comment author: @JasonGross
+
+I think [Global Declare Equivalent Keys] should mean "export it from this section/module" and [Local Declare Equivalent Keys] should mean "don't export it from this section/module".  As for the default... does Coq have a standard for the defaults?
+
+
+Comment author: @mattam82
+
+Indeed.
+
+
+Comment author: @Zimmi48
+
+This should probably be viewed as one case of the more general Local / Global issue, shouldn't it? I guess Pierre-Marie wanted to tackle this in 8.8. Should the bug report be reassigned to him?
+
+

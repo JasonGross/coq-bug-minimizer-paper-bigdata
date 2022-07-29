@@ -1,0 +1,17 @@
+Comment author: @JasonGross
+
+Here's some code that worked in 8.4, but fails in trunk 6bbda9a484da0c355254c30c0e3230d750d70f81.  I suspect that the fix for reversed [Grab Existential Variables] reversed too many things.
+
+Class Foo {A B} := foo : prod A B.
+Instance: Foo := @ pair nat Set _ _.
+Proof.
+  exact 1.
+  exact nat.
+Defined.
+
+
+Comment author: @aspiwack
+
+Your diagnosis is incorrect. However, I indeed forgot some List.rev at some places. Fixed in (4cb05fc1afaf938d1b36e0c00226ff173e2d8f220). Thanks.
+
+

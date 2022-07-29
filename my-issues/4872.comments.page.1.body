@@ -1,0 +1,54 @@
+Comment author: @JasonGross
+
+File "./theories/Compat/Coq85.v", line 19, characters 0-32:
+Warning: Option Shrink Obligations is
+deprecated [deprecated-option,deprecated]
+
+looks very strange when my terminal is a few hundred characters wide
+
+
+Comment author: @ppedrot
+
+What is your printing width? By default it is 78, but I'm not sure it is set relatively to your terminal at launch time.
+
+
+Comment author: @JasonGross
+
+If the default is 78, then it's probably 78; this is on running coqc from the terminal.  (In coqtop / interactive mode, it should definitely respect the printing width, whatever that happens to be.)
+
+
+Comment author: @ejgallego
+
+Created attachment 737
+Patch
+
+> Attached file: [h_boxes.patch](https://coq.inria.fr/bugfiles/attachment.cgi?id=737) (text/plain, 1058 bytes)
+> Description:   Patch
+
+
+Comment author: @ejgallego
+
+Coq doesn't try to guess the terminal size; one (not optimal solution) could be to guess it and adapt printing appropriately. See some example code at:
+
+https://github.com/ejgallego/HOARe2/blob/master/src/util.ml#L16
+
+However, I like the idea of using horizontal boxes for the reporting, see patch.
+It is not perfect but may improve things.
+
+A general solution IMO requires client-side reflowing, certainly out of reach for 8.6.
+
+
+Comment author: @ejgallego
+
+Note also the (sad) duplication of the printers, it would be great to merge the straightforward fix for 8.6:
+
+https://github.com/coq/coq/pull/224
+
+
+Comment author: @maximedenes
+
+Ok, there is no hard linewrap in warnings. Detection of terminal width would be a good thing to do, but it needs a bit of review (various OSes, terminals, shells), so let's postpone to 8.7.
+
+
+@ejgallego do you know what should be done about this?
+I have code that helps with that but I have no time to integrate it now https://github.com/ejgallego/HOARe2/blob/master/src/util.ml#L16

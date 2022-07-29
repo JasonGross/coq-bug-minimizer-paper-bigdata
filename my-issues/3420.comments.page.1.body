@@ -1,0 +1,45 @@
+Comment author: @JasonGross
+
+Here is some code that works in 8.4 but fails in trunk:
+
+(* File reduced by coq-bug-finder from original input, then from 3418 lines to 82 lines *)
+Generalizable All Variables.
+Set Asymmetric Patterns.
+Notation "( x ; y )" := (existT _ x y) : fibration_scope.
+Open Scope fibration_scope.
+Inductive paths {A : Type} (a : A) : A -> Type := idpath : paths a a where "x = y" := (@ paths _ x y) : type_scope.
+Arguments idpath {A a} , [A] a.
+Definition Sect {A B : Type} (s : A -> B) (r : B -> A) := forall x : A, r (s x) = x.
+Class IsEquiv {A B : Type} (f : A -> B) := { equiv_inv : B -> A ; eissect : Sect f equiv_inv }.
+Definition eta_sigma `{P : A -> Type} (u : sigT P) : (projT1 u; projT2 u) = u := match u with existT x y => idpath end.
+Definition sigT_corect_uncurried `{A : X -> Type} (P : forall x, A x -> Type)
+: { f : forall x, A x & forall x, P x (f x) } -> (forall x, sigT (P x))
+  := fun fg => fun x => (projT1 fg x ; projT2 fg x).
+Instance isequiv_sigT_corect `{A : X -> Type} {P : forall x, A x -> Type} : IsEquiv (sigT_corect_uncurried P) | 0
+  := Build_IsEquiv _ _
+                   (sigT_corect_uncurried P)
+                   (fun h => existT (fun f => forall x, P x (f x))
+                                    (fun x => projT1 (h x))
+                                    (fun x => projT2 (h x)))
+                   (fun h => eta_sigma _).
+(* Toplevel input, characters 414-425:
+Error:
+In environment
+X : Type
+A : X -> Type
+P : forall x : X, A x -> Type
+h : {f : forall x : X, A x & forall x : X, P x (f x)}
+The term "eta_sigma ?53" has type "(projT1 ?53; projT2 ?53) = ?53"
+while it is expected to have type
+ "(fun x : X => projT1 (sigT_corect_uncurried P h x);
+  fun x : X => projT2 (sigT_corect_uncurried P h x)) = h". *)
+
+
+Filling in the [h] explicitly is sufficient to make the code go through.  Intuitively, this should be solvable because [@ eq A b c] can only unify with [@ eq A' b' c'] when A, b, c unify with A', b', c', respectively, and the unification of [c] with [c'] is sufficient to get the rest of the term through the unifier.
+
+
+Comment author: @silene
+
+The testcase seems to pass nowadays. Please reopen if you find another instance of this issue.
+
+

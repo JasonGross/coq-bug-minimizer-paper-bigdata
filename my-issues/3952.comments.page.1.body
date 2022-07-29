@@ -1,0 +1,57 @@
+Comment author: @JasonGross
+
+I would like the following code to work:
+```coq
+Ltac hyp := constr:($(multimatch goal with H : _ |- _ => exact H end)$).
+Goal False -> True -> False -> True.
+  intros.
+  let H := hyp in exact H.
+```
+That is, `constr:($(...)$)` should not act like [once], but should have multiple successes.
+
+
+Comment author: @ppedrot
+
+Yes, this is something coming for free once we put the pretyper in the monad. There are indeed plans to do it, but I do not have time at all to write this out.
+
+
+Comment author: @aspiwack
+
+To elaborate on Pierre-Marie's reply: such a change would require significant architectural changes in the code. It will not happen soon (if ever: we don't even know if its practical).
+
+For now, the only way to generate backtracking terms in Ltac is using multimatch "outside" (a pleasant, yet unintended consequence of multimatch). It's sufficient for this example, but, obviously, not for every interesting use case. In ml plugins you are less constrained (though I don't know whether it is easy to extend the let-arguments of Ltac).
+
+
+>Yes, this is something coming for free once we put the pretyper in the monad. There are indeed plans to do it, but I do not have time at all to write this out.
+
+@ppedrot does the open recursion pretyper in #6090 help with this or is it unrelated?
+@SkySkimmer Somewhat unrelated.
+Any update on this?
+
+Here's another example that I'd like to work:
+```coq
+Goal True.
+  let v := multimatch constr:(Set) with
+           | _ => nat
+           | _ => I
+           end in
+  idtac v;
+    exact v. (* nat; I; No more subgoals. *)
+  Undo.
+  let v := constr:(ltac:(exact nat + exact I)) in
+  idtac v;
+  exact v. (* fails *)
+```
+
+And here's another one that I would like to succeed (because `typeclasses eauto` is multisuccess):
+```coq
+Class Foo := foo : nat.
+Instance:Foo | 10 := O.
+Instance:Foo | 100 := S O.
+Goal exists v : Foo, v = S O.
+  let v := constr:(_ : Foo) in
+  idtac v;
+    exists v; reflexivity. (* fails *)
+```
+
+cc @andres-erbsen 

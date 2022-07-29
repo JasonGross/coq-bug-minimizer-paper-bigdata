@@ -1,0 +1,118 @@
+Comment author: @JasonGross
+
+Created attachment 500
+Ltac profiling patch for Coq 8.4
+
+It would be nice to have built-in support for profiling Ltac.
+
+Quoting an email I sent to coqdev:
+
+
+Jason Gross <jasongross9@ gmail.com>	Tue, Aug 19, 2014 at 3:33 PM
+To: "coqdev@ inria.fr" <coqdev@ inria.fr>
+Cc: Tobias Tebbi <ttebbi@ ps.uni-saarland.de>
+Hi,
+With [info] and debugging coming back, would it be possible to also have built-in support for profiling Ltac in 8.5?
+I've attached a patch that Tobias (cc'd) wrote for Coq 8.4, which does the profiling by hooking on to the backtrace printer.  (I've included his email describing the profiler below.)  It doesn't apply to trunk as-is, due to changes in tacinterp.ml; I'm not sure how deep this is.  Regardless, I'd love to see either enough hooks in 8.5 that this could be implemented as a plugin, or (preferably) having this functionality be bundled with Coq 8.5.
+
+-Jason
+
+
+---------- Forwarded message ----------
+From: Tobias Tebbi <ttebbi@ ps.uni-saarland.de>
+Date: Tue, Jul 15, 2014 at 9:09 AM
+Subject: Fwd: Ltac Profiling
+To: Jason Gross <jasongross9@ gmail.com>
+
+
+Hi Jason, 
+
+Here is the Coq 8.4 patch for my profiler. It does not work in trunk, they made some changes to tacinterp.ml, but they do not seem to be fundamental, so it should be possible to adapt the patch with little effort.
+
+All instrumentation was done without a proper understanding, so the results are possibly quite inaccurate. :D
+
+Best,
+
+Tobias
+---------- Weitergeleitete Nachricht ----------
+
+Von: Tobias Tebbi <ttebbi@ ps.uni-saarland.de>
+Betreff: Ltac Profiling
+Datum: Wed, 30 Oct 2013 19:18:40 +0100
+An: ps-m@ ps.uni-saarland.de
+
+Hi,
+During the last days, I wrote a profiler for Ltac. It automatically
+records the time spend in all user-defined as well as built-in tactics
+and tactic notations. It outputs a flat profile as well as a compressed
+recursion tree to find out where the expensive calls to tactics are
+located. Here is an example of the recursion tree part of the output for
+the proof script "aind. arew.":
+tactic self total calls max
+────────────────────────────────────────┴──────┴──────┴───────┴─────────┘
+arew ----------------------------------- 0.4% 94.1% 17 77.504s
+├─prepare ------------------------------ 0.6% 76.0% 109 5.024s
+│ ├─clean ------------------------------ 0.1% 31.3% 126 1.076s
+│ │ ├─is_trivial ----------------------- 0.2% 23.4% 2176 0.072s
+│ │ │ ├─util.clear_all ----------------- 4.9% 20.0% 2176 0.064s
+│ │ │ │ └─clear H ---------------------- 15.1% 15.1% 86748 0.016s
+│ │ │ └─done --------------------------- 0.5% 3.0% 2176 0.012s
+│ │ └─Tactics.clear_dups --------------- 6.5% 7.7% 126 0.268s
+│ ├─autoceq ---------------------------- 11.8% 23.3% 819 0.152s
+│ │ └─rewrite H in * ------------------- 10.6% 10.6% 1335 0.040s
+│ └─congruence ------------------------- 14.7% 14.7% 1322 0.032s
+└─rewrite H in * ----------------------- 4.9% 12.1% 258 1.208s
+└─params ----------------------------- 0.1% 3.1% 166 0.068s
+└─assert (Params m' v) as H by typec 0.0% 2.8% 166 0.064s
+└─typeclasses eauto -------------- 2.8% 2.8% 166 0.064s
+aind ----------------------------------- 0.0% 4.6% 15 0.912s
+└─arew --------------------------------- 0.1% 3.0% 25 0.416s
+The meaning of the columns is:
+self time spend in this tactic excluding all recorded subcalls
+total time spend in this tactic including the subcalls
+calls number of times this tactic has been called
+max maximum (total) time spent in a single invocation of the
+tactic
+If you want to try it, you need to recompile Coq since it is a patch.
+You can do this as follows:
+- Unpack the coq sources and cd into the created directory.
+- Patch the sources with
+patch -p1 < ltac-profiling-0.1.patch
+- Build and install coq as usual.
+The following Vernacular commands control the profiler:
+Start Profiling. enables the profiler and resets the profile
+Stop Profiling. disables the profiler
+Show Profile. prints the profile, can be seen in the *response*
+buffer in Proofgeneral
+Reset Profile. resets the profile, that is, deletes all accumulated
+information.
+I also added the following two tactics that behave like idtac but enable
+and disable the profiling. They allow you to exclude parts of a proof
+script from profiling.
+start profiling.
+stop profiling.
+I hope this is useful for some of you and I appreciate any kind of feedback!
+Best,
+Tobias
+
+> Attached file: [ltac-profiling-0.1.patch](https://coq.inria.fr/bugfiles/attachment.cgi?id=500) (text/plain, 10610 bytes)
+> Description:   Ltac profiling patch for Coq 8.4
+
+
+Comment author: @JasonGross
+
+Would it be possible to get this into the next pl of 8.4?
+
+Is it likely that this will make it into 8.5?
+
+
+Comment author: @aspiwack
+
+No to both question, I'm afraid. But I haven't forgotten, if I get to finish with info early (as if…), I'll review the patch and see what I can do about it.
+
+
+Comment author: @ppedrot
+
+This has been merged into trunk.
+
+

@@ -1,0 +1,33 @@
+Comment author: @JasonGross
+
+Created attachment 566
+bug displaying problem
+
+> Attached file: [bug_parsers_bool_recog_correct_eassumption_weak_01.v](https://coq.inria.fr/bugfiles/attachment.cgi?id=566) (text/plain, 17463 bytes)
+> Description:   bug displaying problem
+
+
+Comment author: @silene
+
+This is possibly related to the fact that "eexact X" causes "Tactic failure: Anomaly: Uncaught exception Pretype_errors.PretypeError(_, _, _)" on the testcase.
+
+
+Comment author: @andersk
+
+Tiny test case for what might be the same bug:
+
+Lemma foo (H : forall A, A) : forall A, A.
+  eassumption.
+Qed.
+
+Works in 8.4pl4 and 8.4pl6, fails in 8.5~beta2 and v8.5 in Git (94afd8996251c30d2188a75934487009538e1303) with
+  Error: No applicable tactic.
+[assumption] or [exact H] solve the goal, but [eexact H] fails with
+  Error: Tactic failure: Not convertible.
+
+
+Comment author: @mattam82
+
+Indeed eexact/eassumption were using the wrong conversion functions (not up to universe unifications).
+
+

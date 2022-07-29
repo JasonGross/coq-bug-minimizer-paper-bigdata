@@ -1,0 +1,10 @@
+Comment author: @JasonGross
+
+I'd be nice if Coq supported induction-induction.  Most of it can be faked already, except for the types of the eliminators, it seems.  (See http://coq-club.inria.narkive.com/XFOMZMpb/faking-induction-induction-in-coq)
+
+
+Comment author: @ppedrot
+
+FTR, Matthieu has an experimental branch implementing Ind-Ind and Ind-Rec there: https://github.com/mattam82/coq/tree/IR.
+
+

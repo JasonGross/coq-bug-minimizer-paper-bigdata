@@ -1,0 +1,155 @@
+Comment author: @JasonGross
+```coq
+Definition foo x :=
+  (fun (p1 : nat) (p2 : p1 = 2)
+   => exist (fun a => a = 2) p1 p2) (proj1_sig x) (proj2_sig x).
+(* Error: In environment
+x : {x : nat | ?P x}
+Unable to unify "?P (proj1_sig x)" with "proj1_sig x = 2".
+ *)
+```
+Is this in the pattern fragment?  It's true that ?P appears in <args>....
+
+Also, I can get the rather confusing error message "Unable to unify "?P" with 
+"?T"."
+```coq
+Set Printing All.
+Definition foo :=
+  let T := _ in
+  let P := _ in
+  fun (x : sig P) =>
+    (fun (p1 : nat) (p2 : p1 = 2)
+     => exist (fun a => a = 2) p1 p2) (let 'exist _ a p := x in a) (match x as 
+e return T (let 'exist _ a p := e in a) with exist _ a p => p end).
+(* Error:
+In environment
+T := ?T : forall _ : nat, Type
+P := ?P : forall _ : nat, Prop
+x : @ sig nat P
+a : nat
+p : P a
+Unable to unify "?P" with "?T".
+ *)
+```
+
+Moreover, I can get:
+Unable to unify "?x@ {v:=match x return nat with
+                        | exist _ a _ => a
+                        end}" with
+ "match x return nat with
+  | exist _ a _ => a
+  end".
+
+by writing:
+```coq
+Set Printing All.
+Set Printing Existential Instances.
+Definition foo :=
+  let T := fun v => @ eq _ _ _ in
+  let P := T in
+  fun (x : sig P) =>
+    (fun (p1 : nat) (p2 : p1 = 2)
+     => exist (fun a => a = 2) p1 p2) (let 'exist _ a p := x in a) (match x as 
+e return T (let 'exist _ a p := e in a) with exist _ a p => p end).
+(* Error:
+In environment
+T := fun v : nat => @ eq nat ?x@ {v:=v} (S (S O)) : forall _ : nat, Prop
+x : @ sig nat T
+Unable to unify "?x@ {v:=match x return nat with
+                        | exist _ a _ => a
+                        end}" with
+ "match x return nat with
+  | exist _ a _ => a
+  end".
+*)
+```
+Comment author: @JasonGross
+
+Even better:
+```
+Set Printing All.
+Set Printing Existential Instances.
+Definition foo :=
+  let T := let f := _ in fun v => @ eq _ (f v) _ in
+  let P := T in
+  fun (x : sig P) =>
+    (fun (p1 : nat) (p2 : p1 = 2)
+     => exist (fun a => a = 2) p1 p2) (let 'exist _ a p := x in a) (match x as 
+e return T (let 'exist _ a p := e in a) with exist _ a p => p end).
+(* Error:
+In environment
+T :=
+let f : forall _ : nat, nat := ?n in fun v : nat => @ eq nat (f v) (S (S O)) :
+forall _ : nat, Prop
+x : @ sig nat T
+Unable to unify "?n match x return nat with
+                    | exist _ a _ => a
+                    end" with
+ "match x return nat with
+  | exist _ a _ => a
+  end".
+ *)
+```
+Surely, it must be a bug that Coq cannot find the solution `?n := id` here, 
+right?
+
+
+Comment author: @herbelin
+
+(In reply to Jason Gross from comment [BZ#0](https://github.com/coq/coq/issues?q=is%3Aissue%20%22Original%20bug%20ID%3A%20BZ%230%22))
+> Definition foo x :=
+>   (fun (p1 : nat) (p2 : p1 = 2)
+>    => exist (fun a => a = 2) p1 p2) (proj1_sig x) (proj2_sig x).
+> (* Error: In environment
+> x : {x : nat | ?P x}
+> Unable to unify "?P (proj1_sig x)" with "proj1_sig x = 2".
+>  *)
+> 
+> Is this in the pattern fragment?  It's true that ?P appears in <args>....
+
+Let me give an answer in several parts:
+
+1. This is not the pattern fragment. The pattern fragment is the higher-order fragment made of equations of the form "?P x1 ... xn == u" with the xi distinct variables and ?P expected to be instantiated by a closed term. Indeed, there is in this case a canonical solution ?P := λx1..xn.u up to βη-conversion.
+
+2. But it is correct that your examples have only one solution: "?P := fun y => y=2" (and "?n := fun y => y" in the second case). The pattern fragment could indeed be extended to equations of the form "?P E1[x1] ... En[xn] == u" with the xi distinct and the Ei evaluation contexts (so that each E[xi] is "neutral"). Indeed, if an xi occurs in u, the only hope that the equation is solvable is that each occurrence of xi in u occurs as part of the same configuration Ei[xi], so that it would be enough to look for matching expressions of the form Ei[xi] in u (with the cost of possible reductions needed to match an Ei[xi] with a another Ei[xi] in u).
+
+More generally, there exist several extensions of the original pattern unification algorithm which produce canonical solutions when they exist (see e.g. the recent work by Tomer Libal and Dale Miller on 
+"Functions-as-Constructors Higher-Order Unification"). Maybe your case actually enters one of these well-studied extensions.
+
+3. Current heuristics used for general problems of the form "?P t1 ... tn == u" (in which case there is a priori no canonical solution).
+
+3a. If t is a constructor, a matching is attempted in some cases [1], as in:
+
+Check fun x (a : S x = 0) => exist (fun y => ?[P]) (S x) a.
+(* ?P@ {y} := y=0 *)
+
+Note that this is not canonical since e.g. "?P@ {y} := match y with S x => S x | 0 => 42 end" would also be a solution. If the case is considered it is because this is a configuration which is common in the inference of the return clause of a "match".
+
+3b. Note that the following variant does not work though [2]:
+
+Check fun x (a : S x = 0) => exist ?[P] (S x) a.
+(* fails to solve ?P y == y=0 *)
+
+3c. In the context of tactics, such as rewrite or induction, a more powerful heuristic is used to resolve the general problems of the form "?P t1 ... tn == u" [3], but it is currently deactivated for type inference due to the incompatibilities it produces sometimes.
+
+
+[1] This is done by Evarsolve.solve_simple_eqn which uses heuristics to solve problems of the form ?P@ {x1:=u1;...;xn:=un} == u
+
+[2] Problems of the form "?P t == u" may fruitfully deserve being resolved using first-order heuristics (assume e.g. that u is "?Q t", so they are postponed. The canonical transformation of "?P y == y=0" into "?P'@ {y} == y=0" together with "?P := fun y => ?P'@ {y:=y}" could be not done when it is clear that a f.o. unification does not give anything, but this remains to be attempted, in this function Evarconv.consider_remaining_unif_problems which is devoted to apply heuristics when no other canonical information can be obtained from the rest of the whole sets of unification problems that a typing problem generates. 
+
+[3] This is Evarconv.second_order_matching which Matthieu is using more intensively in the new evarconv-based rewrite and induction that he is going to provide as part of the unif-all branch.
+
+
+Comment author: @herbelin
+
+Note: The recent example reported in BZ#5767 is partly related.
+
+It is a situation with two unification problems:
+
+⊢ ?m == fun x : nat => True -> x = x
+n:nat ⊢ ?m' (n+1) == True -> n+1 = n+1
+n:nat ⊢ tele ?m == tele ?m'@ {n}
+
+The first one is easy to solve, but the way type inference is coded, it is the second problem which is treated first. But the current heuristics discards the dependency in (n+1), sees only the dependency in n, and decide too early to instantiate ?m'@ {n} := True -> n+1 = n+1.
+
+

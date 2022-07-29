@@ -1,0 +1,25 @@
+Comment author: @JasonGross
+
+It would be nice for the [Check] below that currently fails to succeed.
+```
+
+Definition x := Type -> Type.
+Definition y : x := fun x => x.
+Definition y' := fun x : Type => x.
+About y. (* y : x
+
+y is transparent
+Expands to: Constant Top.y
+*)
+Fail Check (y (Set * Set)). (* The command has indeed failed with message:
+=> Error: The term "Set" has type "Type" while it is expected to have type
+    "nat". *)
+Check y' (Set * Set).
+Arguments y _%type_scope.
+Check y (Set * Set).
+```
+
+
+Alternatively, if it's too expensive to repeatedly find the hnf when looking at the type, it should be possible to declare an constant as appropriately transparent, so that it will be unfolded in the type before looking for argument status.
+
+

@@ -1,0 +1,19 @@
+Comment author: @JasonGross
+
+Rather than having links like http://coq.inria.fr/refman/Reference-Manual018.html#sec628, it would be nice to have links like http://coq.inria.fr/refman/Reference-Manual-Coq-Integrated-Development-Environment.html#Using-unicode-symbols, with extra numbers added only when necessary for deduplication.  This would give links more stability across versions, because chapter titles and section names are less likely to change than location.
+
+
+Comment author: @herbelin
+
+This is a good remark, but we are relying here not on coqdoc but on hevea. If you see a way to do it simply why not...
+
+
+Comment author: @ppedrot
+
+According to http://hevea.inria.fr/newdoc/sectioning.html#section%3Asection :
+
+Starting with version 2.04, HEVEA and HACHA will use the label name (section:section above) for the table of contents they generate.
+
+So this bug is fixed upstream.
+
+

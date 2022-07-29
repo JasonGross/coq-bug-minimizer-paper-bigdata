@@ -1,0 +1,124 @@
+Comment author: @JasonGross
+
+Consider this:
+$ echo 'Set Silent.
+Check True.
+Theorem a : True.
+Unset Silent.
+Proof I.' | coqtop
+Welcome to Coq jgross-Leopard-WS:/home/jgross/Downloads/coq/coq-trunk,trunk 
+(73fd3afba9e8917dfc0644d1d8d9b22063cfa2fe)
+
+Coq <
+Coq < True
+     : Prop
+
+Coq <
+a <
+a < Toplevel input, characters 0-8:
+> Proof I.
+> ^^^^^^^^
+Error: Attempt to save an incomplete proof (in proof a)
+
+a <
+
+Yet this is what happens if I step up to the end of [Proof I.] in PG, because 
+it wants the most recent command to not be silent.  This is a regression since 
+8.4, introduced in 8.5.  On the other hand the following was also valid in 8.4, 
+and it's not clear to me that it should be valid (though the error message 
+"Error: Attempt to save an incomplete proof (in proof a)" is certainly wrong):
+Theorem a : True -> True.
+  intro H.
+  Proof H.
+
+
+Comment author: @Zimmi48
+
+Jason, it seems that you are giving us each day a new reason for getting rid of this command ^^
+
+
+Comment author: @ejgallego
+
+Indeed, you are pointing out deeper issues than I thought; I am starting to thing that the burden of having this command is gonna be higher than the benefits; we can deprecate it in 8.7 [should be easy to add warning] and remove in 8.8.
+
+The first bug is deeper than that. Basically, inserting any option command between Theorem and Proof seems broken...
+
+
+Comment author: @ejgallego
+
+Raising to blocker as action wrt this vernacular has to be taken before 8.7 (either fixing it or deprecating it).
+
+
+Comment author: @psteckler
+
+With 8.5 and 8.6, I can reproduce the error by sending the script through a shell pipe to coqtop.
+
+If I add the -emacs flag to coqtop, though, I don't get the error message. And using vanilla PG with 8.5 or 8.6, which uses that flag, I don't see the error message (but the bug report appears to suggest otherwise).
+
+With PG/xml and 8.5/8.6, I see the error message.
+
+
+Comment author: @JasonGross
+
+> but the bug report appears to suggest otherwise
+
+Yeah, I could have sworn that I got this error message from within PG and was really confused by it.  I can't seem to reproduce that part, now.
+
+
+Comment author: @psteckler
+
+With trunk, the error message appears regardless of whether the -emacs flag appears, and indeed, appears when using vanilla PG.
+
+Jason, can I guess you were using trunk, and not 8.6, when you saw the error in PG?
+
+
+Comment author: @JasonGross
+
+> can I guess you were using trunk, and not 8.6, when you saw the error in PG?
+
+Oh, yeah, probably.
+
+
+Comment author: @psteckler
+
+Another data point: in 8.4pl6, there is no error message, regardless of whether the -emacs flag is given. 
+
+Summary:
+
+  8.4    : no error
+  8.5/8.6: error only if -emacs flag not given
+  trunk  : error independent of -emacs flag
+
+
+Comment author: @ejgallego
+
+Théo should we just deprecate this command?
+
+
+Comment author: @Zimmi48
+
+Yeah, let's deprecate it in 8.7. The deprecation notice should list "Proof. exact term. Qed." as an alternative and maybe I'll propose something better in 8.8.
+
+
+Comment author: @ejgallego
+
+Why not "Lemma .... := term" as done for definitions ?
+
+
+Comment author: @ejgallego
+
+That form can be implemented without any change to internal structures I believe.
+
+
+Comment author: @Zimmi48
+
+Indeed, that's what I'm aiming for.
+
+
+Comment author: @ejgallego
+
+Well, I had a brief look and indeed the internal representation would need some deeper changes than what I thought, however IMHO it is really worth unifying Theorem/Definition in 8.8.
+
+
+It was blocker for 8.7...
+Duplicate of #12444 

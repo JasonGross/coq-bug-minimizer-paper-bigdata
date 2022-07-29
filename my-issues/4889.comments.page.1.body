@@ -1,0 +1,57 @@
+Comment author: @JasonGross
+
+Here is a proof script:
+
+Fixpoint big n :=
+  match n with
+  | 0 => 0
+  | S n' => big n' * big n'
+  end.
+
+Goal
+  let x b := match big (big 30) with 0 => b | _ => b end in
+  let a := x true in let b := a false in
+  Some a = Some b -> False.
+Proof.
+  intros x a b H.
+  simple inversion H as [H'].
+  try match type of H' with Some _ = Some _ => fail 2 "simple inversion should strip Some" end.
+
+
+When I paste it into the *scratch* buffer of a new CoqIDE session, and command-control-down twice, CoqIDE crashes every single time.
+
+
+Comment author: @JasonGross
+
+Since CoqIDE does not save the contents of the *scratch* buffer (or at least does not suggest restoring it, or any other file), this makes CoqIDE essentially unusable in normal development on Macs, because I can't reliably evaluate anything without first saving my file, else I might lose all of my changes.
+
+
+Comment author: @herbelin
+
+That's strange. Copy-paste used to be unusable for CoqIDE compiled with unpatched OCaml 4.02.3 on MacOS, in relation to https://coq.inria.fr/bugs/show_bug.cgi?id=4548, but I can't reproduce the crash that you are describing with 8.5pl1 from the website on El Capitan (compiled by Maxime so that [BZ#4548](https://github.com/coq/coq/issues?q=is%3Aissue%20%22Original%20bug%20ID%3A%20BZ%234548%22) does not show up).
+
+I can't reproduce it either with the current 8.5 branch which I locally compiled with OCaml 4.01.
+
+
+Comment author: @JasonGross
+
+Oh, sorry, turns out I was actually using Coq 8.5, not Coq 8.5pl1.  It seems to be fixed in 8.5pl1.
+
+
+I'm affected by the issue. 
+
+```
+$  brew cask info coqide
+coqide: 8.7.1
+https://coq.inria.fr/
+/usr/local/Caskroom/coqide/8.7.1 (68B)
+From: https://github.com/caskroom/homebrew-cask/blob/master/Casks/coqide.rb
+==> Name
+Coq
+==> Artifacts
+CoqIDE_8.7.1.app (App)
+```
+Thanks for the report @csi-adziahel. The most recent occurrence of this issue was reported here: #6509
+It has been fixed in the package that is available through the website, here: https://github.com/coq/coq/releases/download/V8.7.1/coq-8.7.1-1-installer-macos.dmg
+but not in homebrew-cask yet. However, a PR (https://github.com/caskroom/homebrew-cask/pull/42843) has been opened for this update.
+@Zimmi48 awesome, thanks!

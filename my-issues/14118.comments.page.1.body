@@ -1,0 +1,1 @@
+There is not today `Remove Hint` takes an ident and is morally an inverse of `Hint Resolve` only. We could use `Hint Mode Foo : db` to clear modes.

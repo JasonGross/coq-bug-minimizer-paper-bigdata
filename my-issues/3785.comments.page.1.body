@@ -1,0 +1,103 @@
+Comment author: @JasonGross
+
+(* File reduced by coq-bug-finder from original input, then from 9765 lines to 178 lines, then from 145 lines to 102 lines, then from 99 lines to 64 lines *)
+(* coqc version trunk (October 2014) compiled on Oct 28 2014 14:33:38 with OCaml 4.01.0
+   coqtop version cagnode15:/afs/csail.mit.edu/u/j/jgross/coq-trunk,(no branch) (53bfe9cf58a3c40e6eb7120d25c1633a9cea3126) *)
+Notation "( x ; y )" := (existT _ x y).
+Notation pr1 := projT1.
+Definition compose {A B C : Type} (g : B -> C) (f : A -> B) := fun x => g (f x).
+Notation "g 'o' f" := (compose g f) (at level 40, left associativity) : function_scope.
+Open Scope function_scope.
+Definition pointwise_paths {A} {P:A->Type} (f g:forall x:A, P x) := forall x:A, f x = g x.
+Notation "f == g" := (pointwise_paths f g) (at level 70, no associativity) : type_scope.
+Definition hfiber {A B : Type} (f : A -> B) (y : B) := { x : A & f x = y }.
+Record UnitSubuniverse :=
+  { inO_internal : Type -> Type ;
+    O_reflector : Type -> Type ;
+    to : forall T, T -> O_reflector T }.
+Coercion O_reflector : UnitSubuniverse >-> Funclass.
+Class In (O : UnitSubuniverse) (T : Type) := {}.
+Global Instance O_inO {O : UnitSubuniverse} (T : Type) : In O (O T).
+Module NonPrim.
+  Unset Primitive Projections.
+  Record ReflectiveSubuniverse :=
+    { rsubu : UnitSubuniverse ;
+      O_rec : forall {P Q : Type} {Q_inO : In rsubu Q} (f : P -> Q), rsubu P -> Q }.
+  Arguments O_rec {O P Q Q_inO} f x : rename.
+  Coercion rsubu : ReflectiveSubuniverse >-> UnitSubuniverse.
+  Definition O_functor (O : ReflectiveSubuniverse) {A B : Type} (f : A -> B) : O A -> O B.
+    exact (O_rec (to O B o f)).
+  Defined.
+  Axiom to_O_natural : forall (O : ReflectiveSubuniverse) {A B} (f : A -> B),
+                         (O_functor O f) o (to O A) == (to O B) o f.
+  Record Modality :=
+    { msubu : UnitSubuniverse ;
+      O_ind : forall A (B : msubu A -> Type) (B_inO : forall oa, In msubu (B oa)),
+                (forall a, B (to msubu A a)) -> forall a, B a }.
+  Arguments O_ind {O} {A} B {B_inO} f a : rename.
+  Definition modality_to_reflective_subuniverse (O : Modality)
+  : ReflectiveSubuniverse.
+    exact (Build_ReflectiveSubuniverse (msubu O)
+                                       (fun P Q H => O_ind (fun _ => Q))).
+  Defined.
+  Coercion modality_to_reflective_subuniverse : Modality >-> ReflectiveSubuniverse.
+  Goal forall (O' : Modality) (A B : Type) (f : A -> B) (a : A),
+         O_functor O' (@ projT1 _ _) (to O' (hfiber f (f a)) (a; eq_refl)) = to (msubu O') A a.
+    clear; intros.
+    apply (@ to_O_natural O').
+    Undo.
+    apply to_O_natural.
+  Defined.
+End NonPrim.
+Module Prim.
+  Set Primitive Projections.
+  Record ReflectiveSubuniverse :=
+    { rsubu : UnitSubuniverse ;
+      O_rec : forall {P Q : Type} {Q_inO : In rsubu Q} (f : P -> Q), rsubu P -> Q }.
+  Arguments O_rec {O P Q Q_inO} f x : rename.
+  Coercion rsubu : ReflectiveSubuniverse >-> UnitSubuniverse.
+  Definition O_functor (O : ReflectiveSubuniverse) {A B : Type} (f : A -> B) : O A -> O B.
+    exact (O_rec (to O B o f)).
+  Defined.
+  Axiom to_O_natural : forall (O : ReflectiveSubuniverse) {A B} (f : A -> B),
+                         (O_functor O f) o (to O A) == (to O B) o f.
+  Record Modality :=
+    { msubu : UnitSubuniverse ;
+      O_ind : forall A (B : msubu A -> Type) (B_inO : forall oa, In msubu (B oa)),
+                (forall a, B (to msubu A a)) -> forall a, B a }.
+  Arguments O_ind {O} {A} B {B_inO} f a : rename.
+  Definition modality_to_reflective_subuniverse (O : Modality)
+  : ReflectiveSubuniverse.
+    exact (Build_ReflectiveSubuniverse (msubu O)
+                                       (fun P Q H => O_ind (fun _ => Q))).
+  Defined.
+  Coercion modality_to_reflective_subuniverse : Modality >-> ReflectiveSubuniverse.
+  Goal forall (O' : Modality) (A B : Type) (f : A -> B) (a : A),
+         O_functor O' (@ projT1 _ _) (to O' (hfiber f (f a)) (a; eq_refl)) = to (msubu O') A a.
+    clear; intros.
+    apply (@ to_O_natural O').
+    Undo.
+    apply to_O_natural. (* Toplevel input, characters 6-18:
+Error:
+In environment
+O' : Modality
+A : Type
+B : Type
+f : A -> B
+a : A
+Unable to unify
+ "forall x : ?M195,
+  (O_functor ?M194 ?M197 o to ?M194 ?M195) x = (to ?M194 ?M196 o ?M197) x"
+with
+ "O_functor O' (pr1 (P:=fun x : A => f x = f a))
+    (to O' (hfiber f (f a)) (a; 1)) = to (msubu O') A a".
+ *)
+  Defined.
+End Prim.
+
+
+Comment author: @mattam82
+
+Same problem as usual with apply not being eager enough to use previously found instances. It needs to unfold O_rec (modality_to ... O') but stops at O_rec ?META even if it knows already that ?META is that term.
+
+

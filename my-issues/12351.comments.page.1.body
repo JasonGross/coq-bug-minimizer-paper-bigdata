@@ -1,0 +1,3 @@
+That's not hard to fix but annoying; the reason `Redirect` is not working very well is that in a sense we consider it a bit deprecated vs using shell redirection; the behavior of such command is undefined under modern language servers.
+
+I'll try to cook up a fix for 8.12 if that's useful for you tho @JasonGross 

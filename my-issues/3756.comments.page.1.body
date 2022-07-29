@@ -1,0 +1,213 @@
+Comment author: @JasonGross
+
+As I posted on coqdev (posting here so it's not forgotten):
+Hi,
+Is the following correct?   If I see
+Ra:b X <> Y Z
+in a .glob file, this means that from characters a-b, there is a thing of type Z referenced whose absolute name is X.Y?
+
+This seems to often be the case, and I'm relying on it for my bug-minimizer, which is how I discovered that it is not always the case.  Namely, it seems to not be the case for things where Z is 'mod' or 'modtype', in which case Y is always '<>'?  Is this intentional?
+
+Thanks,
+Jason
+
+
+Comment author: @herbelin
+
+> Is the following correct?   If I see
+> Ra:b X <> Y Z
+> in a .glob file, this means that from characters a-b, there is a thing of 
+> type Z referenced whose absolute name is X.Y?
+
+As far as I understand the code, it is correct for things which are "leaves" of a library.
+
+> Namely, it seems to not be the case for things where Z is 'mod' or 'modtype', > in which case Y is always '<>'?  Is this intentional?
+
+I believe this is intentional. This is just a matter of convention anyway. It is natural to represent leaves as a path with a label Y. It is natural to represent module names with just a path, and hence a dummy label <>.
+
+Note that tag "lib" and "sec" have also a dummy <> for the "Y".
+
+Note also that the middle part is not necessarily <>. The X is the library name. The middle part is the module or section part (see e.g. in theories/Init/Logic.glob) . The Z is the label, for leaves.
+
+Best,
+
+Hugo
+
+
+Comment author: @JasonGross
+
+I think I might see what my confusion was, now.  I thought that
+
+Ra:b X <> <> Z
+
+meant that the absolute name of the thing in the range a-b was X.  This isn't the case, though, is it?  For leaves, Y will never be <>, and modules and module types follow a different convention.
+
+This means, though, that the following statements can never be given hyperlinks by coqdoc, right?
+Module A := B. (* no way to get the absolute name of [B] from the .glob file; if [B] is [Directory.File.Module1.Module2.B], the .glob file will say "Ra:b Directory.File Module2.B <> modtype", and Module1 will not show up *)
+Module A <: B. End A. (* ditto about [B] *)
+Import B. (* does not even show up in the .glob file *)
+
+I'm still confused why the first [Module1] in the file gets excluded, though...
+
+In fact, I think there's still a bug here, in that
+  Module A := top.foo.
+  Module B := top.foo.Foo.
+both show up in the .glob file as
+  Ra:b top.foo <> <> modtype
+
+(If this is not a bug, I'll apologize for reopening this.)
+
+Here are the files:
+$ cat foo.v
+Module Export Foo.
+  Module Export Bar.
+    Module Export Baz.
+    End Baz.
+  End Bar.
+End Foo.
+$ cat bar.v
+Require Import top.foo.
+
+Module A := top.foo.
+Module B := top.foo.Foo.
+Module C := top.foo.Foo.Bar.
+Module D := top.foo.Foo.Bar.Baz.
+$ coqc -nois foo.v bar.v -R . top
+$ cat bar.glob
+DIGEST 2422ff130cc319be2ae15a3f289e4162
+Ftop.bar
+R15:21 top.foo <> <> lib
+R37:43 top.foo <> <> modtype
+mod 32:32 <> A
+R58:68 top.foo <> <> modtype
+mod 53:53 <> B
+R83:97 top.foo Bar <> modtype
+mod 78:78 <> C
+R112:130 top.foo Bar.Baz <> modtype
+mod 107:107 <> D
+
+
+
+
+
+
+
+
+
+
+
+Here are the files I was originally playing with, for reference:
+$ cat bar.v
+Module Export bar0.
+  Module Export bar1.
+    Axiom b : Type.
+  End bar1.
+End bar0.
+$ cat foo.v
+Require Import Coq.Init.Logic.
+Module A0 := Coq.Init.Logic.
+Module A1 := Init.Logic.
+Module A2 := Logic.
+Require Import top.bar.
+Module A3 := top.bar.
+Module Export Foo.
+  Module Export Bar.
+    Module Export Baz.
+      Axiom a : Type.
+    End Baz.
+  End Bar.
+End Foo.
+Module A4 := Foo.Bar.Baz.
+Module A5 := Bar.Baz.
+Module A6 := Baz.
+Check Foo.Bar.Baz.a.
+Check Bar.Baz.a.
+Check Baz.a.
+Check a.
+Module A7 := top.bar.bar0.bar1.
+Module A8 := bar.bar0.bar1.
+Module A9 := bar0.bar1.
+Module A10 := bar1.
+Check top.bar.bar0.bar1.b.
+Check bar.bar0.bar1.b.
+Check bar0.bar1.b.
+Check bar1.b.
+Check b.
+$ cat foo.glob
+DIGEST 51437bb8f9ca39ccd3d68f5fa51b9bd8
+Ftop.foo
+R15:28 Coq.Init.Logic <> <> lib
+R44:57 Coq.Init.Logic <> <> modtype
+mod 38:39 <> A0
+R73:82 Coq.Init.Logic <> <> modtype
+mod 67:68 <> A1
+R98:102 Coq.Init.Logic <> <> modtype
+mod 92:93 <> A2
+R120:126 top.bar <> <> lib
+R142:148 top.bar <> <> modtype
+mod 136:137 <> A3
+mod 165:167 <> Foo
+mod 186:188 <> Foo.Bar
+mod 209:211 <> Foo.Bar.Baz
+ax 226:226 Foo.Bar.Baz a
+R244:246 top.foo Bar.Baz <> mod
+R255:257 top.foo Bar <> mod
+R264:266 top.foo <> <> mod
+R282:292 top.foo Bar.Baz <> modtype
+mod 276:277 <> A4
+R308:314 top.foo Bar.Baz <> modtype
+mod 302:303 <> A5
+R330:332 top.foo Bar.Baz <> modtype
+mod 324:325 <> A6
+R341:353 top.foo Foo.Bar.Baz a prfax
+R362:370 top.foo Foo.Bar.Baz a prfax
+R379:383 top.foo Foo.Bar.Baz a prfax
+R392:392 top.foo Foo.Bar.Baz a prfax
+R408:424 top.bar bar1 <> modtype
+mod 402:403 <> A7
+R440:452 top.bar bar1 <> modtype
+mod 434:435 <> A8
+R468:476 top.bar bar1 <> modtype
+mod 462:463 <> A9
+R493:496 top.bar bar1 <> modtype
+mod 486:488 <> A10
+R505:523 top.bar bar0.bar1 b prfax
+R532:546 top.bar bar0.bar1 b prfax
+R555:565 top.bar bar0.bar1 b prfax
+R574:579 top.bar bar0.bar1 b prfax
+R588:588 top.bar bar0.bar1 b prfax
+$ python -c "f = open('foo.glob', 'r').read(); g = open('foo.v', 'r').read(); f2 = [i for i in f.split('\n') if i and i[0] == 'R']; import re; reg = re.compile('R([0-9]+):([0-9]+) ([^ ]+) ([^ ]+) ([^ ]+) ([^ ]+)'); f3 = [reg.findall(i)[0] for i in f2]; print('\n'.join(['%s => %s %s %s %s' % tuple([g[int(i[0]):int(i[1])+1]] + list(i[2:])) for i in f3]))"
+Coq.Init.Logic => Coq.Init.Logic <> <> lib
+Coq.Init.Logic => Coq.Init.Logic <> <> modtype
+Init.Logic => Coq.Init.Logic <> <> modtype
+Logic => Coq.Init.Logic <> <> modtype
+top.bar => top.bar <> <> lib
+top.bar => top.bar <> <> modtype
+Baz => top.foo Bar.Baz <> mod
+Bar => top.foo Bar <> mod
+Foo => top.foo <> <> mod
+Foo.Bar.Baz => top.foo Bar.Baz <> modtype
+Bar.Baz => top.foo Bar.Baz <> modtype
+Baz => top.foo Bar.Baz <> modtype
+Foo.Bar.Baz.a => top.foo Foo.Bar.Baz a prfax
+Bar.Baz.a => top.foo Foo.Bar.Baz a prfax
+Baz.a => top.foo Foo.Bar.Baz a prfax
+a => top.foo Foo.Bar.Baz a prfax
+top.bar.bar0.bar1 => top.bar bar1 <> modtype
+bar.bar0.bar1 => top.bar bar1 <> modtype
+bar0.bar1 => top.bar bar1 <> modtype
+bar1 => top.bar bar1 <> modtype
+top.bar.bar0.bar1.b => top.bar bar0.bar1 b prfax
+bar.bar0.bar1.b => top.bar bar0.bar1 b prfax
+bar0.bar1.b => top.bar bar0.bar1 b prfax
+bar1.b => top.bar bar0.bar1 b prfax
+b => top.bar bar0.bar1 b prfax
+
+
+Comment author: @herbelin
+
+One part of the modpath missing really looks like a bug, dating from the very beginning of the support of links to modules in 2008.
+
+I applied a fix and now, top.foo.html and top.bar.html have correct internal resp. external links.
+
+

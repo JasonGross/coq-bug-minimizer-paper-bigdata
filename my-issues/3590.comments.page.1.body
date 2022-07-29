@@ -1,0 +1,28 @@
+Comment author: @JasonGross
+
+Set Primitive Projections.
+Set Implicit Arguments.
+Record prod A B := pair { fst : A ; snd : B }.
+
+Goal forall x y : prod Set Set, fst x = fst y.
+  intros.
+  change (fst ?x) with (@ fst Set Set x). (* Toplevel input, characters 20-58:
+Error: Failed to get enough information from the left-hand side to type the
+right-hand side. *)
+
+
+Comment author: @mattam82
+
+This no longer has to do with primitive projections, but with interp_typed_pattern generating evars that are lost. Arnaud, Hugo, what are we supposed to do when the pattern's named context contains evars? Should they become metas somehow?
+
+
+Comment author: @aspiwack
+
+I'm guessing [interp_typed_pattern] should return a modified sigma which can then be installed with [Proofview.Unsafe.tclEVARS].
+
+
+Comment author: @mattam82
+
+Fixed in trunk, by propagating a modified sigma.
+
+

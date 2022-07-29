@@ -1,0 +1,17 @@
+Comment author: @JasonGross
+
+Goal forall (f g : nat -> nat) (p : nat * nat), let '(a, b) := p in f (g a) = g 
+(f (a + b)%nat).
+  clear.
+  intros.
+  progress change (g (f ?x)) with ((fun a => g (f a)) x). (* this works as 
+expected *)
+  progress change (f (g ?x)) with ((fun a => f (g a)) x). (* Error: Variable x 
+should be bound to a term but is bound to a constr. *)
+
+
+Comment author: @ppedrot
+
+The problem comes from the interpretation of Ltac variables in the pretyper. It seems a wrong rel context is passed to the function, leading to the raise of an exception that is inadvertently caught in pretype_id. Investigating more.
+
+

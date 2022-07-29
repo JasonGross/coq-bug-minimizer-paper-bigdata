@@ -1,0 +1,88 @@
+Comment author: @JasonGross
+
+The fix for bug [BZ#4864](https://github.com/coq/coq/issues?q=is%3Aissue%20%22Original%20bug%20ID%3A%20BZ%234864%22) (a6832ccfacd9c105b23a9a77dadc3202f7af26fc) seems to have 
+broken a valid use of [Arguments].  When I say [Arguments id / .], I mean 
+"always unfold [id]".  I don't want to have to insert some number of 
+underscores just to satisfy Coq.  By contrast, if I say [Arguments id : 
+assert.], this should fail, because [assert] means "check the number of 
+arguments".
+
+
+Comment author: @JasonGross
+
+Note that [Arguments id : simpl never.] works fine, and I think of [Arguments 
+id / .] in the same class.
+
+
+Comment author: @gares
+
+That the following forms make sense:
+
+- Arguments name all_arguments.
+- Arguments name : flags.
+- Arguments name all_arguments : flags.
+
+Forms like
+
+- Arguments name some_arguments.
+- Arguments name some_arguments : flags.
+
+were accepted (in very few cases) because of a bug.
+
+Tomorrow I'll double check the doc.
+
+Adding a ": simpl always" flag to cover your use case is an option,
+but the / is intended to be put in the middle of arguments.
+
+
+Comment author: @JasonGross
+
+Note that [simpl always] would not be backwards compatible, for code that needs 
+to run in both 8.4 and 8.5/8.6.  Would it be possible to provide a script (to 
+be linked against Coq or distributed with Coq or whatever) that inserts 
+trailing arguments as necessary (in the file on disk) as it compiles Coq files, 
+as a kind of backwards-compatibility updater?
+
+
+Comment author: @gares
+
+There is an obvious way to make a script work with .4 .5 and .6, add the forgotten argument.
+
+
+Comment author: @JasonGross
+
+Yes.  I spent an hour doing this on the parsers part of fiat.  I expect that doing this across all of fiat and bedrock could take as long as a full day.  Hence why I requested a script or a mode of coqc that fills them in automatically.
+
+
+Comment author: @gares
+
+I'm adding it to -compat <= 8.5, to ease migration, will push soon.
+
+Said that, I expect it to be a bunch of sed calls like
+
+ sed 's?Arguments f /\.?Arguments f / _ _ .. _\.?/g'
+
+one per "f".
+
+Finally, I understand the syntax is not appropriate for what you are doing.
+
+The syntax was conceived to set, once and forall, all meta-data attached
+to a constant in one go.  Typically immediately after the constant definition.
+In that case spelling out names looks like a sane form of documentation, and
+is also needed in order to set implicits, scopes, and all that.
+
+Frequently changing these flags is probably something that requires a different, more compact syntax.
+
+
+Comment author: @JasonGross
+
+Indeed, frequently my use of [Arguments id / .] is that the next thing I want to do is [Definition foo := Eval simpl in bar.], and there is not currently a way to do the equivalent of [Definition foo := Eval (repeat (simpl || unfold bar, x, y, z)) in bar.]
+
+Using sed is not much better; Fiat has 131 instances of [Arguments id / .] (with 84 unique identifiers).  If it takes me a minute to boot up Coq on the right file, get the number of arguments, and type the sed command, for each command, that's still nearly an hour spent just fixing compatibility with this issue.  It seems like it should be part of a generic v8.5->v8.6 translator.  (Perhaps this should be part of the -compat 8.5 flag, that it emits a warning like "Warning: in file some-path line n characters m-p, command will stop working if you drop -compat.  Use exact-other-command instead."  And then some script can just pick up these warnings and do the replacement automatically.)
+
+
+Comment author: @maximedenes
+
+Note that the final syntax of 8.6 beta 1 won't require to provide all the arguments (even without -compat), except with "assert".
+
+

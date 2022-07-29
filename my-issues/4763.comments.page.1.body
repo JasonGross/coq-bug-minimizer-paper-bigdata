@@ -1,0 +1,97 @@
+Comment author: @JasonGross
+```coq
+Require Import Coq.Arith.Arith Coq.Classes.Morphisms Coq.Classes.RelationClasses.
+Coercion is_true : bool >-> Sortclass.
+Global Instance: Transitive leb.
+Admitted.
+
+Goal forall x y z, leb x y -> leb y z -> True.
+  intros ??? H H'.
+  Typeclasses eauto := debug.
+  lazymatch goal with
+  | [ H : is_true (?R ?x ?y), H' : is_true (?R ?y ?z) |- _ ]
+    => pose proof (transitivity H H' : is_true (R x z))
+  end.
+(* 8.4:
+1.1: exact Transitive_instance_0 on
+(Transitive ?16)
+*)
+
+(* Debug: 1.1: apply @ Equivalence_Transitive on (Transitive ?R)
+Debug: 1.1.1: no match for (Equivalence ?R) , 8 possibilities
+Debug: Backtracking after apply @ Equivalence_Transitive
+Debug: 1.2: apply @ StrictOrder_Transitive on (Transitive ?R)
+Debug: 1.2.1: no match for (StrictOrder ?R) , 6 possibilities
+Debug: Backtracking after apply @ StrictOrder_Transitive
+Debug: 1.3: apply @ PreOrder_Transitive on (Transitive ?R)
+Debug: 1.3.1.1: apply @ Equivalence_PreOrder on (PreOrder ?R)
+Debug: 1.3.1.1.1: no match for (Equivalence ?R) , 8 possibilities
+Debug: Backtracking after apply @ Equivalence_PreOrder
+Debug: Backtracking after apply @ PreOrder_Transitive
+Debug: 1.4: apply @ PER_Transitive on (Transitive ?R)
+Debug: 1.4.1.1: apply @ Equivalence_PER on (PER ?R)
+Debug: 1.4.1.1.1: no match for (Equivalence ?R) , 8 possibilities
+Debug: Backtracking after apply @ Equivalence_PER
+Debug: Backtracking after apply @ PER_Transitive
+Debug: 1.1: apply @ Equivalence_Transitive on (Transitive ?R)
+Debug: 1.1.1: no match for (Equivalence ?R) , 8 possibilities
+Debug: Backtracking after apply @ Equivalence_Transitive
+Debug: 1.2: apply @ StrictOrder_Transitive on (Transitive ?R)
+Debug: 1.2.1: no match for (StrictOrder ?R) , 6 possibilities
+Debug: Backtracking after apply @ StrictOrder_Transitive
+Debug: 1.3: apply @ PreOrder_Transitive on (Transitive ?R)
+Debug: 1.3.1.1: apply @ Equivalence_PreOrder on (PreOrder ?R)
+Debug: 1.3.1.1.1: no match for (Equivalence ?R) , 8 possibilities
+Debug: Backtracking after apply @ Equivalence_PreOrder
+Debug: Backtracking after apply @ PreOrder_Transitive
+Debug: 1.4: apply @ PER_Transitive on (Transitive ?R)
+Debug: 1.4.1.1: apply @ Equivalence_PER on (PER ?R)
+Debug: 1.4.1.1.1: no match for (Equivalence ?R) , 8 possibilities
+Debug: Backtracking after apply @ Equivalence_PER
+Debug: Backtracking after apply @ PER_Transitive
+Error:
+Unable to satisfy the following constraints:
+In environment:
+x, y, z : nat
+H : x <=? y
+H' : y <=? z
+
+?A : "Type"
+?R : "Relation_Definitions.relation ?A"
+?Transitive : "Transitive ?R"
+?x : "?A"
+?y : "?A"
+?z : "?A"[x y z H H'] [] |- (x <=? y) = true <= ?X13@ {__:=x; __:=y; __:=z; __:=H; __:=H'} ?X15@ {__:=x; __:=y; __:=z; __:=H; __:=H'}
+                                                  ?X16@ {__:=x; __:=y; __:=z; __:=H; __:=H'}
+[x y z H H'] [] |- (y <=? z) = true <= ?X13@ {__:=x; __:=y; __:=z; __:=H; __:=H'} ?X16@ {__:=x; __:=y; __:=z; __:=H; __:=H'}
+                                         ?X17@ {__:=x; __:=y; __:=z; __:=H; __:=H'}
+[x y z H H'] [] |- ?X13@ {__:=x; __:=y; __:=z; __:=H; __:=H'} ?X15@ {__:=x; __:=y; __:=z; __:=H; __:=H'}
+                     ?X17@ {__:=x; __:=y; __:=z; __:=H; __:=H'} <= (x <=? z) = true
+```
+
+Comment author: @mattam82
+
+It's a unification issue apparently, I'll look into why the exact Transitive_instance_0 in eauto is not succeeding while an explicit exact solved a Transitive ?A ?R goal.
+
+
+Comment author: @mattam82
+
+This is a quite severe regression indeed, I guess the fix will resolve other 
+bugs as well. We were too eager to solve unification constraints when doing 
+w_unify from unification, trying to solve all of them after the first 
+assignment of a term to an evar or failing.
+
+Testing the fix on the contribs:
+https://ci.inria.fr/coq/view/coq-contribs/job/coq-contribs/423/
+
+
+Comment author: @mattam82
+
+Merged on 8.5 branch, will be in pl3 too.
+
+
+Comment author: @JasonGross
+
+*** Bug [BZ#5140](https://github.com/coq/coq/issues?q=is%3Aissue%20%22Original%20bug%20ID%3A%20BZ%235140%22) has been marked as a duplicate of this bug. ***
+
+

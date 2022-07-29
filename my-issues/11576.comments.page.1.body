@@ -1,0 +1,9 @@
+Also replacing `(pv:=_)` with `(pv:parameters:=_)` makes it go through.
+Here's a smaller example of this one:
+```coq
+Class Foo := foo : True.
+Instance: Foo := I.
+Definition bar (v:=_) (H : @foo v = @foo v) : True := I.
+```
+My guess is that the issue here is that the "available for typeclass resolution" flag is not being inherited appropriately when evars are unified
+Seems to be fixed in 8.14. Will add to test-suite.

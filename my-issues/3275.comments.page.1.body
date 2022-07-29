@@ -1,0 +1,710 @@
+Comment author: @JasonGross
+
+File "ide/coqide_main.ml4", line 91, characters 37-68:
+Error: Unbound value Glib.Io.channel_of_descr_socket
+
+I expect that either ./configure will fail with a useful error message, or make will succeed.
+
+
+Comment author: @gares
+
+Congratulations, you just won the ruffle for beta testers of the windows Coq-SDK.
+On windows Coq 8.5 is likely to be built using an SDK: a self contained archive with all one needs in order to build Coq.  This includes a patched version of lablgtk2 (that is the problem you see).  The patch was sent to the upstream author, but I don't know if it was integrated and/or a release including the patch made public.
+
+I'm attaching the script to build the SDK, ideally a prebuilt one should be distributed along with Coq.  It was testes a while ago, apologies if something does not work.  Could you test it? (It includes the patch for lablgtk2).
+
+It should build a C:\CoqSDK-0 directory and a CoqSDK-0.zip archive.
+Once you have C:\CoqSDK-0 in place, from a cygwin prompt you should type
+  . /cygdrive/c/CoqSDK-0/env
+(IIRC, maybe it is called environ) and then you should be able to build coq and coqide.  The env script sets environment variables like PATH and OCAMLLIB to the right value.
+
+Cheers
+
+
+Comment author: @gares
+
+Created attachment 456
+script to build CoqSDK-0.zip
+
+> Attached file: [build-sdk-win.sh](https://coq.inria.fr/bugfiles/attachment.cgi?id=456) (application/x-sh, 7408 bytes)
+> Description:   script to build CoqSDK-0.zip
+
+
+Comment author: @JasonGross
+
+Every time I run the script, I get:
+$ ./build-sdk-win.sh
+Checking for wget
+/usr/bin/wget
+Installing 7z, gcc, ... using cygwin
+Check: 7z, gcc.  If it fails wait for cygwin to complete and retry
+which: no 7z in (/cygdrive/d/Program Files/MiKTeX 2.9/miktex/bin/x64:/cygdrive/d                                                      /Program Files (x86)/emacs-24.3/emacs-24.3/bin:/cygdrive/c/Program Files (x86)/H                                                      askell/bin:/cygdrive/d/Program Files (x86)/Haskell Platform/2013.2.0.0/lib/extra                                                      libs/bin:/cygdrive/d/Program Files (x86)/Haskell Platform/2013.2.0.0/bin:/cygdri                                                      ve/d/Program Files/TortoiseHg:/cygdrive/d/Program Files (x86)/Haskell/cabal-dev/                                                      bin:/cygdrive/d/Program Files (x86)/Haskell/bin:/cygdrive/d/Program Files/vim73/                                                      bin:/cygdrive/d/Tools:/cygdrive/d/Tcl/bin:/cygdrive/d/Python27:/opt/gtk/bin:/usr                                                      /local/bin:/usr/bin:/usr/bin:/opt/wodi64/bin:/cygdrive/c/Program Files (x86)/Int                                                      el/iCLS Client:/cygdrive/c/Program Files/Intel/iCLS Client:/cygdrive/c/Windows/s                                                      ystem32:/cygdrive/c/Windows:/cygdrive/c/Windows/System32/Wbem:/cygdrive/c/Window                                                      s/System32/WindowsPowerShell/v1.0:/cygdrive/c/Program Files/Intel/Intel(R) Manag                                                      ement Engine Components/DAL:/cygdrive/c/Program Files/Intel/Intel(R) Management                                                       Engine Components/IPT:/cygdrive/c/Program Files (x86)/Intel/Intel(R) Management                                                       Engine Components/DAL:/cygdrive/c/Program Files (x86)/Intel/Intel(R) Management                                                       Engine Components/IPT:/cygdrive/d/Program Files/MiKTeX 2.9/miktex/bin/x64:/cygdr                                                      ive/d/Program Files (x86)/Calibre2:/cygdrive/d/Program Files (x86)/OpenAFS/Commo                                                      n:/cygdrive/d/Program Files/MIT/Kerberos/bin:/cygdrive/d/Program Files (x86)/Has                                                      kell Platform/2013.2.0.0/mingw/bin:/cygdrive/d/Program Files (x86)/Coq/bin:/cygd                                                      rive/c/Program Files (x86)/Heimdal/bin:/cygdrive/d/Program Files/Heimdal/bin:/cy                                                      gdrive/d/Program Files/OpenAFS/Common:/cygdrive/d/Program Files (x86)/OpenAFS/Cl                                                      ient/Program:/cygdrive/d/Program Files/gs/gs9.10/bin:/cygdrive/d/Program Files (                                                      x86)/gs/gs9.10/bin:/cygdrive/d/Program Files/OpenAFS/Client/Program:/cygdrive/d/                                                      Python27/Scripts:/cygdrive/c/Users/Jason/AppData/Roaming/cabal/bin)
+
+
+
+The first time, it installed some packages (it looked like mingw headers and some other things I didn't catch).  The other times the cygwin install does ~nothing.
+
+I'm trying to install p7zip now (the only package with 7z in the name), and will report on that later.
+
+
+Comment author: @JasonGross
+
+Is there a reason you're using 7zip rather than the more common tar.gz or tar.bz2 format?  (I think cygwin comes with tar by default?)
+
+
+Comment author: @JasonGross
+
+I think you should add a shebang (#!/bin/bash or something) to environ and use something like
+
+BASE="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
+
+and then patch the other files appropriately with sed, rather than hard-coding the base path.  What if I have no C drive because I renamed it to D?  Or what if there's no room for Coq on my C drive?
+
+
+Comment author: @JasonGross
+
+Now I am getting
+
+OCAMLOPT  plugins/xml/cic2Xml.ml
+OCAMLOPT  plugins/xml/xml_plugin_mod.ml
+OCAMLOPT -a -o plugins/xml/xml_plugin.cmxa
+OCAMLOPT -shared -o plugins/xml/xml_plugin.cmxs
+COQC -noinit theories/Init/Prelude.v
+The command line is too long.
+Error: Could not compile the library to native code. Skipping.
+COQC      theories/Logic/Berardi.v
+Warning:
+Dynlink error, cannot find file D:\Documents\GitHub\coq-trunk\theories\Init\NCoq                                                      _Init_Notations.cmxs in search path
+Warning:
+Dynlink error, cannot find file D:\Documents\GitHub\coq-trunk\theories\Init\NCoq                                                      _Init_Logic.cmxs in search path
+Warning:
+Dynlink error, cannot find file D:\Documents\GitHub\coq-trunk\theories\Init\NCoq                                                      _Init_Datatypes.cmxs in search path
+Warning:
+Dynlink error, cannot find file D:\Documents\GitHub\coq-trunk\theories\Init\NCoq                                                      _Init_Logic_Type.cmxs in search path
+Warning:
+Dynlink error, cannot find file D:\Documents\GitHub\coq-trunk\theories\Init\NCoq                                                      _Init_Specif.cmxs in search path
+Warning:
+Dynlink error, cannot find file D:\Documents\GitHub\coq-trunk\theories\Init\NCoq                                                      _Init_Peano.cmxs in search path
+Warning:
+Dynlink error, cannot find file D:\Documents\GitHub\coq-trunk\theories\Init\NCoq                                                      _Init_Wf.cmxs in search path
+Warning:
+Dynlink error, cannot find file D:\Documents\GitHub\coq-trunk\theories\Init\NCoq                                                      _Init_Tactics.cmxs in search path
+Warning:
+Dynlink error, cannot find file D:\Documents\GitHub\coq-trunk\theories/Init\NCoq                                                      _Init_Prelude.cmxs in search path
+The command line is too long.
+Error: Could not compile the library to native code. Skipping.
+COQC      theories/Arith/Le.v
+Warning:
+Dynlink error, cannot find file D:\Documents\GitHub\coq-trunk\theories\Init\NCoq                                                      _Init_Notations.cmxs in search path
+Warning:
+Dynlink error, cannot find file D:\Documents\GitHub\coq-trunk\theories\Init\NCoq                                                      _Init_Logic.cmxs in search path
+Warning:
+Dynlink error, cannot find file D:\Documents\GitHub\coq-trunk\theories\Init\NCoq                                                      _Init_Datatypes.cmxs in search path
+Warning:
+Dynlink error, cannot find file D:\Documents\GitHub\coq-trunk\theories\Init\NCoq                                                      _Init_Logic_Type.cmxs in search path
+Warning:
+Dynlink error, cannot find file D:\Documents\GitHub\coq-trunk\theories\Init\NCoq                                                      _Init_Specif.cmxs in search path
+Warning:
+Dynlink error, cannot find file D:\Documents\GitHub\coq-trunk\theories\Init\NCoq                                                      _Init_Peano.cmxs in search path
+Warning:
+Dynlink error, cannot find file D:\Documents\GitHub\coq-trunk\theories\Init\NCoq                                                      _Init_Wf.cmxs in search path
+Warning:
+Dynlink error, cannot find file D:\Documents\GitHub\coq-trunk\theories\Init\NCoq                                                      _Init_Tactics.cmxs in search path
+Warning:
+Dynlink error, cannot find file D:\Documents\GitHub\coq-trunk\theories/Init\NCoq                                                      _Init_Prelude.cmxs in search path
+The command line is too long.
+Error: Could not compile the library to native code. Skipping.
+COQC      theories/Arith/Lt.v
+Warning:
+Dynlink error, cannot find file D:\Documents\GitHub\coq-trunk\theories\Init\NCoq                                                      _Init_Notations.cmxs in search path
+Warning:
+Dynlink error, cannot find file D:\Documents\GitHub\coq-trunk\theories\Init\NCoq                                                      _Init_Logic.cmxs in search path
+Warning:
+Dynlink error, cannot find file D:\Documents\GitHub\coq-trunk\theories\Init\NCoq                                                      _Init_Datatypes.cmxs in search path
+Warning:
+Dynlink error, cannot find file D:\Documents\GitHub\coq-trunk\theories\Init\NCoq                                                      _Init_Logic_Type.cmxs in search path
+Warning:
+Dynlink error, cannot find file D:\Documents\GitHub\coq-trunk\theories\Init\NCoq                                                      _Init_Specif.cmxs in search path
+Warning:
+Dynlink error, cannot find file D:\Documents\GitHub\coq-trunk\theories\Init\NCoq                                                      _Init_Peano.cmxs in search path
+Warning:
+Dynlink error, cannot find file D:\Documents\GitHub\coq-trunk\theories\Init\NCoq                                                      _Init_Wf.cmxs in search path
+Warning:
+Dynlink error, cannot find file D:\Documents\GitHub\coq-trunk\theories\Init\NCoq                                                      _Init_Tactics.cmxs in search path
+Warning:
+Dynlink error, cannot find file D:\Documents\GitHub\coq-trunk\theories/Init\NCoq                                                      _Init_Prelude.cmxs in search path
+The command line is too long.
+Error: Could not compile the library to native code. Skipping.
+COQC      theories/Arith/Plus.v
+Warning:
+Dynlink error, cannot find file D:\Documents\GitHub\coq-trunk\theories\Init\NCoq                                                      _Init_Notations.cmxs in search path
+Warning:
+Dynlink error, cannot find file D:\Documents\GitHub\coq-trunk\theories\Init\NCoq                                                      _Init_Logic.cmxs in search path
+Warning:
+Dynlink error, cannot find file D:\Documents\GitHub\coq-trunk\theories\Init\NCoq                                                      _Init_Datatypes.cmxs in search path
+Warning:
+Dynlink error, cannot find file D:\Documents\GitHub\coq-trunk\theories\Init\NCoq                                                      _Init_Logic_Type.cmxs in search path
+Warning:
+Dynlink error, cannot find file D:\Documents\GitHub\coq-trunk\theories\Init\NCoq                                                      _Init_Specif.cmxs in search path
+Warning:
+Dynlink error, cannot find file D:\Documents\GitHub\coq-trunk\theories\Init\NCoq                                                      _Init_Peano.cmxs in search path
+Warning:
+Dynlink error, cannot find file D:\Documents\GitHub\coq-trunk\theories\Init\NCoq                                                      _Init_Wf.cmxs in search path
+Warning:
+Dynlink error, cannot find file D:\Documents\GitHub\coq-trunk\theories\Init\NCoq                                                      _Init_Tactics.cmxs in search path
+Warning:
+Dynlink error, cannot find file D:\Documents\GitHub\coq-trunk\theories/Init\NCoq                                                      _Init_Prelude.cmxs in search path
+The command line is too long.
+Error: Could not compile the library to native code. Skipping.
+COQC      theories/Arith/Gt.v
+Warning:
+Dynlink error, cannot find file D:\Documents\GitHub\coq-trunk\theories\Init\NCoq                                                      _Init_Notations.cmxs in search path
+Warning:
+Dynlink error, cannot find file D:\Documents\GitHub\coq-trunk\theories\Init\NCoq                                                      _Init_Logic.cmxs in search path
+Warning:
+Dynlink error, cannot find file D:\Documents\GitHub\coq-trunk\theories\Init\NCoq                                                      _Init_Datatypes.cmxs in search path
+Warning:
+Dynlink error, cannot find file D:\Documents\GitHub\coq-trunk\theories\Init\NCoq                                                      _Init_Logic_Type.cmxs in search path
+Warning:
+Dynlink error, cannot find file D:\Documents\GitHub\coq-trunk\theories\Init\NCoq                                                      _Init_Specif.cmxs in search path
+Warning:
+Dynlink error, cannot find file D:\Documents\GitHub\coq-trunk\theories\Init\NCoq                                                      _Init_Peano.cmxs in search path
+Warning:
+Dynlink error, cannot find file D:\Documents\GitHub\coq-trunk\theories\Init\NCoq                                                      _Init_Wf.cmxs in search path
+Warning:
+Dynlink error, cannot find file D:\Documents\GitHub\coq-trunk\theories\Init\NCoq                                                      _Init_Tactics.cmxs in search path
+Warning:
+Dynlink error, cannot find file D:\Documents\GitHub\coq-trunk\theories/Init\NCoq                                                      _Init_Prelude.cmxs in search path
+The command line is too long.
+Error: Could not compile the library to native code. Skipping.
+COQC      theories/Logic/Decidable.v
+Warning:
+Dynlink error, cannot find file D:\Documents\GitHub\coq-trunk\theories\Init\NCoq                                                      _Init_Notations.cmxs in search path
+Warning:
+Dynlink error, cannot find file D:\Documents\GitHub\coq-trunk\theories\Init\NCoq                                                      _Init_Logic.cmxs in search path
+Warning:
+Dynlink error, cannot find file D:\Documents\GitHub\coq-trunk\theories\Init\NCoq                                                      _Init_Datatypes.cmxs in search path
+Warning:
+Dynlink error, cannot find file D:\Documents\GitHub\coq-trunk\theories\Init\NCoq                                                      _Init_Logic_Type.cmxs in search path
+Warning:
+Dynlink error, cannot find file D:\Documents\GitHub\coq-trunk\theories\Init\NCoq                                                      _Init_Specif.cmxs in search path
+Warning:
+Dynlink error, cannot find file D:\Documents\GitHub\coq-trunk\theories\Init\NCoq                                                      _Init_Peano.cmxs in search path
+Warning:
+Dynlink error, cannot find file D:\Documents\GitHub\coq-trunk\theories\Init\NCoq                                                      _Init_Wf.cmxs in search path
+Warning:
+Dynlink error, cannot find file D:\Documents\GitHub\coq-trunk\theories\Init\NCoq                                                      _Init_Tactics.cmxs in search path
+Warning:
+Dynlink error, cannot find file D:\Documents\GitHub\coq-trunk\theories/Init\NCoq                                                      _Init_Prelude.cmxs in search path
+The command line is too long.
+Error: Could not compile the library to native code. Skipping.
+COQC      theories/Arith/Compare_dec.v
+Warning:
+Dynlink error, cannot find file D:\Documents\GitHub\coq-trunk\theories\Init\NCoq                                                      _Init_Notations.cmxs in search path
+Warning:
+Dynlink error, cannot find file D:\Documents\GitHub\coq-trunk\theories\Init\NCoq                                                      _Init_Logic.cmxs in search path
+Warning:
+Dynlink error, cannot find file D:\Documents\GitHub\coq-trunk\theories\Init\NCoq                                                      _Init_Datatypes.cmxs in search path
+Warning:
+Dynlink error, cannot find file D:\Documents\GitHub\coq-trunk\theories\Init\NCoq                                                      _Init_Logic_Type.cmxs in search path
+Warning:
+Dynlink error, cannot find file D:\Documents\GitHub\coq-trunk\theories\Init\NCoq                                                      _Init_Specif.cmxs in search path
+Warning:
+Dynlink error, cannot find file D:\Documents\GitHub\coq-trunk\theories\Init\NCoq                                                      _Init_Peano.cmxs in search path
+Warning:
+Dynlink error, cannot find file D:\Documents\GitHub\coq-trunk\theories\Init\NCoq                                                      _Init_Wf.cmxs in search path
+Warning:
+Dynlink error, cannot find file D:\Documents\GitHub\coq-trunk\theories\Init\NCoq                                                      _Init_Tactics.cmxs in search path
+Warning:
+Dynlink error, cannot find file D:\Documents\GitHub\coq-trunk\theories/Init\NCoq                                                      _Init_Prelude.cmxs in search path
+The command line is too long.
+Error: Could not compile the library to native code. Skipping.
+COQC      theories/Arith/Wf_nat.v
+Warning:
+Dynlink error, cannot find file D:\Documents\GitHub\coq-trunk\theories\Init\NCoq                                                      _Init_Notations.cmxs in search path
+Warning:
+Dynlink error, cannot find file D:\Documents\GitHub\coq-trunk\theories\Init\NCoq                                                      _Init_Logic.cmxs in search path
+Warning:
+Dynlink error, cannot find file D:\Documents\GitHub\coq-trunk\theories\Init\NCoq                                                      _Init_Datatypes.cmxs in search path
+Warning:
+Dynlink error, cannot find file D:\Documents\GitHub\coq-trunk\theories\Init\NCoq                                                      _Init_Logic_Type.cmxs in search path
+Warning:
+Dynlink error, cannot find file D:\Documents\GitHub\coq-trunk\theories\Init\NCoq                                                      _Init_Specif.cmxs in search path
+Warning:
+Dynlink error, cannot find file D:\Documents\GitHub\coq-trunk\theories\Init\NCoq                                                      _Init_Peano.cmxs in search path
+Warning:
+Dynlink error, cannot find file D:\Documents\GitHub\coq-trunk\theories\Init\NCoq                                                      _Init_Wf.cmxs in search path
+Warning:
+Dynlink error, cannot find file D:\Documents\GitHub\coq-trunk\theories\Init\NCoq                                                      _Init_Tactics.cmxs in search path
+Warning:
+Dynlink error, cannot find file D:\Documents\GitHub\coq-trunk\theories/Init\NCoq                                                      _Init_Prelude.cmxs in search path
+The command line is too long.
+Error: Could not compile the library to native code. Skipping.
+COQC      theories/Program/Basics.v
+Warning:
+Dynlink error, cannot find file D:\Documents\GitHub\coq-trunk\theories\Init\NCoq                                                      _Init_Notations.cmxs in search path
+Warning:
+Dynlink error, cannot find file D:\Documents\GitHub\coq-trunk\theories\Init\NCoq                                                      _Init_Logic.cmxs in search path
+Warning:
+Dynlink error, cannot find file D:\Documents\GitHub\coq-trunk\theories\Init\NCoq                                                      _Init_Datatypes.cmxs in search path
+Warning:
+Dynlink error, cannot find file D:\Documents\GitHub\coq-trunk\theories\Init\NCoq                                                      _Init_Logic_Type.cmxs in search path
+Warning:
+Dynlink error, cannot find file D:\Documents\GitHub\coq-trunk\theories\Init\NCoq                                                      _Init_Specif.cmxs in search path
+Warning:
+Dynlink error, cannot find file D:\Documents\GitHub\coq-trunk\theories\Init\NCoq                                                      _Init_Peano.cmxs in search path
+Warning:
+Dynlink error, cannot find file D:\Documents\GitHub\coq-trunk\theories\Init\NCoq                                                      _Init_Wf.cmxs in search path
+Warning:
+Dynlink error, cannot find file D:\Documents\GitHub\coq-trunk\theories\Init\NCoq                                                      _Init_Tactics.cmxs in search path
+Warning:
+Dynlink error, cannot find file D:\Documents\GitHub\coq-trunk\theories/Init\NCoq                                                      _Init_Prelude.cmxs in search path
+The command line is too long.
+Error: Could not compile the library to native code. Skipping.
+COQC      theories/Program/Tactics.v
+Warning:
+Dynlink error, cannot find file D:\Documents\GitHub\coq-trunk\theories\Init\NCoq                                                      _Init_Notations.cmxs in search path
+Warning:
+Dynlink error, cannot find file D:\Documents\GitHub\coq-trunk\theories\Init\NCoq                                                      _Init_Logic.cmxs in search path
+Warning:
+Dynlink error, cannot find file D:\Documents\GitHub\coq-trunk\theories\Init\NCoq                                                      _Init_Datatypes.cmxs in search path
+Warning:
+Dynlink error, cannot find file D:\Documents\GitHub\coq-trunk\theories\Init\NCoq                                                      _Init_Logic_Type.cmxs in search path
+Warning:
+Dynlink error, cannot find file D:\Documents\GitHub\coq-trunk\theories\Init\NCoq                                                      _Init_Specif.cmxs in search path
+Warning:
+Dynlink error, cannot find file D:\Documents\GitHub\coq-trunk\theories\Init\NCoq                                                      _Init_Peano.cmxs in search path
+Warning:
+Dynlink error, cannot find file D:\Documents\GitHub\coq-trunk\theories\Init\NCoq                                                      _Init_Wf.cmxs in search path
+Warning:
+Dynlink error, cannot find file D:\Documents\GitHub\coq-trunk\theories\Init\NCoq                                                      _Init_Tactics.cmxs in search path
+Warning:
+Dynlink error, cannot find file D:\Documents\GitHub\coq-trunk\theories/Init\NCoq                                                      _Init_Prelude.cmxs in search path
+The command line is too long.
+Error: Could not compile the library to native code. Skipping.
+COQC      theories/Relations/Relation_Definitions.v
+Warning:
+Dynlink error, cannot find file D:\Documents\GitHub\coq-trunk\theories\Init\NCoq                                                      _Init_Notations.cmxs in search path
+Warning:
+Dynlink error, cannot find file D:\Documents\GitHub\coq-trunk\theories\Init\NCoq                                                      _Init_Logic.cmxs in search path
+Warning:
+Dynlink error, cannot find file D:\Documents\GitHub\coq-trunk\theories\Init\NCoq                                                      _Init_Datatypes.cmxs in search path
+Warning:
+Dynlink error, cannot find file D:\Documents\GitHub\coq-trunk\theories\Init\NCoq                                                      _Init_Logic_Type.cmxs in search path
+Warning:
+Dynlink error, cannot find file D:\Documents\GitHub\coq-trunk\theories\Init\NCoq                                                      _Init_Specif.cmxs in search path
+Warning:
+Dynlink error, cannot find file D:\Documents\GitHub\coq-trunk\theories\Init\NCoq                                                      _Init_Peano.cmxs in search path
+Warning:
+Dynlink error, cannot find file D:\Documents\GitHub\coq-trunk\theories\Init\NCoq                                                      _Init_Wf.cmxs in search path
+Warning:
+Dynlink error, cannot find file D:\Documents\GitHub\coq-trunk\theories\Init\NCoq                                                      _Init_Tactics.cmxs in search path
+Warning:
+Dynlink error, cannot find file D:\Documents\GitHub\coq-trunk\theories/Init\NCoq                                                      _Init_Prelude.cmxs in search path
+The command line is too long.
+Error: Could not compile the library to native code. Skipping.
+COQC      theories/Classes/Init.v
+Warning:
+Dynlink error, cannot find file D:\Documents\GitHub\coq-trunk\theories\Init\NCoq                                                      _Init_Notations.cmxs in search path
+Warning:
+Dynlink error, cannot find file D:\Documents\GitHub\coq-trunk\theories\Init\NCoq                                                      _Init_Logic.cmxs in search path
+Warning:
+Dynlink error, cannot find file D:\Documents\GitHub\coq-trunk\theories\Init\NCoq                                                      _Init_Datatypes.cmxs in search path
+Warning:
+Dynlink error, cannot find file D:\Documents\GitHub\coq-trunk\theories\Init\NCoq                                                      _Init_Logic_Type.cmxs in search path
+Warning:
+Dynlink error, cannot find file D:\Documents\GitHub\coq-trunk\theories\Init\NCoq                                                      _Init_Specif.cmxs in search path
+Warning:
+Dynlink error, cannot find file D:\Documents\GitHub\coq-trunk\theories\Init\NCoq                                                      _Init_Peano.cmxs in search path
+Warning:
+Dynlink error, cannot find file D:\Documents\GitHub\coq-trunk\theories\Init\NCoq                                                      _Init_Wf.cmxs in search path
+Warning:
+Dynlink error, cannot find file D:\Documents\GitHub\coq-trunk\theories\Init\NCoq                                                      _Init_Tactics.cmxs in search path
+Warning:
+Dynlink error, cannot find file D:\Documents\GitHub\coq-trunk\theories/Init\NCoq                                                      _Init_Prelude.cmxs in search path
+The command line is too long.
+Error: Could not compile the library to native code. Skipping.
+COQC      theories/Classes/RelationClasses.v
+Warning:
+Dynlink error, cannot find file D:\Documents\GitHub\coq-trunk\theories\Init\NCoq                                                      _Init_Notations.cmxs in search path
+Warning:
+Dynlink error, cannot find file D:\Documents\GitHub\coq-trunk\theories\Init\NCoq                                                      _Init_Logic.cmxs in search path
+Warning:
+Dynlink error, cannot find file D:\Documents\GitHub\coq-trunk\theories\Init\NCoq                                                      _Init_Datatypes.cmxs in search path
+Warning:
+Dynlink error, cannot find file D:\Documents\GitHub\coq-trunk\theories\Init\NCoq                                                      _Init_Logic_Type.cmxs in search path
+Warning:
+Dynlink error, cannot find file D:\Documents\GitHub\coq-trunk\theories\Init\NCoq                                                      _Init_Specif.cmxs in search path
+Warning:
+Dynlink error, cannot find file D:\Documents\GitHub\coq-trunk\theories\Init\NCoq                                                      _Init_Peano.cmxs in search path
+Warning:
+Dynlink error, cannot find file D:\Documents\GitHub\coq-trunk\theories\Init\NCoq                                                      _Init_Wf.cmxs in search path
+Warning:
+Dynlink error, cannot find file D:\Documents\GitHub\coq-trunk\theories\Init\NCoq                                                      _Init_Tactics.cmxs in search path
+Warning:
+Dynlink error, cannot find file D:\Documents\GitHub\coq-trunk\theories/Init\NCoq                                                      _Init_Prelude.cmxs in search path
+The command line is too long.
+Error: Could not compile the library to native code. Skipping.
+COQC      theories/Classes/Morphisms.v
+Warning:
+Dynlink error, cannot find file D:\Documents\GitHub\coq-trunk\theories\Init\NCoq                                                      _Init_Notations.cmxs in search path
+Warning:
+Dynlink error, cannot find file D:\Documents\GitHub\coq-trunk\theories\Init\NCoq                                                      _Init_Logic.cmxs in search path
+Warning:
+Dynlink error, cannot find file D:\Documents\GitHub\coq-trunk\theories\Init\NCoq                                                      _Init_Datatypes.cmxs in search path
+Warning:
+Dynlink error, cannot find file D:\Documents\GitHub\coq-trunk\theories\Init\NCoq                                                      _Init_Logic_Type.cmxs in search path
+Warning:
+Dynlink error, cannot find file D:\Documents\GitHub\coq-trunk\theories\Init\NCoq                                                      _Init_Specif.cmxs in search path
+Warning:
+Dynlink error, cannot find file D:\Documents\GitHub\coq-trunk\theories\Init\NCoq                                                      _Init_Peano.cmxs in search path
+Warning:
+Dynlink error, cannot find file D:\Documents\GitHub\coq-trunk\theories\Init\NCoq                                                      _Init_Wf.cmxs in search path
+Warning:
+Dynlink error, cannot find file D:\Documents\GitHub\coq-trunk\theories\Init\NCoq                                                      _Init_Tactics.cmxs in search path
+Warning:
+Dynlink error, cannot find file D:\Documents\GitHub\coq-trunk\theories/Init\NCoq                                                      _Init_Prelude.cmxs in search path
+The command line is too long.
+Error: Could not compile the library to native code. Skipping.
+COQC      theories/Classes/Morphisms_Prop.v
+Warning:
+Dynlink error, cannot find file D:\Documents\GitHub\coq-trunk\theories\Init\NCoq                                                      _Init_Notations.cmxs in search path
+Warning:
+Dynlink error, cannot find file D:\Documents\GitHub\coq-trunk\theories\Init\NCoq                                                      _Init_Logic.cmxs in search path
+Warning:
+Dynlink error, cannot find file D:\Documents\GitHub\coq-trunk\theories\Init\NCoq                                                      _Init_Datatypes.cmxs in search path
+Warning:
+Dynlink error, cannot find file D:\Documents\GitHub\coq-trunk\theories\Init\NCoq                                                      _Init_Logic_Type.cmxs in search path
+Warning:
+Dynlink error, cannot find file D:\Documents\GitHub\coq-trunk\theories\Init\NCoq                                                      _Init_Specif.cmxs in search path
+Warning:
+Dynlink error, cannot find file D:\Documents\GitHub\coq-trunk\theories\Init\NCoq                                                      _Init_Peano.cmxs in search path
+Warning:
+Dynlink error, cannot find file D:\Documents\GitHub\coq-trunk\theories\Init\NCoq                                                      _Init_Wf.cmxs in search path
+Warning:
+Dynlink error, cannot find file D:\Documents\GitHub\coq-trunk\theories\Init\NCoq                                                      _Init_Tactics.cmxs in search path
+Warning:
+Dynlink error, cannot find file D:\Documents\GitHub\coq-trunk\theories/Init\NCoq                                                      _Init_Prelude.cmxs in search path
+The command line is too long.
+Error: Could not compile the library to native code. Skipping.
+COQC      theories/Classes/Equivalence.v
+Warning:
+Dynlink error, cannot find file D:\Documents\GitHub\coq-trunk\theories\Init\NCoq                                                      _Init_Notations.cmxs in search path
+Warning:
+Dynlink error, cannot find file D:\Documents\GitHub\coq-trunk\theories\Init\NCoq                                                      _Init_Logic.cmxs in search path
+Warning:
+Dynlink error, cannot find file D:\Documents\GitHub\coq-trunk\theories\Init\NCoq                                                      _Init_Datatypes.cmxs in search path
+Warning:
+Dynlink error, cannot find file D:\Documents\GitHub\coq-trunk\theories\Init\NCoq                                                      _Init_Logic_Type.cmxs in search path
+
+
+
+
+
+I will try again with -local -no-native-compiler (this is with only -local)
+
+
+Comment author: @JasonGross
+
+Building -no-native-compiler seems to have fixed it.  Note that I'm on a 64-bit machine.  I have 32-bit cygwin installed.
+
+
+Comment author: @JasonGross
+
+I've managed to compile it now, including CoqIDE.  Do I have to keep the CoqSDK-0 directory around?
+
+
+Comment author: @gares
+
+Many thanks for testing!  Few comments:
+
+0) I need p7zip because it handles, at once, all the compressed archives I'm   
+   downloading.  They are not stuff of mine, I can't change the compression 
+   algorithm.
+1) no, the shebang is not needed.  env is not a program, it is a snippet
+   meant to be sourced.  If you execute it, nothing happens.
+2) Right, the native compiler does not "work".  Can you check if the warning
+   do make sense?  If the .cmxs files are there?  It is just a problem of paths?
+3) could you attach to the bugreport the fix version of the script?
+
+
+Comment author: @gares
+
+Last thing.  About the SDK.  No, it is not needed to run coq without the native compiler.  Still, for the native compiler feature to work coq has to be shipped with at least a part of the SDK (the ocaml compiler).  Nothing has been done in this direction yet.
+
+
+Comment author: @JasonGross
+
+Created attachment 459
+Patched script to almost build .zip file
+
+I've attached an updated version of the script.  You can now specify the BASE directory as an environment variable of the script.  Our script is now robust against spaces in directory names (a common failure mode of programs on Windows), but, unfortunately, some of the downloads we use aren't, so I warn if there are spaces in pwd.
+
+I've removed the "2> /dev/null" on rm -rf, so that the script will not die confusingly (without any messages) if any of the 'rm -rf' commands fail due to locked files.
+
+I seem to have broken something; I now get
+make -C src all
+make[1]: Entering directory '/cygdrive/d/Downloads/I-have-no-spaces/build/lablgtk-2.18.0/src'
+ocamlc.opt -c -pp "camlp4o -impl" -impl varcc.ml4
+Fatal error: cannot load shared library dllunix
+Reason: The specified module could not be found.^M
+
+Error while running external preprocessor
+Command line: camlp4o -impl "varcc.ml4" > C:\Users\Jason\AppData\Local\Temp\ocamlpp122959
+
+Makefile:194: recipe for target 'varcc.cmo' failed
+make[1]: *** [varcc.cmo] Error 2
+make[1]: Leaving directory '/cygdrive/d/Downloads/I-have-no-spaces/build/lablgtk-2.18.0/src'
+Makefile:5: recipe for target 'all' failed
+make: *** [all] Error 2
+
+When trying to build lablgtk.  I'll try to debug later, but any help would be appreciated.
+
+> Attached file: [build-sdk-win.sh](https://coq.inria.fr/bugfiles/attachment.cgi?id=459) (application/octet-stream, 8022 bytes)
+> Description:   Patched script to almost build .zip file
+
+
+Comment author: @JasonGross
+
+Created attachment 460
+Improved script to build CoqSDK-0.zip
+
+I've attached an updated script.  This one looks at the environment variable BASE, and will create a .zip file which is meant to be unpacked at $BASE/CoqSDK-0.  There's some attempt at making the zip file truly relocatable, but I suspect that getting it to work fully would require patching binary files, which isn't something I feel like digging in to.  There's also some attempt at supporting spaces in the base path, but, once again, the binaries are against us.
+
+Anyway, Coq will build and CoqIDE will run with this script, but I get a lot of errors about native compilation failing:
+
+Warning:
+Dynlink error, cannot find file D:\Downloads\test-coq\CoqSDK-0\coq\theories/Init\NCoq_Init_Prelude.cmxs in search path
+The command line is too long.
+Error: Could not compile the library to native code. Skipping.
+The command line is too long.
+Error: Could not compile the library to native code. Skipping.
+
+
+CoqIDE mostly works; the gears seem to bork the coq process (CoqIDE is still responsive, though, until I try to close the buffer, and then it stops responding), for example, on
+Goal True.
+exact I.
+Qed.
+
+Goal False.
+exact_no_check I.
+Qed.
+
+Goal True.
+Admitted.
+
+> Attached file: [build-sdk-win.sh](https://coq.inria.fr/bugfiles/attachment.cgi?id=460) (application/octet-stream, 8835 bytes)
+> Description:   Improved script to build CoqSDK-0.zip
+
+
+Comment author: @gares
+
+Many thanks!
+
+Just one question, what makes you think that to make the SDK relocatable one has to patch binaries?  OCaml binaries are relocatable (thanks to the env variables set by the env script): they store a copy of the original location, but also honor an env variable that tells them where to find things.
+
+
+Comment author: @JasonGross
+
+When I 'grep <original path> -R .', I get a number of binary matches.  Perhaps these are all red herrings (and the binaries actually look at environment variables), but I don't know what environment variables to set.  And when I patch all of the non-binary files inside of the environ script, that isn't enough to make Coq build.  Perhaps setting the right environment variables would be enough?  (Which ones do I have to set?)
+
+
+Comment author: @gares
+
+I'm talking about OCAMLLIB.  try
+
+OCAMLLIB=/where/i/like/ ocamlc -config
+
+
+Comment author: @JasonGross
+
+environ sets OCAMLLIB
+
+$ . environ
+/usr/bin/i686-w64-mingw32-gcc
+$ ocamlc -config
+version: 4.01.0
+standard_library_default: C:/ocamlmgw/lib
+standard_library: D:/Downloads/test-coq/CoqSDK-0/CoqSDK-0/lib
+standard_runtime: ocamlrun
+ccomp_type: cc
+bytecomp_c_compiler: i686-w64-mingw32-gcc -O -mms-bitfields -Wall -Wno-unused
+bytecomp_c_libraries: -lws2_32
+native_c_compiler: i686-w64-mingw32-gcc -O -mms-bitfields -Wall -Wno-unused
+native_c_libraries: -lws2_32
+native_pack_linker: i686-w64-mingw32-ld -r  -o
+ranlib: i686-w64-mingw32-ranlib
+cc_profile:
+architecture: i386
+model: default
+system: mingw
+asm: i686-w64-mingw32-as
+asm_cfi_supported: false
+with_frame_pointers: false
+ext_obj: .o
+ext_asm: .s
+ext_lib: .a
+ext_dll: .dll
+os_type: Win32
+default_executable_name: camlprog.exe
+systhread_supported: true
+exec_magic_number: Caml1999X008
+cmi_magic_number: Caml1999I015
+cmo_magic_number: Caml1999O007
+cma_magic_number: Caml1999A008
+cmx_magic_number: Caml1999Y011
+cmxa_magic_number: Caml1999Z010
+ast_impl_magic_number: Caml1999M016
+ast_intf_magic_number: Caml1999N015
+cmxs_magic_number: Caml2007D001
+cmt_magic_number: Caml2012T002
+$ cd ../coq
+$ git clean -xfd
+$ ./configure -local
+You have GNU Make 4.0. Good!
+You have OCaml 4.01.0. Good!
+You have Camlp5 6.11. Good!
+Cannot find the native-code library of camlp5.
+Only the bytecode version of Coq will be available.
+LablGtk2 found (via ocamlfind), but no native compiler:
+=> only bytecode CoqIde will be built.
+hevea was not found; documentation will not be available
+
+  Architecture                : win32
+  Operating system          : Windows_NT
+  Coq VM bytecode link flags  : -custom
+  Other bytecode link flags   : -custom
+  OS dependent libraries      : -cclib -lunix
+  OCaml/Camlp4 version        : 4.01.0
+  OCaml/Camlp4 binaries in    : D:\Downloads\test-coq\CoqSDK-0\CoqSDK-0\bin
+  OCaml library in            : D:/Downloads/test-coq/CoqSDK-0/CoqSDK-0/lib
+  Camlp4 library in           : D:/CoqSDK-0/lib/camlp5
+  Lablgtk2 library in         : +site-lib/lablgtk2
+  CoqIde                      : byte
+  Documentation               : None
+  Web browser                 : start %s
+  Coq web site                : http://coq.inria.fr/
+
+  Local build, no installation...
+
+If anything is wrong above, please restart './configure'.
+
+*Warning* To compile the system for a new architecture
+          don't forget to do a 'make clean' before './configure'.
+$ make -j2 -k
+...
+$ make
+make --warn-undefined-variable --no-builtin-rules -f Makefile.build BUILDGRAMMAR=1 grammar/grammar.cma grammar/q_constr.cmo
+make[1]: Entering directory '/cygdrive/d/Downloads/test-coq/CoqSDK-0/coq'
+CAMLP4O   plugins/xml/xml.ml4
+Error while loading "pr_dump.cmo": file not found in path.
+CAMLP4O   plugins/xml/acic2Xml.ml4
+Error while loading "pr_dump.cmo": file not found in path.
+CAMLP4O   parsing/pcoq.ml4
+Error while loading "pr_dump.cmo": file not found in path.
+CAMLP4O   parsing/lexer.ml4
+Error while loading "pr_dump.cmo": file not found in path.
+CAMLP4O   parsing/g_xml.ml4
+Error while loading "pr_dump.cmo": file not found in path.
+CAMLP4O   parsing/g_vernac.ml4
+Error while loading "pr_dump.cmo": file not found in path.
+CAMLP4O   parsing/g_tactic.ml4
+Error while loading "pr_dump.cmo": file not found in path.
+CAMLP4O   parsing/g_proofs.ml4
+Error while loading "pr_dump.cmo": file not found in path.
+CAMLP4O   parsing/g_prim.ml4
+Error while loading "pr_dump.cmo": file not found in path.
+CAMLP4O   parsing/g_ltac.ml4
+Error while loading "pr_dump.cmo": file not found in path.
+CAMLP4O   parsing/g_constr.ml4
+Error while loading "pr_dump.cmo": file not found in path.
+CAMLP4O   parsing/compat.ml4
+Error while loading "pr_dump.cmo": file not found in path.
+CAMLP4O   ide/project_file.ml4
+Error while loading "pr_dump.cmo": file not found in path.
+CAMLP4O   ide/coqide_main.ml4
+Error while loading "pr_dump.cmo": file not found in path.
+CAMLP4O   grammar/vernacextend.ml4
+Error while loading "pr_dump.cmo": file not found in path.
+CAMLP4O   grammar/tacextend.ml4
+Error while loading "pr_dump.cmo": file not found in path.
+CAMLP4O   grammar/q_util.ml4
+Error while loading "pr_dump.cmo": file not found in path.
+CAMLP4O   grammar/q_coqast.ml4
+Error while loading "pr_dump.cmo": file not found in path.
+CAMLP4O   grammar/q_constr.ml4
+Error while loading "pr_dump.cmo": file not found in path.
+CAMLP4O   grammar/argextend.ml4
+Error while loading "pr_dump.cmo": file not found in path.
+make[1]: *** No rule to make target 'parsing/compat.ml', needed by 'parsing/compat.cmo'.  Stop.
+make[1]: Leaving directory '/cygdrive/d/Downloads/test-coq/CoqSDK-0/coq'
+Makefile:158: recipe for target 'submake' failed
+make: *** [submake] Error 2
+
+
+Comment author: @JasonGross
+
+So the problem seems to be that
+$ camlp5 -where
+D:/CoqSDK-0/lib/camlp5
+
+is using the compiled path.  Is there an environment variable for this?
+
+(ftr, I get
+$ which camlp5
+/home/Jason/Downloads/test-coq/CoqSDK-0/CoqSDK-0/bin/camlp5
+)
+
+
+Comment author: @gares
+
+Ah, you are right.
+
+It seems some Makefile uses camlp5 -where instead of ocamlc -where
+in order to find where camlp5 libs are.  If so, it should be fixable by
+passing the right -I flag to camlp5.  
+
+It could also be that the Makefile uses ocamlfind, and in that case what the script to build the SDK does is patching files (in .../etc/), dunno if ocamlfind reads env vars.  In this case the fix may not be simple, but I believe the Coq build system is not using ocamlfind.
+
+Ciao
+
+
+Comment author: @JasonGross
+
+It is Coq's configure.ml that I found 'camlp5 -where' in.  configure.ml assumes that camlp5 -where is accurate if it's non-empty, and doesn't check that the path exists or anything like that.  So either camlp5 -where needs to be relocatable, or we have to patch the camlp5 binary, or Coq needs a different method of finding things.
+
+
+Comment author: @JasonGross
+
+Created attachment 501
+Improved script to build CoqSDK-0.zip, v2
+
+CJ Bell found a bug in the script; when you run it from 64-bit cygwin without 7z, the script will install 32-bit cygwin with 7z, but not successfully find 7z.  I've fixed this, and the updated version picks $BASE/CoqSDK-$REVISION-cygwin as the path to install cygwin in, and adds the appropriate things to PATH to find the newly installed files.
+
+A question: do we also want the script to install git and give instructions for cloning Coq trunk?  (Is the use case "we distribute CoqSDK.zip" or "we distribute this script to construct CoqSDK.zip"?)
+
+> Attached file: [build-sdk-win.sh](https://coq.inria.fr/bugfiles/attachment.cgi?id=501) (text/plain, 9021 bytes)
+> Description:   Improved script to build CoqSDK-0.zip, v2
+
+
+Comment author: @gares
+
+We distribute the zip.
+
+Can you tell me the difference between this version and the previous one?
+
+
+Comment author: @gares
+
+Just in case.  The script is in my view a convenience script to be used by the developers of Coq to build, once in a while, an SDK for win32.  Users (especially plugins developers) are supposed to just unzip it in order to build a win32 version of their plugin for the *stable* Coq version and distribute it.
+
+I think there is little point in making the script public and telling people it is the way to develop/build Coq trunk from windows.
+
+Best,
+
+
+Comment author: @gares
+
+The script for building the SDK was updated accepting a pull request a while ago.
+
+

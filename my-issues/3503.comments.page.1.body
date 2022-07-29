@@ -1,0 +1,59 @@
+Comment author: @JasonGross
+
+Set Primitive Projections.
+Record prod A B := pair { fst : A ; snd : B }.
+
+Check fst _ _ (@ pair Type Type Set Set) : Type.
+Goal forall x : prod Set Set, fst _ _ x = fst _ _ x.
+Proof.
+  intros x.
+  (* 1 subgoals
+, subgoal 1 (ID 13)
+
+  x : prod Set Set
+  ============================
+   fst Set Set x = fst Set Set x
+(dependent evars:)
+
+ *)
+  unfold fst. (* 1 subgoals
+, subgoal 1 (ID 14)
+
+  x : prod Set Set
+  ============================
+   fst x = fst x
+(dependent evars:)
+ *)
+  Fail match goal with
+    | |- fst = _ => idtac "1"
+    | |- fst _ = _ => idtac "2"
+    | |- fst _ _ = _ => idtac "3"
+    | |- fst _ _ _ = _ => idtac "4"
+    | |- @ fst = _ => idtac "@ 1"
+    | |- @ fst _ = _ => idtac "@ 2"
+    | |- @ fst _ _ = _ => idtac "@ 3"
+    | |- @ fst _ _ _ = _ => idtac "@ 4"
+  end. (* Error: No matching clauses for match. *)
+  Fail match goal with
+    | |- ?f _ = _ => idtac
+  end. (* Error: No matching clauses for match. *)
+
+
+It's not clear to me what's most consistent here.  My first idea is that both [fst _ _ _] and [@ fst _ _ _] (which mean the same thing here, I believe) should match the goal, and there should be an [Unset Eta Expanded Projection Conflation] or something that disables the behavior.  Alternatively, it seems like doing Ltac matching up to equivalence classes of identifiers would fix this problem (possibly modulo beta?)
+
+
+Comment author: @mattam82
+
+I added a case to matching so that it works as you expect, in the first match goal. For the second one it's not doable without a major change to matching as we'd need typing information do instantiate "f" with a sensible value and matching is purely syntactic right now.
+
+
+Comment author: @JasonGross
+
+Here's a crazy idea: what if, when trying to match [?f _] against, e.g., [fst x] we instantiate [f] with [(fun A B (dummy real : A * B) => @ fst A B real) x] and then had Coq beta reduce it later?
+
+
+Comment author: @mattam82
+
+This is now fixed.
+
+

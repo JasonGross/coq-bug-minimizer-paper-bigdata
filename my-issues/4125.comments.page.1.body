@@ -1,0 +1,43 @@
+Comment author: @JasonGross
+
+This would be very, very useful for making things like bug [BZ#4124](https://github.com/coq/coq/issues?q=is%3Aissue%20%22Original%20bug%20ID%3A%20BZ%234124%22) less surprising.  The rules for when a proof is processed asynchronously are neither simple nor free of bugs (e.g., they depend on the existence of .aux files, and, at present, depend on whether the lemma is defined at top-level or not, etc.), and [Set Suggest Proof Using] is insufficient to inform the user when there are proofs that "should" be parallelizable but are not (see bug [BZ#4124](https://github.com/coq/coq/issues?q=is%3Aissue%20%22Original%20bug%20ID%3A%20BZ%234124%22)).
+
+Thus, there should be a flag that tells the user what coq is *actually* doing, with regard to what proofs are deferred vs. not.  (Currently, determining this requires sticking a "fail" at the top of each proof assumed to be run in parallel and seeing which ones fail.)
+
+
+Comment author: @gares
+
+Well, if you pass -debug you get things like:
+  
+  master:0] Collecting proof ending at 12
+  ..
+  master:0] Synchronous 13 NoHint
+
+Not exactly easy to read (12 refers to a system state, and you need graphviz installed + inspect a .pdf in /tmp to know which proof sends at 12), but isn't that what you are asking for?  Would it work for you if I print the lemma name near the second line up these?  Like
+
+   proof: foo processed: Synchronous because: NoProofUsing_and_NoAuxFile
+
+?
+
+
+Comment author: @JasonGross
+
+>    proof: foo processed: Synchronous because: NoProofUsing_and_NoAuxFile
+
+Yes, if I can run `coqc -quick -debug foo 2>&1 | grep 'Synchronous because'` to see what Coq is doing, that would be useful.  It might also be nice to have 'Asynchronous because', so I can easily make sure I'm not missing any theorems I expect to be there.
+
+I'm ... not sure if this should be documented.  It seems like it at least deserves a footnote in the user manual, that advanced users wanting to see which things are done asynchronously can look for such-and-such a label in the output of -debug.
+
+Thanks!
+
+
+Comment author: @gares
+
+*** Bug [BZ#4128](https://github.com/coq/coq/issues?q=is%3Aissue%20%22Original%20bug%20ID%3A%20BZ%234128%22) has been marked as a duplicate of this bug. ***
+
+
+Comment author: @gares
+
+Will push soon
+
+

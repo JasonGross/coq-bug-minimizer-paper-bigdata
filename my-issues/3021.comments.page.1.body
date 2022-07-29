@@ -1,0 +1,30 @@
+Comment author: @JasonGross
+
+It would be nice to be able to not have to go back and add myself to the CC list, and I suspect that it will be easier to contact users who submit bugs once and don't often look at bug reports if they are CC'd on bugs they report.
+
+
+Comment author: @letouzey
+
+
+According to our bugzilla admin, the submitter of a bug normally receives all
+emails concerning this bug, unless his/her bugzilla email preferences say otherwise. So adding yoursef as CC: to your own bugs shouldn't be necessary.
+
+There used to be problems with some accounts (especially the one created automatically during last bug-tracker transition), but this is supposed to be solved now.
+
+Could you please confirm what are the settings in the "email" tab in the preferences of your bugzilla account ? Normally, the second column (reporter) should be all activated, apart maybe the first two and last two.
+
+Best,
+Pierre Letouzey
+
+
+Comment author: @JasonGross
+
+Ok, thanks.  Sorry for the spurious bug report.  I think was confused by the fact that when creating a bug, I'm pretty sure I'm neither on the "email sent to" list, nor on the "excluded" list when I open a bug, so I've gotten in to the habit of adding myself to the CC list.
+
+
+Comment author: @letouzey
+
+
+Ok, closing the bug...
+
+

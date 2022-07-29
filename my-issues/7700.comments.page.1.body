@@ -1,0 +1,1 @@
+This is actually not only `Let` but `Variable` also. Surprisingly enough this is a serious missing case of the algorithm for globalization of variables which has remained non reported for more than a decade. Fixed by #7761.

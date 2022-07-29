@@ -1,0 +1,22 @@
+Comment author: @JasonGross
+
+Using Coq trunk 8287733d5df1bd673a38e92f23c47e95d1bb7a91, compiled as per https://coq.inria.fr/bugs/show_bug.cgi?id=3573#c1 on bug [BZ#3573](https://github.com/coq/coq/issues?q=is%3Aissue%20%22Original%20bug%20ID%3A%20BZ%233573%22) using the CoqSDK of bug [BZ#3275](https://github.com/coq/coq/issues?q=is%3Aissue%20%22Original%20bug%20ID%3A%20BZ%233275%22) (https://coq.inria.fr/bugs/attachment.cgi?id=501), on the very first run of CoqIDE, if I paste the following in CoqIDE, place my cursor at the bottom, and run to cursor, I get
+
+Marshalling error: marshal_request: Invalid argument. The system state could not be sent to the worker process
+
+
+Ltac loop := loop.
+Ltac long := timeout 1 loop.
+
+Definition foo : True. 
+Proof using .
+ Timeout 1 loop.
+Qed.
+
+Goal False.
+
+
+
+If I close CoqIDE and reopen it, it goes away.  I haven't tried to figure out if it only shows up the first time I run CoqIDE on a given machine, the first time I run a CoqIDE after compiling it, the first time I run a CoqIDE after booting my computer, or something else.  (This behavior, that compile, first run has the error, subsequent ones don't, was also observed by a friend of mine who just compiled the same version of Coq trunk.)
+
+

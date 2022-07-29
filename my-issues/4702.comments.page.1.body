@@ -1,0 +1,10 @@
+Comment author: @JasonGross
+
+Issuing "x" at the top-level segment prompt gives "Fatal error: exception Failure("int_of_string")".  At other prompts, it gives "Goodbye!"
+
+
+Comment author: @silene
+
+Fixed by commit a165495. Thanks for the report.
+
+

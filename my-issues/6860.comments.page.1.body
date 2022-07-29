@@ -1,0 +1,53 @@
+The lemma only "rewrites" if the term on the right of || is convertible to true, hence the tactic has to do the comparison.
+
+This bug is bogus.
+
+I think I was mistaken, according to the doc `constr_eq` does not perform conversion, just syntactic comparison.  I think the question boils down to: @ppedrot any idea why these two lines are so different?
+```
+  Time do 300 try match goal with |- context [_ || true] => idtac end.
+  Time do 300 try match goal with |- context [_ || ?b] => constr_eq b true end.
+```
+given that `?b` is never `true` ?
+@gares Backtrack. The second one keeps failing, while the first one succeeds exactly once, due to associativity of `||`. Not sure what is intended, but I'd recommend using `lazymatch`.
+no, the first line never succeeds (there is no `|| true` in the goal). You can put `fail` in place of `idtac`.
+Oh, you're right, I misread the goal. Then I guess it's probably just Ltac overhead. In one case you never switch to the Ltac interpreter, in the other you call it about 10⁵ times, which is a lot.
+Hum, I still find it fishy. Rewrite is just a little faster (~3s). Rewrite probably calls unification, instead of eq_constr, and does not go trough the Ltac interpreter.
+Ssr rewrite is a bit slower (it does match the goal twice)...
+
+To me the `match` line is too close to the `lazymatch` one to backtrack as I expect
+```
+  Time do 300 try match goal with |- context [_ || true] => idtac end.
+  (* Finished transaction in 0.108 secs (0.108u,0.s) (successful) *)
+  Time do 300 try lazymatch goal with |- context [_ || true] => idtac end.
+  (* Finished transaction in 0.108 secs (0.108u,0.s) (successful) *)
+```
+IMHO the first line does not try to unify "_ || true" with all subterms
+The profiles for `constr_eq` and `rewrite` are completely different, FWIW. The first one looks like it's due to reallocation of the context being build, while the second one is unification being somewhat stupid and checking for absence of evars repeatedly.
+ok I see, slow for different reasons. Still the two lines above seem very close but should perform differently, no?
+sorry, I'm wrong again. They both traverse the entire goal
+(Obvious troll is obvious). That's too tempting not to be said: Even Prolog specialists do not understand backtrack!
+I think you should backtrack on this remark.
+eh eh, shame on me
+Eliminating occur check in unification is not a 5' job... even if it is possible for this rewrite rule.
+I think I can speed up the `match` example though.
+But maybe we should ask @JasonGross to show his real file, this one seems a bit ad hoc.
+@ppedrot I think the bug is about rewrite, not match goal ;-)
+> @ppedrot I think the bug is about rewrite, not match goal ;-)
+
+Doesn't mean there is no bug to fix in match goal though!
+> we should ask @JasonGross to show his real file, this one seems a bit ad hoc.
+
+In this case, there is no real file; I was answering a StackOverflow question, and the timing profile seemed a bit suspicious ( given that my understanding of `rewrite` is that it would look at all of the occurrences of `orb _ _` (up to beta), and then try to unify the second argument with `true`, and this unification should be instantaneous to fail because the term should always be ` false`, and thus it seems like it should be the same performance as ` match` with `constr_eq`... but my guess for the bottleneck in the ` match` with `constr_eq` was the overhead of binding Ltac contexts, which shouldn't show up in `rewrite`, and so this had me confused about the slowness of `rewrite`).
+
+So this isn't an example of "this thing is painful for me, please fix", but instead "this seems like it might reveal the root cause of a bit of unnecessary slowness in Coq, so hopefully fixing whatever shows up in this can help make Coq incrementally faster."
+OK, I've renaming the issue to reflect the optimization @ppedrot is probably already doing ;-)
+I wrote a stupid patch at ppedrot/coq@5c0b379fdbf4dc9a86abde815d0bbdac4a061654, that delays the construction of the matched context until it is actually used. It seems to cut in half the time required by the `constr_eq` code.
+Are you sure you are pointing to the right commit?
+Ah you fixed it :)
+If this bug was about the `match goal` construct, I think it has been fixed. Now `match goal with [ |- context [_ || ?b] ] => fail end` is only twice as slow as `match goal with [ |- context [_ || true] ] => idtac end`, which is OK. The example with `constr_eq` is still about twelve times slower, but this is due to `constr_eq` and one should compare things that are comparable.
+
+I'd propose to close this bug if so.
+No reaction, let's close.
+I am still curious what is going on with `constr_eq`.  What makes it 12x slower?
+(I have no strong objection to closing this bug, but I might decide to open another one about `constr_eq`.  I guess I should also test `constr_eq a b` against `match a with b`...) 
+This is unrelated to constr_eq per se. It's rather that you're paying the cost of calling primitive tactics.

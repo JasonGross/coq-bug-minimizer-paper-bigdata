@@ -1,0 +1,2 @@
+One of those bugs where typing depends on a delayed constraint.
+The constraint is a bit too complex to use the usual `get_type_from_constraints` trick. I guess we have to insert a solve_constraints somewhere, or redesign how this stuff works.

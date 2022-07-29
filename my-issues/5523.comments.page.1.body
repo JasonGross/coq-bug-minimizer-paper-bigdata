@@ -1,0 +1,23 @@
+Comment author: @JasonGross
+
+Definition Let_In {A P} (x : A) (f : forall a : A, P a) : P x := let y := x in 
+f y.
+Notation "'dlet' x , y := v 'in' ( a , b , .. , c )"
+  := (Let_In v (fun x y => pair .. (pair a b) .. c))
+       (at level 0).
+Notation "'dlet' x , y := v 'in' ( a , b , .. , c )"
+  := (Let_In v (fun '(x, y) => pair .. (pair a b) .. c))
+       (at level 0). (* Error: Unsupported construction in recursive notations. 
+*)
+
+
+Comment author: @herbelin
+
+See PR [BZ#663](https://github.com/coq/coq/issues?q=is%3Aissue%20%22Original%20bug%20ID%3A%20BZ%23663%22).
+
+
+Comment author: @maximedenes
+
+Hugo's fix merged in trunk. Thanks!
+
+

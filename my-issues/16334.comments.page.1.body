@@ -1,0 +1,3 @@
+The right variable for this is `OCAMLFIND_CONF` . I'm unsure we can do better, as Coq now requires a working findlib to work.
+Can the error message at least mention `OCAMLFIND_CONF` and suggest a way of determining what it should be set to (e.g., `which ocamlfind` or `ocamlfind -where` or whatever)?
+Sure, tho I guess the most principled solution would be to document that Coq now requires a working ocamlfind setup and point out to findlib's own documentation.

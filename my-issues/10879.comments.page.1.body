@@ -1,0 +1,192 @@
+Would you mind providing a pointer to the handler? It could save us some time.
+The backtrace from -debug is
+```
+frame @ file "toplevel/vernac.ml", line 121, characters 2-60
+raise @ file "clib/exninfo.ml", line 65, characters 2-15
+frame @ file "stm/stm.ml", line 632, characters 28-63
+raise @ file "pervasives.ml", line 32, characters 17-33
+frame @ file "stm/stm.ml", line 2687, characters 4-60
+frame @ file "stm/stm.ml", line 2561, characters 4-105
+raise @ file "clib/exninfo.ml", line 65, characters 2-15
+frame @ file "stm/stm.ml", line 1006, characters 6-10
+frame @ file "stm/stm.ml", line 2420, characters 16-43
+raise @ file "clib/exninfo.ml", line 65, characters 2-15
+frame @ file "vernac/vernacentries.ml", line 2786, characters 6-284
+frame @ file "vernac/vernacentries.ml", line 2788, characters 18-43
+raise @ file "clib/exninfo.ml", line 65, characters 2-15
+frame @ file "lib/flags.ml", line 17, characters 14-17
+frame @ file "vernac/vernacentries.ml", line 2751, characters 20-60
+frame @ file "vernac/vernacentries.ml", line 2330, characters 19-23
+frame @ file "vernac/vernacentries.ml", line 567, characters 2-129
+frame @ file "vernac/comDefinition.ml", line 101, characters 10-129
+frame @ file "vernac/obligations.ml", line 648, characters 16-57
+raise @ unknown
+frame @ file "vernac/obligations.ml", line 594, characters 6-56
+frame @ file "vernac/obligations.ml", line 561, characters 4-264
+frame @ file "array.ml", line 124, characters 31-51
+frame @ file "vernac/obligations.ml", line 563, characters 14-57
+frame @ file "vernac/obligations.ml", line 538, characters 26-62
+frame @ file "vernac/declareObl.ml", line 156, characters 6-160
+frame @ file "tactics/declare.ml", line 291, characters 23-70
+frame @ file "tactics/declare.ml", line 285, characters 16-70
+frame @ file "library/global.ml", line 72, characters 16-31
+frame @ file "kernel/term_typing.ml", line 307, characters 4-40
+frame @ file "kernel/term_typing.ml", line 206, characters 19-61
+frame @ file "kernel/typeops.ml", line 695, characters 11-59
+raise @ file "kernel/type_errors.ml", line 125, characters 2-47
+```
+the final `raise` is
+https://github.com/coq/coq/blob/59079a232d2157c0c4bea4cb1a3cd68c9410e880/kernel/type_errors.ml#L125
+and the frame before that points at
+https://github.com/coq/coq/blob/59079a232d2157c0c4bea4cb1a3cd68c9410e880/kernel/typeops.ml#L695
+
+I don't actually know where in this code-path the missing side effects are (to my untrained eye it seems to be threading the env fine), but if I write the same code interactively (using `Next Obligation. ... Defined.`, or `Definition foo : False. Proof. ... Defined.`), then I get a genuine type error, and in the latter case (not using `Program`), it will even mention the constant created by `abstract`.  I get the same issue in my own plugin from calling `Declare.declare_constant`, which is why I'm pinning the blame on the error handler for `Declare.declare_constant`.
+
+Thanks, but I was asking about the error handler, the piece of code that tries to print `TypeError (env, ActualType (j,expty)` without using the right `env`. This seemed to be your diagnosis...
+Note that this issue also shows up with typeclasses, and not just with `Program`:
+```coq
+(* -*- coq-prog-args: ("-debug") -*- *)
+Class Foo := foo : False.
+
+Hint Extern 1 Foo => let v := fresh in
+  simple refine (let v : True := _ in
+                 (_ : id _));
+    [ abstract exact I
+    | let v' := (eval cbv delta [v] in v) in
+      exact_no_check v' ] : typeclass_instances.
+
+Instance bar : Foo := _.
+(* Error: Anomaly "Uncaught exception Not_found."
+Please report at http://coq.inria.fr/bugs/.
+frame @ file "toplevel/vernac.ml", line 121, characters 2-60
+raise @ file "clib/exninfo.ml", line 65, characters 2-15
+frame @ file "stm/stm.ml", line 632, characters 28-63
+raise @ file "pervasives.ml", line 32, characters 17-33
+frame @ file "stm/stm.ml", line 2687, characters 4-60
+frame @ file "stm/stm.ml", line 2561, characters 4-105
+raise @ file "clib/exninfo.ml", line 65, characters 2-15
+frame @ file "stm/stm.ml", line 1006, characters 6-10
+frame @ file "stm/stm.ml", line 2420, characters 16-43
+raise @ file "clib/exninfo.ml", line 65, characters 2-15
+frame @ file "vernac/vernacentries.ml", line 2786, characters 6-284
+frame @ file "vernac/vernacentries.ml", line 2788, characters 18-43
+raise @ file "clib/exninfo.ml", line 65, characters 2-15
+frame @ file "lib/flags.ml", line 17, characters 14-17
+frame @ file "vernac/vernacentries.ml", line 2751, characters 20-60
+frame @ file "vernac/vernacentries.ml", line 2330, characters 19-23
+frame @ file "vernac/vernacentries.ml", line 1081, characters 4-59
+frame @ file "vernac/classes.ml", line 593, characters 2-98
+frame @ file "vernac/classes.ml", line 326, characters 11-79
+frame @ file "tactics/declare.ml", line 291, characters 23-70
+frame @ file "tactics/declare.ml", line 285, characters 16-70
+frame @ file "library/global.ml", line 72, characters 16-31
+frame @ file "kernel/term_typing.ml", line 307, characters 4-40
+frame @ file "kernel/typeops.ml", line 629, characters 19-28
+frame @ file "kernel/typeops.ml", line 622, characters 18-36
+frame @ file "kernel/typeops.ml", line 540, characters 21-36
+frame @ file "kernel/typeops.ml", line 549, characters 15-40
+raise @ file "kernel/type_errors.ml", line 125, characters 2-47
+*)
+```
+@gares 
+> Thanks, but I was asking about the error handler, the piece of code that tries to print `TypeError (env, ActualType (j,expty)` without using the right `env`. This seemed to be your diagnosis...
+
+Well, I assume it must be the code in himsg.ml:
+https://github.com/coq/coq/blob/59079a232d2157c0c4bea4cb1a3cd68c9410e880/vernac/himsg.ml#L346-L360
+But, again, everything seems to be threading env properly at a glance.  So it's possible my diagnosis is a bad one, but I don't see what else fits the facts of:
+1. I get `Not_found` in all cases where I invoke `Declare.declare_constant` on a constant which results in a type error whose printing involves a constant which was only defined in a side-effect of the constant I'm declaring (e.g., via `abstract`)
+2. I get a valid error message when the type error comes from `Defined.` rather than from `Declare.declare_constant`, which in fact mentions the constant introduced by `abstract`
+
+And, unfortunately, I don't actually know Coq well enough (yet) to be able to point at bits of Coq code with more resolution than that, and I probably am not telling you anything you don't already know here.  (I was hoping that some expert in `declare_constant` might be able to immediately know where the missing env threading or whatever was.
+Interestingly, backtrace for the correctly-printed error message invokes `declare_constant` from
+https://github.com/coq/coq/blob/59079a232d2157c0c4bea4cb1a3cd68c9410e880/vernac/lemmas.ml#L422
+and the backtrace is the same after that.  Which suggests that actually the env issue occurs earlier?
+(Apologies for any confusion resulting from my probable misdiagnosis by guessing.)
+Another question: you said that the Not_found is about a missing constant in the env. Do you have proof? (because there are other things that could raise not found, eg evars not present in the empty evar map, that the error printer seems to use)
+Here is what the error message should look like:
+```coq
+(* -*- coq-prog-args: ("-debug") -*- *)
+Class Foo := foo : False.
+
+Hint Extern 1 Foo => let v := fresh in
+  simple refine (let v : True := _ in
+                 (_ : id _));
+    [ abstract exact I
+    | let v' := (eval cbv delta [v] in v) in
+      exact_no_check v' ] : typeclass_instances.
+
+Instance bar : Foo. exact _. Defined.
+(* Error:
+In environment
+H := instance_subproof : True
+The term "instance_subproof" has type "True" while it is expected to have type
+ "id False".
+frame @ file "toplevel/vernac.ml", line 121, characters 2-60
+raise @ file "clib/exninfo.ml", line 65, characters 2-15
+frame @ file "str.ml", line 259, characters 6-29
+raise @ file "map.ml", line 131, characters 10-25
+frame @ file "stm/stm.ml", line 2687, characters 4-60
+frame @ file "stm/stm.ml", line 2561, characters 4-105
+raise @ file "clib/exninfo.ml", line 65, characters 2-15
+frame @ file "stm/stm.ml", line 1006, characters 6-10
+frame @ file "stm/stm.ml", line 2532, characters 20-77
+raise @ file "clib/exninfo.ml", line 65, characters 2-15
+frame @ file "vernac/vernacentries.ml", line 2786, characters 6-284
+frame @ file "vernac/vernacentries.ml", line 2788, characters 18-43
+raise @ file "clib/exninfo.ml", line 65, characters 2-15
+frame @ file "lib/flags.ml", line 17, characters 14-17
+frame @ file "vernac/vernacentries.ml", line 2764, characters 6-51
+frame @ file "vernac/lemmas.ml", line 435, characters 6-24
+raise @ file "clib/exninfo.ml", line 65, characters 2-15
+frame @ file "vernac/lemmas.ml", line 422, characters 12-87
+frame @ file "tactics/declare.ml", line 291, characters 23-70
+frame @ file "tactics/declare.ml", line 285, characters 16-70
+frame @ file "library/global.ml", line 72, characters 16-31
+frame @ file "kernel/term_typing.ml", line 307, characters 4-40
+frame @ file "kernel/typeops.ml", line 629, characters 19-28
+frame @ file "kernel/typeops.ml", line 622, characters 18-36
+frame @ file "kernel/typeops.ml", line 540, characters 21-36
+frame @ file "kernel/typeops.ml", line 549, characters 15-40
+raise @ file "kernel/type_errors.ml", line 125, characters 2-47
+*)
+```
+If I change the instance line to `Instance bar : Foo := _.`, then I get the `Not_found`.
+OK thanks for the extra piece of info.
+@gares The plot thickens.  Apparently this `Not_found` occurs only in coqtop and not in coqc:
+```
+jgross@jgross-Leopard-WS:~/Documents/repos/fiat-crypto/src/Util/plugins$ cat foo.v
+(* -*- coq-prog-args: ("-debug") -*- *)
+Class Foo := foo : False.
+
+Hint Extern 1 Foo => let v := fresh in
+  simple refine (let v : True := _ in
+                 (_ : False));
+    [ abstract exact I
+    | let v' := (eval cbv delta [v] in v) in
+      clear;
+      exact_no_check v' ] : typeclass_instances.
+
+Instance bar : Foo := _.
+jgross@jgross-Leopard-WS:~/Documents/repos/fiat-crypto/src/Util/plugins$ coqc -q foo.v
+File "./foo.v", line 12, characters 0-24:
+Error:
+In environment
+H := instance_subproof : True
+The term "instance_subproof" has type "True"
+while it is expected to have type "False".
+
+jgross@jgross-Leopard-WS:~/Documents/repos/fiat-crypto/src/Util/plugins$ coqtop -q < foo.v
+Welcome to Coq jgross-Leopard-WS:/home/jgross/Downloads/coq/coq-master,master (59079a232d2157c0c4bea4cb1a3cd68c9410e880)
+Skipping rcfile loading.
+
+Coq < Coq <
+Coq < Coq < Coq < Coq < Coq < Coq < Coq < Coq <
+Coq < Coq < Toplevel input, characters 1-25:
+> Instance bar : Foo := _.
+> ^^^^^^^^^^^^^^^^^^^^^^^^
+Error: Anomaly "Uncaught exception Not_found."
+Please report at http://coq.inria.fr/bugs/.
+
+Coq <
+```
+The difference seems due to the different state handling for the env in coqc / coqtop, for coqtop, we get a double anomaly, one in the call, other in the error printer.

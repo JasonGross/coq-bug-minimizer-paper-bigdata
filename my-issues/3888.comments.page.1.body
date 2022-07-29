@@ -1,0 +1,368 @@
+Comment author: @JasonGross
+```coq
+
+(* File reduced by coq-bug-finder from original input, then from 1426 lines to 322 lines, then from 284 lines to 223 lines, then from 238 lines to 201 lines *)
+(* coqc version trunk (December 2014) compiled on Dec 23 2014 22:6:43 with OCaml 4.01.0
+   coqtop version cagnode15:/afs/csail.mit.edu/u/j/jgross/coq-trunk,trunk (90ed6636dea41486ddf2cc0daead83f9f0788163) *)
+Require Coq.Program.Program.
+Import Coq.Program.Program.
+Import Coq.Lists.List.
+Set Asymmetric Patterns.
+Axiom string : Set.
+
+Set Implicit Arguments.
+
+Record string_like (CharType : Type) :=
+  {
+    String :> Type;
+    Singleton : CharType -> String where "[ x ]" := (Singleton x);
+    Empty : String;
+    Concat : String -> String -> String where "x ++ y" := (Concat x y);
+    bool_eq : String -> String -> bool;
+    bool_eq_correct : forall x y : String, bool_eq x y = true <-> x = y;
+    Length : String -> nat;
+    Associativity : forall x y z, (x ++ y) ++ z = x ++ (y ++ z);
+    LeftId : forall x, Empty ++ x = x;
+    RightId : forall x, x ++ Empty = x;
+    Length_correct : forall s1 s2, Length s1 + Length s2 = Length (s1 ++ s2);
+    Length_Empty : Length Empty = 0;
+    Empty_Length : forall s1, Length s1 = 0 -> s1 = Empty
+  }.
+
+Delimit Scope string_like_scope with string_like.
+Bind Scope string_like_scope with String.
+Notation "[[ x ]]" := (@ Singleton _ _ x) : string_like_scope.
+Infix "++" := (@ Concat _ _) : string_like_scope.
+Section cfg.
+  Variable CharType : Type.
+
+  Section definitions.
+
+    Inductive item :=
+  | Terminal (_ : CharType)
+  | NonTerminal (name : string).
+
+    Definition production := list item.
+    Definition productions := list production.
+
+    Record grammar :=
+      {
+        Start_symbol :> string;
+        Lookup :> string -> productions;
+        Start_production :> productions := Lookup Start_symbol;
+        Valid_nonterminal_symbols : list string;
+        Valid_nonterminals : list productions := map Lookup Valid_nonterminal_symbols
+      }.
+  End definitions.
+
+  Section parse.
+    Variable String : string_like CharType.
+    Variable G : grammar.
+
+    Inductive parse_of : String -> productions -> Type :=
+    | ParseHead : forall str pat pats, parse_of_production str pat
+                                       -> parse_of str (pat::pats)
+    | ParseTail : forall str pat pats, parse_of str pats
+                                       -> parse_of str (pat::pats)
+    with parse_of_production : String -> production -> Type :=
+    | ParseProductionNil : parse_of_production (Empty _) nil
+    | ParseProductionCons : forall str pat strs pats,
+                              parse_of_item str pat
+                              -> parse_of_production strs pats
+                              -> parse_of_production (str ++ strs) (pat::pats)
+    with parse_of_item : String -> item -> Type :=
+    | ParseTerminal : forall x, parse_of_item [[ x ]]%string_like (Terminal x)
+    | ParseNonTerminal : forall name str, parse_of str (Lookup G name)
+                                          -> parse_of_item str (NonTerminal name).
+  End parse.
+End cfg.
+
+Local Notation "f \o g" := (fun x => f (g x)) (at level 40).
+
+Section cfg'.
+  Context CharType (String : string_like CharType) (G : grammar CharType).
+  Context (productions_listT : Type)
+          (initial_productions_data : productions_listT)
+          (is_valid_productions : productions_listT -> productions CharType -> bool)
+          (remove_productions : productions_listT -> productions CharType -> productions_listT)
+          (productions_listT_R : productions_listT -> productions_listT -> Prop)
+          (remove_productions_dec : forall ls prods, is_valid_productions ls prods = true
+                                                     -> productions_listT_R (remove_productions ls prods) ls)
+          (remove_productions_1
+           : forall ls ps,
+               is_valid_productions ls ps = false
+               -> forall ps', is_valid_productions (remove_productions ls ps) ps' = is_valid_productions ls ps')
+          (ntl_wf : well_founded productions_listT_R).
+
+  Inductive minimal_parse_of
+  : productions_listT -> String -> productions CharType -> Type :=
+  | MinParseHead : forall valid str pat pats,
+                     minimal_parse_of_production valid str pat
+                     -> minimal_parse_of valid str (pat::pats)
+  | MinParseTail : forall valid str pat pats,
+                     minimal_parse_of valid str pats
+                     -> minimal_parse_of valid str (pat::pats)
+  with minimal_parse_of_production
+       : productions_listT -> String -> production CharType -> Type :=
+  | MinParseProductionNil : forall valid,
+                              minimal_parse_of_production valid (Empty _) nil
+  | MinParseProductionConsDec : forall valid str pat strs pats,
+                                  str <> Empty _
+                                  -> strs <> Empty _
+                                  -> minimal_parse_of_item initial_productions_data str pat
+                                  -> minimal_parse_of_production initial_productions_data strs pats
+                                  -> minimal_parse_of_production valid (str ++ strs) (pat::pats)
+  | MinParseProductionConsEmpty0 : forall valid str pat strs pats,
+                                     str = Empty _
+                                     -> strs <> Empty _
+                                     -> minimal_parse_of_item initial_productions_data str pat
+                                     -> minimal_parse_of_production valid strs pats
+                                     -> minimal_parse_of_production valid (str ++ strs) (pat::pats)
+  | MinParseProductionConsEmpty1 : forall valid str pat strs pats,
+                                     str <> Empty _
+                                     -> strs = Empty _
+                                     -> minimal_parse_of_item valid str pat
+                                     -> minimal_parse_of_production initial_productions_data strs pats
+                                     -> minimal_parse_of_production valid (str ++ strs) (pat::pats)
+  | MinParseProductionConsEmpty01 : forall valid str pat strs pats,
+                                      str = Empty _
+                                      -> strs = Empty _
+                                      -> minimal_parse_of_item valid str pat
+                                      -> minimal_parse_of_production valid strs pats
+                                      -> minimal_parse_of_production valid (str ++ strs) (pat::pats)
+  with minimal_parse_of_item
+       : productions_listT -> String -> item CharType -> Type :=
+  | MinParseTerminal : forall valid x,
+                         minimal_parse_of_item valid [[ x ]]%string_like (Terminal x)
+  | MinParseNonTerminal
+    : forall valid name str,
+        is_valid_productions valid (Lookup G name) = true
+        -> minimal_parse_of (remove_productions valid (Lookup G name)) str (Lookup G name)
+        -> minimal_parse_of_item valid str (NonTerminal CharType name).
+  Let P : productions CharType -> Prop.
+    exact (fun p => is_valid_productions initial_productions_data p = true).
+  Defined.
+
+  Let valid_mapT := forall p : productions CharType,
+                      { v : option productions_listT
+                      | v = None \/ exists v', v = Some v' /\ is_valid_productions v' p = true }.
+
+  Local Notation alt_option valid str valid_map
+    := { p : _ & (is_valid_productions valid p = false /\ P p)
+                 * match valid_map p with
+                     | Some v => minimal_parse_of v str p
+                     | None => False
+                   end }%type.
+
+  Section item.
+    Context {str : String} (valid : productions_listT) {it : item CharType}.
+    Context (valid_map : valid_mapT).
+
+    Context (minimal_parse_of__of__parse_of
+             : forall {str : String} (valid : productions_listT) {pats : productions CharType}
+                      (valid_map : valid_mapT)
+                      (p : parse_of String G str pats),
+                 (minimal_parse_of valid str pats + alt_option valid str (@ proj1_sig _ _ \o valid_map))).
+
+    Definition minimal_parse_of_item__of__parse_of_item'
+               (p : parse_of_item String G str it)
+    : (minimal_parse_of_item valid str it + alt_option valid str (@ proj1_sig _ _ \o valid_map)).
+    Proof.
+      revert minimal_parse_of__of__parse_of.
+
+      admit.
+    Defined.
+  End item.
+
+  Axiom admit : forall {T}, T.
+
+  Fixpoint minimal_parse_of__of__parse_of
+          {str : String} (valid : productions_listT) {pats : productions CharType}
+          (valid_map : valid_mapT)
+          (p : parse_of String G str pats)
+          {struct p}
+  : (minimal_parse_of valid str pats + alt_option valid str (@ proj1_sig _ _ \o valid_map))
+    := admit
+  with minimal_parse_of_production__of__parse_of_production
+         {str : String} (valid : productions_listT) {pat : production CharType}
+         (valid_map : valid_mapT)
+         (p : parse_of_production String G str pat)
+         {struct p}
+       :  (minimal_parse_of_production valid str pat + alt_option valid str (@ proj1_sig _ _ \o valid_map))
+       := match
+           p as p in (parse_of_production _ _ str pat)
+           return
+           (minimal_parse_of_production valid str pat + alt_option valid str (@ proj1_sig _ _ \o valid_map))
+         with
+           | ParseProductionNil
+             => admit
+           | ParseProductionCons str0 pat' str1 pats' p0' p1'
+             => let mp0 := minimal_parse_of_item__of__parse_of_item' valid valid_map (@ minimal_parse_of__of__parse_of) p0' in
+                admit
+         end.
+
+  Program Fixpoint minimal_parse_of__of__parse_of'
+          {str : String} (valid : productions_listT) {pats : productions CharType}
+          (valid_map : valid_mapT)
+          (p : parse_of String G str pats)
+          {struct p}
+  : (minimal_parse_of valid str pats + alt_option valid str (@ proj1_sig _ _ \o valid_map))
+    := admit
+  with minimal_parse_of_production__of__parse_of_production'
+         {str : String} (valid : productions_listT) {pat : production CharType}
+         (valid_map : valid_mapT)
+         (p : parse_of_production String G str pat)
+         {struct p}
+       :  (minimal_parse_of_production valid str pat + alt_option valid str (@ proj1_sig _ _ \o valid_map))
+       := match
+           p as p in (parse_of_production _ _ str pat)
+           return
+           (minimal_parse_of_production valid str pat + alt_option valid str (@ proj1_sig _ _ \o valid_map))
+         with
+           | ParseProductionNil
+             => admit
+           | ParseProductionCons str0 pat' str1 pats' p0' p1'
+             => let mp0 := minimal_parse_of_item__of__parse_of_item' valid valid_map (@ minimal_parse_of__of__parse_of') p0' in
+                admit
+         end.
+  (* Toplevel input, characters 1122-1154:
+Error:
+In environment
+CharType : Type
+String : string_like CharType
+G : grammar CharType
+productions_listT : Type
+initial_productions_data : productions_listT
+is_valid_productions : productions_listT -> productions CharType -> bool
+remove_productions : productions_listT ->
+                     productions CharType -> productions_listT
+productions_listT_R : productions_listT -> productions_listT -> Prop
+remove_productions_dec : forall (ls : productions_listT)
+                           (prods : productions CharType),
+                         is_valid_productions ls prods = true ->
+                         productions_listT_R (remove_productions ls prods) ls
+remove_productions_1 : forall (ls : productions_listT)
+                         (ps : productions CharType),
+                       is_valid_productions ls ps = false ->
+                       forall ps' : productions CharType,
+                       is_valid_productions (remove_productions ls ps) ps' =
+                       is_valid_productions ls ps'
+ntl_wf : well_founded productions_listT_R
+P := fun p0 : productions CharType =>
+     is_valid_productions initial_productions_data p0 = true
+  : productions CharType -> Prop
+valid_mapT := forall p0 : productions CharType,
+              {v : option productions_listT |
+              v = None \/
+              (exists v' : productions_listT,
+                 v = Some v' /\ is_valid_productions v' p0 = true)} : Type
+minimal_parse_of__of__parse_of' : fix_proto
+                                    (forall (str : String)
+                                       (valid : productions_listT)
+                                       (pats : productions CharType)
+                                       (valid_map : valid_mapT),
+                                     parse_of String G str pats ->
+                                     minimal_parse_of valid str pats +
+                                     {p0 : productions CharType &
+                                     ((is_valid_productions valid p0 = false /\
+                                       P p0) *
+                                      (let filtered_var :=
+                                         ` (valid_map p0) in
+                                       let program_branch_0 :=
+                                         fun (v : productions_listT)
+                                           (_ : Some v = filtered_var) =>
+                                         minimal_parse_of v str p0 in
+                                       let program_branch_1 :=
+                                         fun _ : None = filtered_var => False
+                                         in
+                                       match
+                                         filtered_var as anonymous'
+                                         return
+                                           (anonymous' = filtered_var -> Type)
+                                       with
+                                       | Some v => program_branch_0 v
+                                       | None => program_branch_1
+                                       end eq_refl))%type})
+minimal_parse_of_production__of__parse_of_production'
+ : fix_proto
+     (forall (str : String) (valid : productions_listT)
+        (pat : production CharType) (valid_map : valid_mapT),
+      parse_of_production String G str pat ->
+      minimal_parse_of_production valid str pat +
+      {p0 : productions CharType &
+      ((is_valid_productions valid p0 = false /\ P p0) *
+       (let filtered_var := ` (valid_map p0) in
+        let program_branch_0 :=
+          fun (v : productions_listT) (_ : Some v = filtered_var) =>
+          minimal_parse_of v str p0 in
+        let program_branch_1 := fun _ : None = filtered_var => False in
+        match
+          filtered_var as anonymous'
+          return (anonymous' = filtered_var -> Type)
+        with
+        | Some v => program_branch_0 v
+        | None => program_branch_1
+        end eq_refl))%type})
+str : String
+valid : productions_listT
+pat : production CharType
+valid_map : valid_mapT
+p : parse_of_production String G str pat
+str0 : String
+pat' : item CharType
+str1 : String
+pats' : production CharType
+p0' : parse_of_item String G str0 pat'
+p1' : parse_of_production String G str1 pats'
+The term "minimal_parse_of__of__parse_of'" has type
+ "fix_proto
+    (forall (str : String) (valid : productions_listT)
+       (pats : productions CharType) (valid_map : valid_mapT),
+     parse_of String G str pats ->
+     minimal_parse_of valid str pats +
+     {p0 : productions CharType &
+     ((is_valid_productions valid p0 = false /\ P p0) *
+      (let filtered_var := ` (valid_map p0) in
+       let program_branch_0 :=
+         fun (v : productions_listT) (_ : Some v = filtered_var) =>
+         minimal_parse_of v str p0 in
+       let program_branch_1 := fun _ : None = filtered_var => False in
+       match
+         filtered_var as anonymous'
+         return (anonymous' = filtered_var -> Type)
+       with
+       | Some v => program_branch_0 v
+       | None => program_branch_1
+       end eq_refl))%type})" while it is expected to have type
+ "forall (str : String) (valid : productions_listT)
+    (pats : productions CharType) (valid_map : valid_mapT),
+  parse_of String G str pats ->
+  minimal_parse_of valid str pats +
+  {p0 : productions CharType &
+  ((is_valid_productions valid p0 = false /\ P p0) *
+   match ` (valid_map p0) with
+   | Some v => minimal_parse_of v str p0
+   | None => False
+   end)%type}"
+(cannot unify "(minimal_parse_of valid0 str2 pats +
+                {p : productions CharType &
+                (is_valid_productions valid0 p = false /\ P p) *
+                (let filtered_var := ` (valid_map0 p) in
+                 let program_branch_0 :=
+                   fun (v : productions_listT) (_ : Some v = filtered_var) =>
+                   minimal_parse_of v str2 p in
+                 let program_branch_1 := fun _ : None = filtered_var => False
+                   in
+                 match
+                   filtered_var as anonymous'
+                   return (anonymous' = filtered_var -> Type)
+                 with
+                 | Some v => program_branch_0 v
+                 | None => program_branch_1
+                 end eq_refl)})%type" and
+"(minimal_parse_of valid0 str2 pats +
+  alt_option valid0 str2 (fun x : productions CharType => ` (valid_map0 x)))%type").
+ *)
+
+
+```

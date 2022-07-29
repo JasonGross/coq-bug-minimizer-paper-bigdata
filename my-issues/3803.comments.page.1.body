@@ -1,0 +1,29 @@
+Comment author: @JasonGross
+
+This fails in 8.4, but leaves me with (just one?!) subgoal of type [?y] in trunk.  
+Goal sigT (fun x => x).
+  exists _.
+
+In 8.4, [exists _] only succeeded if the value could be inferred by typeclass resolution or (maybe?) canonical structures.
+
+
+Comment author: @ppedrot
+
+Fixed in trunk. Some other tactics display the same bug, though, so I leave this one open meanwhile.
+
+
+Comment author: @JasonGross
+
+Which other tactics display the same bug?
+
+
+Comment author: @ppedrot
+
+From a quick look at the code of Tacinterp, I would say case, elim, pose and their variants.
+
+
+Comment author: @ppedrot
+
+Should be fixed by now.
+
+

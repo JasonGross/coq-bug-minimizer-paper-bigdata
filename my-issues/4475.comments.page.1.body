@@ -1,0 +1,25 @@
+Comment author: @JasonGross
+
+I would like to specify that some constants should be reduced before their arguments, and other constants should be reduced after their arguments, if this makes sense.
+
+For example, 
+
+  cbv beta delta [foo] lazy-delta [bar] in (bar x (foo y))
+
+should first reduce [bar], then reduce [x], then reduce [y], and finally reduce [foo], if I've gotten my reduction strategies right.
+
+
+Comment author: @silene
+
+I don't understand your goal. Both "cbv" and "lazy" produce the exact same term at the end, so choosing one or the other (or mixing them) is just a matter of performances. "lazy" is the most efficient one with respect to the number of reductions, but "cbv" can be faster in practice. Indeed, by preserving the invariant that binded subterms are already reduced as much as possible, the "cbv" algorithm can avoid a bunch of tests and indirections. If you break the invariant, you get the worst of both worlds: extraneous slow reductions. As soon as a constant is marked as lazily-unfolded, you might just as well use the plain "lazy" algorithm.
+
+The only situation I can think of where mixing both strategies would speed things up would be when the "lazy" algorithm has never been run yet. In other words, start in mode "cbv", and as soon as you encounter a lazily-unfolded constant, translate the already reduced terms into their lazy representation, and switch to the "lazy" mode (and never go back to the "cbv" mode, since the terms are no longer suitable). But I don't know if such a situation occurs sufficiently often in practice that it is worth it.
+
+Am I missing something?
+
+
+Comment author: @JasonGross
+
+The goal is indeed performance, and I was wondering if something like this would help with something like bug [BZ#4474](https://github.com/coq/coq/issues?q=is%3Aissue%20%22Original%20bug%20ID%3A%20BZ%234474%22).  But if, indeed, mixing them is the worst of both worlds, then I retract my request, and feel free to mark this resolved wontfix.
+
+

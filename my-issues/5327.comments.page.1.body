@@ -1,0 +1,22 @@
+Comment author: @JasonGross
+
+I would like a variant of cbv (or flags to pass to cbv) that has the following 
+behavior:
+- should play well with beta iota delta
+- should not unfold let-binders under delta (like cbv, lazy, unlike cbn)
+- should transform applications
+    f (let x := v in g)
+into the one-step-beta-reduction of
+    (fun f => let x := v in f g) f
+(i.e., into "let x := v in f g", but without capturing any "x" that occurs in 
+"f")
+(It's okay if it transforms "f (let x := v in g)" into "(fun f => let x := v in 
+f g) f", and you also need beta to reduce that.
+
+How hard would this be to implement?  I get the impression that adding an extra 
+reduction strategy is easy (cbn was introduced in 14 lines in 
+e9428d3127ca159451437c2abbc6306e0c31f513 and 
+0eda7a25209b2ced8fb50ca0c12ed1f53e5eedae), and the tricky part is expressing 
+this in terms of the reduction stack machine?
+
+

@@ -1,0 +1,70 @@
+Comment author: @JasonGross
+
+I would like to be able to define a unit type with judgmental eta.  This is one 
+of two things I need to make the categories [1 → Cᵒᵖ] and [(1 → C)ᵒᵖ] 
+judgmentally equal.  In particular, I'd like the following to work:
+```
+
+Set Primitive Projections.
+Record unit : Set := tt {}.
+Check fun x : unit => (eq_refl : tt = x).
+Check fun x : unit => (eq_refl : x = tt).
+Check fun x y : unit => (eq_refl : x = y).
+Check eq_refl : (fun x : unit => x) = (fun x : unit => tt).
+Check fun C (homC : C -> C -> Type) (F : unit -> C)
+      => (eq_refl : (forall x y, unit -> homC (F x) (F y)) = (forall x y, unit 
+-> homC (F y) (F x))).
+(* flipping the order of the arguments to homC should not matter because [x] 
+and [y] should be judgmentally equal, being both of type [unit] *)
+
+```
+I am told this requires type-directed unification (since you need to know 
+whether or not to variables are of type [unit] to unify them), so I tag this as 
+a major redesign.
+
+
+Comment author: @JasonGross
+
+*** Bug [BZ#5398](https://github.com/coq/coq/issues?q=is%3Aissue%20%22Original%20bug%20ID%3A%20BZ%235398%22) has been marked as a duplicate of this bug. ***
+
+
+Comment author: @maximedenes
+
+I think you mean that it requires type-directed *conversion*, which is indeed a major change, that also has some drawbacks (like having to pay the cost of normalizing the types).
+
+
+Comment author: @JasonGross
+
+> I think you mean that it requires type-directed *conversion*
+
+Yes, you're right.
+
+> like having to pay the cost of normalizing the types
+
+Surely there must be a better way to do it.  For example, wouldn't it suffice to calculate the head term of the hnf of the types?  I expect this calculation to be fast in almost all cases, though I suppose it might get slow at application nodes if you need to renumber DeBruijn indices or do capture-avoiding substitution...
+
+
+Comment author: @DanGrayson
+
+Jason, is your original example essentially the same as desiring the category
+with one object and one arrow to be judgmentally equal to its opposite?
+
+(Of course, that would be very cool if it could be made to work.)
+
+
+Comment author: @JasonGross
+
+> Jason, is your original example essentially the same as desiring the category
+> with one object and one arrow to be judgmentally equal to its opposite?
+>
+> (Of course, that would be very cool if it could be made to work.)
+
+This is already true of the categories in HoTT/HoTT.  ;-)  The thing I want is somewhat more ambitious.
+
+
+Comment author: @JasonGross
+
+*** Bug [BZ#4531](https://github.com/coq/coq/issues?q=is%3Aissue%20%22Original%20bug%20ID%3A%20BZ%234531%22) has been marked as a duplicate of this bug. ***
+
+
+I don't think anything stronger than sprop will be implemented in this direction.

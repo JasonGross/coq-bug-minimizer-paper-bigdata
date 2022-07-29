@@ -1,0 +1,94 @@
+Hi @JasonGross ,
+
+Though this is not advertised (yet), there is user-level support to extend `zify`.
+You can find the default declared operators at
+https://github.com/coq/coq/blob/master/plugins/micromega/ZifyInst.v
+
+There are actually already a few other operators declared in  `ZifyBool` and `ZifyComparison` which are not loaded by default.
+
+`Nat.div` and `Nat.modulo` would make sense to include.
+I stumbled into this as well. The [documentation for `zify`](https://coq.inria.fr/refman/addendum/micromega.html#zify-pre-processing-of-arithmetic-goals) gave me the impression that `lia` could handle `Nat.div` and `Nat.modulo`. But, it doesn't seem to work for me. When I invoke `zify` manually it doesn't convert `Nat.modulo`.
+
+The above comment seems to imply that the user can extend `zify` to make it handle `Nat.div` and `Nat.modulo`. How can one do that? I tried the following which does not work:
+
+```coq
+Instance Op_Nat_mod : BinOp Nat.modulo :=
+  {| TBOp := Z.modulo ; TBOpInj := Nat2Z_inj_mod |}.
+Add Zify BinOp Op_Nat_mod.
+```
+Hi @paldepind 
+Could you tell where `Nat2Z_inj_mod` is defined and what you mean by "it does not work" ?
+The following script works:
+```coq
+Require Import Arith ZArith ZifyClasses ZifyInst Lia.
+
+Lemma Nat2Z_inj_mod : 
+    forall n m : nat, Z.of_nat (n mod m) = (Z.of_nat n mod Z.of_nat m)%Z.
+Proof.
+  intros.
+  destruct m.
+  - simpl. symmetry. apply Zmod_0_r.
+  - apply mod_Zmod.
+    discriminate.
+Qed.
+
+Ltac Zify.zify_post_hook ::= Z.to_euclidean_division_equations.
+
+Goal forall (n:nat),
+    2 * n mod 2 = 0.
+Proof.
+  intros.
+  Fail lia.
+Abort.
+
+Program Instance Op_Nat_mod : BinOp Nat.modulo :=
+  {| TBOp := Z.modulo ; TBOpInj := Nat2Z_inj_mod |}.
+Add Zify BinOp Op_Nat_mod.
+
+Goal forall (n:nat),
+    2 * n mod 2 = 0.
+Proof.
+  intros.
+  lia.
+Qed.
+```
+Best.
+>  Could you tell where `Nat2Z_inj_mod` is defined and what you mean by "it does not work" ?
+
+@paldepind probably tried this script in a released version of Coq, in which case the `Add Zify Binop...` line should be `Add Binop...`
+
+Cf. https://coq.github.io/doc/master/refman/addendum/micromega.html#coq:cmd.add-zify
+Thanks a lot. What @fajb suggests does indeed work when I make the change that @Zimmi48 mentioned.
+
+I think having support for `Nat.modulo` and `Nat.div` by default would be really nice. I could maybe try and do a PR if there is interest? Any hints for how to do that would be appreciated. I guess I would just have to add [in `ZifyInst`](https://github.com/coq/coq/blob/master/theories/micromega/ZifyInst.v) something similar to what is already there for `N.modulo` and `N.div`?
+Sure, a PR would be welcolme. 
+All the declarations are indeed currently centralised in `ZifyInst`.
+Let's continue!
+I've run into some problems while trying to implement this.
+
+I wanted to add the following two lemmas to `Nat2Z` in `Znat.v` (since that is where all the other `Z.of_nat` injectivity results are):
+
+```coq
+Lemma  inj_mod (n m : nat) : Z.of_nat (n mod m) = (Z.of_nat n mod Z.of_nat m)%Z.
+Proof. destruct m. - now rewrite Zmod_0_r. - now apply mod_Zmod. Qed.
+
+Lemma  inj_div n m : Z.of_nat (n / m) = Z.of_nat n / Z.of_nat m.
+Proof. destruct m. - now rewrite Zdiv_0_r. - now apply div_Zdiv. Qed.
+```
+
+However, since these proofs use lemmas from `Zdiv` this causes a dependency cycle since `Zdiv` imports `ZArith_base` which imports `Znat`. Even if the lemmas are moved directly into `ZifyInst.v` a dependency cycle still occurs. On the other hand, proving the lemmas without using the stuff from `Zdiv` would be tedious and duplicate a bunch of stuff. What would be the best solution to this?
+
+Another thing, I think the lemmas `mod_Zmod` and `div_Zdiv` are problematic in themselves. Their assumption `m <> O` is not necessary, but seeing those lemmas may give users the impression that the result only holds with that assumption?
+I am not familiar with the structure of the library. As I have already run into dependency troubles, I sympathize...
+What is the problem with `ZifyInst` ? I could build it without running into a cycle...
+Is there a problem putting them with  `mod_Zmod` and `div_Zdiv` ? It seems that should not increase dependencies.
+
+Regarding the unneeded assumption, I do not know what is the current policy. I am aware there have been discussions about division by zero. I cannot remember the consensus.
+
+
+
+> Sure, a PR would be welcolme.
+> All the declarations are indeed currently centralised in `ZifyInst`.
+> Let's continue!
+
+@fajb See https://github.com/coq/coq/pull/14037

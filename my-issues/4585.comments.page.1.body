@@ -1,0 +1,10 @@
+Comment author: @JasonGross
+
+I was relying on this invariant in my bug-minimizer, and now it fails, because [From Foo Require Foo.A.] fails when [From Foo Require A.] is the right thing to do.  This is annoying, though I'm not sure if there's a good way to fix this.
+
+
+Comment author: @silene
+
+I don't think it is possible to fix the issue so that everyone is satisfied. Indeed, we want to preserve the fact that "Rn:m X <> <> lib" contains the fully qualified path for X, so that coqdoc and similar tools can create proper links to required libraries. The best approach for your minimizer might be to strip away the From part from any Require directive.
+
+

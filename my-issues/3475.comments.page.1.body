@@ -1,0 +1,20 @@
+Comment author: @JasonGross
+
+I would like the following to work:
+
+Tactic Notation "elet" ident(x) ":=" constr(c) "in" tactic(cont) := let x := c in cont.
+Goal True.
+  let x := lazymatch goal with
+             | [ |- True ] => constr:(1)
+             | [ |- False ] => fail "Found False"
+           end in
+  elet x' := x in pose x'; pose x'. (* In nested Ltac calls to "elet'''''", "cont" (bound to 
+pose x'; pose x') and "pose x'", last call failed.
+Error: The reference x' was not found in the current environment. *)
+
+
+Comment author: @aspiwack
+
+This will not happen any time soon. If ever. Sorry. However, you may be able to do something using an ocaml plugin. See Coq's tactics/extratactics.ml4 for examples on adding tactics to Coq.
+
+

@@ -1,0 +1,18 @@
+Comment author: @JasonGross
+
+Consider
+```
+Class bar := {}.
+Axiom foo : forall (a b c d e f : nat) (_ : bar) (g h : nat), Type.
+Arguments foo {_ _ _ _ _ _ _ _ _}.
+```
+Which `_` is it talking about?  It should at the very least come with 
+positional information (character locations)
+
+
+Comment author: @maximedenes
+
+Agreed, but to me this looks like a deficiency of the implicit arguments API. I don't see why the reason for rejecting this in the first place. I'll make a CEP that should solve it.
+
+
+#11098 could help on this.

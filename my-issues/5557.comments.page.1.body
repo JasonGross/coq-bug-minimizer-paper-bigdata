@@ -1,0 +1,11 @@
+Comment author: @JasonGross
+
+I think the checker should accept -indices-matter, and the behavior of 
+-indices-matter should be that it enforces -indices-matter on all inductive 
+types in the passed files.
+
+
+Seems to have been fixed by #8986.
+@ppedrot Did you check if coqchk actually does anything with it however?
+AFAIK coqchk works with indices matter no problems but just to be sure.
+It sets the flag in Safe_typing, so yes this should work properly.

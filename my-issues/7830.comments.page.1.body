@@ -1,0 +1,74 @@
+Problem stems from the optimization function `Mlutil.simpl`, that reallocates huge subterms in your case. I'll check whether trying to preserve sharing helps in any way.
+As a workaround, your examples go through with `Unset Extraction Optimize`.
+Even more precisely, unsetting the flag corresponding to `opt_case_iot` (4) is enough.
+Thanks, `Unset Extraction Optimize` works for my case!  What's the optimization function trying to do?
+The problem comes from applying the following rule, rewriting:
+```
+match
+  match n with
+  | X => A
+  | Y => B
+  end
+with
+| A => t
+| B => u
+end
+```
+into
+```
+match n with
+| X => t
+| Y => u
+end
+```
+I suspect that in some cases it generates intermediate exponentially bigger terms, but I didn't manage to reproduce it on a simple example.
+
+Ah, that would do it.  I deliberately chose the first representation because the second representation was too slow in reduction.  Does it reproduce if you have:
+```coq
+Fixpoint u (k : nat) (n : T) :=
+ match
+  match n with
+  | X => true
+  | _ => false
+  end
+with
+| true => 0
+| false => match k with 0 => 0 | S k => u k n end
+end.
+Definition careful := Compute fun n => u 200 n.
+```
+with `T` an inductive type with a hundred constructors, and look at extracting `careful`?
+Also, I find it amusing that the code the extractor is having trouble with is code that I got out of reducing a pattern matching compilation routine I implemented.
+Here is an example were `Extraction` blows up 
+
+```coq
+Require Import Coq.extraction.Extraction.
+Require Import Coq.extraction.ExtrOcamlBasic.
+Extraction Language OCaml.
+
+Inductive T : Set :=
+| X
+| X0| X1| X2| X3| X4| X5| X6| X7| X8| X9| X10| X11| X12| X13| X14| X15| X16| X17| X18| X19
+| X20| X21| X22| X23| X24| X25| X26| X27| X28| X29| X30| X31| X32| X33| X34| X35| X36| X37| X38| X39
+| X40| X41| X42| X43| X44| X45| X46| X47| X48| X49| X50| X51| X52| X53| X54| X55| X56| X57| X58| X59
+| X60| X61| X62| X63| X64| X65| X66| X67| X68| X69| X70| X71| X72| X73| X74| X75| X76| X77| X78| X79
+| X80| X81| X82| X83| X84| X85| X86| X87| X88| X89| X90| X91| X92| X93| X94| X95| X96| X97| X98| X99.
+Fixpoint u (k : nat) (n : T) :=
+  match
+    match n with
+    | X => (true, X)
+    | n' => (false, n')
+    end
+  with
+  | (true, _) => 0
+  | (false, _) => match k with 0 => 0 | S k => u k n end
+  end.
+Definition careful := Eval cbv in fun n => u 200 n.
+Unset Extraction Optimize.
+Time Redirect "/tmp/foo" Recursive Extraction careful.
+(* Finished transaction in 0.481 secs (0.476u,0.004s) (successful) *)
+Set Extraction Optimize.
+Redirect "/tmp/foo" Recursive Extraction careful.
+(* blows up *)
+```
+In this particular example, `Set Extraction Flag 1007` (enabling the `opt_lin_let` option) is also a possible workaround, but it does not help us to solve this issue in general.

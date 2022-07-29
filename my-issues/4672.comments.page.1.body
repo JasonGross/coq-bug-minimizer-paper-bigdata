@@ -1,0 +1,160 @@
+Comment author: @JasonGross
+
+Here is code that works in Coq 8.4pl6 but fails in Coq 8.5.
+
+(* -*- mode: coq; coq-prog-args: ("-emacs" "-R" "." "Fiat" "-top" "bug_bro_no_setoid_03") -*- *)
+(* File reduced by coq-bug-finder from original input, then from 2227 lines to 80 lines, then from 201 lines to 85 lines, then from 680 lines to 156 lines, then from 407 lines to 203 lines, then from 356 lines to 247 lines, then from 370 lines to 273 lines, then from 450 lines to 331 lines, then from 506 lines to 333 lines, then from 536 lines to 332 lines, then from 843 lines to 338 lines, then from 639 lines to 376 lines, then from 1087 lines to 390 lines, then from 2227 lines to 392 lines, then from 453 lines to 393 lines, then from 416 lines to 393 lines, then from 511 lines to 418 lines, then from 571 lines to 450 lines, then from 630 lines to 513 lines, then from 527 lines to 514 lines, then from 449 lines to 199 lines, then from 213 lines to 199 lines, then from 190 lines to 120 lines, then from 134 lines to 120 lines *)
+(* coqc version 8.5 (February 2016) compiled on Feb 21 2016 15:26:16 with OCaml 4.02.3
+   coqtop version 8.5 (February 2016) *)
+Axiom proof_admitted : False.
+Tactic Notation "admit" := case proof_admitted.
+Require Coq.Lists.SetoidList.
+Require Coq.Strings.String.
+Import Coq.Strings.String.
+Section item.
+  Context {Char : Type}.
+  Inductive item :=
+  | Terminal (_ : Char -> bool)
+  | NonTerminal (_ : string).
+End item.
+Arguments item _ : clear implicits.
+Class parser_computational_predataT :=  { nonterminals_listT : Type }.
+Class split_dataT `{parser_computational_predataT} := {  }.
+Import Coq.Lists.SetoidList.
+Global Set Implicit Arguments.
+Hint Extern 0 => solve [apply reflexivity] : typeclass_instances.
+Axiom list_caset
+  : forall A (P : list A -> Type) (N : P nil) (C : forall x xs, P (x::xs)) ls,
+    P ls.
+Global Instance list_caset_Proper {A P}
+  : Proper (eq
+              ==> pointwise_relation _ (pointwise_relation _ eq)
+              ==> pointwise_relation _ eq)
+           (@ list_caset A (fun _ => P)).
+Admitted.
+Inductive RCharExpr (Char : Type) := .
+Inductive ritem Char :=
+| RTerminal (_ : RCharExpr Char)
+| RNonTerminal (_ : String.string).
+Axiom interp_RCharExpr : forall {Char} (expr : RCharExpr Char), Char -> bool.
+Axiom interp_ritem : forall {Char} (expr : ritem Char), item Char.
+Definition rdp_list_nonterminals_listT : Type.
+  exact (list nat).
+Defined.
+Global Instance rdp_list_predata : @ parser_computational_predataT
+  := { nonterminals_listT := rdp_list_nonterminals_listT }.
+Lemma item_rect_ritem_rect {C A T NT} it
+  : item_rect (fun _ : item C => A) T NT (interp_ritem it)
+    = ritem_rect (fun _ => A) (fun f => T (interp_RCharExpr f)) NT it.
+  admit.
+Defined.
+Goal forall (Char : Type),
+    let predata := @ rdp_list_predata in
+    forall (splitdata : @ split_dataT   predata) (a11 : ritem Char)
+           (xs : list (ritem Char)) (P : bool -> Prop) (b : bool -> bool -> bool)
+           (b1 : (Char -> bool) -> list bool) (b2 : string -> list bool)
+           (l1 : (Char -> bool) -> list bool)
+           (l3 : @ split_dataT
+                   {|
+                     nonterminals_listT := list nat |} ->
+                 list bool) (b7 : bool),
+      P
+        (@ fold_left bool bool b
+                    (@ list_caset (ritem Char) (fun _ : list (ritem Char) => list bool)
+                                 (@ item_rect Char (fun _ : item Char => list bool) b1 b2 (@ interp_ritem Char a11))
+                                 (fun (_ : ritem Char) (_ : list (ritem Char)) =>
+                                    @ item_rect Char (fun _ : item Char => list bool) l1 (fun _ : string => l3 splitdata)
+                                               (@ interp_ritem Char a11)) xs) b7).
+  intros.
+  progress repeat setoid_rewrite item_rect_ritem_rect; cbv beta.
+  Set Printing Implicit.
+  let G := match goal with |- ?G => G end in
+  match goal with
+  | [ |- appcontext[@ item_rect] ]
+    => fail 1 "Goal still has item_rect:" G
+  | _ => repeat match goal with H : _ |- _ => revert H end;
+           let G := match goal with |- ?G => G end in
+           idtac "Goal is correct:" G
+  end.
+
+(* Error: Tactic failure: Goal still has item_rect:
+(P
+   (@ fold_left bool bool b
+      (@ list_caset (ritem Char) (fun _ : list (ritem Char) => list bool)
+         (@ ritem_rect Char (fun _ : ritem Char => list bool)
+            (fun f : RCharExpr Char => b1 (@ interp_RCharExpr Char f)) b2 a11)
+         (fun (_ : ritem Char) (_ : list (ritem Char)) =>
+          @ item_rect Char (fun _ : item Char => list bool) l1 (fun _ : string => l3 splitdata)
+            (@ interp_ritem Char a11)) xs) b7)).
+ *)
+
+
+Comment author: @JasonGross
+
+Created attachment 699
+buggy file, and typeclass resolution log
+
+Here's a smaller example, where something fishy is going on: [rewrite] works in both 8.4 and 8.5, but [setoid_rewrite] fails only in 8.5.  Removing the external [apply reflexivity] hint makes it fail in 8.4.
+
+
+(* -*- mode: coq; coq-prog-args: ("-emacs" "-R" "." "Fiat" "-top" "bug_bro_no_setoid_03" "-R" "." "Top") -*- *)
+(* File reduced by coq-bug-finder from original input, then from 2227 lines to 80 lines, then from 201 lines to 85 lines, then from 680 lines to 156 lines, then from 407 lines to 203 lines, then from 356 lines to 247 lines, then from 370 lines to 273 lines, then from 450 lines to 331 lines, then from 506 lines to 333 lines, then from 536 lines to 332 lines, then from 843 lines to 338 lines, then from 639 lines to 376 lines, then from 1087 lines to 390 lines, then from 2227 lines to 392 lines, then from 453 lines to 393 lines, then from 416 lines to 393 lines, then from 511 lines to 418 lines, then from 571 lines to 450 lines, then from 630 lines to 513 lines, then from 527 lines to 514 lines, then from 449 lines to 199 lines, then from 213 lines to 199 lines, then from 190 lines to 120 lines, then from 134 lines to 120 lines, then from 70 lines to 50 lines, then from 64 lines to 50 lines, then from 52 lines to 30 lines, then from 44 lines to 31 lines *)
+(* coqc version 8.5 (February 2016) compiled on Feb 21 2016 15:26:16 with OCaml 4.02.3
+   coqtop version 8.5 (February 2016) *)
+Require Import Coq.Strings.String.
+Require Import Coq.Setoids.Setoid.
+Require Import Coq.Classes.Morphisms.
+Hint Extern 0 => solve [apply RelationClasses.reflexivity] : typeclass_instances.
+Axiom list_caset : forall {A} (P : list A -> Type) (N : P nil) (C : forall x xs, P (cons x xs)) ls, P ls.
+Global Instance list_caset_Proper {A P}
+  : Proper (eq
+              ==> pointwise_relation _ (pointwise_relation _ eq)
+              ==> pointwise_relation _ eq)
+           (@ list_caset A (fun _ => P)).
+Admitted.
+Inductive item : Type := .
+Inductive ritem : Type := .
+Axiom interp_ritem : forall (expr : ritem), item.
+Axiom item_rect_ritem_rect : forall {A} it, item_rect (fun _ : item => A) (interp_ritem it) = ritem_rect (fun _ => A) it.
+Goal forall (a11 : ritem) (xs : list ritem)
+            (l3 : string -> list bool)
+            (l : list bool) (k : list bool -> Prop),
+    k (@ list_caset (ritem) (fun _ : list (ritem) => list bool) l
+                   (fun (_ : ritem) (_ : list ritem) =>
+                      @ item_rect (fun _ : item => list bool) (@ interp_ritem a11)) xs).
+  intros.
+  Set Typeclasses Debug.
+  setoid_rewrite item_rect_ritem_rect.
+
+
+This file, along with the typeclass log, is attached.
+
+> Attached file: [bug_bro_no_setoid_08.v](https://coq.inria.fr/bugfiles/attachment.cgi?id=699) (text/plain, 85000 bytes)
+> Description:   buggy file, and typeclass resolution log
+
+
+Comment author: @mattam82
+
+The quick fix is to add:
+
+Instance subrelation_pointwise A B (R : relation B) :
+  subrelation (pointwise_relation A R) (eq ==> R)%signature.
+Proof. reduce. subst; firstorder. Qed.
+
+Or redefine list_caset_Proper to use respectful (==>) instead of forall_relation
+where applicable (as you know that you're in a non-dependent case). The reason
+is that rewrite is able to profit from the fact that this is non-dependent and 
+now
+infers a (==>) constraint instead of the previous (forall_relation _ _) 
+constraint 
+(just look at the first constraints in the proof search). forall_relation is 
+itself 
+convertible to pointwise_relation in the non-dependent case.
+
+I'm trying out the stdlib with this instance added. But more likely I'll use 
+the compat
+flag to disable the reduction that makes this possible for compatibility with 
+8.4.
+
+
+This is a bug affecting an already old version, and it is unlikely both that we fix it and that it would help you. Therefore I'll close it as WONTFIX.

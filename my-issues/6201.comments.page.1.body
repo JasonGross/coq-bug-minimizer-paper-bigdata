@@ -1,0 +1,44 @@
+We are close to the point we could try to implement something like that, even if I would like to get the STM error handling in order.
+
+I guess we could imitate the warning and define a type of error message and register it with the proper code. The error should then take all the possibly needed arguments.
+
+I am a fan of declaring errors as an inductive, but that seems not so popular in Coq.
+> I am a fan of declaring errors as an inductive, but that seems not so popular
+in Coq.
+
+What does "declaring errors as an inductive" mean?
+> What does "declaring errors as an inductive" mean?
+
+I mean having all errors go throu a type:
+```
+type toplevel_error =
+| Missing_Lib of ...
+|
+```
+plus the corresponding "explain" function. This is done in some parts, but we could maybe go further.
+@ejgallego I agree for well-delimited components, but beware that this makes a fundamentally closed-world assumption (universal properties of inductive types, blah blah). So you can't really have one type describing all errors for Coq. That said, note that it's almost already the case component-wise, we have the pretype errors, typing errors, etc.
+Yes you can, just add a catch-all constructor that would play the role of UserError today.
+
+[You can also do fancier stuff with extensible types, but that's not the point.]
+> Yes you can, just add a catch-all constructor that would play the role of UserError today.
+
+But then I don't understand the advantage of this approach. We also want people raising `UserError` to have various levels of explanations, don't we?
+Today you cannot raise other than `UserError of Pp.t`, so it is hard to:
+- give printing explanations.
+- be lazier on printing.
+- provide an error index for the manual that can be automatically processed.
+
+what I propose enrich the things that can be raised, with a catch-all constructor for today's use.
+
+I don't know how to implement several levels of explanations when catching an `UserError`.
+> Today you cannot raise other than UserError of Pp.t
+
+Not quite. I routinely register toplevel error handlers in `CErrors` in order to perform lazy printing.
+> Not quite. I routinely register toplevel error handlers in CErrors in order to perform lazy printing.
+
+Well, the introduction of that mechanism was not followed with the migration of the normal error printing to it, in fact I think we are closer of removing printer registration than from going in the direction of migrating everything.
+
+There is more discussion about the status of `iprint` in #5524 #5360 , in particular see https://github.com/coq/coq/issues/5524#issuecomment-337553842
+You can also have a generic handling of several levels of details, e.g. with a list of thunks...
+
+BTW I'm very happy with the general will to support better error messages (and the many reports and PRs already in [`kind: user messages`](https://github.com/coq/coq/issues?utf8=%E2%9C%93&q=label%3A%22kind%3A%20user%20messages%22%20)). When it comes to inspiration on how to make better error messages, I often turn to Elm: http://elm-lang.org/blog/compilers-as-assistants

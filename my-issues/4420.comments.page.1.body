@@ -1,0 +1,45 @@
+Comment author: @JasonGross
+
+Section foo.
+  Context (Char : Type).
+  Axiom foo : Type -> Type.
+  Goal foo Char = foo Char.
+    change foo with (fun x => foo x).
+    cbv beta.
+    reflexivity.
+  Defined. (* Toplevel input, characters 0-8:
+Error: Illegal application:
+The term "fun x : Type => foo x" of type "Type -> Type"
+cannot be applied to the term
+ "Char" : "Type"
+This term has type "Type@ {Top.1}" which should be coercible to
+ "Type@ {Top.9}". *)
+
+
+Comment author: @silene
+
+Here is a version that runs in the empty context:
+
+Inductive foo (A : Type) : Prop := I. (*Top.1*)
+Lemma bar : foo Type. (*Top.3*)
+Proof.
+change foo with (fun x : Type => foo x). (*Top.4*)
+cbv beta.
+apply I. (* I Type@ {Top.3} : (fun x : Type@ {Top.4} => foo x) Type@ {Top.3} *)
+Defined.
+
+As far as I can tell, when doing "change", Coq forgets to add the constraint "Top.3 < Top.4", so the kernel rightfully complains at "Defined" time.
+
+I have not been able to check whether 8.4 was adding this constraint or not, so I cannot tell whether it is a regression of "change" or an improvement of the kernel (that is, preventing unsoundness).
+
+
+Comment author: @mattam82
+
+It is indeed a regression, change was doing the right checks but forgetting about the additional constraints needed to typecheck the new goal. In the last example, this means equating Top.1 and Top.4 so that the types of foo and (fun x : Type@ {Top.4} => foo x) become convertible.
+
+
+Comment author: @mattam82
+
+*** Bug [BZ#4497](https://github.com/coq/coq/issues?q=is%3Aissue%20%22Original%20bug%20ID%3A%20BZ%234497%22) has been marked as a duplicate of this bug. ***
+
+

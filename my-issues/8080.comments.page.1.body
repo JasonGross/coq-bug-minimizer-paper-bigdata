@@ -1,0 +1,38 @@
+git bisect says
+> 2c7fb44684b26d9c9aea0794b9f0d52088337477 is the first bad commit
+> commit 2c7fb44684b26d9c9aea0794b9f0d52088337477
+> Author: Hugo Herbelin <Hugo.Herbelin@inria.fr>
+> Date:   Sat Mar 17 15:23:55 2018 +0100
+>
+>    Fixes #7011 (Fix/CoFix were not considered in tactic unification).
+> 
+>     :040000 040000 6d71983a951aad030eeb03643de2306dc9b053c5 72cfbeaa123f8ac5ce3eaa2054c305ac21c1984b M      pretyping
+>     :040000 040000 8cc5c05f6b609200c859409f84e81f7de4a91cd4 f5fa5d9f179b2a6adbf58fd8816a67e941561c5e M      test-suite
+
+cc @herbelin 
+This seems bad. The behavior of `setoid_rewrite` should not depend on whether `flat_map` is defined recursively or not.
+
+@herbelin Is there something we can do for 8.9? Should I revert the patch on the branch?
+> @herbelin Is there something we can do for 8.9? Should I revert the patch on the branch?
+
+Having `fix` and `cofix` in `unification.ml` like we have all other constructions seems natural but at the same time `unification.ml` is probably going to be progressively deprecated. In any case, no time to investigate why this breaks `setoid_rewrite`, so reverting is ok if you prefer (and thus renouncing also to #7011).
+I am a bit torn on this one. The fact that #7013 caused no issue in the tracked external developments seems to mean that it is not as bad as it seems. So, I might keep the commit around, just so that #7011 stays closed.
+
+Naive suggestion from someone who does not understand the code: What would happen if we were to replace `reduce curenvnb pb opt substn cM cN` by `unify_not_same_head curenvnb pb opt substn cM cN`? Would we get the best of both worlds? (Disclaimer: I am well aware that the suffix `not_same_head` make it look like a very dumb proposal, in the long run.)
+>Failed to progress.
+
+Does that mean the issue is not that it fails to find a subterm but rather that it recognizes that flat_map_singleton is a reflexive identity?
+With `F := (fun t => flat_map (fun x => x::nil) t)`, it's discovering that `map F ls` is convertible to `flat_map (fun x => cons (F x) nil) ls` and then rewriting that to get back to the start.
+Other than putting `Hint Constants Opaque : rewrite` I don't see what can be done about this.
+Let's see what the compat impact would be https://github.com/coq/coq/pull/15588
+@gares Do you have an idea of what the "ssreflect rewrite" way would be, to find a trade-off here?
+It does not rewrite under binders, so it would be something like `under map_eq do rewrite flat_map_singleton`. That should work (also we don't call unification, rather evarconv).
+
+I'm no so sure this helps.
+We may also consider why it works when we do 
+~~~coq
+Lemma foo (ls : list (list nat)) (t:list nat) : map id ls = ls /\ flat_map (fun x => x::nil) t = t.
+  setoid_rewrite flat_map_singleton.
+~~~
+in other words why in `choice` https://github.com/coq/coq/blob/b67243eb4ba711e7a7790416fb08fda99c5c0b80/plugins/ltac/rewrite.ml#L1341-L1347 `Identity` is considered a success?
+Or alternatively should `rewrite_with` https://github.com/coq/coq/blob/b67243eb4ba711e7a7790416fb08fda99c5c0b80/plugins/ltac/rewrite.ml#L1453 use `progress app` instead of `app`?

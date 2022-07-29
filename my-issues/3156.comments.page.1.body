@@ -1,0 +1,21 @@
+Comment author: @JasonGross
+
+If I run coqtop -stdlib ./coq, and ./coq/dev is a symlink (either a cygwin-style symlink or a MS Windows style symlink (which ends in .lnk), then I get the warning
+  Warning: Cannot open ./coq\dev
+If ./coq/plugins is a symlink, then coqdep -stdlib ./coq gives
+  D:\Documents\GitHub\coq-HoTT\bin\coqdep.exe: "opendir" failed: The directory name is invalid.
+
+This is a pain for projects like HoTT which replace the standard library, but only some of it, and so need to copy over the rest of it to get things working.
+
+I haven't checked whether or not the programs can handle symlinks in other places.
+
+
+Comment author: @silene
+
+Coq works fine with symlinks, as long as they are handled by the operating system. Unfortunately, .lnk files are called "shortcuts" for a reason: they are not symlinks. In fact, the operating system (kernel32) is completely unaware of their existence; they are just a hack inside the shell (shell32).
+
+Windows actually supports proper symlinks, but you have to use the "mklink" command to create them. And Cygwin supports them too, if you set the CYGWIN environment variable to "winsymlinks:nativestrict". (Note that this is not the default behavior for Cygwin!)
+
+Please reopen this bug if Coq fails to follow native symlinks.
+
+

@@ -1,0 +1,41 @@
+Comment author: @JasonGross
+
+Set Primitive Projections.
+Set Implicit Arguments.
+Record prod (A B : Type) := pair { fst : A ; snd : B }.
+Check fun A B C (a : prod A (prod B C)) => (eq_refl : pair (fst a) (snd a) = a) : pair (fst a) (pair (fst (snd a)) (snd (snd a))) = a\
+.
+(* Toplevel input, characters 44-78:
+Error:
+In environment
+A : Type
+B : Type
+C : Type
+a : prod A (prod B C)
+The term "eq_refl:{| fst := fst a; snd := snd a |} = a" has type
+ "{| fst := fst a; snd := snd a |} = a" while it is expected to have type
+ "{| fst := fst a; snd := {| fst := fst (snd a); snd := snd (snd a) |} |} = a". *)
+Check fun A B C (a : prod A (prod B C)) => eq_refl : pair (fst a) (pair (fst (snd a)) (snd (snd a))) = a.
+(* Toplevel input, characters 58-65:
+Error:
+In environment
+A : Type
+B : Type
+C : Type
+a : prod A (prod B C)
+The term "eq_refl" has type
+ "{| fst := fst a; snd := {| fst := fst (snd a); snd := snd (snd a) |} |} =
+  {| fst := fst a; snd := {| fst := fst (snd a); snd := snd (snd a) |} |}"
+while it is expected to have type
+ "{| fst := fst a; snd := {| fst := fst (snd a); snd := snd (snd a) |} |} = a"
+(cannot unify "{|
+               fst := fst a;
+               snd := {| fst := fst (snd a); snd := snd (snd a) |} |}" and
+"a"). *)
+
+
+Comment author: @mattam82
+
+Fixed in trunk, there was an error in the eta-expansion code, which would fail when it shouldn't.
+
+

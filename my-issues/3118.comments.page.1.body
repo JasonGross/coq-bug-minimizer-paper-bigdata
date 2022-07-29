@@ -1,0 +1,30 @@
+Comment author: @JasonGross
+
+Tactic Notation " " := idtac.
+
+It's silly, but it shouldn't produce an anomaly.
+
+
+Comment author: @pirbo
+
+Is the problem just that Anomaly means that the system has a problem ?
+
+You want to say here that the user has made a mistake, is that your point ?
+
+is
+
+Error: empty token
+
+better ?
+
+
+Comment author: @JasonGross
+
+Yes.
+
+
+Comment author: @pirbo
+
+r17047 in trunk and r17048 in v8.4
+
+

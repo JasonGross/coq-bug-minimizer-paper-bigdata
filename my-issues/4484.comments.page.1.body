@@ -1,0 +1,53 @@
+Comment author: @JasonGross
+
+Here is code that worked in 8.4pl6, but fails (with "abstract cannot handle existentials") in 8.5rc1:
+
+Class A := { a : False }.
+Class B (ac : A) := { b : False }.
+Axiom foo : forall {ac : A} {bc : B ac}, nat -> nat.
+Goal False -> forall (ac : A) (bc : B ac), True.
+Proof.
+  intros bad ac bc.
+  refine (match foo 0 as k return foo 0 = k -> True with
+          | 0 => fun _ => I
+          | S _ => fun H'' => match _ : False with end
+          end eq_refl).
+  abstract exact bad.
+Qed.
+
+
+Comment author: @silene
+
+It is not just "refine"; it is a more general issue:
+
+Class A := {}.
+Axiom foo : forall {ac : A}, bool.
+Lemma bar (ac : A) : True.
+Check (match foo as k return foo = k -> True with
+       | true => _
+       | false => _
+       end eq_refl).
+
+(* (if @ foo ?ac0 as k return (@ foo ?ac0 = k -> True) then ?t else ?t0)
+   (@ eq_refl bool (@ foo ?ac0) *)
+
+
+Comment author: @herbelin
+
+The issue is a bit complicated and I don't have a full and fine understanding of it.
+
+Afaics at the current time, it is related to two changes:
+
+- A tentatively finer control of which evars have to be inferred and what don't have which, from bf018569405, is applied to type classes (e.g. I have a goal with a preexisting evar, I want to control that only new evars are eventually all instantiated).
+- The order of resolution of evar-evar problem.
+
+Here, there were an evar ?x:A and another evar ?y:A. The change of order in the resolution of evar-evar problems makes that a third evar ?z is created with ?x:=?z and ?y:=?z while before, we had ?y:=?x. Because there is a new evar unknown from the initial problem, it is considered wrongly as a frozen evar on which type classes should not be applied.
+
+I have a fix, which generalizes the test deciding if an evar is new. This solves the current problem and a priori can only make closer from the 8.4 behavior even if the question of distinguishing preexisting evars and new evars remains.
+
+
+Comment author: @herbelin
+
+Fixed in branch v8.5. To have a short example was very helpful!
+
+

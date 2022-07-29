@@ -1,0 +1,100 @@
+Comment author: @JasonGross
+
+I built Coq trunk when configured with ./configure -local, and now I see lots of spew on coqdep foo:
+
+*** Warning: assuming D:\Documents\GitHub\coq-trunk/theories/QArith to be a Unix path even if looking like a Win32 path.
+*** Warning: assuming D:\Documents\GitHub\coq-trunk/theories/Reals to be a Unix path even if looking like a Win32 path.
+*** Warning: assuming D:\Documents\GitHub\coq-trunk/theories/Relations to be a Unix path even if looking like a Win32 path.
+*** Warning: assuming D:\Documents\GitHub\coq-trunk/theories/Setoids to be a Unix path even if looking like a Win32 path.
+*** Warning: assuming D:\Documents\GitHub\coq-trunk/theories/Sets to be a Unix path even if looking like a Win32 path.
+*** Warning: assuming D:\Documents\GitHub\coq-trunk/theories/Sorting to be a Unix path even if looking like a Win32 path.
+*** Warning: assuming D:\Documents\GitHub\coq-trunk/theories/Strings to be a Unix path even if looking like a Win32 path.
+*** Warning: assuming D:\Documents\GitHub\coq-trunk/theories/Structures to be a Unix path even if looking like a Win32 path.
+*** Warning: assuming D:\Documents\GitHub\coq-trunk/theories/Unicode to be a Unix path even if looking like a Win32 path.
+*** Warning: assuming D:\Documents\GitHub\coq-trunk/theories/Vectors to be a Unix path even if looking like a Win32 path.
+*** Warning: assuming D:\Documents\GitHub\coq-trunk/theories/Wellfounded to be a Unix path even if looking like a Win32 path.
+*** Warning: assuming D:\Documents\GitHub\coq-trunk/theories/ZArith to be a Unix path even if looking like a Win32 path.
+*** Warning: assuming D:\Documents\GitHub\coq-trunk/plugins to be a Unix path even if looking like a Win32 path.
+*** Warning: assuming D:\Documents\GitHub\coq-trunk/plugins/btauto to be a Unix path even if looking like a Win32 path.
+*** Warning: assuming D:\Documents\GitHub\coq-trunk/plugins/cc to be a Unix path even if looking like a Win32 path.
+*** Warning: assuming D:\Documents\GitHub\coq-trunk/plugins/decl_mode to be a Unix path even if looking like a Win32 path.
+*** Warning: assuming D:\Documents\GitHub\coq-trunk/plugins/derive to be a Unix path even if looking like a Win32 path.
+*** Warning: assuming D:\Documents\GitHub\coq-trunk/plugins/extraction to be a Unix path even if looking like a Win32 path.
+*** Warning: assuming D:\Documents\GitHub\coq-trunk/plugins/firstorder to be a Unix path even if looking like a Win32 path.
+*** Warning: assuming D:\Documents\GitHub\coq-trunk/plugins/fourier to be a Unix path even if looking like a Win32 path.
+*** Warning: assuming D:\Documents\GitHub\coq-trunk/plugins/funind to be a Unix path even if looking like a Win32 path.
+*** Warning: assuming D:\Documents\GitHub\coq-trunk/plugins/micromega to be a Unix path even if looking like a Win32 path.
+*** Warning: assuming D:\Documents\GitHub\coq-trunk/plugins/nsatz to be a Unix path even if looking like a Win32 path.
+*** Warning: assuming D:\Documents\GitHub\coq-trunk/plugins/omega to be a Unix path even if looking like a Win32 path.
+*** Warning: assuming D:\Documents\GitHub\coq-trunk/plugins/quote to be a Unix path even if looking like a Win32 path.
+*** Warning: assuming D:\Documents\GitHub\coq-trunk/plugins/romega to be a Unix path even if looking like a Win32 path.
+*** Warning: assuming D:\Documents\GitHub\coq-trunk/plugins/rtauto to be a Unix path even if looking like a Win32 path.
+*** Warning: assuming D:\Documents\GitHub\coq-trunk/plugins/setoid_ring to be a Unix path even if looking like a Win32 path.
+*** Warning: assuming D:\Documents\GitHub\coq-trunk/plugins/ssrmatching to be a Unix path even if looking like a Win32 path.
+*** Warning: assuming D:\Documents\GitHub\coq-trunk/plugins/syntax to be a Unix path even if looking like a Win32 path.
+*** Warning: assuming D:\Documents\GitHub\coq-trunk/plugins/xml to be a Unix path even if looking like a Win32 path.
+*** Warning: assuming D:\Documents\GitHub\coq-trunk/ide to be a Unix path even if looking like a Win32 path.
+*** Warning: assuming D:\Documents\GitHub\coq-trunk/ide/MacOS to be a Unix path even if looking like a Win32 path.
+*** Warning: assuming D:\Documents\GitHub\coq-trunk/ide/utils to be a Unix path even if looking like a Win32 path.
+
+
+Comment author: @ppedrot
+
+This seems to be Windows-specific, and I don't have any Windows machine to test here. I'm not sure that I should be the assignee...
+
+
+Comment author: @maximedenes
+
+Do those warnings make sense? If yes, what do they mean? If not, we should remove them, right?
+
+
+Comment author: @herbelin
+
+I'm the one who introduced the warning but I don't know if the warning is useful/necessary or not.
+
+If files with "\" or ";" or with a ":" in second position such as "D:\Documents\GitHub\coq-trunk" are interpreted as expected when a Unix-style suffix such as "/theories/QArith" on architectures "Win32" and "Cygwin" (as returned by Sys.os_type), then the warning is useless.
+
+If there are objective situations where such a hybrid name is not interpreted correctly, then I guess the warning is necessary (which could then probably be changed into using the correct suffixes, of the style "\theories\QArith").
+
+But I could not understand how path resolution works exactly on Win32 and Cygwin to know if the warning makes sense or not.
+
+
+Comment author: @JasonGross
+
+Windows accepts both "\" and "/" as path separators in all locations, and any 
+place that "\" works, whether in cygwin or Windows, "/" also works.  (There may 
+be some places in cygwin where "\" fails but "/" succeeds.)  The following are 
+equivalent:
+- "D:/Documents/GitHub/coq-trunk/theories/QArith"
+- "D:\Documents\GitHub\coq-trunk\theories\QArith"
+- "D:\Documents\GitHub\coq-trunk/theories/QArith"
+- "D:/Documents\GitHub/coq-trunk\theories/QArith"
+- "D:\Documents/GitHub\coq-trunk/theories\QArith"
+
+So it seems like this warning is useless?
+
+
+Comment author: @silene
+
+> If there are objective situations where such a hybrid name is not interpreted correctly
+
+There are some (e.g. Windows registry), but they don't matter for Coq. What is more important is whether these paths end up being passed to other tools. This is not the case for any of the places protected by the warning, as far as I can tell.
+
+
+Comment author: @herbelin
+
+So, trusting knowledgeable people, removal?
+
+Enrico, you are the assignee, would you be willing to do it?
+
+
+Comment author: @maximedenes
+
+I'll do it.
+
+
+Comment author: @maximedenes
+
+Warning removed in v8.6 branch.
+
+

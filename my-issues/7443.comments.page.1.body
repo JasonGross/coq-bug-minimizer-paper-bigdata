@@ -1,0 +1,8 @@
+> My guess is that the notation system is incorrectly considering _ and ltac:(...) to be equal when deciding whether or not, and how, to overwrite a notation with another?
+
+Your guess is [right](https://github.com/coq/coq/blob/4abf92639c13002c2ca8aff0015a42aff5c6b329/interp/notation_ops.ml#L39).
+
+What to do is a bit unclear (comparing tactic code would be a bit difficult with locations, arbitrary generic arguments, ...). Maybe assuming that two tactics always differ by default, even if exactly the same)?
+Fixed by #12950 but the current semantics adopted in #12950 makes that redefining a notation in only-parsing mode cancels the whole of a previous combined parsing-printing notation, including its printing part.
+
+In particular, this means displaying `Literal 1` in the third and fifth example.

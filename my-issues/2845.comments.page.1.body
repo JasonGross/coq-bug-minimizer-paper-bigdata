@@ -1,0 +1,30 @@
+Comment author: @JasonGross
+
+I'm not sure whether this is a bug or an enhancement request.
+
+I have sometimes used a tactic like
+```coq
+  Ltac change_in_all from to :=
+      repeat match goal with
+               | [ H : _ |- _ ] => progress change from with to in H |- *
+             end.
+```
+to "rename" expressions into variables.  It would be nice if there was a variant of "change ... with ... in *" that would do this, and would not fail with "Error: Cannot create self-referring hypothesis ...".  Here is a minimal example:
+```coq
+  Goal 1 + 1 = 2.
+    assert (1 = 1) by reflexivity.
+    pose 1 as one.
+    (* change 1 with one in *. *) (* errors with "Error: Cannot create self-referring hypothesis one" *)
+      repeat match goal with
+               | [ H : _ |- _ ] => progress change 1 with one in H |- *
+             end.
+```
+This change would make [change] consistent with [rewrite ... in *]:
+```coq
+  Goal 1 + 1 = 2.
+    assert (1 = 1) by reflexivity.
+    pose 1 as one.
+    let H := fresh in assert (H : 1 = one) by reflexivity;
+      rewrite H in *.
+```
+does what I expect it to (that is, [rewrite] does not fail).

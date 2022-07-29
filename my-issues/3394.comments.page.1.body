@@ -1,0 +1,26 @@
+Comment author: @JasonGross
+
+Goal True.
+  Fail constr_eq 1 2.
+(* Error: Tactic failure:Not equal. *)
+
+
+Comment author: @ppedrot
+
+It works for me on trunk...
+
+
+Comment author: @JasonGross
+
+Fascinating.  The bug seems to be the interaction between ProofGeneral and coqtop.  I would guess that PG assumes that if it sees a line starting with "Error: ", it assumes that there's been an error.  Generally, [Fail] has "The command has indeed failed with message:
+=> Error:".  But this time, it says:
+=> In nested Ltac calls to "constr_eq" and "<constr_eq>  (* Generic printer *)",
+last call failed.
+Error: Tactic failure:Not equal.
+
+
+Comment author: @JasonGross
+
+I've made http://proofgeneral.inf.ed.ac.uk/trac/ticket/494.
+
+

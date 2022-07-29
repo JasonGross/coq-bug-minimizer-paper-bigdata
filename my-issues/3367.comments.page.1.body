@@ -1,0 +1,324 @@
+Comment author: @JasonGross
+
+I would like a variant of [abstract] (or a flag to pass to [abstract]) that results in a transparent definition rather than an opaque one.  Ideally, it would also take an integer argument specifying the opacity of the constant.
+
+This would be useful in conjunction with tactics in terms.  For example, I could define
+
+Notation "'hide' x 'as' y" := $(transparent_abstract (exact x) as y)$.
+
+and you'd be able to use [hide <gigantic term> as foo] as a notation, and the resulting term would mention [foo] rather than the gigantic term.  This would be especially useful for hiding strings (even more so if there's a way to go between strings and names).  For example, it might be nice to be able to define:
+
+Notation "'s'_ x" := $(transparent_abstract (exact (string_of_name x)) as x)$.
+
+
+Comment author: @JasonGross
+
+Where by [abstract ... as ...] I actually mean [abstract ... using ...]
+
+
+Comment author: @JasonGross
+
+And I guess I actually mean
+
+Notation "'hide' x 'as' y" := $(first [ exact y
+                                      | transparent_abstract (exact x) using y])$.
+
+and
+
+Notation "'s'_ x" := $(first [ exact x
+                             | transparent_abstract (exact (string_of_name x)) using x ])$.
+
+so that we don't duplicate definitions.
+
+
+Comment author: @gares
+
+Abstract is an abomination, I guess I've been clear enough about that.
+
+This is a "wontfix in the way you say" of course.
+
+Would you consider using the [: bla] patterns of ssreflect 1.5 as a solution 
+for that?
+They generate a normal abstraction, not a let-in, but is seems pretty much what you are looking for.  Having them generate a let-in is clearly doable.
+
+
+Comment author: @JasonGross
+
+What are the [: bla] patterns of ssreflect?
+
+What makes abstract an abomination?  Side effects?  If that's the case, is there any hope of getting macros at the vernacular level?
+
+The particular issue I want to solve is that, by hiding strings in definitions, you can get a factor of four speedup.  (I can make you a rather long example file, if you'd like.)  In this particular example, [Defined] goes down from 2 minutes to 14 seconds.  I'm looking for a nice way to not need to do a bunch of [Definition FOO := "foo".] at the top, and can instead either do something like [Intern Strings "foo" "bar" "baz".] and get the definitions via a vernacular-level macro, or construct the definitions on the fly inside of, e.g., records.  (I don't think either let ... in ...s nor normal abstractions (you mean function abstractions, right?) will give me this.)
+
+
+Comment author: @gares
+
+Yes, you are in middle of a theorem and you inject in the global environment a new name.  What if the side effect is optional "first [ bla | abstract bla ]"?
+What if the code is run in a worker process (another address space)?
+
+Scriptable vernacular is way more interesting, and I know power users that would love it.  And nobody is working on it, as far as I can tell.
+
+You can put let-in in records, just use :=, but I don't know which algorithmic complexity you are trying to work around.  Finding that out is probably a good start to get it fixed.
+
+
+Comment author: @herbelin
+
+Side questions:
+
+How necessary it is that abstract do a side effect?
+
+I mean: a Qed is a side effect. Can it be done that the effect of abstract is attached to the effect of the corresponding Qed, rather than an autonomous side-effect?
+
+
+Comment author: @JasonGross
+
+Isn't (repeated) term size the only algorithmic complexity satisfying the following properties?
+* it can have an effect on [Defined]
+* it is mitigated by replacing large terms (such as "InitBookstore") with definitions which are defined to be the same thing
+
+Hugo: For [abstract], I don't think it matters so much (but I haven't thought too deeply about the implementation details).  But for [abstract ... using ...], Coq needs to know whether or not the name is already used.  Having this in a proof means it can't be done in parallel (which is fine for me; I only care about [abstract ... using ...] in [Definition foo := bar] and when I end things with [Defined]).
+
+
+Comment author: @gares
+
+This is how it is done today: side effects produced by tactics *must* be declared (I think PMP made a new monadic tactic for that, but in practice side effects are just put into the evar map).  At Qed time side effects are tuned into beta redexes or let-ins, hence made "local" to the proof term.
+
+During proof constructions side effects are actually regular side effects, but the final step, the Qed, is performed on top of the initial state, the one just after the Lemma statement.  Actually, intermediate states may not even be known to the master process (the one that actually does the Qed, and it has to be able to do that before the tactic "abstract" is executed).
+
+I can elaborate more if you want.
+
+If the proof ends with Defined, the system behaves as before.  Since transparent proofs cannot be delayed, to make the life of Adam simpler, I made the system behave as before.
+
+Note that also on-the-fly generated eliminator-like lemmas are inlined at Qed time (partially defeating the point of on-the-fly generation, I know, but I've no choice).
+
+Even if I've coded a machinery to transform side effects into local modifications to the proof terms, I want to discourage the use of tactics that alter the global environment, since they are inherently hard to make parallel.  Also the abstracted term is going to Qed twice (at abstract time and also at Qed time).  You may recall the patch in which I was trying to avoid that, that at the end I did not commit for various reasons, one above all that comparing the environments by pointers does not work across different processes, hence I've no efficient way to test for the "weakening" rule without resorting to hash functions, and there were some arguments against that (hash functions a cool, but not "correct" all the times).
+
+To me the rule of thumb is that I must be able to know, statically, who alters the environment and how.  This is impossible for "foo || abstract bar", you can't know if it will happen and which type the aux lemma will actually have.   
+
+More in general the system state is imperative, but it should not be.  We can barely live with it thanks to the summary, but at the cost of having an almost opaque chaotic system state one cannot even traverse, not to talk about the fact that nobody knows which part of the code uses what.  For example some tactics use some bits of the libstack, this is why I send to the workers a stripped version of it (containing the section/module open/close markers).  I see no reason for a tactic to have access to the libstack, but the fact that it is there makes it easy to use it, so people did use it.
+
+Finally, the type of tactics does not return an updated environment.  Especially now that tactics do have a nice type, we should try to respect its semantics in my opinion.
+
+
+Comment author: @JasonGross
+
+How do you feel about tactics which fail if run in a proof that ends in [Qed], but have side-effects when used in [Defined] proofs?  (Again, my primary use-case is caching terms in global identifiers (or at least section-wide identifiers), when the terms are mentioned in transparent contexts.)
+
+
+Comment author: @JasonGross
+
+(Alternatively, if you can "fix" hashconsing (or whatever) so that unfolding things doesn't slow down [Defined], I'll be happier and not care about this.)
+
+
+Comment author: @aspiwack
+
+
+> Finally, the type of tactics does not return an updated environment. 
+> Especially now that tactics do have a nice type, we should try to respect
+> its semantics in my opinion.
+
+The semantics of tactics is open-ended. There is no obstacle in making tactics return an environment if someone needs it.
+
+
+I think the arguments about parallelisation are more convincing. Though I must shamefully admit that I don't grasp the full breadth of them. I would like to try and understand by what mechanism you would like (ideally) to see the libstack replaced with so that it is easier to parallelise. Is weakening inherently problematic, or does it simply expose limitation of the current architecture (or maybe of Ocaml)?
+
+
+Comment author: @gares
+
+I know the type of tactics can be made larger, but that's not my point.  My point is that the current type of tactics states what a tactic does, or better should do.
+If a tactic starts to leak open file descriptor we should fix it, not declare it does stupid things in its type ;-)
+
+W.r.t. the architecture, I will probably write a paper at some point but for now you should see it as a simple manipulation of the logical environment.  The env is (ideally) an associative list of (name,(term,type)) components.  The only change I've made is make the (proof) term lazy.  In this way Qed can insert an item without having computed the proof term.  Its name and type, given by the execution of the Lemma vernac, is sufficient.  The computation produces the term and type checks it.  Finally an env is sound only if all lazy computations are forced (as in join_safe_environment).
+
+This makes sense only if the lazy computation is pure.  Actually I'm not using the lazy OCaml type, but my own Future.computation that enforces purity by using the summary (the undo machinery) to enforce that.  Purity it what makes the order in which the lazy computations are forced irrelevant.  If a lazy computation makes a side effect I have to know it statically.  The stm, and the vernac_classifier, can deal with that.  Abstract fails to meet this requirement hence I have to make its side effect local to the output of the lazy function, that is a proof term.  For example if you stick an Opacity option in the middle of a proof, I can statically recognize it and "propagate" the side effect on the main branch.  E.g.
+  
+  Lemma a : Ty. tac1. Opaque foo. tac2. Qed.
+
+is elaborated into two branches
+
+ 1. Lemma a : Ty. Opaque foo. (*) Qed.
+ 2. tac1. Opaque foo. tac2.
+
+where the Qed in 1. puts into the env a lazy computation running 2. and type checking the resulting term on the system state at position (*).  Now 2. is pure, I can run it, keep its output, and throw aways it final global state as if it was a pure computation not altering it.
+
+Of course for abstract this is not an option since I don't even know if the command is going to be run, and I don't have (in the branch 1.) all the data that is necessary to run it.  Note that the side effect of abstract is really visible: some contribs were actually using the lemma generated by abstract in other proofs (following the one doing the abstract).  This makes it impossible to reorder the execution of proofs without incurring in race conditions (if the computations are run in the same address space) and totally fails in the multi process model, where the side effect would just happen in the wrong address space (the one of the wrong worker).  Hence my enforcement of purity (and my fixes to these contribs).
+
+At the light of that I became allergic to tactics tampering with the global state.  If Jason has inefficiencies due to a missing type checking cache or a deficiency of the proof language I think we should identify and fix these issue, not work around them with yet another portion of spaghetti.
+
+W.r.t. the libstack.  The libstack is the data structure that is dumped into the vo file.  My point is that tactics should not even know it exists, but some (ring IIRC) does not work if you empty it, because it uses it to know in which module we are, or something like that.  If the system state was not imperative, tactics would be force to use only their input, and one could truly read in their type which part of the system state they need, and I could send just that data to the worker processes that run the tactics.
+
+I find it funny that an argument in favor of (purely) functional programming is not just endorsed.
+Come on, I know you all love the complicated theory of accumulators™ (aka monads ;-) ).
+
+Best,
+
+
+Comment author: @aspiwack
+
+No one is arguing against pure programming of course. I'm just trying to understand what your vision of what a Coq document should be is.
+
+It seems pretty established, at this point, that the asynchronous proof checking is a very important feature. But it's also fairly novel and I haven't yet managed to make a good mental model of it.
+
+That said, I certainly find it distasteful that tactics make calls to Coq's global environment (most often via Global.env), this is the reason why the type of tactics takes an environment as input. One current big offender is Termops.is_section_variable which I don't know how to get rid of…
+
+For abstract, it was a reasonable thing to have in a linear model of Coq documents (though the implementation was not the most desirable one). It may be that it conflicts fundamentally with the asynchronous model. I'm just not clear on what the asynchronous model is, hence the probing.
+
+
+Comment author: @herbelin
+
+Hi Enrico,
+
+My view was that "abstract" should be seen as having no other side-effect than the one done by Qed.
+
+In "Lemma foo. ... tac || abstract tac' ... Qed", the only visible external effect is the declaration of foo and in no way the possible declaration of a sublemma by abstract.
+
+In particular, I agree to discontinue the possibility to use the lemma generated in an opaque proof by "abstract" in the sequel of a development. If someone needs that, he/she can open a proper explicit lemma.
+
+If in a transparent proof, then using "abstract using" can be ok to me (there is no parallelism anyway in this case, as far as I understood). But maybe I don't see neither all the stakes of an "abstract using" in a transparent proof, nor also why writing an explicit definition in advance would be a problem.
+
+The rest is for me question of efficiency, but I unfortunately lost an overview of the issues here. If for an abstract in an Opaque proof, it is as efficient to use a let-in than to declare (at Qed time) a constant to which the user cannot refer, then a let-in is ok for me. And if implementing a type checking cache or doing some related improvements of the proof language can help, why not.
+
+So, is there an efficiency issue with implementing abstract with let-ins or not?
+If yes, I'd like to insist that I don't see any real difference in having "Lemma foo... Qed" opening a new constant foo with lazy body, and having it opening a new constant foo with both a lazy body and a possible effect on the global env which is visible only from the body of foo. Since visible only from the constant, this side-effect could be explicitly attached to the constant.
+
+Otherwise said, to be even more explicit, I don't see any problem in the idea that the body of a kernel definition is just a term, or if the body of a definition is the explicit pair of a local context and of a term.
+
+Hugo
+
+
+Comment author: @JasonGross
+
+> If in a transparent proof, then using "abstract using" can be ok to me (there is no parallelism anyway in this case, as far as I understood). But maybe I don't see neither all the stakes of an "abstract using" in a transparent proof, nor also why writing an explicit definition in advance would be a problem.
+
+The idea would be to be able to automate the definition of a lemma, so that if I need 30 or so lemmas that look the same (maybe I want to use 32, 33, ..., 64, and I want to hide them behind definitions so they don't blow up the time it takes to run [Defined]), I don't have to define them all manually, but can do it on the fly using tactics in notations.
+
+
+Comment author: @gares
+
+> My view was that "abstract" should be seen as having no other
+> side-effect than the one done by Qed.  In "Lemma foo. ... tac ||
+> abstract tac' ... Qed", the only visible external effect is the
+> declaration of foo and in no way the possible declaration of a
+> sublemma by abstract.  In particular, I agree to discontinue the
+> possibility to use the lemma generated in an opaque proof by
+> "abstract" in the sequel of a development. If someone needs that,
+> he/she can open a proper explicit lemma.
+
+We totally agree then
+
+> If in a transparent proof, then using "abstract using" can be ok to me
+> (there is no parallelism anyway in this case, as far as I understood).
+> But maybe I don't see neither all the stakes of an "abstract using" in
+> a transparent proof, nor also why writing an explicit definition in
+> advance would be a problem.
+
+Well, Adam defines programs via tactics.  These programs have to run
+(hence they end with Defined) but some subterms are just proofs, hence
+he wants to abstract these irrelevant terms out (without having to
+state them manually).
+
+> So, is there an efficiency issue with implementing abstract with
+> let-ins or not?
+
+It is already like that, I do generate let-ins at Qed time.
+But during proof construction, when one calls abstract, the kernel
+kicks in and typechecks the proof term.  Hence the abstracted proof
+gets type checked twice, once during proof construction, and another
+one when typing the body of the let-in in the main proof.
+
+My concerns are for the Guillame's trick: abstract vm_cast_no_check
+bla.  If you do so in 8.4, the abstracted tactic does nothing at proof
+construction time, then the kernel type checks the resulting proof
+running the vm once, but the qhen the enclosing proof is typechecked
+the vm_compute is not run again, because the proof refers to an
+already type checked constant that hides the computation.  In trunk,
+unless the enclosing proof ends with Defined, the abstracted proof
+term is inlined (with a let-in or a beta redex, id does not matter)
+and hence type checked again.
+This specific case is just a caching issue... But not do easy to
+solve.
+
+Long story short, I believe you got it right, and things are already
+coded as you expect: side effects are made local to Qed ended lemmas
+by generating let-ins or beta redexes (beta for opque side effects,
+let-in for transparent stuff, like eliminators).
+
+Ciao
+
+
+Comment author: @JasonGross
+
+This issue is not solved in 8.5.  Here is an example where it would be very useful to have a transparent abstract tactic (usable only in proofs ending in [Defined]).  It's a bit contrived, but similar examples show up in Fiat involving lists of strings and other large definitions.
+
+Because we're working on developing a library, we don't want to require users to write a few dozen [Definition foo_id := "foo".], etc, for each structure they're defining.  But there's a significant cost in time and memory to inlining the identifiers, which would be fixed with a [transparent abstract].  Here is an example:
+
+
+Axiom pro : Set -> Set -> Set.
+Fixpoint tree (x : Set) (n : nat) : Set
+:= match n with
+     | 0 => x
+     | S n' => tree (pro x x) n'
+   end.
+Notation pro' := (pro _ _).
+Definition foo : Set.
+Proof.
+  let xv := (eval hnf in (tree nat 17)) in
+  assert (x : Set) by exact xv.
+  pose x as x'.
+  exact (x' * x' * x' * x')%type.
+Defined.
+
+Axiom helper : forall x, x -> True -> x * x * x * x.
+
+Goal True -> foo.
+  cbv beta delta [foo].
+  Time apply helper. (* Finished transaction in 1.753 secs (1.716u,0.04s) (successful) *)
+Admitted.
+
+Definition foo' : Set.
+Proof.
+  let xv := (eval hnf in (tree nat 17)) in
+  assert (x : Set) by abstract (exact xv) using foo_x.
+  pose x as x'.
+  exact (x' * x' * x' * x')%type.
+Defined.
+
+Goal True -> foo'.
+  cbv beta delta [foo'].
+  Time apply helper. (* Finished transaction in 0. secs (0.u,0.s) (successful) *)
+Admitted.
+
+
+Comment author: @gares
+
+Jason, if you want me to do something on this bug, you need to tell me what you
+are trying to do.  I'm not going to code the solution you are proposing, for the long list of reasons collected here.
+
+My best guessing is the following one.
+Do you need a language to script the vernacular?  Like having the possibility
+to iterate "template" commands like in "Definition $foo := $bar" with $foo
+ranging over some list?
+
+W.r.t. the performance problems, wouldn't thy be solved by the above feature?
+
+
+Comment author: @JasonGross
+
+I think vernacular scripting (combined with tactics in terms to implement bodies when necessary) should be sufficient to solve the performance problems, which is the main issue.  Is vernacular scripting easy to implement?  (Are there plans to implement it?)
+
+Let me see if I can put together a more realistic example.
+
+
+Comment author: @gares
+
+No plans, and I've not thought about it enough to say "this is what we need" but there are several instances out there that would be less hackish if Coq allowed a form of vernacular scripting.
+
+I don't think I need a precise code example, but I'm rather interested in understanding what you are trying to do.  Really a bird eye view.
+What the user is expected to write, what your library is supposed to do, ...
+
+
+Comment author: @ejgallego
+
+Fixed by https://github.com/coq/coq/pull/201
+
+

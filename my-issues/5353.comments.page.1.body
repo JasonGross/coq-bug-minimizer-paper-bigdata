@@ -1,0 +1,42 @@
+Comment author: @JasonGross
+```coq
+(* -*- mode: coq; coq-prog-args: ("-emacs" "-R" "src" "Crypto" "-R" "Bedrock" 
+"Bedrock" "-R" "coqprime/Coqprime" "Coqprime" "-top" "ExtendedCoordinates") -*- 
+*)
+(* File reduced by coq-bug-finder from original input, then from 835 lines to 
+46 lines, then from 63 lines to 13 lines, then from 1748 lines to 171 lines, 
+then from 531 lines to 194 lines, then from 386 lines to 204 lines, then from 
+218 lines to 204 lines, then from 208 lines to 162 lines, then from 176 lines 
+to 162 lines, then from 152 lines to 107 lines, then from 121 lines to 107 
+lines, then from 94 lines to 45 lines, then from 59 lines to 45 lines *)
+(* coqc version 8.6 (January 2017) compiled on Jan 23 2017 15:17:5 with OCaml 
+4.02.3
+   coqtop version jgross-Leopard-WS:/home/jgross/Downloads/coq/coq-v8.6,(HEAD 
+detached from 7e992fa) (cfce4732363c7a93ffb7231335463d4\
+1c47074ea) *)
+Require Import Coq.Classes.Morphisms Coq.Setoids.Setoid.
+Class Decidable (P : Prop) := dec : {P} + {~P}.
+Notation DecidableRel R := (forall x y, Decidable (R x y)).
+Section Algebra.
+  Context {T:Type} {eq:T->T->Prop} {mul:T->T->T}.
+  Class ring := { e : Equivalence eq; p :> Proper (respectful eq (respectful eq 
+eq)) mul }.
+  Class integral_domain := { integral_domain_commutative_ring :> ring }.
+  Class field := { field_commutative_ring : ring }.
+  Global Instance id {f:field} (eq_dec : DecidableRel eq) : integral_domain.
+  Admitted.
+End Algebra.
+
+Section ExtendedCoordinates.
+  Context {F Feq Fmul} {Fzero : F}
+          {field:@ field F Feq Fmul}
+          {eq_dec : DecidableRel Feq}.
+  Goal forall Z0 : F, Feq Z0 Fzero -> forall f f0 : F, Feq (Fmul f0 Z0) f -> 
+False.
+    intros Z0 H ?? H0.
+    specialize (eq_dec Z0 Z0).
+    rewrite H in H0. (* Anomaly: Non-functional construction. Please report at 
+http://coq.inria.fr/bugs/. *)
+```
+
+Still an issue in 8.15+alpha.

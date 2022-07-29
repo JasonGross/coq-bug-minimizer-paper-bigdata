@@ -1,0 +1,61 @@
+Comment author: @JasonGross
+
+As in the following code, the time should be associated with [sleep], but is 
+instead associated with [sleep'].  Since the backtrace works fine, I'm not sure 
+which call to push_trace in tacinterp.ml is missing a corresponding call to 
+do_profile... 8.6 seems to have gained some calls to push_trace over 8.4.
+
+Require Coq.ZArith.BinInt.
+Ltac sleep := let sleep := (eval vm_compute in Coq.ZArith.BinInt.Z.div_eucl) in 
+idtac.
+Ltac sleep' := idtac; sleep.
+   
+Set Ltac Profiling.
+Goal True.
+  do 20 sleep'; constructor.
+  Show Ltac Profile.
+(* total time:      0.212s                                                      
+                                                                                
+                                                  
+                                                                                
+                                                                                
+                                                  
+ tactic                                   local  total   calls       max        
+                                                                                
+                                                  
+────────────────────────────────────────┴──────┴──────┴───────┴─────────┘       
+                                                                                
+                                                  
+─sleep' -------------------------------- 100.0% 100.0%      20    0.020s        
+                                                                                
+                                                  
+─sleep ---------------------------------   0.0%   0.0%      20    0.000s        
+                                                                                
+                                                  
+─constructor ---------------------------   0.0%   0.0%       1    0.000s        
+                                                                                
+                                                  
+                                                                                
+                                                                                
+                                                  
+ tactic                                   local  total   calls       max        
+                                                                                
+                                                  
+────────────────────────────────────────┴──────┴──────┴───────┴─────────┘       
+                                                                                
+                                                  
+─sleep' -------------------------------- 100.0% 100.0%      20    0.020s        
+                                                                                
+                                                  
+└sleep ---------------------------------   0.0%   0.0%      20    0.000s        
+                                                                                
+                                                  
+─constructor ---------------------------   0.0%   0.0%       1    0.000s        
+                                                                                
+                                                  
+                                                                                
+                                                                                
+                                                  
+ *)
+
+

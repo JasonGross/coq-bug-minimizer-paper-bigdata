@@ -1,0 +1,21 @@
+The typing rule for let-ins in the kernel suffers from the same defect as the one from the pretyper (#10206), namely that `let x : T := M in N` is given type `U{x := M}` provided `M : T` and `x : T ⊢ N : U`. That is, it eagerly substitutes the let-bound variable in the type. Substitution is linear, and in your example, you have a linear chain of let-bindings, thus resulting in a quadratic behaviour.
+
+(I think I remember trying to fix this some time ago, to discover that it was breaking everything.)
+Small report: the situation is not *so* bad after tweaking the rule. It breaks one file in the stdlib due to Funind not being able to generate an induction principle for a term containing lets, and 16 tests from the test-suite. Some of them are expected, but some are more worrying.
+
+Nonetheless, this doesn't fix the quadratic Qed, since the native compiler features a similar behaviour which is essentially the Coq equivalent of [an OCaml bug](https://github.com/ocaml/ocaml/issues/7826).
+It seems to me that the problem here is that substitution is linear.  This seems like the same kind of issue as https://github.com/coq/coq/issues/11151 (cbv is quadratic), where rather than eagerly substituting we want to have some sort of pending substitutions/liftings structure that is linear to execute and constant to update.  Is something like this possible?
+Taking a step back: is there any way to build a proof of `fnd n` for some `n`, without needing to build a term of type `forall n, fnd n` (i.e., without reflection), which does not incur quadratic cost?
+The type-checker needs to return a type, so it has to perform the substitution somehow. Introducing a let-binding is the only way I know to do that at the level of kernel terms. Note that #11151 is quite distinct, because it has to do with the reduction machine(s) which are using a different representation, since they're acting on closures.
+> Taking a step back: is there any way to build a proof of fnd n for some n, without needing to build a term of type forall n, fnd n (i.e., without reflection), which does not incur quadratic cost?
+
+The size of the proof term is linear, you could generate it directly in Ltac2 using the Unsafe API, or maybe using `uconstr` in Ltac1. Essentially, the point it to lift the let-binding at the meta-level.
+Ah, I see, the change you made to the typing rule is to type `let x : T := M in N : U` as `let x : T := M in U`.  This is an interesting proposal.  I think @andres-erbsen might have interesting ideas here.
+The change in the kernel is much more innocuous than in the pretyper, I might try to submit a PR if I manage to understand how to fix funind and friends.
+> The size of the proof term is linear, you could generate it directly in Ltac2 using the Unsafe API, or maybe using uconstr in Ltac1. Essentially, the point it to lift the let-binding at the meta-level.
+
+The let-bound one cannot be generated with uconstr, because there's no way to make an open uconstr term, and uconstr doesn't evaluate Ltac under binders.  I can make a version that uses lambdas rather than let's with uconstr.  This is besides the point, though, as I already generate the proof term in linear time using Ltac2 in the initial comment of this issue.  The problem is that checking it still incurs quadratic overhead.  The question I intended to ask was not how to build the linear proof term, but how to both build and check it in linear time.  I've managed the first in a variety of ways, but not the second.
+> The change in the kernel is much more innocuous than in the pretyper, I might try to submit a PR if I manage to understand how to fix funind and friends
+
+Ah, neat!  I'd be a big fan of this.  I'm very curious for a diagnosis of what's going wrong here (also curious about the test-suite cases that are expected to fail)
+@ppedrot I also wonder if function application could benefit from a similar typing rule, introducing let binders rather than eagerly substituting.  (I think @andres-erbsen has a unified theory of how to build a proof engineering API that is performant at scale which mandates certain decisions for questions like this, and that's what I'm using to guide my thoughts and proposals here.)

@@ -1,0 +1,407 @@
+Comment author: @JasonGross
+
+(* File reduced by coq-bug-finder from original input, then from 13477 lines to 1457 lines, then from 1553 lines to 1586 lines, then from 1577 lines to 1520 lines, then from 1533 lines to 879 lines, then from 883 lines to 580 lines, then from 567 lines to 398 lines, then from 392 lines to 377 lines, then from 389 lines to 377 lines, then from 378 lines to 363 lines *)
+(* coqc version trunk (October 2014) compiled on Oct 8 2014 13:38:17 with OCaml 4.01.0
+   coqtop version cagnode16:/afs/csail.mit.edu/u/j/jgross/coq-trunk,trunk (335cf2860bfd9e714d14228d75a52fd2c88db386) *)
+
+Set Universe Polymorphism.
+Set Primitive Projections.
+Set Implicit Arguments.
+Record sigT {A} (P : A -> Type) := existT { projT1 : A ; projT2 : P projT1 }.
+Notation "{ x : A & P }" := (sigT (fun x:A => P)) : type_scope.
+Definition relation (A : Type) := A -> A -> Type.
+Class Reflexive {A} (R : relation A) := reflexivity : forall x : A, R x x.
+Class Symmetric {A} (R : relation A) := symmetry : forall x y, R x y -> R y x.
+Notation idmap := (fun x => x).
+Notation "x .1" := (projT1 x) (at level 3, format "x '.1'").
+Reserved Infix "o" (at level 40, left associativity).
+Global Instance symmetric_paths {A} : Symmetric (@ eq A) | 0.
+admit.
+Defined.
+Definition transport {A : Type} (P : A -> Type) {x y : A} (p : x = y) (u : P x) : P y.
+  destruct p; exact u.
+Defined.
+Axiom ap : forall {A B:Type} (f:A -> B) {x y:A} (p:x = y), f x = f y.
+Monomorphic Axiom dummy_funext_type : Set.
+Monomorphic Class Funext := { dummy_funext_value : dummy_funext_type }.
+Delimit Scope morphism_scope with morphism.
+Delimit Scope category_scope with category.
+Delimit Scope object_scope with object.
+Record PreCategory :=
+  Build_PreCategory' {
+      object :> Type;
+      morphism : object -> object -> Type;
+
+      identity : forall x, morphism x x;
+      compose : forall s d d',
+                  morphism d d'
+                  -> morphism s d
+                  -> morphism s d'
+      where "f 'o' g" := (compose f g);
+
+      associativity : forall x1 x2 x3 x4
+                             (m1 : morphism x1 x2)
+                             (m2 : morphism x2 x3)
+                             (m3 : morphism x3 x4),
+                        (m3 o m2) o m1 = m3 o (m2 o m1);
+
+      associativity_sym : forall x1 x2 x3 x4
+                                 (m1 : morphism x1 x2)
+                                 (m2 : morphism x2 x3)
+                                 (m3 : morphism x3 x4),
+                            m3 o (m2 o m1) = (m3 o m2) o m1;
+
+      left_identity : forall a b (f : morphism a b), identity b o f = f;
+      right_identity : forall a b (f : morphism a b), f o identity a = f
+    }.
+Bind Scope morphism_scope with morphism.
+Arguments identity {!C%category} / x%object : rename.
+
+Definition Build_PreCategory
+           object morphism compose identity
+           associativity left_identity right_identity
+  := @ Build_PreCategory'
+       object
+       morphism
+       compose
+       identity
+       associativity
+       (fun _ _ _ _ _ _ _ => symmetry _ _ (associativity _ _ _ _ _ _ _))
+       left_identity
+       right_identity.
+Infix "o" := (@ compose _ _ _ _) : morphism_scope.
+Delimit Scope functor_scope with functor.
+
+Local Open Scope morphism_scope.
+
+Section Functor.
+
+  Record Functor (C D : PreCategory) :=
+    {
+      object_of :> C -> D;
+      morphism_of : forall s d, morphism C s d
+                                -> morphism D (object_of s) (object_of d);
+      composition_of : forall s d d'
+                              (m1 : morphism C s d) (m2: morphism C d d'),
+                         morphism_of _ _ (m2 o m1)
+                         = (morphism_of _ _ m2) o (morphism_of _ _ m1);
+      identity_of : forall x, morphism_of _ _ (identity x)
+                              = identity (object_of x)
+    }.
+End Functor.
+
+Bind Scope functor_scope with Functor.
+Arguments morphism_of [C%category] [D%category] F%functor [s%object d%object] m%morphism : rename, simpl nomatch.
+Notation "F '_1' m" := (morphism_of F m) (at level 10, no associativity) : morphism_scope.
+
+Local Open Scope category_scope.
+
+Class Isomorphic {C : PreCategory} s d := { morphism_isomorphic :> morphism C s d }.
+Coercion morphism_isomorphic : Isomorphic >-> morphism.
+Local Infix "<~=~>" := Isomorphic (at level 70, no associativity) : category_scope.
+Section iso_equiv_relation.
+  Variable C : PreCategory.
+  Global Instance isomorphic_refl : Reflexive (@ Isomorphic C).
+  exact (fun x : C => {| morphism_isomorphic := identity x |}).
+  Defined.
+  Definition idtoiso (x y : C) (H : x = y) : Isomorphic x y.
+    admit.
+  Defined.
+End iso_equiv_relation.
+
+Section composition.
+  Variable C : PreCategory.
+  Variable D : PreCategory.
+  Variable E : PreCategory.
+  Variable G : Functor D E.
+  Variable F : Functor C D.
+  Definition composeF : Functor C E.
+    exact (Build_Functor
+             C E
+             (fun c => G (F c))
+             (fun _ _ m => morphism_of G (morphism_of F m))
+             $(admit)$
+             $(admit)$).
+  Defined.
+End composition.
+Infix "o" := composeF : functor_scope.
+
+Section identity.
+  Definition identityF C : Functor C C.
+    admit.
+  Defined.
+End identity.
+
+
+Section composition_lemmas.
+
+  Variable B : PreCategory.
+  Variable C : PreCategory.
+  Variable D : PreCategory.
+  Variable E : PreCategory.
+
+  Local Open Scope functor_scope.
+
+  Lemma associativityF
+        (F : Functor B C) (G : Functor C D) (H : Functor D E)
+  : (H o G) o F = H o (G o F).
+    admit.
+  Defined.
+End composition_lemmas.
+
+Local Open Scope functor_scope.
+Definition sub_pre_cat `{fs : Funext} {P : PreCategory -> Type} : PreCategory.
+  exact (@ Build_PreCategory
+           { C : PreCategory & P C }
+           (fun C D => Functor C.1 D.1)
+           (fun C => identityF C.1)
+           (fun _ _ _ F G => F o G)
+           (fun _ _ _ _ _ _ _ => @ associativityF _ _ _ _ _ _ _)
+           $(admit)$
+           $(admit)$).
+Defined.
+
+Local Open Scope morphism_scope.
+
+Section NaturalTransformation.
+  Variable C : PreCategory.
+  Variable D : PreCategory.
+  Variables F G : Functor C D.
+
+  Record NaturalTransformation :=
+    Build_NaturalTransformation' {
+        components_of :> forall c, morphism D (F c) (G c);
+        commutes : forall s d (m : morphism C s d),
+                     components_of d o F _1 m = G _1 m o components_of s;
+
+        commutes_sym : forall s d (m : C.(morphism) s d),
+                         G _1 m o components_of s = components_of d o F _1 m
+      }.
+
+  Definition Build_NaturalTransformation CO COM
+    := Build_NaturalTransformation'
+         CO
+         COM
+         (fun _ _ _ => symmetry _ _ (COM _ _ _)).
+End NaturalTransformation.
+
+Section compose.
+  Variable C : PreCategory.
+  Variable D : PreCategory.
+  Variables F F' F'' : Functor C D.
+
+  Variable T' : NaturalTransformation F' F''.
+  Variable T : NaturalTransformation F F'.
+  Definition composeT
+  : NaturalTransformation F F''.
+    exact (Build_NaturalTransformation' F F''
+                                        (fun c => T' c o T c)
+                                        $(admit)$
+                                        $(admit)$).
+  Defined.
+End compose.
+
+Section whisker.
+  Variable C : PreCategory.
+  Variable D : PreCategory.
+  Variable E : PreCategory.
+
+  Section L.
+    Variable F : Functor D E.
+    Variables G G' : Functor C D.
+    Variable T : NaturalTransformation G G'.
+
+    Definition whisker_l
+      := Build_NaturalTransformation
+           (F o G) (F o G')
+           (fun c => morphism_of F (T c))
+           $(admit)$.
+  End L.
+
+  Section R.
+    Variables F F' : Functor D E.
+    Variable T : NaturalTransformation F F'.
+    Variable G : Functor C D.
+
+    Definition whisker_r
+      := Build_NaturalTransformation
+           (F o G) (F' o G)
+           (fun c => T (G c))
+           $(admit)$.
+  End R.
+End whisker.
+Infix "o" := composeT : natural_transformation_scope.
+Infix "oL" := whisker_l (at level 40, left associativity) : natural_transformation_scope.
+Infix "oR" := whisker_r (at level 40, left associativity) : natural_transformation_scope.
+
+Section identity'.
+  Variable C : PreCategory.
+  Variable D : PreCategory.
+
+  Section generalized.
+    Variables F G : Functor C D.
+    Hypothesis HO : object_of F = object_of G.
+
+    Local Notation CO c := (transport (fun GO => morphism D (F c) (GO c))
+                                      HO
+                                      (identity (F c))).
+    Definition generalized_identity
+    : NaturalTransformation F G.
+      exact (Build_NaturalTransformation'
+               F G
+               (fun c => CO c)
+               $(admit)$
+               $(admit)$).
+    Defined.
+  End generalized.
+
+  Definition identityT (F : Functor C D)
+  : NaturalTransformation F F
+    := Eval simpl in @ generalized_identity F F eq_refl.
+End identity'.
+Notation "1" := (identityT _) : natural_transformation_scope.
+Local Open Scope natural_transformation_scope.
+
+Section functors.
+  Variable B : PreCategory.
+  Variable C : PreCategory.
+  Variable D : PreCategory.
+  Variable E : PreCategory.
+  Variable F : Functor D E.
+  Variable G : Functor C D.
+  Variable H : Functor B C.
+
+  Local Notation F0 := ((F o G) o H)%functor.
+  Local Notation F1 := (F o (G o H))%functor.
+
+  Definition associator_1 : NaturalTransformation F0 F1
+    := Eval simpl in
+        generalized_identity F0 F1 eq_refl.
+End functors.
+Definition functor_category (C D : PreCategory) : PreCategory.
+  exact (@ Build_PreCategory (Functor C D)
+                            (@ NaturalTransformation C D)
+                            (@ identityT C D)
+                            (@ composeT C D)
+                            $(admit)$
+                            $(admit)$
+                            $(admit)$).
+Defined.
+Local Notation "C -> D" := (functor_category C D) : category_scope.
+Definition NaturalIsomorphism (C D : PreCategory) F G := @ Isomorphic (C -> D) F G.
+Coercion natural_transformation_of_natural_isomorphism C D F G
+         (T : @ NaturalIsomorphism C D F G)
+: NaturalTransformation F G
+  := T : morphism _ _ _.
+
+Local Infix "<~=~>" := NaturalIsomorphism : natural_transformation_scope.
+
+Record Pseudofunctor (C : PreCategory) :=
+  {
+    p_object_of :> C -> PreCategory;
+    p_morphism_of : forall s d, morphism C s d
+                                -> Functor (p_object_of s) (p_object_of d);
+    p_composition_of : forall s d d'
+                              (m1 : morphism C d d') (m2 : morphism C s d),
+                         (p_morphism_of _ _ (m1 o m2))
+                           <~=~> (p_morphism_of _ _ m1 o p_morphism_of _ _ m2)%functor;
+    p_composition_of_coherent
+    : forall w x y z
+             (f : morphism C w x) (g : morphism C x y) (h : morphism C y z),
+        ((associator_1 (p_morphism_of y z h) (p_morphism_of x y g) (p_morphism_of w x f))
+           o ((p_composition_of x y z h g oR p_morphism_of w x f)
+                o (p_composition_of w x z (h o g) f)))
+        = ((p_morphism_of y z h oL p_composition_of w x y g f)
+             o ((p_composition_of w y z h (g o f))
+                  o (idtoiso (_ -> _) (ap (p_morphism_of w z) (associativity C w x y z f g h)) : morphism _ _ _)))
+  }.
+Context `{fs : Funext}.
+Context `{P : PreCategory -> Type}.
+
+Local Notation cat := (@ sub_pre_cat _ P).
+Local Notation cat' := (@ sub_pre_cat fs P).
+
+Lemma identity_associativity
+      (w x y z : PreCategory) (f : Functor w x)
+      (g : Functor x y) (h : Functor y z)
+: associator_1 h g f o (1 oR f o 1) =
+  h oL 1 o (1 o @ morphism_isomorphic _ _ _ (idtoiso (w -> z) (ap idmap (associativityF f g h)))).
+  admit.
+Defined.
+Global Instance reflexive_natural_isomorphism C D
+: Reflexive (@ NaturalIsomorphism C D) | 0.
+exact (_).
+Defined.
+
+Time Definition f0 := Build_Pseudofunctor
+                   cat
+                   (fun C => C.1)
+                   (fun _ _ F => F)
+                   (fun _ _ _ _ _ => reflexivity _). (* 0.013 s *)
+Time Definition g0 := (fun x y z w : cat => @ identity_associativity x.1 y.1 z.1 w.1). (* 0.003 s *)
+Time Definition f0g0 := f0 g0. (* 0.003 s *)
+Time Definition identityP : Pseudofunctor cat
+  := let x := @ reflexive_natural_isomorphism in
+     let y := f0g0 in
+     Build_Pseudofunctor
+       cat
+       (fun C => C.1)
+       (fun _ _ F => F)
+       (fun _ _ _ _ _ => reflexivity _)
+       (fun x y z w => @ identity_associativity x.1 y.1 z.1 w.1). (* 5.827 s *)
+Time Definition identityP' : Pseudofunctor cat
+  := f0 (fun x y z w => @ identity_associativity x.1 y.1 z.1 w.1). (* 0.005 s *)
+Time Definition identityP'' : Pseudofunctor cat
+  := Build_Pseudofunctor
+       cat
+       (fun C => C.1)
+       (fun _ _ F => F)
+       (fun _ _ _ _ _ => reflexivity _)
+       g0. (* 3.477 s *)
+Time Definition identityP''' : Pseudofunctor cat'
+  := Build_Pseudofunctor
+       cat'
+       (fun C => C.1)
+       (fun _ _ F => F)
+       (fun _ _ _ _ _ => reflexivity _)
+       (fun x y z w => @ identity_associativity x.1 y.1 z.1 w.1). (* 1.724 s *)
+Time Definition identityP'''' : Pseudofunctor cat
+  := let f0' := Build_Pseudofunctor
+                  cat
+                  (fun C => C.1)
+                  (fun _ _ F => F)
+                  (fun _ _ _ _ _ => reflexivity _) in
+     let g0' := (fun x y z w => @ identity_associativity x.1 y.1 z.1 w.1) in
+     f0' g0'. (* 11.467 s *)
+Time Definition identityP''''' : Pseudofunctor cat
+  := (fun f0' g0' => f0' g0')
+       (Build_Pseudofunctor
+          cat
+          (fun C => C.1)
+          (fun _ _ F => F)
+          (fun _ _ _ _ _ => reflexivity _))
+       ((fun x y z w => @ identity_associativity x.1 y.1 z.1 w.1)). (* 5.609 s *)
+
+For the test suite, these [Time]s should be changed to [Timeout 1].
+
+
+Comment author: @JasonGross
+
+The fact that filling in the fs : Funext manually makes it go much faster, and that doing it as separate definitions is less than 0.1 s while doing it all together is 5-6 s both seem wrong.
+
+
+Comment author: @JasonGross
+
+I tried to check if it was universes, but -type-in-type is broken.
+
+
+Comment author: @mattam82
+
+That's due to my commit two weeks ago which does systematic expansion of primitive projections during unification, so as to be compatible with the existing projections... of course that can incur an exponential time penalty. The explanation for the cases in which the slowdown occurs is simple: if the terms have existentials, conversion cannot be used and all the computation is done using unification, which is much slower. When you define things separately, you have more ground terms, and more conversion can happen (which doesn't need to do expansion of primitive projections).
+
+
+Comment author: @mattam82
+
+Performance is much better now but the problem will remain due to the compatibility layer and late instantiation of typeclass instances.
+
+

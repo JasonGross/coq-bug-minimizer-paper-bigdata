@@ -1,0 +1,14 @@
+Comment author: @JasonGross
+
+(Already fixed in 8.5, but present in 8.4pl5)
+
+Class Foo := { X : False }.
+Class Bar `{Foo} := { Y : False }.
+Class Baz := { foo :> Foo ; _ :> Bar }. (* Anomaly: Uncaught exception Option.IsNone. Please report. *)
+
+
+Comment author: @ppedrot
+
+We will probably not fix it for 8.4, because it is minor (it only hides a proper error).
+
+

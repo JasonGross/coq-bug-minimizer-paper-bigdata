@@ -1,0 +1,50 @@
+AFAICT, the eauto code only takes into account the opacity flag from the hint base, which is consistent with what you observe. Nothing is visible in the log because when unifying two ground terms, the conversion is performed by the kernel rather than the RAKAM.
+Furthermore, `eauto` uses `Auto.auto_flags_of_state` to extract its transparent state for full-blown ground conversion, and this means expand everything. So, this is one of the many places where we break the opacity abstraction.
+The following patch is 3-line long and solves the issue:
+```diff
+diff --git a/tactics/auto.mli b/tactics/auto.mli
+index 5ae63be539..8224d33716 100644
+--- a/tactics/auto.mli
++++ b/tactics/auto.mli
+@@ -21,6 +21,7 @@ val compute_secvars : Proofview.Goal.t -> Id.Pred.t
+ 
+ val default_search_depth : int ref
+ 
++val flags_of_state : TransparentState.t -> Unification.unify_flags
+ val auto_flags_of_state : TransparentState.t -> Unification.unify_flags
+ 
+ val connect_hint_clenv
+diff --git a/tactics/eauto.ml b/tactics/eauto.ml
+index 361215bf38..74f883ffde 100644
+--- a/tactics/eauto.ml
++++ b/tactics/eauto.ml
+@@ -28,7 +28,7 @@ open Locusops
+ open Hints
+ open Proofview.Notations
+ 
+-let eauto_unif_flags = auto_flags_of_state TransparentState.full
++let eauto_unif_flags = flags_of_state TransparentState.full
+ 
+ let e_give_exact ?(flags=eauto_unif_flags) c =
+   Proofview.Goal.enter begin fun gl ->
+@@ -154,7 +154,7 @@ and e_my_find_search env sigma db_list local_db secvars hdc concl =
+   let hint_of_db = hintmap_of sigma secvars hdc concl in
+   let hintl =
+       List.map_append (fun db ->
+-        let flags = auto_flags_of_state (Hint_db.transparent_state db) in
++        let flags = flags_of_state (Hint_db.transparent_state db) in
+           List.map (fun x -> flags, x) (hint_of_db db)) (local_db::db_list)
+   in
+   let tac_of_hint =
+```
+I am afraid nonetheless that this will break any single development using both `Opaque` and `eauto`...
+> AFAICT, the eauto code only takes into account the opacity flag from the hint base, which is consistent with what you observe.
+
+I am still confused why it is unfolding `guard` even though I've marked it as `Hint Opaque`.
+
+> I am afraid nonetheless that this will break any single development using both Opaque and eauto...
+
+I'd very much like to see `Set Auto Respects Opaque` or similar.  If the impact is not too large, you can mark it as deprecated.  Or if you can provide a debug setting that allows debugging kernel unification, users could use that + diff to find what behavior changed, and I think it will be not too tricky to fix any given instance. (Famous last words, though.)
+
+Doesn't this have to happen anyway, though, if `eauto` and `typeclasses eauto with core` are to be unified?
+`eauto` has so many quirks that it doesn't seem feasible to me to have a compatibility flag for each of those, even assuming this is possible without virtually reimplementing it...

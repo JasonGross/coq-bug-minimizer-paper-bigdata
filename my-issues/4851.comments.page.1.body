@@ -1,0 +1,72 @@
+Comment author: @JasonGross
+
+Example coming momentarily
+
+
+Comment author: @JasonGross
+
+(* Released under LGPL as per changes in https://github.com/coq/coq/pull/219/files *)
+
+Require Import Coq.Reals.Reals Coq.nsatz.Nsatz.
+
+Local Open Scope R.
+
+Goal forall a b y1 x2, y1^2 = x2^3 + a * x2 + b -> y1^2 = x2^3 + a * x2 + b -> b = y1^2 - (x2^3 + a * x2).
+Proof.
+  intros ???? H' ?.
+  solve [ rewrite H'; nsatz ] || fail 0 "too early".
+  Undo.
+  solve [ nsatz ].
+Qed.
+
+Note that [nsatz] leaves over:
+
+1 subgoal, subgoal 1 (ID 537)
+  
+  a, b, y1, x2 : R
+  H,
+  H0 : interpret3
+         (PEsub (PEX Z (Pos.of_succ_nat 0))
+            (PEadd
+               (PEadd (PEX Z (Pos.of_succ_nat 1))
+                  (PEmul (PEX Z (Pos.of_succ_nat 2)) (PEX Z (Pos.of_succ_nat 3))))
+               (PEX Z (Pos.of_succ_nat 4)))) (y1 ^ 2 :: x2 ^ 3 :: a :: x2 :: b :: Datatypes.nil) ==
+       interpret3 (PEc 0%Z) (y1 ^ 2 :: x2 ^ 3 :: a :: x2 :: b :: Datatypes.nil)
+  p21 := PEsub (PEX Z 5) (PEsub (PEX Z 1) (PEadd (PEX Z 2) (PEmul (PEX Z 3) (PEX Z 4)))) : PExpr Z
+  lp21 := PEsub (PEX Z 1) (PEadd (PEadd (PEX Z 2) (PEmul (PEX Z 3) (PEX Z 4))) (PEX Z 5))
+          :: PEsub (PEX Z 1) (PEadd (PEadd (PEX Z 2) (PEmul (PEX Z 3) (PEX Z 4))) (PEX Z 5))
+             :: Datatypes.nil : list (PExpr Z)
+  lci := Datatypes.nil : list (list (PExpr Z))
+  lq := PEc 1%Z :: PEc 1%Z :: Datatypes.nil : list (PExpr Z)
+  q := PEmul (PEc (-1)%Z) (PEpow p21 1) : PExpr Z
+  ============================
+   check lp21 q (lci, lq) = true
+
+(dependent evars: ?X648 using , ?X649 using , ?X650 using , ?X651 using , ?X652 using , ?X653 using , ?X654 using , ?X655 using ,)
+
+computation with sugar
+p: [1]*c*d + [(-1)]*a + [1]*b + [1]*e 
+lp:
+[(-1)]*c*d + [1]*a + [(-1)]*b + [(-1)]*e 
+[(-1)]*c*d + [1]*a + [(-1)]*b + [(-1)]*e 
+remainder: 0
+polynomial reduced to 0
+r ok
+r: 0
+verif sum: [1]*c*d + [(-1)]*a + [1]*b + [1]*e 
+coefficient: [(-1)] 
+computed
+time:      0.000s
+cert ok
+useless spolynomials: 0
+useful spolynomials: 1
+number of parametres: 0
+term computed
+term computed
+
+
+Comment author: @maximedenes
+
+Fixed by Laurent Théry in 8.5 branch.
+
+

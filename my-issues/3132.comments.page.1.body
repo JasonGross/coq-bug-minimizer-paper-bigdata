@@ -1,0 +1,54 @@
+Comment author: @JasonGross
+
+Created attachment 417
+An example setup containing a run.sh file, which shows the problem
+
+Currently [Scheme] does not register its schemes with the database used by [find_scheme] for [discriminate]; I think it should register its schemes with that database.  For example, in the attached zip file, where I have copied the theories/Init/Logic.v from coq 8.4 and replaced the given definition of equality with
+```coq
+Unset Elimination Schemes.
+Inductive eq (A:Type) (x:A) : A -> Prop :=
+    eq_refl : x = x :>A
+
+where "x = y :> A" := (@ eq A x y) : type_scope.
+
+Notation "x = y" := (x = y :>_) : type_scope.
+Notation "x <> y  :> T" := (~ x = y :>T) : type_scope.
+Notation "x <> y" := (x <> y :>_) : type_scope.
+
+Arguments eq {A} x _.
+Arguments eq_refl {A x} , [A] x.
+Set Elimination Schemes.
+
+Scheme eq_rect := Minimality for eq Sort Type.
+Scheme eq_rec := Minimality for eq Sort Set.
+Scheme eq_ind := Minimality for eq Sort Prop.
+```
+
+and then updated Datatypes.v with
+```coq
+Lemma foo (H : true = false) : False.
+Proof.
+  discriminate.
+Defined.
+Print foo.
+```
+Coq deines [foo] as
+```coq
+foo =
+fun H : true = false =>
+(fun H0 : False => (fun H1 : False => False_ind False H1) H0)
+  (internal_eq_ind (fun e : bool => if e then True else False) I H)
+     : true = false -> False
+```
+when I think it should actually define it as 
+```coq
+foo =
+fun H : true = false =>
+(fun H0 : False => (fun H1 : False => False_ind False H1) H0)
+  (eq_ind (fun e : bool => if e then True else False) I H)
+     : true = false -> False
+```
+> Attached file: [example.zip](https://coq.inria.fr/bugfiles/attachment.cgi?id=417) (application/zip, 80501 bytes)
+> Description:   An example setup containing a run.sh file, which shows the problem
+
+

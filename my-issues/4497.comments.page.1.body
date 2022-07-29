@@ -1,0 +1,39 @@
+Comment author: @JasonGross
+
+File succeeds in 8.4pl6, fails in 8.5rc1 with
+
+Error: Illegal application:
+The term "flip_map" of type
+ "forall A : Type, list A -> forall B : Type, (A -> B) -> list B"
+cannot be applied to the terms
+ "(string * productions Char)%type" : "Type"
+ "opt.id ls" : "list (string * productions Char)"
+ "productions Char" : "Type"
+ "snd" : "string * productions Char -> productions Char"
+The 3rd term has type "Type@ {max(Set, tmpx2A3YK.108)}"
+which should be coercible to "Type@ {tmpx2A3YK.395}".
+
+
+Comment author: @mattam82
+
+Hi, I don't see the attachment.
+
+
+Comment author: @JasonGross
+
+Created attachment 649
+buggy file
+
+Oops
+
+> Attached file: [bug_bro_univ_10.v](https://coq.inria.fr/bugfiles/attachment.cgi?id=649) (text/plain, 37622 bytes)
+> Description:   buggy file
+
+
+Comment author: @mattam82
+
+Fixed as well.
+
+*** This bug has been marked as a duplicate of bug [BZ#4420](https://github.com/coq/coq/issues?q=is%3Aissue%20%22Original%20bug%20ID%3A%20BZ%234420%22) ***
+
+

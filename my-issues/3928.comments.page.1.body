@@ -1,0 +1,30 @@
+Comment author: @JasonGross
+
+```coq
+Typeclasses eauto := bfs.
+
+Class Foo := {}.
+Class Bar := {}.
+
+Instance: Bar.
+Instance: Foo -> Bar -> Foo -> Foo | 1.
+Instance: Bar -> Foo | 100.
+Instance: Foo -> Bar -> Foo -> Foo | 1.
+
+Set Typeclasses Debug.
+Timeout 1 Check (_ : Foo). (* timeout *)
+```
+Comment author: @jonleivent
+
+At least in 8.6, one can do this:
+
+Ltac bfs_tc_eauto :=
+  typeclasses eauto 1 +
+  typeclasses eauto 2 +
+  typeclasses eauto 3 +
+  ....
+
+However, this of course repeats many failed search branches, wasting time.  Would the "real" Typeclasses eauto := bfs behavior be better behaved in terms of avoiding repeating failed search branches?
+
+
+This actually works today.

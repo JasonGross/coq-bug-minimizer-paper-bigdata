@@ -1,0 +1,3 @@
+Yes, this is a typical limitation of the Ltac notation mechanism. Fixing this require tweaking the runtime and add a special case for lists of references (which we already do for identifiers and terms IIRC). I am totally opposed to this, please use a decent macro system, as hopefully implemented by Ltac2.
+
+(Read: WONTFIX.)

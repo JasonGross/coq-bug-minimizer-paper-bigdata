@@ -1,0 +1,9 @@
+Comment author: @JasonGross
+
+In bug [BZ#4388](https://github.com/coq/coq/issues?q=is%3Aissue%20%22Original%20bug%20ID%3A%20BZ%234388%22) and bug [BZ#5016](https://github.com/coq/coq/issues?q=is%3Aissue%20%22Original%20bug%20ID%3A%20BZ%235016%22), [Set Printing All] prints terms that are the 
+different with the same text.  I think there should be a mode that prints a 
+representation (ideally in a reversible a way as possible) that is faithful to 
+the internal representation (casts, named vs anonymous binders, etc).
+
+
+Duplicate of #5046.

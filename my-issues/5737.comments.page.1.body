@@ -1,0 +1,53 @@
+Comment author: @JasonGross
+
+I'd like the equivalent of OCaml's '@ ;<0 -n>'.  Note that there's currently no 
+way to fake this, because '[hv' doesn't actually force a newline at breaking 
+points nested under multiple boxes (and probably it shouldn't). I'd like 
+something like this:
+
+```coq
+Notation "'If' ( x ) 'then' { a } 'else' { b }"
+:= (if x then a else b)
+     (at level 200, only printing, format "'[hv  ' 'If'  ( x )  'then'  {  '/' 
+a  '/-  ' }  'else'  {  '/' b  '/-  ' } ']'").
+Check (if true then match true with true => 1000 | false => 10000 end else 
+match true with true => 1000 | false => 10000 end).
+```
+to print as
+```coq
+If (true) then { 
+  If (true) then { 1000 } else { 10000 }
+} else { 
+  If (true) then { 1000 } else { 10000 }
+}
+```
+I tried the following, but it doesn't work:
+```coq
+Notation "'If' ( x ) 'then' { a } 'else' { b }"
+:= (if x then a else b)
+     (at level 200, only printing, format "'[hv' '[hv  ' 'If'  ( x )  'then'  { 
+ '/' a  ']' '/' '[hv  ' }  'else'  {  '/' b  ']' '/' '[hv  ' } ']' ']'").
+Check (if true then match true with true => 1000 | false => 10000 end else 
+match true with true => 1000 | false => 10000 end).
+```
+
+Comment author: @herbelin
+
+Hi Jason,
+
+Indeed, negative spaces are not available. Doesn't the following do what you want?
+```coq
+Notation "'If' ( x ) 'then' { a } 'else' { b }"
+:= (if x then a else b)
+     (at level 200, only printing,
+format "'[hv' 'If'  ( x )  'then'  {  '/  ' a  '/' }  'else'  {  '/  ' b  '/' } ']'").
+Check (if true then match true with true => 1000 | false => 10000 end else match true with true => 1000 | false => 10000 end).
+```
+Or do you really see a need for negative indentation (which would be trivial to implement by hacking the function `parse_format` in `metasyntax.ml`).
+
+
+Comment author: @JasonGross
+
+Ah, that works, thanks!
+
+

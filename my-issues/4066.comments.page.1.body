@@ -1,0 +1,81 @@
+Comment author: @JasonGross
+
+$ cat foo.v
+```
+
+Module Type T.
+End T.
+
+Module V (t : T).
+  Theorem Z : False.
+  Proof using .
+  Qed.
+End V.
+
+Module A <: T.
+End A.
+
+```
+$ cat bar.v
+```
+Require foo.
+Include (foo.V foo.A).
+
+```
+$ coqc -quick foo.v bar.v
+```
+File "./bar.v", line 2, characters 0-22:
+The value you are asking for is not available in this process. If you really
+need this, pass the "-async-proofs off" option to CoqIDE to disable
+asynchronous script
+processing.
+```
+This is wrong.  At the very least, the error message should say "Direct inclusion of module functors containing unforced proofs from other files is not yet supported.".  But I can't imagine it being too hard to fix, given that the following file works fine in -quick mode:
+
+Module Type T.
+End T.
+
+Module V (t : T).
+  Theorem Z : False.
+  Proof using .
+  Qed.
+End V.
+
+Module A <: T.
+End A.
+
+Include (V A).
+
+
+Comment author: @gares
+
+Will push soon
+
+
+Comment author: @JasonGross
+
+Still not fixed as of ac62cda8a4f488b94033b108c37556877232137a, a few days ago, as far as I can tell.
+
+
+Comment author: @gares
+
+The error message is now:
+
+Error: in export: The value you are asking for (Z) is not available in this
+process. If you really need this, pass the "-async-proofs off" option to
+CoqIDE to disable asynchronous script processing and don't pass "-quick" to
+coqc.
+
+What I fixed is that you can process bar.v in CoqIDE (but not batch compile it, nor press on the wheels button in CoqIDE).  I can't do much better than that.  One would need to "copy" the task for X from foo.vio to bar.vio, or better make the copied future proof for bar.Z refer to its twin in foo.Z.
+
+
+Comment author: @gares
+
+I'm adding Pierre to the bugreport since he knows better how Include is implemented.
+
+Would it be possible to have Include not "copy" opaque proof terms from to the included module to the including one and just "point to" them?
+
+
+@SkySkimmer did your patches around include fixed this?
+I dunno, try it and tell us.
+Fixed, presumably by 190c44d0b5c51d1911b9a0ce5e250590647b6989

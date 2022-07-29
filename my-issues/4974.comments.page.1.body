@@ -1,0 +1,13 @@
+Comment author: @JasonGross
+
+Warning: Token '≡ₙ' contains unicode character 0x2099 which will not be
+parsable. [unparsable-keyword,parsing]
+
+
+Comment author: @silene
+
+
+
+*** This bug has been marked as a duplicate of bug [BZ#5136](https://github.com/coq/coq/issues?q=is%3Aissue%20%22Original%20bug%20ID%3A%20BZ%235136%22) ***
+
+

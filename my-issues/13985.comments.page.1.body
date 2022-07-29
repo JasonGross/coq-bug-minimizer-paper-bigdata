@@ -1,0 +1,2 @@
+Strongly related to #13911. At the last call I proposed to reuse that syntax for revert casts.
+This was fixed by #14773.

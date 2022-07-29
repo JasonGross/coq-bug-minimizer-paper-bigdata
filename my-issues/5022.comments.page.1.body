@@ -1,0 +1,46 @@
+Comment author: @JasonGross
+
+Consider the following:
+
+Require Import Coq.ZArith.ZArith Coq.micromega.Psatz.
+Open Scope Z_scope.
+Goal forall q0 r0 q1 r1 d : Z,
+    1 < d
+    -> 0 <= r0 < d
+    -> 0 <= r1 < d
+    -> d * q0 + r0 = d * q1 + r1
+    -> r0 = r1 /\ q0 = q1.
+Proof.
+  intros.
+  split; try nia. (* left with [r0 = r1] *)
+  assert (q0 = q1) by nia; nia. (* success *)
+
+I'm not sure how [nia] works, but it seems like the failure is the same as the 
+one in the following simpler case:
+
+Goal forall z d, 0 <= d * z < d -> d * z = 0.
+Proof.
+  intros.
+  Fail nia.
+  assert (z = 0) by nia; nia.
+
+I'm not sure how [nia] goes about proving [z = 0], but it would be nice if it 
+could make use of this to also prove [d * z = 0] in the middle of it's proof 
+search.  Would this be feasible?  (How does [nia] prove [z = 0]?)
+
+
+Comment author: @silene
+
+Remember that this kind of procedure works by proving that the negation of the goal is contradictory. So, if you are asking it to prove z = 0, you are actually adding z <> 0 as a new hypothesis. So you have the following hypotheses:
+
+  H1: d * z >= 0
+  H2: d - d * z - 1 >= 0
+  H3: z - 1 >= 0 (and another set of hypotheses with 1 - z >= 0)
+
+Then it performs addition and multiplication of all these hypotheses in order to get a contradiction such as -1 >= 0. You would have to look at the proof to know which combination it chose. I have not double-checked, but given the hypotheses, H3 * (1 + H1 + H2) + H2 should do the trick.
+
+Notice how crucial it is that z - 1 >= 0 appears as a hypothesis right from the start. The property z = 0 is never deduced!
+
+As always, non-linear integer arithmetic is hard.
+
+

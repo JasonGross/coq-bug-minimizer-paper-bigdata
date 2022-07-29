@@ -1,0 +1,134 @@
+Comment author: @JasonGross
+
+$ cat foo.v
+Theorem bar : Set.
+Proof using .
+  idtac.
+  Opaque plus.
+  fail.
+Qed.
+
+$ coqc -quick foo
+Error: Tactic failure.
+
+$ coqtop
+Welcome to Coq cagnode15:/afs/csail.mit.edu/u/j/jgross/coq-trunk,trunk (9e6b28c04ad98369a012faf3bd4d630cf123a473)
+
+Coq <
+
+
+I thought there was some logic to allow [Opaque] to be run on the slave and the master separately?
+
+Anyway, here's a file for the test-suite, that should succeed:
+
+(* -*- coq-prog-args: ("-emacs" "-quick") -*- *)
+Theorem bar : Set.
+Proof using .
+  idtac.
+  Opaque plus.
+  fail.
+Qed.
+
+
+Comment author: @gares
+
+You are right, the static analysis of the document thinks you are nesting
+proofs while you are not.  I'll look at it on Monday.
+
+
+Comment author: @JasonGross
+
+Here's another one that fails where I think it should succeed:
+
+Theorem bar : Set.
+Proof using .
+  idtac.
+  Ltac t := idtac.
+  t.
+  fail.
+Qed.
+
+
+Comment author: @gares
+
+Both work now, but they are exceptions to the rule: only proofs made of tactics only can be deferred.  Between Proof and Qed only lowercase stuff.
+
+
+Comment author: @JasonGross
+
+I'm curious why not almost all things can be classed into "do only on the slave" or "do on both"?  (Exceptions I see, which can probably break async even when not inside a proof: [Back], [BackTo], [Undo], [Backtrack].)  For example, it seems like the following vernaculars can be classed straightforwardly:
+
+Only on the slave:
+- [Check]
+- [Print]
+- [About]
+- [Info]
+- [Compute]
+- [Focus]
+- [Grab Existential Variables]
+- [Unshelve]
+- [Guarded]
+- [Search] and it's variants
+- [Show]
+- [Eval]
+- [Time]/[Timeout]/[Fail] with something only on the slave
+
+I've not tested if the following work, but if they do, they should be only on the slave:
+
+- [Arguments <anything which isn't a global constant>]
+- [Opaque]/[Transparent] applied to anything which isn't a global constant
+- [Hint] (resolve, extern, whatever) applied to anything which isn't a global constant
+- [Bind Scope] mentioning anything which isn't a global constant
+- [Notation] mentioning anything which isn't a global constant
+
+
+
+On both the slave and master (at least, assuming they currently work in the middle of a proof):
+- [Arguments <global constant>]
+- [Opaque]/[Transparent] <global constant>
+- [Hint] on global constants
+- [Bind Scope] on global constants
+- Nested Definitions/Theorems/Instances/Axioms/etc.
+- [Notation] mentioning only global constants
+- [Open Scope]/[Close Scope]
+- [CreateHintDb]
+- [Delimit Scope]
+- [Import]/[Export]/[Require]
+- [Generalizable Variables]
+- [Set] / [Unset]
+- [Coercion]
+- [Ltac]
+- [Strategy]
+
+
+
+Some of these things can legitimately go in a proof, at least until there are more local ways of doing things.  In particular, things adjusting display (scopes, printing options), and opacity ([Strategy], [Opaque], [Transparent], [Arguments] directives) seem hard to remove from some proofs.
+
+It might be nice to have a list of the exceptions somewhere in the refman.  (Should this be a separate issue?)
+
+
+Comment author: @gares
+
+With respect to the first group: Coq 8.5 has a notion of document that is being checked. Coq 8.4 had not, and many interfaces suffer from that. I guess that you are used to write Check or Set Printing all in the middle
+of a proof in PG, because this is the only thing you can do.  But these commands are morally directive for the system, not sentences part of the text you are writing.  CoqIDE uses a side channel to set these options or fire the queries and this is the way to go.  Not all interfaces have a side channel, and some particular documents like tutorials need the system to let one stick options and queries in the middle of the document, so it is supported, but how this plays with -quick is not something I want to document, since I may want to change it.
+
+For the second group, I was too strict, of course some non-capital commands are morally proof commands, like Grab Ex Variables, and these are fully supported.
+
+The third group is what I call "side effects".  They are mostly supported but
+I don't want to document which are and which are not allowed
+in a proof to be delegated.  By default, they are not.  Simple rule.
+
+Of course, if you look at the sources you will find the classification function
+so you can know which are supported (or you can just try).  But I don't want
+bugs or feature requests like "support this, support that".  These commands
+should not be in a proof.
+As you say there are few exceptions that are legit, but not in their current "global side effect: form.  E.g. Opaque may be legit, but its effect lasts (today)
+after the proof end.  If its semantics is turned in "make X opaque until the end of the proof" then I'm happy writing in the doc that it is supported.  I can't change the
+semantics of Opaque making it "less global" because It would break compatibility.
+Last time I checked, all the commands you considered as legit are in fact supported,
+but I'd love them to have a "local" variant, so I'm not writing they are supported,
+the their "local variant" will have no reason to exist.
+
+Best,
+
+

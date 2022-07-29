@@ -1,0 +1,20 @@
+Comment author: @JasonGross
+
+I should be able to step through this:
+
+Class A := {}.
+Ltac foo := idtac; idtac; idtac; idtac; idtac; idtac; constructor.
+Hint Extern 0 A => foo : typeclass_instances.
+Goal A.
+  Set Ltac Debug.
+  exact _.
+
+(The relevant test for the output test-suite would stick [Set Ltac Batch Debug] 
+in there as well.)
+
+
+Comment author: @herbelin
+
+Strange, as if the debugging breakpoints put in tacinterp.ml were deactivated in hints. To be investigated.
+
+

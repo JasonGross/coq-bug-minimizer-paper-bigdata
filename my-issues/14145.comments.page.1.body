@@ -1,0 +1,12 @@
+I don't think you can do that without breaking Ltac1 parsing.
+Actually it's worse than that, the *runtime* probably depends on that indirectly. It's the same reason you can't write `(fun x => idtac) foo` in Ltac1. 
+Oh, hrm.  That's a good point that you can't do this with Ltac1 functions either.  I don't really understand why it would break parsing to take something that's currently a parse error and make it not a parse error (can you say how it would break Ltac1 parsing?), and I'd be fine with the parser turning it into a let-binding of an inaccessible function variable under the hood (so I don't see how the runtime issue is a blocker --- but I'm also curious what the issue with the runtime is).
+
+In any case, if this is something that isn't going to be supported, I think we should document it strongly in the reference manual that `ltac2:( ... |- ...) args` is not expected to work, and that the solution is to let-bind it instead.
+> so I don't see how the runtime issue is a blocker
+
+There is dedicated code to do fancy stuff with applied Ltac1 references (the only thing allowed) and try to read the mind of the user. I am not touching that with a 10-foot pole. We can use the let-expansion trick you mention, which seems more reasonable. But then you wander into the dangerous territory of "what-is-a-value"-land, not to mention it's fragile to rely on fresh variables.
+
+So I'd rather not touch at all at this code and document the restriction, since it has been there since the inception of Ltac1.
+
+

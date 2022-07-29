@@ -1,0 +1,23 @@
+Comment author: @JasonGross
+
+Coq v8.6 (dabe6d0e1d1782d3e9647e04aa1bf161765ad882) (but also 8.5pl2 and 8.4pl6)
+```coq
+
+Class Foo := { foo : Set }.
+Record Bar := { bar : Set }.
+Existing Class Bar.
+Axiom admit : forall {T}, T.
+Global Instance Foo0 : Foo
+  := {| foo := admit |}.
+Global Instance Foo1 : Foo
+  := { foo := admit }.
+Existing Class Foo.
+Fail Global Instance Foo2 : Foo
+  := { foo := admit }. (* Error: Unbound method name foo of class Foo. *)
+Global Instance Bar0 : Bar
+  := {| bar := admit |}.
+Fail Global Instance Bar1 : Bar
+  := { bar := admit }. (* Error: Unbound method name bar of class Bar. *)
+
+```
+

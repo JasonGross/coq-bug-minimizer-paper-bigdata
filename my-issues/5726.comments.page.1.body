@@ -1,0 +1,24 @@
+Comment author: @JasonGross
+
+This works:
+
+Set Universe Polymorphism.
+Definition type' := Type.
+Notation type := type'.
+Check type@ {Set}.
+
+This fails:
+Set Universe Polymorphism.
+Notation type := Type.
+Check type@ {Set}. (* Notation type cannot have a universe instance, its 
+expanded head does not start with a reference *)
+
+I think it should succeed.
+
+
+Comment author: @tchajed
+
+Made some progress at https://github.com/coq/coq/pull/1047, fixing the behavior 
+for Jason's specific example as well as type@ {Prop}.
+
+

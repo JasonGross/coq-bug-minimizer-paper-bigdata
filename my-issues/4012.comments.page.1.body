@@ -1,0 +1,64 @@
+Comment author: @JasonGross
+
+Here is code that should not work:
+Goal (forall T : Type, T = T) -> Type.
+  intro H.
+  specialize (H _).
+
+
+Comment author: @aspiwack
+
+Why not?
+
+
+Comment author: @JasonGross
+
+Because it did not in 8.4, and it breaks many scripts.  You should either have a compatibility option, or name it especialize, if you want evars.
+
+
+Comment author: @ppedrot
+
+That's my fault actually. It totally messed up commit 36c7fba11, by interverting the true and false flag of the tclWITHHOLES tacticals. I am going to revert it, but I am quite nervous about breaking things in the current beta...
+
+
+Comment author: @JasonGross
+
+Semi-serious: Can you just release beta2 in a week or something?
+
+
+Comment author: @ppedrot
+
+Can't you just live on the 8.5 branch until the next beta?
+
+
+Comment author: @JasonGross
+
+Yeah, probably.  I'll go update my copy of 8.5.  (The question was actually more: If you release soon, fewer people will make use of the wrong tclWITHHOLES sense, maybe?)
+
+
+Comment author: @ppedrot
+
+The fact that nothing was broken beforehand in the contribs and the test-suite make me quite confident that this would not represent a problem in legacy code. I am more afraid regarding new code using evars a lot...
+
+
+Comment author: @JasonGross
+
+That is because most of the contribs, stdlib, and test suite are not highly automated.  I discovered this problem because it broke one of the tactics (and at least a few of the proofs) in bedrock.  The tactic did something like
+
+  match goal with
+    ...
+    | [ H : forall _ _ _, _ -> _, H' : _ |- _ ]
+        => specialize (H _ _ _ H')
+    ...
+  end
+
+and relied on the fact that this only specialized hypotheses whose arguments were determined by the type of H'.
+
+
+Comment author: @JasonGross
+
+> I am more afraid regarding new code using evars a lot...
+
+Indeed.  I was attempting to make a not-very-serious remark to the effect of "maybe if you put a new beta up soon, people won't have had time to write too much code that depends on this"
+
+

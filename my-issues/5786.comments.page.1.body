@@ -1,0 +1,87 @@
+Comment author: @JasonGross
+
+This is quite unfortunate:
+```
+Tactic Notation "myidtac" string(v) := idtac v.
+Goal True.
+  myidtac "foo". (* <string> *)
+```
+
+I expect this should be pretty simple to fix (cc @ppedrot @psteckler ?)
+Well, you need to define a generic printer for toplevel Ltac values. Not complicated, but not trivial either. This would be a good thing though, as it would simplify the implementation of `Tacinterp.message_of_value`. Interestingly there is this nice comment in the code:
+```
+    let tag = pr_argument_type v in
+    Ftactic.return (str "<" ++ tag ++ str ">") (** TODO *)
+```
+@ppedrot: I actually started to support registering printers for `Tacinterp.message_of_value` in the context of #982. I had a problem though, which is that values do not carry (anymore) an `ExtraArg` key. So I was hesitating between keeping a wit there or having yet a different table for registering printer of values (vague remembering of the problem). If you have an opinion, don't hesitate to tell, otherwise, I shall certainly take a decision at some time so that it eventually works.
+@herbelin I'd go for a separate table, although you can modify the EXTEND registering of genargs so that it also declares the corresponding printer for values. Note also that there is everything in the Dyn API to define maps over dynamic types, but it is unluckily not exported in Geninterp.Val.
+@jasongross: Actually, I'm a bit confused about the generality of the request. I have a temporary fix, but I don't know what to do in the general case. E.g., if I do:
+```coq
+Tactic Notation "f" orient(b) := idtac b. (* orient is the grammar entry for -> and <- *)
+Goal True.
+f ->
+```
+What do I expect? Do I expect to see written `->`, or do I expect to see written `true` (which is the internal representation of `->` as a Boolean)?
+
+Note that a similar dilemma exists in OCaml:
+```ocaml
+type mybool = bool;;
+let print (b:mybool) = Printf.printf (if b then "->" else "<-");;
+#install_printer print;;
+(true:mybool);; (* ->- : bool = *)
+(true:bool);;  (* ->- : bool = *)
+```
+Moreover, in a context with richer datatypes and extended primitives such as `Ltac2`, I suspect that this dilemma will be even more common. For instance, if I take the `not` of an `orient`, do I expect to get something to be printed as an `orient` or as a `bool`?
+
+Of course, one could also use a dedicated type `orient = L2R | R2L` to ensure the absence of collision, but then, we loose the existing library on `bool`. Another common dilemma...
+
+[By the way, that OCaml prints "->" before "- : bool =" seems like a bug.]
+Maybe a proposal: by default, an `orient` would be printed as a Boolean, i.e. `true` or `false`, but one could provide a syntax, say `idtac orient:(b)` to tell explicitly when one wants a Boolean to be printed as an `orient`?? What do you think?
+@herbelin I'm afraid that you're just pinpointing at the nonsensical interpretation of tactic notations, i.e. that there exists objects in the semantics that have no syntactical counterpart and thus that cannot be printed whatsoever.
+
+As far as Ltac2 is concerned, notations are merely syntactical devices that disappear at parsing time, which I'm deeply convinced is the only sensible thing one can do. So when one writes in Ltac2:
+```
+Ltac2 foo x h :=
+  rewrite <- $x in $h.
+```
+this is desugared to the following quite-ugly-but-meaningful
+```
+Print Ltac2 foo.
+foo : constr -> ident -> unit
+foo :=
+  fun x h =>
+  let tac := None with cl :=
+    Some { Std.on_hyps := Some [h, Std.AllOccurrences, Std.InHyp]; Std.on_concl := Std.NoOccurrences } with rw :=
+    [{
+     Std.rew_orient
+     :=
+     Some Std.RTL;
+     Std.rew_repeat
+     :=
+     Std.Precisely 1;
+     Std.rew_equatn
+     :=
+     (fun _ => open_constr:(_), Std.NoBindings)
+     }] in
+  rewrite0 false rw cl tac
+```
+Obviously this is not very palatable, but the only thing one can hope is that we find some clever way to refactor terms that fall in the right fragment and leave others as-is.
+> I'm afraid that you're just pinpointing at the nonsensical interpretation of tactic notations, i.e. that there exists objects in the semantics that have no syntactical counterpart and thus that cannot be printed whatsoever.
+
+I don't think that this is different from what I've shown in OCaml. If there is no syntactical counterpart, we use a canonical printer. If there is a specific printer, we can use it, no?
+
+> As far as Ltac2 is concerned, notations are merely syntactical devices that disappear at parsing time, which I'm deeply convinced is the only sensible thing one can do. So when one writes in Ltac2:
+> ```
+> Ltac2 foo x h :=
+>  rewrite <- $x in $h.
+> ```
+> this is desugared to the following quite-ugly-but-meaningful
+> ```
+> Print Ltac2 foo.
+> ```
+
+Interesting example. I just upgraded to the last version of Ltac2, this is extremely impressive job. If I understand correctly, you have the applicative and custom syntaxes of more than 75 primitive tactics already ported (is that the totality?).
+
+About the notations, it seems that, for `constr`, there is a will to go towards preserving more of the original syntactic structure, so I guess it would also be possible to do so for `Ltac2` in one wishes to. If I understand correctly, this could be done, e.g., by surrounding the expanded code by a capsule which memoizes the original syntax of the expansion, right?
+
+I think the merge of #6047 closes this but please reopen if I'm wrong.

@@ -1,0 +1,48 @@
+Comment author: @JasonGross
+
+I want to be able to have modules that disappear at the end of the section/file, similar to how Lets are replaced by their bodies at the end of the section.
+
+
+Comment author: @ppedrot
+
+This seems incompatible with the already overly complex module system, so I assume we will not provide such a feature. If you have a precise use case, we could do something without using modules maybe.
+
+
+Comment author: @JasonGross
+
+This was one idea I had for better namespacing (see also all the bugs I just added to "see also").
+
+I will be happy with any story for namespacing that allows me to refer to a constant [opposite] defined in Category/Dual.v using the name [Category.opposite], without needing to rename every constant manually, and without needing files like this:
+
+$ cat Category/Category.v
+(** Since there are only notations in [Category.Notations], we can just export those. *)
+Require Export Category.Notations.
+
+Require Category.Core.
+Require Category.Dual.
+Require Category.Morphisms.
+Require Category.Objects.
+Require Category.Prod.
+Require Category.Sigma.Sigma.
+Require Category.Strict.
+Require Category.Sum.
+Require Category.Univalent.
+
+Include Category.Core.
+Include Category.Dual.
+Include Category.Morphisms.
+Include Category.Objects.
+Include Category.Prod.
+(** We use the [Sigma] folder only to allow us to split up the various files and group conceptually similar lemmas, but not for namespacing.  So we include the main file in it. *)
+Include Category.Sigma.Sigma.
+Include Category.Strict.
+Include Category.Sum.
+Include Category.Univalent.
+
+(** For the subfolders, we need to re-create the module structure *)
+Module Subcategory.
+  Require Category.Subcategory.Subcategory.
+  Include Category.Subcategory.Subcategory.
+End Subcategory.
+
+

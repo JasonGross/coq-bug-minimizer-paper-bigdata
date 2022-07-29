@@ -1,0 +1,39 @@
+Comment author: @JasonGross
+
+It would be nice, for tactics like [psatz], [nia], [nra], [omega], [fourier], 
+[lia], [lra], [romega], [ring], [field], etc, if whenever [assert T by tac; 
+tac] worked, [tac] would also work.  This is not the case:
+
+This code works:
+Require Import Coq.ZArith.ZArith Coq.micromega.Psatz.
+Local Open Scope Z_scope.
+Goal forall x, -x ^2 >= 0 -> x - 1 >= 0 -> False.
+Proof.
+  intro x; intros.
+  assert (x = 0) by nia.
+  nia.
+Qed.
+
+But this does not:
+Require Import Coq.ZArith.ZArith Coq.micromega.Psatz.
+Local Open Scope Z_scope.
+Goal forall x, -x ^2 >= 0 -> x - 1 >= 0 -> False.
+Proof.
+  intro x; intros.
+  nia.
+Qed.
+
+
+Comment author: @silene
+
+Non-linear integer arithmetic is undecidable, so any report about the "nia" tactic not succeeding will just be closed as invalid.
+
+
+Comment author: @fajb
+
+Though I agree that it is unfortunate that nia cannot discharge such a simple goal, I concur with Guillaume, you can't expect completeness.
+For any incomplete proof procedure adding hints may help...
+
+PS : I would consider it a bug if lia, lra or omega would need a linear hint.
+
+

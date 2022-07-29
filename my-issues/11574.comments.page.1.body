@@ -1,0 +1,55 @@
+> A basic problem is that there's no introduction at all--which should say which use cases it's intended to address (e.g. a developer trying to improve performance of code internal to Coq OR a user trying to improve performance of a large proof OR).
+
+I'm not sure there's a coherent description of the use-case beyond saying what it accomplishes.  The use case is "your have a Coq development with a performance change due to some cause, and you want to know details about how much the performance changed in what locations.".  Is that the sort of sentence you're looking for?
+
+> Is the "per-line" timing only for commands or will it break out individual tactics?
+
+It will do whatever `coqc -time` does.  Currently, that's at the "sentence" level.  (Most of which are ended by periods, but I think `{` is also a sentence.)
+
+> And it should also answer basic questions ("What is the "timing log"?" should be answered in the doc, not in a PR).
+
+Agreed
+
+> TIMED and TIMING options are confusingly similar.
+
+Indeed, though TIMED is well-established at this point.  Do you have a better suggestion for TIMING which is not too long?
+
+> Using character ranges to identify lines seems very unfriendly--most editors don't have a "jump to character offset", which makes it harder for a user to find a particular line. I also don't see why the lines are mangled with ~.
+
+Both of these are inherited from the `-time` flag to `coqc`.  I'd be a fan of replacing character numbers with line#:col#, and would happily update the scripts to handle this if someone else wants to update coqc/coqtop.  Line mangling with `~` is entirely inherited from `coqc -time`, but I think the scripts rely on it.  If you change this, I can update the scripts to use a regex based on the end of the line rather than one based on a lack of spaces in the string.
+
+> And TIMING_FUZZ seems a very weird approach as well.
+
+Again, I don't see a better option.  If someone points me to a description of the algorithm used by `diff` or `git diff`, I can implement that instead.  Because that's essentially what we're doing here: we're trying to diff two files to figure out which lines are to be considered "the same" or "unchanged".
+
+> We should try to make them non-fiddly.
+
+It's not clear to me how to do this even in principle.  There are a number of design choices, and I've tried to pick good defaults, but there are valid use cases for picking alternatives.  For example, user time just doesn't work on Windows (always reports 0), iirc, but we probably want to default to user-time on most files, especially when doing a parallel build.  On the other hand, per-line timings don't work well with user time due to the numerous things not captured by internally-reported user time, including the time to load files in `Require`, time spent in tactics under `par`, and much of the time spent in the native compiler.  Furthermore, there are different preferences about sorting, such as whether you want to see the biggest diffs first, or the biggest diffs followed by the longest time for things that likely differ only by noise (as estimated by having a diff of under a second), or if you want to see diffs sorted in numerical order (so that the biggest increases are at one end and the biggest decreases are at the other).  Additionally, I hope to someday also add an option to include changes in peak memory usage, which would be another option.
+
+The goal of these tools is not too be a one-invocation-fits-all solution, but instead to present performance information in a usable way.
+A few thoughts...
+
+> I'm not sure there's a coherent description of the use-case beyond saying what it accomplishes. The use case is "your have a Coq development with a performance change due to some cause, and you want to know details about how much the performance changed in what locations.". Is that the sort of sentence you're looking for?
+
+That seems wordy.  You could mention the two cases I suggested: this profiling is useful for those modifying Coq internals as well as for comparing performance of alternative proof scripts.
+
+The text says the script does lines, you say sentences above.   If it's sentences, briefly explain what a sentence is and that `tactic1; tactic2.` is one sentence but two tactics.
+
+Also worth saying that pretty-timed shows per-file build times and pretty-print-timed-diff gives you per-line diffs.  The introduction also gives a bit of a summary/preview of what follows so the reader can decide if it's worth reading.
+
+The example for print-pretty-single-time-diff only shows commands.  That's a little misleading.
+
+The command names could be simpler; "pretty" doesn't add much; there are no non-pretty options are there?  And maybe put the after-before-change-% change columns together with the code/file name on the far right, which could then maybe be a bit longer.
+
+Also explain how the various options do or don't interact; can you set TIMING=1 on print-pretty-single-time-diff?  Or do you do that in 2 steps?
+
+> If someone points me to a description of the algorithm used by diff or git diff, I can implement that instead.
+
+From the doc: See Eugene Myers. An O(ND) difference algorithm and its variations. Algorithmica, 1986. URL: http://www.xmailserver.org/diff2.pdf.
+
+There is an OCaml implementation in diff2.ml in the source tree.
+Venturing off topic: it would nice if there was a way to get performance traces of OCaml source code showing time spent in each routine.  That could give insight not available with the options we've discussed here.  But not simple to implement.  And probably depends critically on the OS.  The high-precision can get some of this info but it's laborious to do so.
+> Venturing off topic: it would nice if there was a way to get performance traces of OCaml source code showing time spent in each routine. That could give insight not available with the options we've discussed here. But not simple to implement. And probably depends critically on the OS. The high-precision can get some of this info but it's laborious to do so.
+
+Isn't that what flamegraphs give you?  (c.f. https://github.com/coq/coq/issues/9582#issuecomment-464088101)
+I hadn't seen those.

@@ -1,0 +1,1 @@
+Indeed, on the right, `::` should be stronger than `,`. I'm not very skilled with parsers (especially in CAMLP5), so that I have to dive into that at some point. There are a few similar quirks, if you encounter one, please list it here as a reminder.

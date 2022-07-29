@@ -1,0 +1,21 @@
+Comment author: @JasonGross
+
+$ ~/.local64/coq/coq-8.5/bin/coqtop -debug
+Welcome to Coq 8.5 (January 2016)
+
+Coq < Print Grammar tactic.
+Entry tactic_expr is
+[ "5" RIGHTA
+...
+  | constr:constr ] ]
+
+
+Coq < sh: 1: dot: not found
+sh: 1: dot: not found
+
+
+Comment author: @gares
+
+This is the -debug flag that tries to call dot to print the STM state.
+
+

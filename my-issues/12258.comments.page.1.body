@@ -1,0 +1,22 @@
+Explicitly specifying the types for `(Prelude.==)` seems reasonable.
+
+In this particular case, `ExtrHaskellString.v` does not force the use of `ExtrHaskellBasic.v`, so the result of `String.eqb` might not be `Prelude.Bool`.  So perhaps we should annotate as `((Prelude.==) :: Prelude.String -> Prelude.String -> _)`, or just import `ExtrHaskellBasic` in `ExtrHaskellString`.
+`((Prelude.==) :: Prelude.String -> Prelude.String -> _)` gives
+```
+    • Found type wildcard ‘_’ standing for ‘GHC.Base.Bool’
+      To use the inferred type, enable PartialTypeSignatures
+    • In an expression type signature:
+        GHC.Base.String -> GHC.Base.String -> _
+      In the first argument of ‘unsafeCoerce’, namely
+        ‘((GHC.Base.==) :: GHC.Base.String -> GHC.Base.String -> _)’
+      In the expression:
+        unsafeCoerce
+          ((GHC.Base.==) :: GHC.Base.String -> GHC.Base.String -> _)
+    • Relevant bindings include
+        t :: Base1
+          (bound at src/ExtractionHaskell/bedrock2_word_by_word_montgomery.hs:7270:17)
+        base_interp_beq :: Base1
+                           -> Base_interp -> Base_interp -> GHC.Base.Bool
+          (bound at src/ExtractionHaskell/bedrock2_word_by_word_montgomery.hs:7270:1)
+```
+In any case, http://hackage.haskell.org/package/base-4.14.0.0/docs/Data-Eq.html seems to mandate that `(Prelude.==)` lands in `Prelude.Bool`, regardless of what `bool` is extracted to, and hence the extraction is ill-typed if it's expected to land in anything other than`Prelude.Bool`.  I reported this as https://github.com/coq/coq/issues/12257, and will prepare a pull request to fix both.

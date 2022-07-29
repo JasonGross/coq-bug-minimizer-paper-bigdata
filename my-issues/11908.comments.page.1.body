@@ -1,0 +1,7 @@
+I believe there are indeed different possible answers:
+- Local solutions: 
+  - Moving the notations of `Int63` to their own module would be the cheapest/simplest solution.
+  - Renaming `land` into `&&` in the sense that it generalize the Boolean and to vectors.
+- A global approach: Avoiding identifiers as infix is a bit constraining (other examples are `o` or `U` which somehow we may want for notations) but we may adopt a convention than such symbols are always surround e.g. by brackets, or whatever, as in `[o]` or `[land]`. I'm afraid that this is a bit late to set such policy though.
+- A parser approach: if we accept the restriction that infix symbols have arguments at level less than 10, or even 0 (which is not absurd, because parsing something like `f arga land g argb` is a bit difficult, even for a human), we could implement a special treatment for infix symbols which are identifiers, parsing them as a regular application `t land u` (roughly `CApp(t,[land;u])` and post-processing them into a notation (i.e. `CNotation("_ land _",t,u)`). Maybe a bit too ad hoc.
+- A "rich" parser approach: if we want `land` to be a keyword, we may expect, in a user interface, to manually annotate it with a color, and to have the parser recognize the annotation. After all, we already have highlighting to distinguish keywords, why not to give the user the ability to pre-indicate that some identifier is a keyword. Maybe a bit futuristic, but seems an interesting direction to go.

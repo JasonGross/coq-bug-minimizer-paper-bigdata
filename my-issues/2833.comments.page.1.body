@@ -1,0 +1,48 @@
+Comment author: @JasonGross
+
+I'm not sure whether this is a bug in Coq, or in Proof General.  (The Proof General bug submission page is currently broken (it gives a 500 error), though, so I'm reporting it here, only.)
+
+Given the following file*:
+
+Require Import Program Omega Bool.
+
+Lemma bar : 128 * 128 + 128 = 16512.
+  compute; trivial.
+Qed.
+
+Lemma baz : 128 * 128 + 128 = 16512.
+  compute; trivial.
+Qed.
+
+Lemma qux : 128 * 128 + 128 = 16512.
+  compute; trivial.
+Qed.
+
+Lemma foo : forall x : Type, x = x.
+  auto.
+Qed.
+Print foo.
+Print foo.
+
+Tell Coq to evaluate the entire thing, then, after it evaluates the [Require Import], tell it to not evaluate [foo] (ctrl + c, ctrl + enter on the [Lemma foo] line), then quickly change [Type] to [nat] before it finishes the proof of [qux], and then tell it to evaluate down to [Print foo], again.  When I [Print foo], it shows the original definition (with [Type]), rather than the new definition (with [nat]).
+
+
+
+*This will only work on a sufficiently slow computer with a sufficiently fast person.  You may need to add more filler theorems, or increase the size of the numbers, so that it slows down enough to change the word before it gets there.  I'm doing this in emacs (GNU Emacs 23.1.50.1 (i386-mingw-nt6.1.7601) of 2009-11-03 on LENNART-69DE564 (patched)) running Proof General (Version 4.1), and I have an HP running Windows 7 x64 with 4 GB of RAM and an AMD Turion(tm) X2 Ultra Dual-Core Mobile ZM-87  2.40 GHz.
+
+
+Comment author: @Matafou
+
+
+> Tell Coq to evaluate the entire thing, then, after it evaluates the [Require
+> Import], tell it to not evaluate [foo] (ctrl + c, ctrl + enter on the [Lemma
+> foo] line)
+
+You cannot tell ProofGeneral to "not evaluate" a command that has been put in the queue. The bug is that from a user perspective, one can think that hitting ctrl-c ctrl-enter at that moment does that, but it doesn't. Indeed the queue seems to be emptied (the queud region becomes white again) but it is not.
+
+This misleading display is deeply linked to the proofgenral achitecture. I don't think it is worth fixing it. Plese just keep in mind it is not possible to remove things from the queue (unless you interrupt coq with ctrl-c ctrl-c). You can only backtrack after the commands are finished.
+
+Best regards,
+Pierre
+
+

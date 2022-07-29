@@ -1,0 +1,12 @@
+N.B. this came up in the wild when trying to implement term traversal with @samuelgruetter 
+Non perf based test
+~~~coq
+Require Import Ltac2.Ltac2.
+
+Ltac2 foo () :=
+  let x := { contents := 0 } in
+  let _ : _ array := Array.init 1 (fun _ => x.(contents) := Int.add 1 (x.(contents))) in
+  Control.assert_true (Int.equal 1 (x.(contents))).
+
+Ltac2 Eval foo ().
+~~~

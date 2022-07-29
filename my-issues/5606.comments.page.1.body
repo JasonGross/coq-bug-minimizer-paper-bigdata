@@ -1,0 +1,17 @@
+Comment author: @JasonGross
+
+I should be able to step through this:
+
+Goal True.
+  Set Ltac Debug.
+  pose ltac:(idtac; idtac; idtac; idtac; idtac; idtac; exact I).
+
+(The relevant test for the output test-suite would stick [Set Ltac Batch Debug] 
+ in there as well.)
+
+
+See also https://github.com/coq/coq/issues/15784
+You can set breakpoints inside the `pose` and the debugger will stop there and then single step.  Setting a breakpoint on the `pose` doesn't work because it's a single build-in tactic--something I planned to address later.  Is there anything else?  If not, shall we close this?
+
+![image](https://user-images.githubusercontent.com/1253341/157359559-8ebc257c-9f70-4cdb-8d8b-4ce58977bce9.png)
+

@@ -1,0 +1,74 @@
+Comment author: @JasonGross
+
+I expect this code to work, and for [head v], when [v] is a uconstr, to return a uconstr:
+
+Ltac head x :=
+  match x with
+    | ?f _ => head f
+    | _ => x
+  end.
+
+Tactic Notation "pose" "head" uconstr(v) := let v' := head v in pose v'.
+
+Goal True.
+  pose head eq_refl.
+  (* Toplevel input, characters 0-18:
+Error: Must evaluate to a closed term
+offending expression:
+x
+this is an object of type uconstr *)
+
+
+Comment author: @silene
+
+*** Bug [BZ#5157](https://github.com/coq/coq/issues?q=is%3Aissue%20%22Original%20bug%20ID%3A%20BZ%235157%22) has been marked as a duplicate of this bug. ***
+
+
+Comment author: @psteckler
+
+Same behavior in 8.6beta1.
+
+In 8.5/8.6 tacinterp.ml, the procedure `interp_match` calls `interp_ltac_constr`, when in fact there's a uconstr. There's an available call `interp_uconstr` with a different signature:
+
+val interp_ltac_constr : 
+  interp_sign -> glob_tactic_expr -> 
+   (constr -> unit Proofview.tactic) -> 
+   unit Proofview.tactic
+                                      
+val interp_uconstr : interp_sign -> Environ.env -> 
+  Glob_term.glob_constr * Constrexpr.constr_expr option -> 
+  Glob_term.closed_glob_constr         
+
+So the 2nd one is not a drop-in replacement for the 1st, where we might dispatch to one or the other (assuming the 2nd one does the needed job). And the 2nd one produces a record with a term and "closure" (maybe meaning an environment), unclear to me whether the output can be chained to the first one.
+
+
+Comment author: @ppedrot
+
+It is not impossible to implement this feature, although it would amount to precomposing the match with the "type_term" function. I can't see another way, because you need to construct the constr to match against it. I would personally refrain from implementing such a feature though, because it introduces yet more dynamic typing behaviour into Ltac for an unclear gain. What prevents you from writing the typing beforehand yourself?
+
+Note that, more generally, I would refrain from adding any kind of non-trivial feature to Ltac so that this eases Ltac1 freeze (and future maintenance) and gives arguments in favour of the switch to Ltac2. I know Ltac2 is still essentially a vapourware, but as soon as I have a bit of time I will implement it more thoroughly. (For now, I already implemented a mini-ML with the monad primitive, but there is still no facility for constr manipulation and the like.)
+
+
+Comment author: @psteckler
+
+When I talked with Jason, I think his concern was that the "type_term" function would slow things down a lot.
+
+
+Comment author: @ppedrot
+
+I would have foreseen this indeed... Still, because of the way uconstrs are implemented, there is unluckily no other way than pretyping it to match against it.
+
+
+Comment author: @JasonGross
+
+> Still, because of the way uconstrs are implemented, there is unluckily no other 
+> way than pretyping it to match against it.
+
+Is this going to be fixed for Ltac 2.0?  (Or will the slowness of constr be fixed?)  Having to represent uconstrs as Ltac thunks which do the matching for you is ... annoying.
+
+
+Comment author: @ppedrot
+
+This particular issue is orthogonal to the underlying Ltac language. Rather, it is all about the semantics of the datastructure you're considering. I believe that it is easy to export the internal constr API from Ltac2 side so that you can mess with kernel terms without ever having to incur typechecking, but this is going to be a dangerous way paved with unexpected anomalies if you're not careful enough...
+
+

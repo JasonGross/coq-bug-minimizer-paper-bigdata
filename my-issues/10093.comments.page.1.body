@@ -1,0 +1,19 @@
+@JasonGross You're using *unsafe* low-level functions. If you do not provide good reasons for which you believe this shouldn't trigger anomalies, then I think we can close this bug.
+I think there ought to be a way to get the number of constructors of an inductive, otherwise how can you expect tactics to guard against this.
+
+Regarding anomaly, my argument is that an anomaly should *always* indicate a bug in Coq.  Feel free to turn this into an uncatchable/unbacktrackable exception (preferably one that will print with an Ltac2 backtrace, which anomalies never do), preferably with a more informative error message mentioning which primitive the call is coming from and that it's about inductive cases or whatever
+> my argument is that an anomaly should always indicate a bug in Coq
+
+What about unsafe tactics like `vm_no_check` and the like? It's a similar situation AFAICT.
+I've never seen `vm_cast_no_check` give an anomaly, only a type error at Qed time.  I agree that the situation is similar: "unsafe"means "you are risking a violation of the invariant that tactics generate well-typed terms; you may get type errors downstream".  "Anomaly" means "you hit a Coq bug".  (I would similarly argue that even unsafe tactics should not allow you to get ill-typed axiom-free terms into the kernel, and even editing .vo files should not allow you to get such inconsistencies past the checker.)
+We can armour the Ltac2 primitives against this kind of anomalies, but this will be done at the detriment of efficiency. I would personally prefer to provide primitive clearly marked as unsafe, at the risk of triggering anomalies, and let people write up their own safe abstractions atop of that and blame them when anomalies occur. But maybe other users disagree?
+I would be willing to take a 2% performance hit to get better error messages and fewer anomalies.  (I think also that this is not the bottleneck, given that, e.g., Ltac2 had a ~200% overhead over OCaml.  That is, I suspect the performance cost here is marginal.)
+> That is, I suspect the performance cost here is marginal.
+
+Not if you start checking that every subterm is sane when using unsafe kind functions. Really.
+
+FTR, what I had in mind was to provide a different type `unsafe_constr` for unsafe, potentially garbage terms together with a function `sanitize : unsafe_constr -> constr` performing enough checks to ensure that the kernel would not explode midflight when handling those terms.
+
+This needs to be polished in an API, but I am really not fond of the idea to have to perform the checks always, that's essentially hardwiring the crappy design choices underlying Ltac1. 
+See also #10940
+I am closing this particular issue, the problem of API hardening in Ltac2 is a real one but here the primitives are clearly labelled as unsafe.

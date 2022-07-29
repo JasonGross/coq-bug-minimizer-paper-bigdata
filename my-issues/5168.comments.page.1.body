@@ -1,0 +1,35 @@
+Comment author: @JasonGross
+
+Consider the difference between the following two failures:
+
+Ltac loop := idtac; loop; idtac.
+Ltac a := loop.
+Ltac a' := fail.
+Ltac b := a. Ltac b' := a'.
+Ltac c := b. Ltac c' := b'.
+Goal True.
+  Fail c'. (* The command has indeed failed with message:
+         In nested Ltac calls to "c'", "b'" and "a'", last call failed.
+         Tactic failure.
+            *)
+  Fail c. (* The command has indeed failed with message:
+         Stack overflow.
+ *)
+
+Is there any technical reason that we can't print the Ltac stack trace on a 
+stack overflow?
+
+
+Comment author: @maximedenes
+
+PMP, can you comment on how easy/hard it would be to do it?
+
+
+Comment author: @ppedrot
+
+At first sight, I don't think that this is easily achievable, precisely for technical reasons. We could probably hack something with a global state registering the current Ltac stack, but apart from the fact it is not thread-safe, this is surely going to incur an important performance penalty for a marginal use-case.
+
+I may be wrong, so I'm going to have a look at the code, but don't expect miracles either.
+
+
+This is an OCaml exception and IMHO the stack trace printed should be the OCaml one, which coq does if `-debug` is used here.

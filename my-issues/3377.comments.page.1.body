@@ -1,0 +1,80 @@
+Comment author: @JasonGross
+
+Set Primitive Projections.
+Record prod A B := pair { fst : A; snd : B}.
+
+Goal fst (@ pair Type Type Type Type).
+Set Printing All.
+match goal with |- ?f _ => idtac end.
+(* Toplevel input, characters 7-44:
+Error: No matching clauses for match. *)
+
+
+Comment author: @mattam82
+
+Projection names cannot be captured like this, except maybe by doing an eta-expansion on the fly.
+
+
+Comment author: @mattam82
+
+*** Bug [BZ#3385](https://github.com/coq/coq/issues?q=is%3Aissue%20%22Original%20bug%20ID%3A%20BZ%233385%22) has been marked as a duplicate of this bug. ***
+
+
+Comment author: @JasonGross
+
+I think eta-expansion on the fly would work decently well, and help in many cases.
+
+
+Comment author: @ppedrot
+
+*** Bug [BZ#3507](https://github.com/coq/coq/issues?q=is%3Aissue%20%22Original%20bug%20ID%3A%20BZ%233507%22) has been marked as a duplicate of this bug. ***
+
+
+Comment author: @mattam82
+
+Ok, that was not so hard in the end, I just needed to pass the environment to matching functions. I did it using the eta expanded form (fun x : I params => x.(p)) when matching a [p c] with [?f _], so one could keep using primitive projections only, not their fully eta-expanded form. Do you think it would be better to use the full form instead? I don't have any example myself where I'd need this feature. There's no way to have the beta reduction done automatically in any case.
+
+
+Comment author: @JasonGross
+
+> so one could keep using primitive projections only, not their fully eta-expanded form. Do you think it would be better to use the full form instead?
+
+What do you mean?
+
+
+Comment author: @mattam82
+
+I mean using the [@ p params] form instead.
+
+
+Comment author: @JasonGross
+
+Er, sorry.   I meant, what's the context of usage.  Are you asking if I think it would be better to always eta-expand in all uses of a primitive projection (that gets rid of the benefit, though, right?)?  Or to always eta-expand in some class of cases?  (which classes?)
+
+
+Comment author: @mattam82
+
+I'm asking whether for this particular usage of capturing through Ltac's match an applied primitive projection, I should rather use "@ p params" or "(fun x => x.(p))" (the latter is used right now).
+
+
+Comment author: @JasonGross
+
+Oh, I see.
+
+I see the following applications of using [@ p params] rather than [(fun x => x.(p))]:
+
+- I have a [head] tactic that returns the head of a term.  I'd like it to return [@ fst].  If functions are used rather than the eta-expanded projection, then [head] is fragile with respect to doing beta reduction in the middle, and [head_under_binders] will loop forever.  These seem like poor properties to have, although, of course, there will always be some tactic that is fragile in this way.
+
+- I have an [atomic] tactic that asks if something is a fix, cofix, let-in, abstraction, application, match, forall, or (hopefully the only remaining one) atomic.  It would be nice if projections are considered [atomic] by this tactic.  (More generally, it's nice if the [head] of something--with no exposed abstractions, matches, fixes, cofixes, nor let-ins--is atomic.)
+
+
+
+I see the following applications of using [(fun x => x.(p))]:
+
+- [rewrite] only needs to be up to beta, rather than up to beta and delta of primitive projections.
+
+
+
+Assuming that eta-expanded projections are declared as [Arguments @ proj args record / proj_args.] (so they simpl always when the result is a primitive projection applied to something, rather than an eta-expanded function), then I already have a rewrite-up-to-simpl tactic (does rewrite_strat support this natively?), so I have a mild preference for getting [@ p params].  (I might change my mind when I have more cases that actually use this.)  (I also hope that [rewrite] will use indices/classes of constants, and then the bullet point of the [(fun x => x.(p))] will be irrelevant, I hope.)
+
+

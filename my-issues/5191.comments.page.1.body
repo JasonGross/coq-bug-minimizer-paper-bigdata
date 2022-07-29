@@ -1,0 +1,118 @@
+Comment author: @JasonGross
+
+$ echo 'Require Import Coq.Classes.RelationClasses.
+Parameter (A:_) (R : _) (e:@ Equivalence A R).
+Parameter (A:_) (R : _) (e:@ Equivalence A R).' | coqtop
+Welcome to Coq jgross-Leopard-WS:/home/jgross/Downloads/coq/coq-v8.6,v8.6 
+(d6a18782919367006ab1cee0a5577ed9b3028682)
+
+Coq < 
+Coq < A is declared
+Toplevel input, characters 0-45:
+> Parameter (A:_) (R : _) (e:@ Equivalence A R).
+> ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Anomaly: Universe Top.3 undefined. Please report at
+http://coq.inria.fr/bugs/.
+
+Coq < Toplevel input, characters 0-45:
+> Parameter (A:_) (R : _) (e:@ Equivalence A R).
+> ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Error: A already exists.
+
+Coq < 
+$ echo 'Require Import Coq.Classes.RelationClasses.
+Parameter (A:_) (R : _) (e:@ Equivalence A R).
+Set Printing Universes.
+Print A.
+Print R.
+Print e.' | coqtop
+Welcome to Coq jgross-Leopard-WS:/home/jgross/Downloads/coq/coq-v8.6,v8.6 
+(d6a18782919367006ab1cee0a5577ed9b3028682)
+
+Coq < 
+Coq < A is declared
+Toplevel input, characters 0-45:
+> Parameter (A:_) (R : _) (e:@ Equivalence A R).
+> ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Anomaly: Universe Top.3 undefined. Please report at
+http://coq.inria.fr/bugs/.
+
+Coq < 
+Coq < *** [ A : Type@ {Top.3} ]
+(* Top.1 |=  *)
+
+Coq < Toplevel input, characters 0-8:
+> Print R.
+> ^^^^^^^^
+Error: R not a defined object.
+
+Coq < Toplevel input, characters 0-8:
+> Print e.
+> ^^^^^^^^
+Error: e not a defined object.
+
+Coq < 
+
+
+
+Of course, if https://coq.inria.fr/bugs/show_bug.cgi?id=5188 is fixed, then 
+you'll need to find a new anomaly to test this.
+
+
+Comment author: @ejgallego
+
+Did this happen in 8.5, 8.4 ? If so, a bisect would be good.
+
+
+Comment author: @ejgallego
+
+Indeed something weird is going on in the Stm:
+
+> (Control (StmAdd () "Require Import Coq.Classes.RelationClasses.
+>                      Parameter (A:_) (R : _) (e:@ Equivalence A R)."))
+> (StmAdded 2 NewTip)
+> (StmAdded 3 NewTip)
+> (Control (StmObserve 3))
+> (CoqExn () ((2 3)) ("\"Anomaly: Universe SerTop.3 undefined\""))
+> (Control (StmCancel (3)))
+> (Control (StmAdd () "Parameter (A:_) (R : _) (e:@ Equivalence A R)."))
+> (StmAdded 4 NewTip)
+> (Control (StmObserve 4))
+> (CoqExn ((2 4)) (ExplainErr.EvaluatedError "Error: A already exists."))
+
+[Same happens if EditAt used]
+
+
+Comment author: @ejgallego
+
+Ok, so this seems a new bug in 8.6, bisecting...
+
+
+Comment author: @ejgallego
+
+Ok, this is what bisect says:
+
+> commit 17f3346c5c42c16eed58bf2325aa996c3892a5e9
+> Author: Enrico Tassi <Enrico.Tassi@ inria.fr>
+> Date:   Wed May 11 14:53:46 2016 +0200
+> 
+>     STM: invalid states are first class citizens
+
+
+Comment author: @gares
+
+Thanks for bisecting, indeed I've missed a line in that commit.
+
+
+Comment author: @gares
+
+Fixed in 3642314974b3aca6eb522c37e7e4efd226e6ebc8
+
+Now you get 
+  Anomaly: Universe Top.3 undefined. ...
+and then
+  Anomaly: Universe Top.6 undefined. ...
+
+That I hope is the expected behavior (same error, just fresh univ names change).
+
+

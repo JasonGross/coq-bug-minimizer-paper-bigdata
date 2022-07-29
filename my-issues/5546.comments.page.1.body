@@ -1,0 +1,113 @@
+Comment author: @JasonGross
+
+Module A.
+  Inductive foo := f.
+End A.
+Module B.
+  Inductive foo := f.
+  Show Match A.foo. (* match # with
+ | f =>
+ end *)
+  Definition bar (x : A.foo)
+    := match x with
+       | f => I
+       end. (* Error: Found a constructor of inductive type foo while a 
+constructor of A.foo is expected. *)
+
+
+Comment author: @psteckler
+
+With the Show Match command, the procedure `show_match' is passed a Qualid with the id "A.foo". `show_match' looks up A.foo and gets a global reference, passing it to `make_cases_aux'.
+
+One way to handle this would be to parse the string A.foo, looking for the ".", and pass the A to `make_cases_aux', which could prepend the A to the constructors. That's kind of ugly, though I think it would work.
+
+
+Comment author: @JasonGross
+
+That's also not what I want, I think; if I do [Show Match Coq.Init.Logic.eq], I don't want [Coq.Init.Logic.] prepended to [eq_refl] unless I need that for disambiguation.  Given a global reference, shouldn't it be able to get references for the constructors, and then stringify them in the same way that [Check] would?
+
+
+Comment author: @psteckler
+
+OK, that would be better, if we can make it work.
+
+Here are the ingredients we have:
+
+  - a global reference to the inductive datatype, a name that includes (always?) a module path, and its location
+  - the names of the constructors, which are unqualified names
+
+I can build a qualid out of the constructor name. Strangely, when I call Nametab.global on that qualid and use the datatype's location, I get back a global reference to the datatype, and not the constructor.
+
+
+Comment author: @JasonGross
+
+Can you trace [Print]?
+
+Print eq_rect. (* eq_rect =
+fun (A : Type) (x : A) (P : A -> Type) (f : P x) (y : A) (e : x = y) => match e in (_ = y0) return (P y0) with
+                                                                        | eq_refl => f
+                                                                        end
+     : forall (A : Type) (x : A) (P : A -> Type), P x -> forall y : A, x = y -> P y
+                *)
+Module Import Logic. Inductive eq {A} (x : A) : A -> Prop := eq_refl : eq x x. End Logic.
+Print Coq.Init.Logic.eq_rect. (* Init.Logic.eq_rect =
+fun (A : Type) (x : A) (P : A -> Type) (f : P x) (y : A) (e : x = y) =>
+match e in (_ = y0) return (P y0) with
+| Init.Logic.eq_refl => f
+end
+     : forall (A : Type) (x : A) (P : A -> Type), P x -> forall y : A, x = y -> P y
+ *)
+
+
+Comment author: @psteckler
+
+(In reply to Jason Gross from comment [BZ#4](https://github.com/coq/coq/issues?q=is%3Aissue%20%22Original%20bug%20ID%3A%20BZ%234%22))
+> Can you trace [Print]?
+
+Sure, that might offers clues.
+
+
+Comment author: @psteckler
+
+For [Print], the qualified name of the constructor is assembled in `shortest_qualid' in nametab.ml. There's a fair bit of computation before that's called, I'll see if I can do something similar for [Show Match].
+
+
+Comment author: @JasonGross
+
+Why not export shortest_qualid and just call it from Show Match?
+
+
+Comment author: @JasonGross
+
+Oh, sorry, ignore my comment, I misread "a fair bit of computation before that's called" as "a fair bit of computation in shortest_qualid"
+
+
+Comment author: @psteckler
+
+PR [BZ#679](https://github.com/coq/coq/issues?q=is%3Aissue%20%22Original%20bug%20ID%3A%20BZ%23679%22) created.
+
+
+Comment author: @psteckler
+
+I think this bug can be closed. PR [BZ#679](https://github.com/coq/coq/issues?q=is%3Aissue%20%22Original%20bug%20ID%3A%20BZ%23679%22) was approved (though not yet merged).
+
+
+Comment author: @maximedenes
+
+Please wait for merge before closing, so that we don't desynchronize bugzilla and the repo. I'll merge as soon as the final Travis tests pass.
+
+
+Comment author: @psteckler
+
+(In reply to Maxime Dénès from comment [BZ#11](https://github.com/coq/coq/issues?q=is%3Aissue%20%22Original%20bug%20ID%3A%20BZ%2311%22))
+> Please wait for merge before closing, so that we don't desynchronize
+> bugzilla and the repo. I'll merge as soon as the final Travis tests pass.
+
+Good idea, I was being hasty.
+
+
+Comment author: @maximedenes
+
+Fix merged, thanks a lot!
+
+

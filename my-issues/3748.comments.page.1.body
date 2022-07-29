@@ -1,0 +1,15 @@
+Comment author: @JasonGross
+
+The type argument to Coq.Classes.RelationClasses.Antisymmetric is now implicit.  It was not in 8.4.  This should either be changed back to the 8.4 behavior, or documented in CHANGES.
+
+Here is code that works in 8.4 but not trunk:
+
+Require Coq.Classes.RelationClasses.
+Check Coq.Classes.RelationClasses.Antisymmetric _ _ _. (* Toplevel input, characters 21-68:
+Error: Illegal application (Non-functional construction):
+The expression "Antisymmetric ?r ?r0" of type "Prop"
+cannot be applied to the term
+ "?y" : "?T" *)
+
+
+This can probably be closed as no longer relevant.

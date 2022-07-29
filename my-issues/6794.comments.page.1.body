@@ -1,0 +1,38 @@
+IMHO we should use type classes for that.
+Can you give more details about how to implement this with type classes?
+
+In particular, I keep falling again and again on the idea that schemes should come in a name space defined from the names of the block of inductive types and I wonder whether this would be compatible with a type class approach or whether it would be orthogonal approaches.
+
+In any case, I'm convinced that the user API for schemes can and should be refined.
+Here is one way to implement it with typeclasses:
+
+In one of the early `Init` files, define classes
+```coq
+Class Decidable (P : Prop) := dec : {P} + {~P}.
+Arguments dec _%type_scope {_}.
+Notation DecidableRel R := (forall x y, Decidable (R x y)).
+
+Class Beq (A : Type) := beq : A -> A -> bool.
+Arguments beq {_ _} _ _.
+Infix "=?" := beq : bool_scope.
+Class Beq_lb A {_ : Beq A} := lb : forall x y : A, x = y -> beq x y = true.
+Arguments lb {A _ _} [x y] _.
+Class Beq_bl A {_ : Beq A} := bl : forall x y : A, beq x y = true -> x = y.
+Arguments bl {A _ _} [x y] _.
+
+Global Instance dec_of_beq A {BEQ : Beq A} {_ : @Beq_lb A BEQ} {_ : @Beq_bl A BEQ}
+ : DecidableRel (@eq A)
+  := fun x y
+    => (if beq x y as b return beq x y = b -> _ with
+        then fun H => left (bl H)
+        else fun H => right (fun H' => (ltac:(discriminate) : beq x y = true -> beq x y = false -> False)
+                               H (lb H')))
+        eq_refl.
+```
+
+Given these, scheme creation should register its lemmas as instances of these classes (and the hypotheses of parameterized schemes should take arguments of these typeclasses), and rather than looking in an internal scheme table for existing schemes, it should perform typeclass resolution to infer the necessary schemes.
+> I keep falling again and again on the idea that schemes should come in a name space defined from the names of the block of inductive types and I wonder whether this would be compatible with a type class approach or whether it would be orthogonal approaches
+
+These seem both compatible and orthogonal.  In particular, both the TC approach and the "special namespace" approach provide `Scheme` a way to locate schemes (and it seems fine for it to try one of the ways and then fallback to the other way, before falling back to creating them from scratch), and this approach defines a way of "registering" the schemes without committing to any policy about the names of the underlying identifiers, while the "special namespace" approach specifies a policy for naming the underlying identifiers (which happens to have scheme registration as a side effect).
+
+Said another way, it seems like either could be implemented without the other, or they could both be implemented and work simultaneously.

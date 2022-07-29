@@ -1,0 +1,76 @@
+Comment author: @JasonGross
+
+Created attachment 496
+Example of file that's much faster under -no-native-compiler
+
+$ time coqc slow_no_native_compiler.v
+
+real    1m42.881s
+user    1m37.826s
+sys     0m4.592s
+
+$ time coqc -no-native-compiler slow_no_native_compiler.v
+
+real    0m11.382s
+user    0m8.785s
+sys     0m2.544s
+
+Is this > 1 minute overhead to be expected?  If so, I'd suggest disabling the native compiler by default, and having a -native-compiler option.
+
+(Also, should there be a "Native Compiler" component on the bug tracker?)
+
+> Attached file: [slow_no_native_compiler.v](https://coq.inria.fr/bugfiles/attachment.cgi?id=496) (application/octet-stream, 51131 bytes)
+> Description:   Example of file that's much faster under -no-native-compiler
+
+
+Comment author: @ppedrot
+
+I think that you're stressing the native compiler too much. It doesn't really like to be fed with huge proof terms, and this is not its purpose altogether... I'll assign this bug to Maxime anyway.
+
+
+Comment author: @jwiegley
+
+Which proof terms am I feeding are "huge"?  Is it that the expansions are huge, or that you are saying the actual tactic scripts are huge?
+
+
+Comment author: @JasonGross
+
+The tactic scripts are not compiled by the native compiler, so it is the generated proof terms that are large.
+
+I think that if the native compiler can't handle large proof terms, then the default mode should be to exclude them, and you should need to pass a -full-native-compiler flag (or similar) to get everything native-compiled.
+
+
+Comment author: @JasonGross
+
+If Coq's native compiler is not meant to be fed big proof terms, it should 
+require explicit command line options that tell Coq to feed it big proof terms. 
+ It seems poor that
+(a) beginners would need to know to pass -no-native-compiler as a "magic" 
+option to speed up their developments by an order of magnitude
+(b) developments which want both big proofs in some files and the native 
+compiler in other files need to either take the speed hit, or manually pass 
+-no-native-compiler to some files (so, e.g., this means that such projects 
+couldn't use _CoqProject)
+
+
+Comment author: @JasonGross
+
+Ah, oops, sorry, I saw the comments in the wrong order and didn't realize my new comment was almost identical to my previous one.
+
+
+Comment author: @maximedenes
+
+Don't forget that the native compiler is fine with huge proof terms as long as they are not transparent (i.e. defined by "Defined").
+
+So I don't think that beginners will hit this issue, as long as they know the Qed command.
+
+On the other hand, I'm fine with disabling the separate native compilation by default (without fully disabling native_compute).
+
+Also note that I'm working with Xavier on a backend that will compile big terms more efficiently (maybe for Coq 9 :) )
+
+
+Comment author: @silene
+
+Fixed by commit 4ad6855.
+
+

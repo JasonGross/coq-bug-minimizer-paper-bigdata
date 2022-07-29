@@ -1,0 +1,39 @@
+Comment author: @JasonGross
+
+Set Implicit Arguments.
+
+Ltac ret_and_left T :=
+  let t := type of T in
+  lazymatch eval hnf in t with
+    | ?a /\ ?b => constr:(proj1 T)
+    | forall x : ?T', @ ?f x =>
+      constr:(fun x : T' => $(let fx := constr:(T x) in
+                              let t := ret_and_left fx in
+                              exact t)$)
+  end. (*
+Toplevel input, characters 258-270:
+Error: The reference ret_and_left was not found in the current environment. *)
+
+
+This is just an issue of making names available in the right place; the following works just fine:
+
+
+Set Implicit Arguments.
+
+Ltac ret_and_left T :=
+  let t := type of T in
+  lazymatch eval hnf in t with
+    | ?a /\ ?b => constr:(proj1 T)
+    | forall x : ?T', @ ?f x =>
+      let tac := ret_and_left in
+      constr:(fun x : T' => $(let fx := constr:(T x) in
+                              let t := tac fx in
+                              exact t)$)
+  end.
+
+
+Comment author: @ppedrot
+
+This is because of the way recursive tactics are encoded. Their are called through a toplevel definition, by a trivial program transformation (name substitution). I don't know if this can be easily fixed but I'll have a look.
+
+

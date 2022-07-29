@@ -1,0 +1,48 @@
+This is due to the fact that the first `x` binder needs to be renamed in the body of the big terms. Indeed, `fun a x => _` will generate a evar in a context with another `x` that will shadow the first one. Goal variables do not use DeBruijn indices but rather named variables, so you have to perform the substitution.
+
+I'm tempted to conclude it is not a bug.
+@JasonGross do you agree that this bug is invalid and should be closed?
+I'm not sure.  Where is the time actually spent, here?  None of the terms in the context mention `x` (all of them are in fact valid in the global environment), so it seems like substitution / copying them should be free?  (I agree that if in fact the large terms depended on `x`, then there would be no bug)
+The environment doesn't store the dependency in variables, so you have to perform the substitution in the big terms even if they don't contain the variable. That's uncompressible O(n) time.
+> Goal variables do not use DeBruijn indices but rather named variables
+
+@ppedrot out of curiosity, why don't we use DeBruijn indices for everything? I've wondered that before.
+For section variables I think we would have to adjust when adding new ones
+~~~coq
+Section S.
+Variable A : bla.
+Definition foo := A. (* foo = DB 0 *)
+Variable B : bli.
+(* foo = DB 1 *)
+~~~
+> @ppedrot out of curiosity, why don't we use DeBruijn indices for everything? I've wondered that before.
+
+It's a matter of trade-offs. If we went for DeBruijn variables, we would pay lifting instead of substitution every time we would introduce a new goal variable, as well a when performing evar substitution. Most evar instances are identity, so this would be a major overhead.
+
+(I'm still curious to quantify this overhead, it might be smaller than what I imagine.)
+> The environment doesn't store the dependency in variables, so you have to perform the substitution in the big terms even if they don't contain the variable. That's uncompressible O(n) time.
+
+Huh, is it really that slow just to check occurrences?  I was thinking that much of the time might be spent doing constr re-creation, but `Time try match goal with H : context[x] |- _ => idtac end.` is already slower than the `pose`, so I suppose it might be reasonable.
+
+However, this seems like a bug:
+```coq
+Fixpoint fact (n : nat) :=
+  match n with
+  | O => 1
+  | S n' => fact n' * S n'
+  end.
+
+Goal True.
+  let n := constr:(8) in
+  let v := (eval cbv in (fact n)) in
+  let c := constr:(eq_refl : fact n = v) in
+  do 20 pose c.
+  pose proof True as x.
+  Time assert_succeeds (idtac; let v := open_constr:(fun a b => _) in idtac). (* Finished transaction in 0. secs (0.u,0.s) (successful) *)
+  Time assert_succeeds (idtac; let v := open_constr:(fun a x => _) in idtac). (* Finished transaction in 0.416 secs (0.347u,0.004s) (successful) *)
+```
+In particular, it seems like we should not bother doing substitution on the things above the variable being renamed.  Is this optimization possible?
+> Is this optimization possible?
+
+I guess so, I'll have a look.
+I wrote a tentative fast-path at https://github.com/ppedrot/coq/tree/fix-9992. It fixes this particular issue, let's see whether this has any effect on other developments with [a bench](https://ci.inria.fr/coq/job/benchmark-part-of-the-branch/705).

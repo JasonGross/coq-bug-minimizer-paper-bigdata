@@ -1,0 +1,23 @@
+Comment author: @JasonGross
+
+Goal True.
+  info_auto. (* In trunk: *) (* Debug: (* info auto : *)
+
+No more subgoals.
+(dependent evars:) *)
+(* In 8.4: *)
+(* (* info auto : *)
+
+ exact I.
+
+
+No more subgoals.
+
+(dependent evars:) *)
+
+
+Comment author: @aspiwack
+
+Trunk has [Info 1 auto] which replaces [info_auto]. It's still being deployed, but it can be considered fixing this particular issue (using [info_auto] gives a warning which informs the user of this fact).
+
+

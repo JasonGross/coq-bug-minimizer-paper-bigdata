@@ -1,0 +1,123 @@
+Interestingly, if I replace `cmd` with `@cmd _`, then the code works fine in Coq 8.9 (no error), but fails with "Error: Anomaly "the kernel does not support existential variables." in 8.10.
+Here's a much shorter version:
+```coq
+Global Set Asymmetric Patterns.
+Inductive type := base | arrow (s d : type).
+Fixpoint for_each_lhs_of_arrow (f : Type) (t : type) : Type
+  := match t with
+     | base => unit
+     | arrow s d => f * @for_each_lhs_of_arrow f d
+     end.
+Inductive expr {var : Type} : type -> Type :=
+| Var {t} (v : var) : expr t
+| Abs {s d} (f : var -> expr d) : expr (arrow s d)
+.
+Class parameters := {}.
+Class rep {p : parameters} := {}.
+Axiom listZ_local : forall {p}, @rep p.
+Axiom p : parameters.
+Existing Instance p.
+Axiom cmd : forall {p : parameters}, Type.
+Axiom ltype : forall {p : parameters} {listZ : @rep p}, Type.
+Axiom translate_cmd
+  : forall {p : parameters}
+           (e : expr (var:=@ltype p (@listZ_local p)) base),
+    cmd.
+Axiom admit : forall {T}, T.
+Fixpoint translate_func' {t} (e : @expr ltype t)
+  : for_each_lhs_of_arrow ltype t -> @cmd _ :=
+  match e with
+  | Abs base d f =>
+    fun (args : _ * for_each_lhs_of_arrow _ d) =>
+      translate_func' (f (fst args)) (snd args)
+  | Var base v =>
+    fun _ => translate_cmd (Var v)
+  | _ => fun _ => admit
+  end.
+(* Coq master: Error: Anomaly "grounding a non evar-free term"
+Please report at http://coq.inria.fr/bugs/.
+*)
+(* Coq 8.10: Error: Anomaly "the kernel does not support existential variables."
+Please report at http://coq.inria.fr/bugs/.
+ *)
+(* Coq 8.9: success *)
+```
+
+Summoning @mattam82 @herbelin for expertise on unification / inference
+And interestingly, if I remove `Existing Class rep` from the following code, then it works fine on master and 8.10:
+```coq
+Global Set Asymmetric Patterns.
+Inductive type := base | arrow (s d : type).
+Fixpoint for_each_lhs_of_arrow (f : Type) (t : type) : Type
+  := match t with
+     | base => unit
+     | arrow s d => f * @for_each_lhs_of_arrow f d
+     end.
+Inductive expr {var : Type} : type -> Type :=
+| Var {t} (v : var) : expr t
+| Abs {s d} (f : var -> expr d) : expr (arrow s d)
+.
+Class parameters := {}.
+Record rep {p : parameters} := {}.
+Axiom listZ_local : forall {p}, @rep p.
+Axiom p : parameters.
+Existing Instance p.
+Axiom cmd : forall {p : parameters}, Type.
+Axiom ltype : forall {p : parameters} {listZ : @rep p}, Type.
+Axiom translate_cmd
+  : forall {p : parameters}
+           (e : expr (var:=@ltype p (@listZ_local p)) base),
+    cmd.
+Axiom admit : forall {T}, T.
+Existing Class rep.
+Fixpoint translate_func' {t} (e : @expr ltype t)
+  : for_each_lhs_of_arrow ltype t -> @cmd _ :=
+  match e with
+  | Abs base d f =>
+    fun (args : _ * for_each_lhs_of_arrow _ d) =>
+      translate_func' (f (fst args)) (snd args)
+  | Var base v =>
+    fun _ => translate_cmd (Var v)
+  | _ => fun _ => admit
+  end.
+(* Coq master: Error: Anomaly "grounding a non evar-free term"
+Please report at http://coq.inria.fr/bugs/.
+*)
+(* Coq 8.10: Error: Anomaly "the kernel does not support existential variables."
+Please report at http://coq.inria.fr/bugs/.
+ *)
+(* Coq 8.9: success *)
+```
+Here's an even smaller example of the anomaly (but fixing this might not fix the original issue):
+```coq
+Class Foo := foo : True.
+Instance: Foo := I.
+Definition bar (v:=_) (H : @foo v = @foo v) : True := I.
+(* Coq master: Error: Anomaly "grounding a non evar-free term"
+Please report at http://coq.inria.fr/bugs/.
+*)
+(* Coq 8.10: Error: Anomaly "the kernel does not support existential variables."
+Please report at http://coq.inria.fr/bugs/.
+ *)
+(* Coq 8.9: Error: Cannot infer this placeholder of type "Foo" (no type class instance found). *)
+```
+Wow `check_evars_are_solved` actually calls typeclass resolution and drops the result
+This function is really suspicious
+> Wow check_evars_are_solved actually calls typeclass resolution and drops the result
+This function is really suspicious
+
+The idea, consistent with the use of a name `check`, is that `check_evars_are_solved` only checks. The way it checks that typeclass evars are solved is by calling typeclass inference is a secondary issue (it could probably just browse evars marked as type-class-able - but I don't know well enough how to do that).
+
+So, the issues are rather:
+- that some appropriate error message has disappeared between 8.9 and 8.10
+- that some type-class inference is missing in `Definition`
+>Here's a much shorter version:
+
+bisect says 9f65b8bf9775dd571a806e10ac356b1b8f8ae2c5 is the first bad commit
+@mattam82 can you see why that commit changes behaviour?
+My guess is that somehow the _ evar is marked as non-resolvable starting with that commit, and hence is now missed by `check_evars_are_solved`. Correspondingly `check_evars_are_solved` should check that there does not remain unresolvable typeclass evars. I don't see why the `v:=_` evar is marked as non-resolvable here, though.
+Ah, so you think the example should trigger an error?
+Oh sorry, you're right, there are two examples, one which should fail (the original one) and one which should succeed (with `@cmd _`).
+Oh I understand better now. check_evars_are_solved is doing the first and only run of typeclass resolution and drops the result now. Before, the commit 9f65b8b, that run of resolution was resulting in a failure, right?
+I'm concentrating on the (v:=_) issue for now :)
+All examples work now in master, please reopen if necessary.

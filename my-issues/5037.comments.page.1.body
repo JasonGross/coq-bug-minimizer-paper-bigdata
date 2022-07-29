@@ -1,0 +1,6 @@
+Comment author: @JasonGross
+
+I'd like a [Set Parallel Obligation Tactic] to do the equivalent of putting 
+[par: ] before the obligation tactic and solving all obligations in parallel.
+
+

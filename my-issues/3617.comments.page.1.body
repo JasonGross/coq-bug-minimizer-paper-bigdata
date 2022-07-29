@@ -1,0 +1,20 @@
+Comment author: @JasonGross
+
+I want this code to work:
+
+Set Implicit Arguments.
+Set Primitive Projections.
+Record prod A B := pair { fst : A ; snd : B }.
+
+Goal forall x y : prod Set Set, fst x = fst y.
+  intros.
+  match goal with
+    | [ |- context[?f _ _ x] ] => pose x
+  end.
+
+
+Comment author: @JasonGross
+
+Is this also resolved fixed, by bug [BZ#3621](https://github.com/coq/coq/issues?q=is%3Aissue%20%22Original%20bug%20ID%3A%20BZ%233621%22)?
+
+

@@ -1,0 +1,48 @@
+Comment author: @JasonGross
+
+The configure script should not enable coqide if make is just going to fail with "/usr/bin/ld: cannot find -lgtksourceview-2.0" when making coqide.
+
+
+Comment author: @herbelin
+
+Coq is relying on the presence of the lablgtk2 libraries which, if the system is consistently installed, implies the presence of the gtksourceview-2.0 library. So my first guess is that something is wrong with your installation, and more information should be given about the files and dependencies of the lablgtk2 on your system.
+
+
+Comment author: @cpitclaudel
+
+Hi Hugo and Jason,
+
+The issue here seems to be that ./configure is checking for the presence of the library, but not of the development version thereof. In fedora installing ocaml-lablgtk-devel pulls gtksourceview2, but not gtksourceview2-devel, which is what CoqIDE really needs to compile properly. So if you only install the former you get a .so.0 library instead of the .so that ld is looking for.
+
+Clément.
+
+
+Comment author: @herbelin
+
+So, what do you suggest?
+
+
+Comment author: @silene
+
+I guess that, ultimately, we should try to compile a minimal application at configure time (as is done in the autoconf world) rather than just checking whether some files exist. (We do not even check whether they are compatible.)
+
+
+Comment author: @JasonGross
+
+Looking through the source of what autoconf generates for, e.g., ..., it looks like we could test something like the return status of running
+  pkg-config --short-errors --print-errors "gtksourceview-2.0 >= 2.2.0"
+
+Alternatively, right, we could make a minimal ocmal file that uses gtksourceview and check that it compiles.
+
+
+Comment author: @JasonGross
+
+Oops, forgot to fill in the link.  I meant to say, "Looking through the source of what autoconf generates for, e.g., https://github.com/aanjhan/GNUSim8085/blob/master/configure.in"
+
+
+Comment author: @silene
+
+At least when it comes to opam, the installation should now behave slightly better. (See bug [BZ#4345](https://github.com/coq/coq/issues?q=is%3Aissue%20%22Original%20bug%20ID%3A%20BZ%234345%22))
+
+
+This is IMO a Fedora bug; the way Coq builds CoqIDE now depends on `ocamlfind` so that should sorted out at the OS install level. If `ocamlfind` returns a positive match for sourceview all its dependencies should be installed.

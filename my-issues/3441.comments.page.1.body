@@ -1,0 +1,55 @@
+Comment author: @JasonGross
+
+Here is an example where it is about a factor of 3 slower, though I've seen an order of magnitude in other places.  What is [pose proof] doing?
+
+```
+Axiom f : nat -> nat -> nat.
+Fixpoint do_n (n : nat) (k : nat) :=
+  match n with
+    | 0 => k
+    | S n' => do_n n' (f k k)
+  end.
+
+Notation big := (_ = _).
+Axiom k : nat.
+Goal True.
+Time let H := fresh "H" in
+     let x := constr:(let n := 17 in do_n n = do_n n) in
+     let y := (eval lazy in x) in
+     pose proof y as H. (* Finished transaction in 1.102 secs (1.084u,0.016s) (successful) *)
+Time let H := fresh "H" in
+     let x := constr:(let n := 17 in do_n n = do_n n) in
+     let y := (eval lazy in x) in
+     pose y as H; clearbody H. (* Finished transaction in 0.412 secs (0.412u,0.s) (successful) *)
+```
+
+Comment author: @JasonGross
+
+Note that [assert] is also slow:
+
+Time let H := fresh "H" in
+     let x := constr:(let n := 17 in do_n n = do_n n) in
+     let y := (eval lazy in x) in
+     assert (H := y). (* Finished transaction in 1.19 secs (1.164u,0.024s) (successful) *)
+
+
+Comment author: @ppedrot
+
+The assert & pose proof tactics do the same thing actually. The cost seems related to a retyping of the term.
+
+
+Comment author: @mattam82
+
+Fixed in 8.6 branch (hopefully, I pushed at little early).
+
+
+Comment author: @mattam82
+
+https://github.com/coq/coq/pull/347
+
+
+Comment author: @ppedrot
+
+Fixed by the merge of the PR.
+
+

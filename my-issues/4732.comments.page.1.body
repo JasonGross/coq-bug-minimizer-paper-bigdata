@@ -1,0 +1,268 @@
+Comment author: @JasonGross
+
+I expect `let tac := <some tactic expression> in do stuff; tac` to evaluate any `match`es and `let`s in the tactic expression, to make it a tactic, and then do stuff, and then run the tactic.  Instead, it seems to semi-unpredictably sometimes decide to fully execute the tactic expression before doing stuff:
+
+```coq
+Goal True /\ False.
+split.
+all:let tac := (idtac "now"; let n := numgoals in idtac n; match goal with |- ?G => idtac G end) in
+    idtac "before";
+    tac;
+      exfalso;
+      tac. (* before now 2 True False now 2 False False *)
+Undo.
+all:let tac := match constr:(Set) with
+               | _ => idtac "now"; let n := numgoals in idtac n; match goal with |- ?G => idtac G end
+               end in
+    idtac "before";
+    tac; exfalso; tac. (* now 1 True now 1 False before before *)
+```
+
+Is this intended?  If so, why?
+
+
+Comment author: @JasonGross
+
+Here is code that works in 8.4, but breaks in 8.5.  The 8.4 behaviour of evaluating `lazymatch` at the time of tactic invocation was already confusing to newcomers (see, e.g., bug [BZ#3498](https://github.com/coq/coq/issues?q=is%3Aissue%20%22Original%20bug%20ID%3A%20BZ%233498%22)).  The fact that Ltac will now (sometimes) evaluate entire tactics (including things like `pose` and `assert`) at argument-passing time rather than at invocation time seems significantly worse.
+
+```coq
+Axiom admit : forall {T}, T.
+Ltac foo := lazymatch constr:(Set) with
+            | _ => assert False by exact admit
+            end.
+
+Ltac mydo tac := clear; tac.
+
+Goal False.
+  mydo foo.
+  assumption.
+Qed.
+```
+Comment author: @ppedrot
+
+There are two separate issues there, i.e. one for match and the other for lazymatch.
+
+The first one is the semantics of "match". If I understand correctly the implementation, the fact that "match" forces entirely its return clause is not a bug, but a feature inserted here to preserve compatibility with 8.4.
+
+As for lazymatch, I can't tell. I honestly have never understood its pre-8.5 semantics.
+
+Regarding the bugfix, there is no miracle solution here: we need to stick to a proper calling convention. It even happens that I wrote a surprisingly small patch that makes Ltac call-by-value. But that breaks about everything...
+
+
+Comment author: @JasonGross
+
+Ewwwwww...  Okay, having reread Arnaud's email from 2014-12-31, let me try again to explain my understanding of Ltac semantics in 8.4:
+
+Ltac has two languages, and two phases: a tactic expression language, and a tactic language.  All tactic expressions evaluate to tactics, tactic functions, constrs, or integers.
+
+In the tactic evaluation phase, tactics (`pose`, `;`, `repeat`, etc) are run.
+
+In tactic expression evaluation phase, the following things happen:
+- `let name := <expr> in <body>` ~~~> evaluate `<expr>` as an expression, substitute the result in `<body>`, evaluate `<body>` as an expression; if at any point in the evaluation we hit a `match ... with ... end` that evaluates to a tactic rather than a constr or an integer, raise "Immediate match producing tactics not allowed in local definitions"
+- `<tactic function expr> <args exprs>` ~~~> evaluate all exprs as tactic expressions; if any of the arguments evaluate to `match ... with ... end`, raise "Immediate match producing tactics not allowed in local definitions."
+- `constr:(<expr>)` evaluate `<expr>` as a constr; raise a failure if, e.g., not all holes are filled, the term does not type, etc.
+- `lazymatch ... with ... end` ~~~> evaluate the `match`: for each matched branch, evaluate the branch as an expression; backtrack across failures in expression evaluation (e.g., if one branch evaluates to `constr:(I : I)`, backtrack)
+- `match ... with ... end` ~~~> evaluate the `match`: for each matched branch, evaluate the branch as an expression, ***and then evaluate the result in the tactic evaluation phase***
+
+
+Now, the fact that `match` is effectively a construct that forces tactics to be *run* eagerly was hidden from the user in all but the edge cases, where a failing [match] showed up inside a `lazymatch` which was not in a local definition.  I think the intended semantics was that constr-returning `match`es should be evaluated during tactic expression evaluation, and tactic-returning `match`es should be evaluated only during tactic running time.
+
+In 8.5, this is much more apparent the the user: the error message has been removed, and `match` forces its tactic evaluation to happen in the tactic expression evaluation phase.
+
+In some ways this is useful.  Here is something that you needed typeclasses to do in 8.4, which you can now do in 8.5, even without tactics in terms:
+```coq
+Ltac constr_idtac msg :=
+  let dummy := match constr:(Set) with
+               | _ => idtac msg
+               end in
+  constr:(Set).
+
+Goal True.
+  let v := constr_idtac Set in
+  pose v.
+```
+
+And here is a reimplementation of the part of tactics in terms that lets you switch back and forth between constructing constrs in Ltac-land and running tactics (except it mangles the proof tree):
+
+```coq
+Ltac as_term tac :=
+  let k := fresh in
+  let dummy := lazymatch goal with
+               | _ => simple refine (let k := _ in _); [ | tac | ]; []
+               end in
+  let value := (eval unfold k in k) in
+  let dummy := lazymatch goal with
+               | _ => clear k
+               end in
+  value.
+
+Goal True.
+  let t := as_term ltac:(refine (_ : True); abstract exact I) in
+  pose t.
+  exact I.
+Qed.
+```
+
+
+So this is useful, but it seems to be a rather large departure from the 8.4 semantics, where you could never inject tactic running into the tactic expression evaluation phase.  Here's an example of how lazymatch has genuinely changed semantics:
+
+```coq
+Goal True.
+  let tac := lazymatch goal with
+        |- ?G => idtac G; match goal with
+                            |- ?G => idtac G 
+                          end
+      end in
+  exfalso; idtac "a"; tac.
+
+(* 8.4: a True False *)
+(* 8.5: True True a *)
+```
+
+This means I can no longer use `lazymatch` to choose which tactic to run later, since it forces its branches early.
+
+
+Comment author: @jonleivent
+
+Jason: use "let rec":
+
+Goal True.
+  let rec tac := lazymatch goal with
+        |- ?G => idtac G; match goal with
+                            |- ?G => idtac G 
+                          end
+      end in
+  exfalso; idtac "a"; tac.
+
+I believe this works the same in 8.5 as 8.4.
+
+The semantics is very confusing to novices - there have been several occurrences of confusion on Coq club that amounts to this evaluation time situation.
+
+Personally, I think having a dedicated syntactic way (not piggy-backed on some uses of the match family of tacticals) to specify time of evaluation would be less confusing and more useful.
+
+
+Comment author: @JasonGross
+
+Jonathan: let rec has the wrong behavior; it's equivalent to prefixing the tactic with `idtac; `.  I want a way to evaluate the `match` early, but evaluate the tactic late.
+
+
+Comment author: @ppedrot
+
+Why don't you use thunks just as in any good language? Like so:
+
+let tac := match foo with _ => fun _ => expr end in ... tac () ...
+
+
+Comment author: @jonleivent
+
+Sorry about my confusion, Jason.  I agree with PMP:
+
+Goal True.
+  let tac := lazymatch goal with
+        |- ?G => fun _ => idtac G; match goal with
+                            |- ?G => idtac G 
+                          end
+      end in
+  exfalso; idtac "a"; tac ().
+
+produces in 8.5pl1:
+a
+True
+False
+
+And, if you don't like the extra arg, you can mask it out with a second let:
+
+Goal True.
+  let tac' := lazymatch goal with
+        |- ?G => fun _ => idtac G; match goal with
+                            |- ?G => idtac G 
+                          end
+      end in
+  let tac := idtac; tac' () in
+  exfalso; idtac "a"; tac.
+
+
+Comment author: @ppedrot
+
+If I were you, I would rather stick to the thunk-based approach. This will be less painful for you when Ltac turns CBV.
+
+
+Comment author: @jonleivent
+
+PMP: when is Ltac turning CBV?  Is that part of the 8.6 plan?
+
+I think I have managed to avoid any dependency on early evaluation of matches, believing that early evaluation aspect of Ltac to perhaps be most vulnerable to change (after all, most tactics don't evaluate to anything useful, it's their side effects that are useful).  But, you are instead saying that I will need to thunk all otherwise-arg-less tactics in 8.6?  Will there be a syntactic way to specify call-by-name semantics for certain args?
+
+
+Comment author: @ppedrot
+
+Ltac won't turn CBV overnight, don't worry! And in particular it definitely won't be in 8.6. But on the (not-so) long term, I hope it will indeed. There are various upgrade paths possible, ranging from backward compatibility flags to a brand new language with the old Ltac as a legacy plugin.
+
+The only thing we know for sure is that the current Ltac language is a real crap, both in terms of semantics and expressiveness, so that it is unavoidable that it has to change...
+
+
+Comment author: @JasonGross
+
+Thunking doesn't fix my other problem, which is that `match constr:(...) with ... end` focuses, when I don't believe it should.
+
+
+Comment author: @ppedrot
+
+(In reply to Jason Gross from comment [BZ#11](https://github.com/coq/coq/issues?q=is%3Aissue%20%22Original%20bug%20ID%3A%20BZ%2311%22))
+> Thunking doesn't fix my other problem, which is that [match constr:(...)
+> with ... end] focuses, when I don't believe it should.
+
+It is necessary for match to focus, because the term being matched on is interpreted in the environment of a goal. There is no workaround AFAIK, apart maybe by creating a dummy goal...
+
+
+Comment author: @jonleivent
+
+IMHO the global/local focus problem in Ltac is very big, not merely limited to which tactics/tacticals force local focus and which don't, and when.  Although that is a big part of it.  I've come to think the whole global/local concept is broken (see 3878).  I have been playing with a replacement - see 4468.
+
+
+Comment author: @ppedrot
+
+While I agree that your feature proposal in bug [BZ#4468](https://github.com/coq/coq/issues?q=is%3Aissue%20%22Original%20bug%20ID%3A%20BZ%234468%22) would provide a more robust alternative to the current goal manipulation mechanism, it does not solve a deeply rooted issue in Ltac semantics, namely, determining the scope in which an object is interpreted. What do yo do when you encounter an expression of the form "let x := constr:(foo) in tac"? This has nothing to do with goal manipulation per se...
+
+
+Comment author: @jonleivent
+
+I have a somewhat working example of the meta-goal idea from 4468, and it includes a potential solution to "let x := constr:(foo) in tac".  The whole implementation I have so far is heavily based on hacking the instantiate tactic - but it is just serving as a proof of concept, as one would rather have the capability built in than rely on tactic hacks.  Still, the solution is that a uconstr can be evaluated to a constr in any particular target goal (which the meta goal sees as a local def hypothesis) from the meta goal using the instantiate tactic, it's value posed in that goal so it becomes part of the corresponding evar's type, and read out from that type by the meta goal.  Hence, from a single goal's local focus (the meta goal), and while maintaining just that focus, one can evaluate constrs or perform actions in any of the other goals.  A built-in meta-goal solution would perhaps have some construct like "let x := constr:(foo):ingoal(G1) in tac" so as to avoid the rigamarole, where the ":ingoal(G1)" part would only work in meta goals (or maybe it would take any evar as its arg and work in any goal).
+
+
+Comment author: @aspiwack
+
+> It even happens that I wrote a surprisingly small patch that makes
+> Ltac call-by-value. But that breaks about everything...
+
+This is less that I would have expected ;-) .
+
+More seriously…
+
+The main « problem » with `match` and `lazymatch` is that they can not only return a tactic but also other kinds of values such as numbers and terms. Better: they can return tactics in some branches and values in others, such as:
+
+    match H with
+    | True => fail "Truth is relative"
+    | _ => constr:H
+    end
+
+In v⩽8.4, `lazymatch` tried to recognize whether a branch was to be evaluated or not depending on whether it was a tactic or something else. But no one will be surprised, I assume, when I tell them that it didn't quite work as expected.
+
+I don't know a way to fix the crazy behaviour of v⩽8.4 `lazymatch` (which could be converted into a non-lazy `match` with the proper application of clever branches (which has happened by accident to some)) without having a more sane always-by-value semantics for the branches.
+
+
+Comment author: @ppedrot
+
+So this one is a WONTFIX, I believe?
+
+
+Comment author: @bluelightning32
+
+I hit this same bug.
+
+If nothing else, the documentation should be updated. It implies that tactics cannot be not evaluated in let expressions,
+
+"If expr1 evaluates to a tactic and the match expression is in position to be applied to a goal (e.g. it is not bound to a variable by a let in), then this tactic is applied. If the tactic succeeds, the list of resulting subgoals is the result of the match expression. If expr1 does not evaluate to a tactic or if the match expression is not in position to be applied to a goal, then the result of the evaluation of expr1 is the result of the match expression."
+
+
+See also https://github.com/coq/coq/pull/12103#discussion_r423382531

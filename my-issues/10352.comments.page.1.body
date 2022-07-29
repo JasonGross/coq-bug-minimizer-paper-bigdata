@@ -1,0 +1,4 @@
+A bisect would be very useful.
+I'd bet this has to do with the change in hashconsing introduced by #10198.
+@ppedrot Didn't the bench show an improvement in all areas on fiat-crypto, though?  (The relevant target *is* tested by the bench, even if it's not tested by the CI.)
+Hmmmmm, I am suspicious.  The PR I was merging into fiat-crypto failed twice in this way on master, I believe, but now that I've merged it, it seems to work fine on master.  So my current guess is that there's a heisenbug in `par:`, but I will close this as I can no longer reproduce it at the moment.

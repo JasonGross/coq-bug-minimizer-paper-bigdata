@@ -1,0 +1,3 @@
+cc @coq/doc-maintainers ?
+Good point.  We don't have anything better than `` :g:`…` `` at the moment.  It would be nice to have a role that would hyperlink to the library documentation.
+See also #10142.

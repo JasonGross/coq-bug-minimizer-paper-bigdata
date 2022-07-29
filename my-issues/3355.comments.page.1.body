@@ -1,0 +1,76 @@
+Comment author: @JasonGross
+
+Here is code that fails in 8.4, but succeeds in trunk:
+
+Inductive paths {A} (x : A) : A -> Type := idpath : paths x x where "x = y" := (@ paths _ x y) : type_scope.
+Goal forall A B : Set, @ paths Type A B -> @ paths Set A B.
+  intros A B H.
+  exact H.
+Defined.
+
+I think trunk is wrong to unify [Type] with [Set] here.
+
+
+Comment author: @ppedrot
+
+Fixed in trunk.
+
+
+Comment author: @JasonGross
+
+Is github just slow at updating?  https://github.com/coq/coq/commits/trunk lists the test-suite case for this bug, but not the actual fix.
+
+
+Comment author: @ppedrot
+
+It was already fixed when I pushed the test-suite. I don't know which exact commit fixed it, but it may be 744e4901.
+
+
+Comment author: @JasonGross
+
+Can you check again?  I recompiled trunk (at efb5ba8c57208313d03a5a84ec387244082d23c6) from scratch (after a git clean -xfd) and got that this is still open:
+
+jgross@ cagnode17:~/coq-trunk$ ./bin/coqtop
+Welcome to Coq cagnode17:/afs/csail.mit.edu/u/j/jgross/coq-trunk,trunk (efb5ba8c57208313d03a5a84ec387244082d23c6)
+
+Coq < Inductive paths {A} (x : A) : A -> Type := idpath : paths x x where "x = y" := (@ paths _ x y) : type_scope.
+Goal forall A B : Set, Warning: Notation _ = _ was already used in scope type_scope
+paths is defined
+paths_rect is defined
+paths_ind is defined
+paths_rec is defined
+Warning: Notation _ = _ was already used in scope type_scope
+
+Coq < @ paths Type A B -> @ paths Set A B.
+  intros A B H.
+  exact H.
+1 subgoal
+
+  ============================
+   forall A B : Set, A = B -> A = B
+
+Unnamed_thm < 1 subgoal
+
+  A : Set
+  B : Set
+  H : A = B
+  ============================
+   A = B
+
+Unnamed_thm < No more subgoals.
+
+Unnamed_thm < Defined.
+Inductive paths {A} (x : A) : A -> Type :=
+    idpath : paths x x
+ where "x = y" := (@ paths _ x y) : type_scope.
+
+intros A B H.
+ exact H.
+
+ Defined.
+Unnamed_thm is defined
+
+Coq <
+Coq <
+
+

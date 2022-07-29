@@ -1,0 +1,28 @@
+Comment author: @JasonGross
+
+(* I would like either a flag to SeachAbout or a UnificationSearchAbout (or similar) so that in the following, test_theorem is found by the second search: *)
+
+Theorem test_theorem (A : Type) (x y : A) : x = y.
+Admitted.
+
+SearchAbout (_ = _).
+(* ...
+...
+test_theorem: forall (A : Type) (x y : A), x = y *)
+SearchAbout (plus = mult).
+(* *)
+(* I would like to see test_theorem here. *)
+
+
+Comment author: @ppedrot
+
+This is stronger than plain unification. If I understand well, you want Search to be able to instantiate the arguments of a forall construct? This is indeed doable, but there will be completeness issues.
+
+Btw, any patch is welcome, and by the current standards, you should consider hacking Coq's code in order to become a full-fledged Coq guru...
+
+
+Comment author: @ppedrot
+
+Would you already be happy with a Search function taking a tactic T such that all the terms returned by [Search T] are the [c] s.t. [T c] does not fail? You would then use all the Ltac trickery you know of to do whatever you want...
+
+

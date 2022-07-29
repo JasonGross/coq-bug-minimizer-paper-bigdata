@@ -1,0 +1,59 @@
+Comment author: @JasonGross
+
+Here is code that used to work in 8.4, but no longer does in 8.5.  It is 
+unclear if this is a bug, but I could not find it mentioned in CHANGES nor in 
+COMPATIBILITY, and either it should be mentioned there, or it should be changed 
+back to the old behavior.  (Is there a reason for this new behavior?)
+
+Module Foo.
+  Inductive Bar := Baz | Qux.
+End Foo.
+Definition Baz := Foo.Baz.
+Definition foo (x : Foo.Bar) : Foo.Bar :=
+  match x with
+    | Baz => Baz
+    | Qux => Qux
+  end.
+(* fails now with redundant clause, because [Bar] no longer means [Foo.Bar] but 
+[Top.Bar]... *)
+
+
+Comment author: @JasonGross
+
+Sorry, that comment should read:
+
+(* fails now with redundant clause, because [Baz] no longer means [Foo.Baz] but 
+[Top.Baz]... *)
+
+
+Comment author: @pirbo
+
+CHANGES now says :
+
+- Constructors in pattern-matching patterns now respect the same rules
+  regarding implicit arguments than in applicative position. The old
+  behavior can be recovered by the command "Set Asymmetric
+  Patterns". As a side effect, Much more notations can be used in
+  patterns. Considering that the pattern language is rich enough like
+  that, definitions are now always forbidden in patterns. (source of
+  incompatibilities for definitions that delta-reduce to a constructor)
+
+Is that explicit enough (and in correct english) ?
+
+
+Comment author: @herbelin
+
+Hi Pierre, maybe would this help is you could add examples of notations which are now allowed in pattern and which were not before?
+
+
+Comment author: @JasonGross
+
+Sounds good to me.  Thanks.
+
+English corrections:
+
+"than in applicative position" -> "as in applicative position" (or maybe "than in applicative positions"?)
+"Much more notations" -> "many more notations"
+"Considering that the pattern language is rich enough like that" -> "As the pattern language has become significantly richer"
+
+

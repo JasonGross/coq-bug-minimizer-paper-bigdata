@@ -1,0 +1,14 @@
+Thanks for the report, will do.
+We're about to do the Sphinx migration. Is there a way to avoid duplicating work here? I mean, if you write LaTeX now, someone will have to re-format the text for Sphinx (usually the automatic translation doesn't produce good results).
+
+
+
+I'm ok to wait for that to happen.
+If the documentation is submitted after the migration to Sphinx, I will probably not backport it and thus this issue should be re-targeted for 8.8...
+No news from @mattam82, re-targeting to 8.8. It could also be 8.7.2 if it is done before the Sphinx migration.
+@mattam82 Certainly not a blocker but if you have a bit of time to do this before the release it would be great.
+> @mattam82 Certainly not a blocker but if you have a bit of time to do this before the release it would be great.
+
+and if not, please update the milestone.
+Didn't hear back, removing the milestone. @mattam82 please put back one that reflects your schedule. Thanks!
+@mattam82 Do you intend to address this in the foreseeable future? If not, please remove your assignment.

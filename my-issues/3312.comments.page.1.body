@@ -1,0 +1,21 @@
+Comment author: @JasonGross
+
+Require Import Setoid.
+Axiom bar : 0 = 1.
+Goal 0 = 1.
+  rewrite_strat bar. (* Toplevel input, characters 15-32:
+Error: Tactic failure:setoid rewrite failed: Nothing to rewrite. *)
+
+Note that [setoid_rewrite] succeeds here.  Also, [rewrite_strat]'s error message shouldn't mention [setoid_rewrite].
+
+
+Comment author: @zeldovich
+
+Are you sure this is a bug?  In your example, [bar] should rewrite [0] into [1], but the goal to which [rewrite_strat bar] is being applied is [0=1].  On the other hand, [rewrite_strat (subterms bar)] does work correctly, at least in the recent trunk version of Coq.
+
+
+Comment author: @JasonGross
+
+Ah, I think I misunderstood how [rewrite_strat] worked at the time.  If it works with [subterms], that seems to be correct.
+
+

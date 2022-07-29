@@ -1,0 +1,52 @@
+Comment author: @JasonGross
+
+(* File reduced by coq-bug-finder from original input, then from 6391 lines to 168 lines, then from 131 lines to 34 lines *)
+(* coqc version trunk (September 2014) compiled on Sep 8 2014 15:21:24 with OCaml 4.01.0
+   coqtop version cagnode17:/afs/csail.mit.edu/u/j/jgross/coq-trunk,trunk (51d38d0892eae4a253356e52614da6dee6513e9e) *)
+Set Implicit Arguments.
+Record PreCategory :=
+  { object :> Type;
+    morphism : object -> object -> Type;
+    identity : forall x, morphism x x }.
+Definition indiscrete_category (X : Type) : PreCategory := @ Build_PreCategory X (fun _ _ => unit) (fun _ => tt).
+Section NonPrim.
+  Record Functor (C D : PreCategory) :=
+    { object_of :> C -> D;
+      morphism_of : forall s d, morphism C s d -> morphism D (object_of s) (object_of d);
+      identity_of : forall x, morphism_of _ _ (identity _ x) = identity _ (object_of x) }.
+
+  Goal (forall (C : PreCategory) (X : Functor (indiscrete_category unit) C),
+          (morphism_of X tt tt tt) = identity _ _).
+    intros.
+    apply identity_of.
+  Defined.
+End NonPrim.
+Module Prim.
+  Local Set Primitive Projections.
+  Record Functor (C D : PreCategory) :=
+    { object_of :> C -> D;
+      morphism_of : forall s d, morphism C s d -> morphism D (object_of s) (object_of d);
+      identity_of : forall x, morphism_of _ _ (identity _ x) = identity _ (object_of x) }.
+
+  Goal (forall (C : PreCategory) (X : Functor (indiscrete_category unit) C),
+          (morphism_of X tt tt tt) = identity _ _).
+    intros.
+    apply identity_of. (* Toplevel input, characters 6-17:
+Error:
+In environment
+C : PreCategory
+X : Functor (indiscrete_category unit) C
+Unable to unify
+ "morphism_of ?192 ?193 ?193 (identity ?190 ?193) = identity ?191 (?192 ?193)"
+with "morphism_of X tt tt tt = identity C (X tt)". *)
+  Defined.
+End Prim.
+
+
+Comment author: @JasonGross
+
+Sorry, I didn't notice https://coq.inria.fr/bugs/show_bug.cgi?id=3504 before.
+
+*** This bug has been marked as a duplicate of bug [BZ#3504](https://github.com/coq/coq/issues?q=is%3Aissue%20%22Original%20bug%20ID%3A%20BZ%233504%22) ***
+
+

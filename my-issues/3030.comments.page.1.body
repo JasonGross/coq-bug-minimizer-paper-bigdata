@@ -1,0 +1,22 @@
+Comment author: @JasonGross
+
+Goal False /\ False /\ False.
+repeat split.
+Focus 2.
+Focus 3.
+
+Yes, it's rather silly, but it shouldn't raise an anomaly.
+
+
+Comment author: @aspiwack
+
+You are right. I left several ways to get this sort of message. I've been lazy.
+
+For instance
+
+Goal False.
+Focus 2.
+
+Triggers: Uncaught exception Failure("List.chop").
+
+

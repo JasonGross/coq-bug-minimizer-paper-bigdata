@@ -1,0 +1,47 @@
+Comment author: @JasonGross
+
+In 8.5 and 8.6:
+
+Goal forall (W : Type) (P : bool -> bool -> Prop),
+    let sub_with_carry := prod bool W in
+    forall (subc : sub_with_carry)
+           (is_sub_with_carry : forall _ : prod bool W, Prop)
+           (_ : is_sub_with_carry subc) (c k : bool)
+           (_ : forall (subc0 : prod bool W)
+                       (_ : is_sub_with_carry subc0) (c0 : bool),
+               P (@ fst bool W (subc0)) k),
+      @ ex bool
+          (fun b : bool =>
+             P (@ fst bool W (subc)) b).
+  intros.
+  eexists.
+  typeclasses eauto with nocore || fail 0 "too early".
+  Undo.
+  Typeclasses eauto := debug.
+  typeclasses eauto with core.
+  (* Debug: 1: looking for (P (fst subc) ?b) with backtracking
+Debug: 1: no match for (P (fst subc) ?b) , 1 possibilities
+   *)
+  (* Ltac call to "typeclasses eauto (int_or_var_opt) with (ne_preident_list)" 
+failed.
+Error: Tactic failure: Proof search failed. *)
+
+Also, what does "1 possibilities" mean?
+
+
+Comment author: @mattam82
+
+This is an intended change. core is a database where no constants/variables are 
+unfoldable by default (Print HintDb tells it), hence when calling typeclasses 
+eauto with just that database it's now unable to unfold the sub_with_carry 
+abbreviation and fails to unify. You can get the expected behavior by giving a 
+different database for the local hints (it is using the transparent state of 
+the first database), like so:
+
+Create HintDb transparent.
+typeclasses eauto with transparent core.
+
+typeclasses eauto does not use the "nocore" hack btw, it just ignores databases 
+which do not exist.
+
+

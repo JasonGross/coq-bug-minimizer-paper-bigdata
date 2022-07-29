@@ -1,0 +1,91 @@
+Comment author: @JasonGross
+
+```coq
+Goal Set -> Prop.
+intro x.
+let r := constr:(@ eq Set x x) in
+clear x;
+  exact r.
+Qed. (* Toplevel input, characters 0-4:
+Error: No such section variable or assumption: x. *)
+```
+It would be nice if this were caught at `exact r` or at `clear`, rather than at `Qed` time.  (But only if that doesn't slow things down too much.)
+
+
+Comment author: @ppedrot
+
+This is another manifestation of the fact that in general Ltac arguments are not real closures, capturing their Ltac & constr arguments. This is similar to the various bugs you encounter with tactic-in-term substitutions. It should be definitely fixed, but I do not know how, though.
+
+
+Comment author: @ppedrot
+
+*** Bug [BZ#4464](https://github.com/coq/coq/issues?q=is%3Aissue%20%22Original%20bug%20ID%3A%20BZ%234464%22) has been marked as a duplicate of this bug. ***
+
+
+This issue can be used to overwrite variables in Ltac constrs without type checking:
+
+```
+Goal False.
+Proof.
+set (x := True);
+let y := constr: (I : x) in
+clear x; set (x := False);
+exact y.
+(* No more subgoals. *)
+Fail Qed.
+(*
+The command has indeed failed with message:
+         In environment
+         x := True : Prop
+         x0 := False : Prop
+         The term "I" has type "True" while it is expected to have type "x0".
+*)
+```
+Note: this is fixed by PR #8014. See also #8011.
+I am posting a minimal case so I can point others here when they run into this.
+
+```coq
+Goal False -> False.
+  intros x.
+  let y := constr:(x) in
+  exact y.
+  Show Proof.
+Qed. (* ok as expected *)
+
+Goal False -> False.
+  intros x.
+Fail
+  let y := constr:(x) in
+  clear x;
+  exact y. (* cannot reinterpret "x" in the current environment *)
+Abort.
+
+Goal False -> False.
+  intros x.
+  let y := constr:(x : False) in
+  clear x;
+  exact y.
+  Show Proof. (* (fun _ : False => x : False) *)
+Fail Qed. (* No such section variable or assumption: x. *)
+Abort.
+
+Goal False -> False /\ False.
+  intros x.
+  let y := constr:(conj x x) in
+  clear x;
+  exact y.
+  Show Proof. (* (fun _ : False => conj x x) *)
+Fail Qed. (* No such section variable or assumption: x *)
+Abort.
+
+(* WORKAROUND (roughly doing #8014): *)
+Goal False -> False /\ False.
+  intros x.
+Fail
+  let y := constr:(conj x x) in
+  clear x;
+  let __ := type of y in (* No such section variable or assumption: x. *)
+  idtac.
+Abort.
+```
+Hi @andres-erbsen, I may try to reschedule #8014, applying @skyskimmer's suggestion there, so that time regression is not so bad. Ping there, if no news within the next weeks.

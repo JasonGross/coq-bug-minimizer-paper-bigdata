@@ -1,0 +1,135 @@
+Comment author: @JasonGross
+
+Parameter addr : Type.
+Parameter valu : Type.
+Parameter z : addr.
+Parameter addr2valu : addr -> valu.
+Parameter valu2addr : valu -> addr.
+Axiom addr2valu2addr : forall a, valu2addr (addr2valu a) = a.
+Hint Rewrite addr2valu2addr.
+
+Require Import Setoid.
+
+Theorem t (f : (nat -> Type) -> nat -> Type) : forall x:nat, f (fun _ => (valu2addr (addr2valu z)) = z) x.
+Proof.
+  rewrite addr2valu2addr.
+  Undo.
+  setoid_rewrite addr2valu2addr. (*
+Toplevel input, characters 15-44:
+Error:
+Tactic failure:setoid rewrite failed: Unable to satisfy the rewriting constraints.
+Unable to satisfy the following constraints:
+EVARS:
+ ?28==[f (do_subrelation:=Morphisms.do_subrelation)
+        |- Morphisms.Proper
+             (Morphisms.pointwise_relation nat ?24 ==>
+              Basics.flip Basics.impl) Morphisms.forall_def]
+        (internal placeholder)
+ ?27==[f x |- Morphisms.ProperProxy ?25 x] (internal placeholder)
+ ?26==[f (do_subrelation:=Morphisms.do_subrelation) x
+        |- Morphisms.Proper
+             (Morphisms.pointwise_relation nat ?20 ==> ?25 ==> ?24) f]
+        (internal placeholder)
+ ?25==[f |- relation nat] (internal placeholder)
+ ?24==[f |- relation Type] (internal placeholder)
+ ?23==[f x H |- Morphisms.ProperProxy ?21 z] (internal placeholder)
+ ?22==[f (do_subrelation:=Morphisms.do_subrelation) x H
+        |- Morphisms.Proper (eq ==> ?21 ==> ?20) eq] (internal placeholder)
+ ?21==[f |- relation addr] (internal placeholder)
+ ?20==[f |- relation Prop] (internal placeholder)
+
+METAS:
+ 445[a] := z : addr  [type is checked]
+ .
+*)
+
+
+I think [setoid_rewrite] should succeed whenever [rewrite] does.  The error message from [setoid_rewrite] is also mostly incomprehensible.
+
+
+Comment author: @ppedrot
+
+I have a branch I intend to push to allow setoid_rewrite to work purely with evars. In this branch, I get the following error instead:
+
+Error: Illegal application: 
+The term "@ CRelationClasses.flip" of type 
+"forall A B C : Type, (A -> B -> C) -> B -> A -> C"
+cannot be applied to the terms
+ "Type" : "Type"
+ "Type" : "Type"
+ "?X7" : "Type"
+ "CRelationClasses.arrow" : "Type -> Type -> Type"
+The 4th term has type "Type -> Type -> Type" which should be coercible to 
+"Type -> Type -> ?X7".
+
+Sounds like a unification problem...
+
+
+Comment author: @zeldovich
+
+Created attachment 516
+Simpler test case
+
+Attached is a simpler test case that appears to trigger the same issue.  In particular, using the latest version of coq trunk (commit c4f270f5), this program:
+
+  Require Import Setoid.
+
+  Theorem t (f : (unit -> nat) -> Prop) :
+    f (fun _ => 0 + 1).
+  Proof.
+    rewrite plus_O_n.
+    Undo.
+    setoid_rewrite plus_O_n.
+
+produces this error:
+
+  Error:
+  Tactic failure: setoid rewrite failed: Unable to satisfy the rewriting constraints.
+  Unable to satisfy the following constraints:
+  In environment:
+  f : (unit -> nat) -> Prop
+  do_subrelation := Morphisms.do_subrelation : Morphisms.apply_subrelation
+  
+  ?p : "Morphisms.Proper (Morphisms.pointwise_relation unit eq ==> Basics.flip Basics.impl) f"
+  .
+
+> Attached file: [setoid-rewrite-simpler.v](https://coq.inria.fr/bugfiles/attachment.cgi?id=516) (text/plain, 148 bytes)
+> Description:   Simpler test case
+
+
+Comment author: @zeldovich
+
+Perhaps this has something to do with functional extensionality?  I was able to make the setoid_rewrite in my last example go through by manually proving the rewriting constraint that setoid_rewrite seemed to want -- but doing so required relying on functional extensionality:
+
+  Require Import Setoid.
+  Require Import FunctionalExtensionality.
+
+  Theorem t (f : (unit -> nat) -> Prop) :
+    f (fun _ => 0 + 1).
+  Proof.
+    rewrite plus_O_n.
+    Undo.
+
+    assert (Morphisms.Proper (Morphisms.pointwise_relation unit eq ==> Basics.flip Basics.impl) f).
+    unfold Basics.flip.
+    unfold Basics.impl.
+    unfold Morphisms.pointwise_relation.
+    unfold Morphisms.Proper.
+    unfold Morphisms.respectful.
+    intros.
+    assert (x=y); subst; auto.
+    apply functional_extensionality; auto.
+
+    setoid_rewrite plus_O_n.
+
+
+Comment author: @JasonGross
+
+That does seem to be the issue.  I think setoid_rewrite needs to be taught that functional extensionality isn't needed in this case, because the term being rewritten doesn't mention the binder and we're using Leibniz equality.  I don't know enough about the guts of setoid_rewrite to know which instances we have to give (probably something involving [subrelation], or changing [subrelation_tac] in [Coq.Classes.Morphisms])...
+
+
+Comment author: @mattam82
+
+Indeed that's one case where rewrite is better than setoid_rewrite, and it's by design: the setoid_rewrite tactic is compositional on the term, it doesn't consider the fact that eq has a more powerful eliminator that works for any context (if no capture happens). On the other hand, if you assume funext you get all rewriting under binders, even with capture directly. Improving the setoid_rewrite message is hard, as it's really a failure of proof search.
+
+

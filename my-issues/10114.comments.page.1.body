@@ -1,0 +1,17 @@
+So you want to be able to access `a` and `b` in the matching branch, did I get it right? Although there is code to do that in the matching primitives, I'm pretty sure it is an anti-feature of Ltac, and I'm not really willing to expose it in Ltac2, unless you come up with very good arguments and / or sane semantics.
+
+The sanest way to do that is to match on the kind of the term and retrieve the identifier from the function. Obviously a few helper functions would help.
+@JasonGross Do you want to keep this open?  You never responded to @ppedrot.
+Oops, sorry.
+
+> So you want to be able to access `a` and `b` in the matching branch, did I get it right?
+
+Yes
+
+> Although there is code to do that in the matching primitives, I'm pretty sure it is an anti-feature of Ltac, and I'm not really willing to expose it in Ltac2, unless you come up with very good arguments and / or sane semantics.
+
+The strongest argument I have is that sometimes I like my code transformations to preserve binder names.  It would be nice to have the option to do this (maybe we require users to use an alternate `match` syntax to get this matching, but I think the underlying `Pattern.matches` should expose this information)
+ 
+> The sanest way to do that is to match on the kind of the term and retrieve the identifier from the function. Obviously a few helper functions would help.
+
+Sure, that also works, at least if it can be done without too much pain to the user.

@@ -1,0 +1,17 @@
+Comment author: @JasonGross
+```coq
+Inductive foo := f.
+Scheme Equality for foo.
+Module opt.
+  Inductive foo := f.
+  Scheme Equality for foo.
+End opt.
+Check foo_beq.
+Check internal_foo_dec_bl.
+Check opt.foo_beq.
+Fail Check opt.internal_foo_dec_bl.
+Check opt.internal_foo_dec_bl0.
+```
+Why does opt.internal_foo_dec_bl0 have a 0 at the end?  I think it shouldn't.
+
+

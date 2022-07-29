@@ -1,0 +1,35 @@
+Comment author: @JasonGross
+
+Chrome says "The identity of this website has been verified by TERENA SSL CS but does not have pubic audit records."  This displays as a lock with a triangle in chrome.
+
+
+Comment author: @andersk
+
+The “does not have public audit records” statement is a red herring.  The real problem is that the certificate has a SHA-1 signature, which is now considered weak.
+
+https://community.qualys.com/blogs/securitylabs/2014/09/09/sha1-deprecation-what-you-need-to-know
+https://www.ssllabs.com/ssltest/analyze.html?d=coq.inria.fr
+
+
+Comment author: @letouzey
+
+I just issued a request for an updated certificate to the admins in charge of this kind of question.
+
+Best regards
+Pierre Letouzey
+
+
+Comment author: @letouzey
+
+A new certificate has just been installed, with a SHA256 signature.
+Could you please confirm whether Chrome consider it as fully secure ?
+
+Best,
+Pierre L.
+
+
+Comment author: @andersk
+
+Looks good to me.
+
+

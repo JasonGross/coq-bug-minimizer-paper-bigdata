@@ -1,0 +1,12 @@
+Comment author: @JasonGross
+
+I want this to work:
+
+Tactic Notation "myspecialize" ident(H) uconstr_list(bar) := specialize (H bar).
+
+Goal (True -> True -> True) -> True.
+  intro H.
+  myspecialize H I I. (* Error: Variable bar should be bound to a term. *)
+
+
+Horrible Ltac Notation nightmare, definitely a WONTFIX.

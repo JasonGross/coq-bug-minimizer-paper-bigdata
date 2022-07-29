@@ -1,0 +1,27 @@
+Comment author: @JasonGross
+```
+Inductive A' := B' (_ : match 0 with 0 => unit | S _ => unit end).
+Scheme Equality for A'. (* Error: Unexpected error during scheme creation: 
+Error: replace failed. *)
+```
+
+Comment author: @herbelin
+
+Same comment as in #5283.
+
+I would be tempted to change the error message into something like:
+
+"Algorithm to build equality scheme not powerful enough to treat this case."
+
+so that it is clear that (at the current time) there is no support for improving the algorithm. Would that be ok?
+
+The following works:
+```
+Inductive A := B (_ : match 0 with 0 => unit | S _ => unit end).
+Lemma eqdec : forall x y:A, {x=y}+{x<>y}.
+decide equality.
+decide equality.
+```
+
+Works now in master.
+Is it a consequence of #13869?

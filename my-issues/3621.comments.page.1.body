@@ -1,0 +1,24 @@
+Comment author: @JasonGross
+
+(* File reduced by coq-bug-finder from original input, then from 16213 lines to 15830 lines, then from 15051 lines to 137 lines, then from 127 lines to 85 lines, then from 67 lines to 19 lines *)
+(* coqc version trunk (September 2014) compiled on Sep 14 2014 12:57:41 with OCaml 4.01.0
+   coqtop version cagnode17:/afs/csail.mit.edu/u/j/jgross/coq-trunk,trunk (9bf62aeb8f96c334783e4e46d4b5e0792299e9fa) *)
+Set Implicit Arguments.
+Local Set Primitive Projections.
+Record PreCategory := { object :> Type ; morphism : object -> object -> Type }.
+Record morphism' (A : PreCategory) (abf a'b'f' : A) := { g : morphism A abf a'b'f' }.
+Goal forall (H : PreCategory) (H4 H5 : H) (H6 H7 : morphism' H H4 H5),
+       g H7 = g H6.
+  intros.
+  match goal with
+    | [ |- context[?f _ _ _ ?m] ] => idtac
+  end. (* Toplevel input, characters 15-80:
+Anomaly: Uncaught exception Invalid_argument("Array.fold_left2", _).
+Please report. *)
+
+
+Comment author: @mattam82
+
+Fixed in trunk (and matching to @ g).
+
+

@@ -1,0 +1,29 @@
+Comment author: @JasonGross
+
+If [bar] is a global identifier, [set (y := @ bar); progress change @ bar with y] 
+should never succeed.  Moreover, [set (y := @ bar)] should have the same 
+behavior as [set (y := @ bar); change @ bar with y; subst y; set (y := @ bar)].  
+It does not.
+``` coq
+
+Set Primitive Projections.
+Set Implicit Arguments.
+Record foo (x : Set) := { bar : Set }.
+Goal forall x (k : foo x), bar k = bar k.
+Proof.
+  intros.
+  set (y := @ bar).
+  Unset Printing Primitive Projection Parameters.
+  Set Printing All.
+  (* 1 subgoal, subgoal 1 (ID 11)
+  
+  x : Set
+  k : foo x
+  y := bar : forall (x : Set) (_ : foo x), Set
+  ============================
+   @ eq Set (@ bar _ k) (@ bar _ k)
+ *)
+  Fail progress change @ bar with y. (* Error: The command has not failed! *)
+
+
+```

@@ -1,0 +1,49 @@
+Maybe related to #5479. See also #11829. I have no idea of the existing plans about this issue.
+I believe this is a regression of 8.11 over 8.10, and makes the error messages from my rewriter into anomalies when backtraces are on.
+Here is a much smaller example:
+```coq
+Set Ltac Backtrace.
+Ltac foo x := constr:(I : I).
+Ltac bar :=
+  let H := fresh in
+  simple refine (let H : True := _ in _);
+  [ abstract exact I
+  | let v := (eval cbv delta [H] in H) in
+    let v := foo v in
+    idtac ].
+Goal True.
+  bar.
+```
+On cdfe69d6da6b32338ba74c9f599c74389089c9dd, the backtrace is:
+Fatal error: exception Not_found
+Raised at [file "clib/int.ml", line 39](https://github.com/coq/coq/blob/cdfe69d6da6b32338ba74c9f599c74389089c9dd/clib/int.ml#L39), characters 14-29
+Called from [file "clib/hMap.ml", line 365](https://github.com/coq/coq/blob/cdfe69d6da6b32338ba74c9f599c74389089c9dd/clib/hMap.ml#L365), characters 12-28
+Called from [file "library/nametab.ml", line 550](https://github.com/coq/coq/blob/cdfe69d6da6b32338ba74c9f599c74389089c9dd/library/nametab.ml#L550), characters 17-64
+Called from [file "interp/constrextern.ml" (inlined), line 310](https://github.com/coq/coq/blob/cdfe69d6da6b32338ba74c9f599c74389089c9dd/interp/constrextern.ml#L310), characters 35-62
+Called from [file "interp/constrextern.ml", line 936](https://github.com/coq/coq/blob/cdfe69d6da6b32338ba74c9f599c74389089c9dd/interp/constrextern.ml#L936), characters 4-31
+Called from [file "interp/constrextern.ml", line 952](https://github.com/coq/coq/blob/cdfe69d6da6b32338ba74c9f599c74389089c9dd/interp/constrextern.ml#L952), characters 71-95
+Called from [file "printing/proof_diffs.ml", line 253](https://github.com/coq/coq/blob/cdfe69d6da6b32338ba74c9f599c74389089c9dd/printing/proof_diffs.ml#L253), characters 37-96
+Called from [file "printing/printer.ml" (inlined), line 84](https://github.com/coq/coq/blob/cdfe69d6da6b32338ba74c9f599c74389089c9dd/printing/printer.ml#L84), characters 35-82
+Called from [file "plugins/ltac/tactic_debug.ml", line 387](https://github.com/coq/coq/blob/cdfe69d6da6b32338ba74c9f599c74389089c9dd/plugins/ltac/tactic_debug.ml#L387), characters 41-89
+Called from [file "list.ml", line 82](https://github.com/coq/coq/blob/cdfe69d6da6b32338ba74c9f599c74389089c9dd/list.ml#L82), characters 20-23
+Called from [file "lib/pp.ml", line 249](https://github.com/coq/coq/blob/cdfe69d6da6b32338ba74c9f599c74389089c9dd/lib/pp.ml#L249), characters 14-29
+Called from [file "lib/pp.ml" (inlined), line 268](https://github.com/coq/coq/blob/cdfe69d6da6b32338ba74c9f599c74389089c9dd/lib/pp.ml#L268), characters 31-68
+Called from [file "plugins/ltac/tactic_debug.ml", line 380](https://github.com/coq/coq/blob/cdfe69d6da6b32338ba74c9f599c74389089c9dd/plugins/ltac/tactic_debug.ml#L380), characters 12-452
+Called from [file "list.ml", line 82](https://github.com/coq/coq/blob/cdfe69d6da6b32338ba74c9f599c74389089c9dd/list.ml#L82), characters 20-23
+Called from [file "list.ml", line 82](https://github.com/coq/coq/blob/cdfe69d6da6b32338ba74c9f599c74389089c9dd/list.ml#L82), characters 32-39
+Called from [file "list.ml", line 82](https://github.com/coq/coq/blob/cdfe69d6da6b32338ba74c9f599c74389089c9dd/list.ml#L82), characters 32-39
+Called from [file "lib/pp.ml", line 249](https://github.com/coq/coq/blob/cdfe69d6da6b32338ba74c9f599c74389089c9dd/lib/pp.ml#L249), characters 14-29
+Called from [file "plugins/ltac/tactic_debug.ml", line 400](https://github.com/coq/coq/blob/cdfe69d6da6b32338ba74c9f599c74389089c9dd/plugins/ltac/tactic_debug.ml#L400), characters 11-32
+Called from [file "plugins/ltac/tactic_debug.ml", line 418](https://github.com/coq/coq/blob/cdfe69d6da6b32338ba74c9f599c74389089c9dd/plugins/ltac/tactic_debug.ml#L418), characters 21-55
+Called from [file "plugins/ltac/tactic_debug.ml", line 442](https://github.com/coq/coq/blob/cdfe69d6da6b32338ba74c9f599c74389089c9dd/plugins/ltac/tactic_debug.ml#L442), characters 23-54
+Called from [file "clib/cList.ml", line 361](https://github.com/coq/coq/blob/cdfe69d6da6b32338ba74c9f599c74389089c9dd/clib/cList.ml#L361), characters 10-13
+Called from [file "lib/cErrors.ml", line 107](https://github.com/coq/coq/blob/cdfe69d6da6b32338ba74c9f599c74389089c9dd/lib/cErrors.ml#L107), characters 4-69
+Called from [file "lib/cErrors.ml", line 121](https://github.com/coq/coq/blob/cdfe69d6da6b32338ba74c9f599c74389089c9dd/lib/cErrors.ml#L121), characters 2-34
+Called from [file "toplevel/coqloop.ml", line 489](https://github.com/coq/coq/blob/cdfe69d6da6b32338ba74c9f599c74389089c9dd/toplevel/coqloop.ml#L489), characters 14-38
+Called from [file "toplevel/coqloop.ml", line 501](https://github.com/coq/coq/blob/cdfe69d6da6b32338ba74c9f599c74389089c9dd/toplevel/coqloop.ml#L501), characters 20-43
+Called from [file "toplevel/coqloop.ml", line 524](https://github.com/coq/coq/blob/cdfe69d6da6b32338ba74c9f599c74389089c9dd/toplevel/coqloop.ml#L524), characters 27-45
+Called from [file "topbin/coqtop_bin.ml", line 16](https://github.com/coq/coq/blob/cdfe69d6da6b32338ba74c9f599c74389089c9dd/topbin/coqtop_bin.ml#L16), characters 10-35
+
+Note that this backtrace was hyperlinked with `sed 's|file "\([^"]*\)"\([^,]*\), line \([0-9]*\)|[file "\1"\2, line \3](https://github.com/coq/coq/blob/cdfe69d6da6b32338ba74c9f599c74389089c9dd/\1#L\3)|g'`
+Looks like the debug printer is not robust to missing names...
+Guilty seems to be the `Unnamed_thm_subproof` produced by `abstract`. What were the plans yet about proof states having their own global environment?

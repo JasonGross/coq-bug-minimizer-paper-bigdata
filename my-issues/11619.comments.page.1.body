@@ -1,0 +1,41 @@
+FWIW, the HoTT library currently depends on this behavior (weird though it may be).  Here's a simplified snippet that illustrates how:
+
+```coq
+Cumulative Inductive paths {A : Type} (a : A) : A -> Type :=
+  idpath : paths a a.
+
+Notation "x = y" := (paths x y) : type_scope.
+
+Inductive trunc_index : Type :=
+| minus_two : trunc_index
+| trunc_S : trunc_index -> trunc_index.
+
+Fixpoint IsTrunc_internal (n : trunc_index) (A : Type) : Type :=
+  match n with
+    | minus_two => nat
+    | trunc_S n' => forall (x y : A), IsTrunc_internal n' (x = y)
+  end.
+
+Definition IsTrunc (n : trunc_index) (A : Type) : Type :=
+  IsTrunc_internal n A.
+
+Arguments IsTrunc : simpl never.
+Notation IsHProp := (IsTrunc (trunc_S minus_two)).
+Notation Contr := (IsTrunc minus_two).
+
+Definition test : IsHProp nat.
+Proof.
+  cbn.
+  (* Goal: IsHProp nat *)
+  simpl.
+  (* Goal: IsHProp nat *)
+  intros x y.
+  (* Goal: IsTrunc_internal minus_two (x = y) *)
+```
+
+We don't want `IsTrunc (trunc_S n) A` to be unfolded by `simpl` or `cbn` into `forall x y:A, IsTrunc n (x=y)` (or `IsTrunc_internal n (x=y)`), since we prefer to reason and think about about the (n+1)-truncatedness of A.  But we nevertheless want to be able to _use_ the fact that (n+1)-truncatedness of A means n-truncatedness of its path-spaces, notably by proving a goal of the form `IsTrunc (trunc_S n) A` with `intros x y`.  Since `intros` uses `hnf` to expose a `forall`, this is only possible if `hnf` is willing at least sometimes to ignore `simpl never`.
+
+I never realized until just this moment that the extra indirection of `IsTrunc` vs. `IsTrunc_internal` is what makes this work, i.e. that if we just defined `IsTrunc` as a fixpoint and an `Existing Class` then it would fail.  I don't know if that indirection was put into the HoTT library expressly for this purpose, or for some other purpose and just happens to have this effect, although I from the lack of any comments in the source code about it I would guess the latter (perhaps it predates the existence of `Existing Class`?).
+
+So if the behavior of `hnf` changes (perhaps to become more consistent), it would be nice to retain _some_ way to specify that `intros` should work on something that's definitionally a function-type even if it is marked as `simpl never`.
+

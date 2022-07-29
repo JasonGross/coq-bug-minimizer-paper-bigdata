@@ -1,0 +1,18 @@
+Comment author: @JasonGross
+
+I would like this to work:
+
+Goal true = false -> False.
+  intro H.
+  lazymatch goal with
+  | [ H : ?x = ?y |- False ]
+    => refine match H in (_ = y') return match y' with
+                                         | y => False
+                                         | _ => True (* Error: This clause is 
+redundant. *)
+                                         end with
+              | eq_refl => _
+              end
+  end.
+
+

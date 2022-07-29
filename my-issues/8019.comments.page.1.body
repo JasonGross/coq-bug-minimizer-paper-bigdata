@@ -1,0 +1,320 @@
+If you have a lot of functions in the terms you are computing with, this is no surprise. Native compilation does much more than merge evaluation of the term as ocamlopt would do, because it needs to perform computation under lambdas and reification, while ocamlopt only stops at the first value boundary.
+Can you elaborate more?  The computed output value contains no functions (it's of type `list Z`), and running `cbv beta` in the term ahead of time does not change the performance of subsequent `vm_compute` and `native_compute`.  It does not seem like there is that much to reify initially, and if the semantics are cbv and we're not let-binding any functions (which I'm pretty sure we're not), and every function is either fully applied or in eta-long form (which I think it is, though I'm not 100% sure), then where is the work being done?
+
+For reference, the beta-reduced term is
+```coq
+     = fun (limbwidth_num limbwidth_den s : Z) (c : list (Z * Z)) (n : nat) (x : Z) =>
+       fold_right
+         (fun (a : nat) (b : list Z) =>
+          fold_right
+            (fun (t : Z * Z) (ls : list Z) =>
+             dlet p2 : nat * Z := nat_rect (fun _ : nat => (nat * Z)%type) (0%nat, fst t * snd t)
+                                    (fun (i' : nat) (place_i' : nat * Z) =>
+                                     let i0 := S i' in
+                                     if fst t mod 2 ^ (- (- (limbwidth_num * Z.of_nat i0) / limbwidth_den)) =? 0
+                                     then
+                                      (i0,
+                                      let c3 := fst t / 2 ^ (- (- (limbwidth_num * Z.of_nat i0) / limbwidth_den)) in c3 * snd t)
+                                     else place_i') (Init.Nat.pred n) in
+             update_nth (fst p2) (fun y : Z => snd p2 + y) ls) (repeat 0 n)
+            (let lo_hi :=
+               let hi_lo :=
+                 partition (fun t : Z * Z => fst t mod s =? 0)
+                   (combine (map (fun i : nat => 2 ^ (- (- (limbwidth_num * Z.of_nat i) / limbwidth_den))) (seq 0 (S n)))
+                      (fold_right
+                         (fun (t : Z * Z) (ls : list Z) =>
+                          dlet p3 : nat * Z := nat_rect (fun _ : nat => (nat * Z)%type) (0%nat, fst t * snd t)
+                                                 (fun (i' : nat) (place_i' : nat * Z) =>
+                                                  let i0 := S i' in
+                                                  if fst t mod 2 ^ (- (- (limbwidth_num * Z.of_nat i0) / limbwidth_den)) =? 0
+                                                  then
+                                                   (i0,
+                                                   let c3 := fst t / 2 ^ (- (- (limbwidth_num * Z.of_nat i0) / limbwidth_den)) in
+                                                   c3 * snd t)
+                                                  else place_i') (Init.Nat.pred (S n)) in
+                          update_nth (fst p3) (fun y : Z => snd p3 + y) ls) (repeat 0 (S n))
+                         (flat_map
+                            (fun t : Z * Z =>
+                             if fst t =? 2 ^ (- (- (limbwidth_num * Z.of_nat a) / limbwidth_den))
+                             then
+                              dlet t2 : Z := snd t in
+                             dlet d2 : Z := t2 /
+                                            (2 ^ (- (- (limbwidth_num * Z.of_nat (S a)) / limbwidth_den)) /
+                                             2 ^ (- (- (limbwidth_num * Z.of_nat a) / limbwidth_den))) in
+                             dlet m2 : Z := t2
+                                            mod (2 ^ (- (- (limbwidth_num * Z.of_nat (S a)) / limbwidth_den)) /
+                                                 2 ^ (- (- (limbwidth_num * Z.of_nat a) / limbwidth_den))) in
+                             [(2 ^ (- (- (limbwidth_num * Z.of_nat a) / limbwidth_den)) *
+                               (2 ^ (- (- (limbwidth_num * Z.of_nat (S a)) / limbwidth_den)) /
+                                2 ^ (- (- (limbwidth_num * Z.of_nat a) / limbwidth_den))), d2);
+                             (2 ^ (- (- (limbwidth_num * Z.of_nat a) / limbwidth_den)), m2)]
+                             else [t])
+                            (combine (map (fun i : nat => 2 ^ (- (- (limbwidth_num * Z.of_nat i) / limbwidth_den))) (seq 0 n)) b)))\
+)
+                 in
+               (snd hi_lo, map (fun t : Z * Z => (fst t / s, snd t)) (fst hi_lo)) in
+             fst lo_hi ++ flat_map (fun t : Z * Z => map (fun t' : Z * Z => (fst t * fst t', snd t * snd t')) (snd lo_hi)) c))
+         (fold_right
+            (fun (t : Z * Z) (ls : list Z) =>
+             dlet p0 : nat * Z := nat_rect (fun _ : nat => (nat * Z)%type) (0%nat, fst t * snd t)
+                                    (fun (i' : nat) (place_i' : nat * Z) =>
+                                     let i0 := S i' in
+                                     if fst t mod 2 ^ (- (- (limbwidth_num * Z.of_nat i0) / limbwidth_den)) =? 0
+                                     then
+                                      (i0,
+                                      let c1 := fst t / 2 ^ (- (- (limbwidth_num * Z.of_nat i0) / limbwidth_den)) in c1 * snd t)
+                                     else place_i') (Init.Nat.pred n) in
+             update_nth (fst p0) (fun y : Z => snd p0 + y) ls) (repeat 0 n) [(1, x)]) (rev (seq 0 n))
+     : Z -> Z -> Z -> list (Z * Z) -> nat -> Z -> list Z
+```
+You're right, it doesn't seem like there is much reification going on here. It looks instead as if the accumulator check is very expensive. It is not the first time I observe this hotspot in native compilation, it might be worthwhile to tweak it.
+Due to the way `compare_cont` is written, an optimization is missed, which leads to an expensive check for accumulation. The following diff divides by ~3.5 the computation time of `test1by` with native compilation:
+```diff
+diff --git a/theories/PArith/BinPosDef.v b/theories/PArith/BinPosDef.v
+index 070314746a..1fee2e236a 100644
+--- a/theories/PArith/BinPosDef.v
++++ b/theories/PArith/BinPosDef.v
+@@ -257,7 +257,7 @@ Fixpoint size p :=
+ 
+ (** ** Comparison on binary positive numbers *)
+ 
+-Fixpoint compare_cont (r:comparison) (x y:positive) {struct y} : comparison :=
++Fixpoint compare_cont (r:comparison) (x y:positive) {struct x} : comparison :=
+   match x, y with
+     | p~1, q~1 => compare_cont r p q
+     | p~1, q~0 => compare_cont Gt p q
+```
+Yesh.  Nice 1-character-change.  Is there a way to improve the native compiler (and the vm?) to not miss this optimization?
+I don't think so. The two terms don't have the same computational behaviour depending on their arguments, because unfolding the fixpoint depends on their shape (and thus of whether they are accumulators or not).
+Soooo ... is there a reasonable fix for this issue?  (And why is extraction able to pick up the relevant optimization?)
+> Soooo ... is there a reasonable fix for this issue?
+
+I can try to think about it, but it will take some time. Meanwhile, we can indeed change the definition.
+
+> (And why is extraction able to pick up the relevant optimization?)
+
+Extraction doesn't have to deal with reifying the normal form of stuck fixpoints, so it is way simpler to optimize there.
+> Meanwhile, we can indeed change the definition.
+
+That's good enough for me for the near-term future; thanks!
+@maximedenes The call to `is_accu` is very expensive in general, can't we just tweak the compilation of fixpoints to perform a case-analysis on the accumulator constructor, as we know the inductive type being matched on stactically?
+@JasonGross Could you try your developments with #8055? I expect an important speedup for native compilation.
+Thanks!
+
+I am right now benching the difference between `vm_compute` and `native_compute`, and after that, I will bench the difference between `native_compute` and #8055 (I might not get to it for a couple of days, though).  If you want to try it yourself, change `vm_compute` and `vm_cast_no_check` in https://github.com/mit-plv/fiat-crypto/blob/master/src/Experiments/NewPipeline/Toplevel1.v#L1613-L1623 to `native_compute` and `native_cast_no_check`, and then time `src/Experiments/NewPipeline/Toplevel2.v` and `src/Experiments/NewPipeline/SlowPrimeSynthesisExamples.v`.  The slowest bit of code we have is commented out [here](https://github.com/mit-plv/fiat-crypto/blob/master/src/Experiments/NewPipeline/SlowPrimeSynthesisExamples.v#L215-L225), with the comment `These are very, very, very slow`.  Feel free to uncomment them, but do not be surprised if it takes minutes (or longer) to run in the vm/native compiler (it takes less than 3 seconds to run them in extracted OCaml, though).
+Uh, `native_compute` is much, much slower than `vm_compute` in many of these examples.  See https://github.com/mit-plv/fiat-crypto/pull/394
+For reference, the diff between vm_compute and native_compute is (Change = vm --> native):
+```
+native    | File Name                                          | vm        || Change    | % Change
+--------------------------------------------------------------------------------------------------
+15m44.56s | Total                                              | 10m54.17s || +4m50.38s | +44.39%
+--------------------------------------------------------------------------------------------------
+11m49.08s | Experiments/NewPipeline/SlowPrimeSynthesisExamples | 6m50.36s  || +4m58.72s | +72.79%
+2m14.24s  | Experiments/NewPipeline/Toplevel2                  | 2m23.03s  || -0m08.78s | -6.14%
+1m37.61s  | Experiments/NewPipeline/Toplevel1                  | 1m37.18s  || +0m00.42s | +0.44%
+0m01.31s  | Experiments/NewPipeline/CLI                        | 0m01.30s  || +0m00.01s | +0.76%
+0m01.20s  | Experiments/NewPipeline/StandaloneOCamlMain        | 0m01.20s  || +0m00.00s | +0.00%
+0m01.12s  | Experiments/NewPipeline/StandaloneHaskellMain      | 0m01.10s  || +0m00.02s | +1.81%
+````
+@ppedrot How much does #8055 help with the example in this issue report, by your tests?  (On my machine, it's about 3x.)  (Note that unlike many of my reports, this is not a toy example; `test1by` / `test5by` is actually what I believe is responsible for the biggest diff between extracted ocaml and vm_compute in the slowest of the examples in the project.)  In any case, here is the diff: good, quite significant, even, but not nearly enough to make up for the difference between `vm_compute` and `native_compute`:
+```
+PR #8055  | File Name                                          | 8.8       || Change    | % Change
+--------------------------------------------------------------------------------------------------
+15m05.38s | Total                                              | 15m44.56s || -0m39.17s | -4.14%  
+--------------------------------------------------------------------------------------------------
+11m23.88s | Experiments/NewPipeline/SlowPrimeSynthesisExamples | 11m49.08s || -0m25.20s | -3.55%  
+1m54.40s  | Experiments/NewPipeline/Toplevel2                  | 2m14.24s  || -0m19.84s | -14.77% 
+1m43.52s  | Experiments/NewPipeline/Toplevel1                  | 1m37.61s  || +0m05.91s | +6.05%  
+0m01.30s  | Experiments/NewPipeline/CLI                        | 0m01.31s  || -0m00.01s | -0.76%  
+0m01.15s  | Experiments/NewPipeline/StandaloneOCamlMain        | 0m01.20s  || -0m00.05s | -4.16%  
+0m01.14s  | Experiments/NewPipeline/StandaloneHaskellMain      | 0m01.12s  || +0m00.01s | +1.78%
+```
+Is there a hope of a similar improvement in the vm?
+@JasonGross I confirm that #8055 provides approximatively a 3x speedup on your examples with my machine.
+
+Regarding the time difference between the VM and native, it is not unexpected, as native compilation has a huge constant overhead compared to the VM. It might be possible to mitigate this by resorting to the linear-time register allocation algorithm available in OCaml 4.07 but this remains to be measured.
+
+As for the VM, it is going to be very hard to make it any faster, apart for minor local improvements. The aforementioned PR is moot in the VM because its runtime handles accumulators natively.
+By "constant", do you mean "constant in running time, but not in output term size"?  Does it come from transcribing terms back into Coq?
+@JasonGross Yes, that's what I meant. The problem is rather that the OCaml compiler is quite slow, compared to the VM compiler. Usually reification is not a real problem, provided you terms are not too crazy.
+> Yes, that's what I meant. The problem is rather that the OCaml compiler is quite slow, compared to the VM compiler.
+
+So you are saying it depends on *input* term size, but not *output* term size, then?
+OK, I realized that the terminology input / output is a bit confusing in this context. Let me draw a diagram.
+
+```
+     1          2                 3           4
+Coq ---> OCaml ---> machine code ---> value <---> Coq
+```
+When invoking native compilation, the phases involved are:
+1. Transpiling of Coq code to OCaml code
+2. Compilation of OCaml to machine code
+3. Evaluation of that code
+4. Reification
+
+Phase 1 is quite fast, at least I usually do not observe it on real examples, and its time is a function of the size of the provided Coq term. Phase 2 is slow, and depends on the size of the generated OCaml code (and thus of the original Coq code). This constitutes the *static* part of native compilation, although the boundaries are a bit blurry in Coq.
+
+Phase 3 and 4 are the runtime parts of native compilation. Phase 3 is arbitrarily complex in time, and phase 4 can recursively call phase 3 when operating over open terms.
+
+In the VM, phases 1 and 2 are morally merged together. The main difference is that VM(1+2) is of the same order of complexity as native(1), but native(2) is costly because the OCaml compiler is too clever for its own good. Amongst other things, it uses full blown parsing, typing, intermediate compilation, optimization and machine code generation. The typical code generated by the native compiler puts a heavy load on the register allocation algorithm, and ends up taking most of its time in there.
+@ppedrot and I have been investigating this very closely today, and there is something suspicious that we could not figure out yet. We made the native-compute generated code as close as we could to the one produced by extraction, and the time difference is still huge. We will keep investigating. Stay tuned ;)
+Ok, so it turns out I hadn't spotted you were using recursors (`nat_rect`), which of course are terribly inefficient because they compute the result of the function for each natural number (smaller than the desired value), even when it is useless (remember it is call by value). Replace it with a fix and you will get much closer to the performance of extraction. I did the exercise already, and I got a within a factor 2 of extracted code.
+
+By some magic, extraction converts the term to use let rec instead of recursors.
+Which code were you able to convert to fix? Almost none of the nat_rects can be easily converted to fix, because it's a tremendous pain to reify bare fixpoints...  Would thunking the nat_rect calls give the same speedup?
+Is "inlining calls to _rect" the magic that extraction does? Could native compilation do the same magic?
+> Which code were you able to convert to fix?
+
+All the calls to `nat_rect` in `encodemod`.
+
+> Almost none of the nat_rects can be easily converted to fix, because it's a tremendous pain to reify bare fixpoints...
+
+Sorry, what do you mean?
+
+> Would thunking the nat_rect calls give the same speedup?
+
+No, the pb is that the the `nat_rect` call evaluates its arguments (it is cbv). Thunking it can make things only worse.
+
+> Is "inlining calls to _rect" the magic that extraction does?
+
+More or less. It is also doing a commutative cut across the fixpoint.
+
+> Could native compilation do the same magic?
+
+No, because that is not an admissible reduction rule in general. But anyway, fixpoints were introduced in Coq precisely to avoid the inefficiency of recursors, and make programming easier...
+> Would thunking the nat_rect calls give the same speedup?
+
+as @ppedrot just noticed, maybe you meant wrapping the arguments, in which case it may work.
+@JasonGross You can thunk the arguments of the recursors to solve this problem though. Typically, replace
+```
+nat_rect (fun _ : nat => P) p0 pS
+```
+by
+```
+nat_rect (fun _ : nat => unit -> P) (fun _ =>p0) (fun n r _ => pS n r) tt
+```
+For a minimal cost this should implement the efficient semantics.
+Yes, that is what I meant @ppedrot.
+
+However @maximedenes note that sticking `Eval cbv beta` in front of the definition of `encodemod` doesn't change anything, but sticking `Eval cbv beta delta [nat_rect]` gives a ~2x speedup in the native code.
+> > Almost none of the nat_rects can be easily converted to fix, because it's a tremendous pain to reify bare fixpoints...
+> 
+> Sorry, what do you mean?
+
+Ah, I meant that this code is used in a larger development (fiat-crypto) which needs to be able to reify `encodemod` into PHOAS.  We of course can't handle arbitrary recursion, and reifying bare fixpoints is a pain.  For example, this fails with "not supported pattern":
+```coq
+Goal True.
+  pose nat_rect as f.
+  cbv [nat_rect] in f.
+  lazymatch (eval cbv delta [f] in f) with
+  | fun (a : ?A) (b : @?B a) (c : @?C a b)
+    => fix F (n : nat) : @?D a b c n := _
+    => idtac
+  end.
+```
+
+
+> sticking Eval cbv beta delta [nat_rect] gives a ~2x speedup in the native code.
+
+That's a bit unexpected, I'll look at it.
+
+> > Could native compilation do the same magic?
+> 
+> No, because that is not an admissible reduction rule in general.
+
+In fact, maybe it is not so clear. We could try to do the commutative cut when we know the argument is a constructor. I'll think a bit about it, but I need some sleep first :)
+See also https://github.com/coq/coq/issues/8087 re reification
+Another potential solution is to implement a `native_lazy_compute` that performs call-by-need reduction using native OCaml target...
+> For example, this fails with "not supported pattern":
+
+@ppedrot is there a reason for this limitation?
+@maximedenes Why is it unexpected that we get a speedup by `cbv beta delta [nat_rect]`?  For example, it transforms
+```coq
+Eval cbv beta delta [nat_rect] in nat_rect (fun _ => nat) O (fun n' _ => n').
+```
+into
+```coq
+     = fix F (n : nat) : nat := match n with
+                                | 0 => 0
+                                | S n0 => n0
+                                end
+     : forall n : nat, (fun _ : nat => nat) n
+```
+which gets rid of the call-by-value issue you were talking about, no?
+@maximedenes I think this has been fixed in master, hasn't it?
+Right, sorry, for some reason I thought the functional would be blocked by the fix. But it is indeed defined as `fun F => ... => fix ...`, so it is just a beta redex. One more sign I need to sleep :)
+
+So maybe we can refine the inlining done by `native_compute`, as `Register Inline nat_rect` doesn't seem to have the same effect.
+Ah, yes, the issue with `fix` in Ltac has been fixed in master.  However, it's still a bit of a pain, because I have to manually extract the recursive calls with `pattern` after recurring under binders, since https://github.com/coq/coq/issues/7091 is still open.
+The bench of thunking `nat_rect` in fiat-crypto (and fixing a bogus use of `list_rect`):
+```
+After    | File Name                                          | Before   || Change    | % Change
+------------------------------------------------------------------------------------------------
+8m18.36s | Total                                              | 9m46.11s || -1m27.74s | -14.97%
+------------------------------------------------------------------------------------------------
+4m51.13s | Experiments/NewPipeline/SlowPrimeSynthesisExamples | 5m46.00s || -0m54.87s | -15.85%
+1m20.26s | Experiments/NewPipeline/Toplevel2                  | 1m56.98s || -0m36.71s | -31.38%
+1m21.02s | Experiments/NewPipeline/Toplevel1                  | 1m18.08s || +0m02.93s | +3.76%
+0m42.56s | Experiments/NewPipeline/Arithmetic                 | 0m41.71s || +0m00.85s | +2.03%
+0m01.15s | Experiments/NewPipeline/StandaloneOCamlMain        | 0m01.09s || +0m00.05s | +5.50%
+0m01.14s | Experiments/NewPipeline/CLI                        | 0m01.18s || -0m00.04s | -3.38%
+0m01.11s | Experiments/NewPipeline/StandaloneHaskellMain      | 0m01.08s || +0m00.03s | +2.77%
+```
+(Thanks for the pointer!)
+@JasonGross What is that last bench against? Using VM vs. VM + thunked nat_rect? Could you try with VM + thunks vs. native compilation + thunks if so?
+Yes, "After" is VM+thunk, "Before" is "VM".  Here's the native version (both native and vm are with tunked nat_rect)
+```
+native    | File Name                                          | vm       || Change    | % Change
+-------------------------------------------------------------------------------------------------
+14m43.99s | Total                                              | 8m48.75s || +5m55.24s | +67.18%
+-------------------------------------------------------------------------------------------------
+11m14.49s | Experiments/NewPipeline/SlowPrimeSynthesisExamples | 5m35.50s || +5m38.99s | +101.04%
+1m46.30s  | Experiments/NewPipeline/Toplevel2                  | 1m29.24s || +0m17.06s | +19.11%
+1m39.51s  | Experiments/NewPipeline/Toplevel1                  | 1m40.40s || -0m00.89s | -0.88%
+0m01.28s  | Experiments/NewPipeline/CLI                        | 0m01.22s || +0m00.06s | +4.91%
+0m01.21s  | Experiments/NewPipeline/StandaloneHaskellMain      | 0m01.18s || +0m00.03s | +2.54%
+0m01.20s  | Experiments/NewPipeline/StandaloneOCamlMain        | 0m01.21s || -0m00.01s | -0.82%
+```
+
+With `nat_rect` not thunked, the diff is
+```
+native    | File Name                                          | vm        || Change    | % Change
+--------------------------------------------------------------------------------------------------
+15m44.56s | Total                                              | 10m54.17s || +4m50.38s | +44.39%
+--------------------------------------------------------------------------------------------------
+11m49.08s | Experiments/NewPipeline/SlowPrimeSynthesisExamples | 6m50.36s  || +4m58.72s | +72.79%
+2m14.24s  | Experiments/NewPipeline/Toplevel2                  | 2m23.03s  || -0m08.78s | -6.14%
+1m37.61s  | Experiments/NewPipeline/Toplevel1                  | 1m37.18s  || +0m00.42s | +0.44%
+0m01.31s  | Experiments/NewPipeline/CLI                        | 0m01.30s  || +0m00.01s | +0.76%
+0m01.20s  | Experiments/NewPipeline/StandaloneOCamlMain        | 0m01.20s  || +0m00.00s | +0.00%
+0m01.12s  | Experiments/NewPipeline/StandaloneHaskellMain      | 0m01.10s  || +0m00.02s | +1.81%
+```
+
+This is with
+```
+$ coqtop -config
+LOCAL=0
+COQLIB=/home/jgross/.local64/coq/coq-8.8.0/lib/coq/
+DOCDIR=/home/jgross/.local64/coq/coq-8.8.0/share/doc/coq/
+OCAMLFIND=/home/jgross/.opam/system/bin/ocamlfind
+CAMLP5O=/home/jgross/.opam/system/bin/camlp5o
+CAMLP5BIN=/home/jgross/.opam/system/bin/
+CAMLP5LIB=/home/jgross/.opam/system/lib/camlp5
+CAMLP5OPTIONS=-loc loc
+CAMLFLAGS=-thread -rectypes -w +a-4-9-27-41-42-44-45-48-50   -safe-string
+HASNATDYNLINK=true
+COQ_SRC_SUBDIRS=config dev lib clib kernel library engine pretyping interp parsing proofs tactics toplevel printing intf grammar ide stm vernac plugins/btauto plugins/cc plugins/derive plugins/extraction plugins/firstorder plugins/fourier plugins/funind plugins/ltac plugins/micromega plugins/nsatz plugins/omega plugins/quote plugins/romega plugins/rtauto plugins/setoid_ring plugins/ssr plugins/ssrmatching plugins/syntax plugins/xml
+$ ocamlc -v
+The OCaml compiler, version 4.02.3
+Standard library directory: /usr/lib/ocaml
+```
+There are many things going on in this bug report. I believe some of them have been fixed. @JasonGross can you provide a summary of the current situation?
+My understanding is that, after fixing the issue with `nat_rect`, the native compiler is still slower than the vm, which is slower than extracted code (although maybe the difference is made up by the minute it takes for ocamlopt to compile the extracted code).  I can make a new test against master or something, if you'd like, but the code will be pretty similar to the initial code in this bug report.
+> My understanding is that, after fixing the issue with `nat_rect`, the native compiler is still slower than the vm, which is slower than extracted code (although maybe the difference is made up by the minute it takes for ocamlopt to compile the extracted code). I can make a new test against master or something, if you'd like, but the code will be pretty similar to the initial code in this bug report.
+
+But `native_compute` *is* expected to be slower than extracted code... So it depends by how much.
+Would it be possible to get a command that is "please cache the native compilation of this constant and it's dependencies"?  That would make it much easier to time things like this.
+Sure, I can give it a try.
+@JasonGross I think you can just `Eval native_compute in the_constant`. 
+@ppedrot no, that goes badly wrong if the constant is a function and has an enormous normal form.  Does `Eval native_compute in let __ := the_constant in tt ` work as well?
+That should work I think. Hopefully the optimizer doesn't remove the let-binding before compilation... If your constant has an inductive type you can also pattern-match on it to be sure it is executed.

@@ -1,0 +1,53 @@
+Comment author: @JasonGross
+
+It would be nice to have proper variance analysis for universe levels.  For example, with -indices-matter, it would be nice if `p : @paths Type (* U_i *) A B` could also be typed as `@paths Type (* U_j *) A B` for U_j >= U_i.
+
+
+Comment author: @ppedrot
+
+Isn't that subtyping undecidable in general (e.g. tricky recursive structures)?
+
+
+Comment author: @JasonGross
+
+I think you can decide it by eta-expanding the term and refreshing the universes on the return annotation and the constructors?  Unless there are recursive structures with no nice eta-expansion...
+
+For example, expand `p : @ eq Type@ {i} A B` to
+```
+match p in (_ = B') return @ eq Type@ {j} A B' with
+  | eq_refl => @ eq_refl Type@ {k} A
+end
+```
+and then enforce whatever constraints would arise from typechecking this term from scratch.
+
+
+Comment author: @ppedrot
+
+*** Bug [BZ#2766](https://github.com/coq/coq/issues?q=is%3Aissue%20%22Original%20bug%20ID%3A%20BZ%232766%22) has been marked as a duplicate of this bug. ***
+
+
+Semantically this is just cumulativity of inductive types (in the metatheory you compare anonymous inductive types with both polymorphic universes and parameters already substituted).
+Implementation wise it's kind of a generalisation of #6128 so if nobody else does I might do it someday.
+Such a change would be very good for UniMath, as this practical example shows:
+```
+Set Universe Polymorphism. Set Primitive Projections. Set Polymorphic Inductive Cumulativity.
+Set Printing All. Set Printing Universes.
+Inductive paths@{i} (A:Type@{i}) (a:A) : A -> Type@{i} := idpath : paths A a a.
+Inductive nat : Type := | O : nat | S : nat -> nat.
+Record total2@{i} (T : Type@{i}) (P : T -> Type@{i}) : Type@{i} := tpair { pr1 : T; pr2 : P pr1 }.
+Definition iscontr@{i} (T:Type@{i}) : Type@{i} := total2 T (fun cntr => forall t:T, paths _ t cntr).
+Fixpoint isofhlevel@{i} (n : nat) (X : Type@{i}) : Type@{i} := match n with | O => iscontr X | S m => forall x : X, forall x' : X, (isofhlevel m (paths _ x x')) end.
+Definition isaprop@{i} := isofhlevel@{i} (S O).
+Definition isaset@{i} := isofhlevel@{i} (S (S O)).
+Definition hSet@{i i'} : Type@{i'} := @total2@{i'} Type@{i} isaset@{i}.
+Definition change_hSet@{i i' j j' | i < j, i < i', j < j'} :
+  hSet@{i i'} -> hSet@{j j'}.
+Proof.
+  intros X.
+  Fail exact X.                 (* fails with universe inconsistency *)
+  exact (tpair _ isaset@{j} (pr1 _ _ X) (pr2 _ _ X)).
+Defined.
+```
+It’s a non-trivial generalization of cumulativity of inductive types, as you change the universe that is in the sigma, but that should be justifiable using the same model construction, where Type@{i} is included in Type@{j}. In this particular case the isaset@{j} proof is obtained by eta expansion of the isaset@{i} proof, right? It seems finding out that isaset is covariant in its type argument would require computing the normal form of its application to a parameter, like we do for Cumulative Inductives, as Jason suggests. 
+In practice we’d probably need user annotations on the expected variance of parameters, that the kernel could check rather than infer. Inference of cumulativity already blows up in some cases for inductives.
+I don't know how to answer your questions, but I'd be glad to annotate things.  Ideally the result would be that a function that is declared to accept two hsets at the same level would accept them also at different levels.

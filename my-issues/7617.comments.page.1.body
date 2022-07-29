@@ -1,0 +1,7 @@
+Sure. My initial version of a PR template had this but it was deemed to heavy so I stripped a lot of things. Feel free to open a PR to add this checkbox. The main problem is that it's not very clear when exactly we should add test files.
+My rule of thumb is that test-suite files should always be added for any change that impacts the behavior of `coqtop`, `coqc`, `coqchk`, probably `coq_makefile`, etc, unless either
+(a) figuring out how to write an appropriate test-suite file would significantly delay submitting the PR
+(b) a test-suite file testing the behavior already exists, or
+(c) a test-suite file would be prohibitively expensive or non-deterministic in unacceptable ways
+
+I think (a) and (c) tend to apply to perf-related improvements.  At present, I expect (a) applies to most API changes, but hopefully someday we'll have unit tests with 100% code coverage and then it won't be hard to add/update tests.

@@ -1,0 +1,47 @@
+Comment author: @JasonGross
+
+Require Import Coq.ZArith.ZArith.
+Goal forall y y' : Z, y' = y.
+Proof.
+  intros.
+  let x := match goal with |- ?x = _ => x end in
+  let x' := fresh "x'" in
+  evar (x' : Z);
+    replace x with x';
+    [ | subst x' ].
+  2:ring_simplify. (* Error: Tactic failure: anomaly: Find_at (level 97). *)
+
+
+Comment author: @JasonGross
+
+Shorter version:
+
+Require Import Coq.ZArith.ZArith.
+Goal forall y y' : Z, y' = y.
+Proof.
+  intros.
+  evar (x' : Z); transitivity x'; subst x'.
+  2:ring_simplify.
+
+Interestingly, [etransitivity] does not trigger the issue...
+
+
+Comment author: @ppedrot
+
+This is due to the Find_at function, and ultimately to evar-evar matching in Ltac. Actually, Ltac is unable to match an evar against itself for sordid reasons. I remember that there was a bug on that topic but I can't find it again.
+
+
+Comment author: @Armael
+
+I just stumbled in what seems to be an instance of this bug.
+
+My test-case looks a bit different (it also fails at level 98 instead of 97, don't know if that matters):
+```
+Require Import ZArith.
+Goal exists x, x = 0%Z.
+  refine (let y := _ in _).
+  exists y. subst y.
+  ring_simplify.  (* Error: Tactic failure: anomaly: Find_at (level 98). *)
+```
+
+I did not see any anomaly in versions from 8.6 to 8-11. So closing this report.

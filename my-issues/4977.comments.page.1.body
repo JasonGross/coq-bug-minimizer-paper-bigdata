@@ -1,0 +1,175 @@
+Comment author: @JasonGross
+
+Given the fact that explicit unfolding speeds up the code by 10x, I suspect 
+something in the refolding machinery?
+
+This is with Coq 8.6 dabe6d0e1d1782d3e9647e04aa1bf161765ad882.
+
+```coq
+Require Import Coq.ZArith.Zpower Coq.ZArith.Znumtheory Coq.ZArith.ZArith 
+Coq.ZArith.Zdiv.
+Require Import Coq.Classes.RelationClasses Coq.Classes.Morphisms.
+Require Import Coq.Structures.Equalities.
+Require Import Coq.omega.Omega Coq.micromega.Psatz 
+Coq.Numbers.Natural.Peano.NPeano Coq.Arith.Arith.
+
+Create HintDb push_Zmod discriminated.
+
+Local Open Scope Z.
+
+Lemma mul_mod_l a b n : n <> 0 -> (a * b) mod n = ((a mod n) * b) mod n.
+Proof.
+  intros; rewrite (Z.mul_mod a b), (Z.mul_mod (a mod n) b) by lia.
+  rewrite Z.mod_mod by lia; lia.
+Qed.
+
+Lemma mul_mod_r a b n : n <> 0 -> (a * b) mod n = (a * (b mod n)) mod n.
+Proof.
+  intros; rewrite (Z.mul_mod a b), (Z.mul_mod a (b mod n)) by lia.
+  rewrite Z.mod_mod by lia; lia.
+Qed.
+
+Lemma add_mod_l a b n : n <> 0 -> (a + b) mod n = ((a mod n) + b) mod n.
+Proof.
+  intros; rewrite (Z.add_mod a b), (Z.add_mod (a mod n) b) by lia.
+  rewrite Z.mod_mod by lia; lia.
+Qed.
+
+Lemma add_mod_r a b n : n <> 0 -> (a + b) mod n = (a + (b mod n)) mod n.
+Proof.
+  intros; rewrite (Z.add_mod a b), (Z.add_mod a (b mod n)) by lia.
+  rewrite Z.mod_mod by lia; lia.
+Qed.
+
+Definition NoZMod (x : Z) := True.
+Ltac NoZMod :=
+  lazymatch goal with
+  | [ |- NoZMod (?x mod ?y) ] => fail 0 "Goal has" x "mod" y
+  | [ |- NoZMod _ ] => constructor
+  end.
+
+Lemma mul_mod_push a b n : n <> 0 -> NoZMod a -> NoZMod b -> (a * b) mod n = 
+((a mod n) * (b mod n)) mod n.
+Proof. intros; apply Z.mul_mod; assumption. Qed.
+Hint Rewrite mul_mod_push using solve [ NoZMod | lia ] : push_Zmod.
+
+Lemma add_mod_push a b n : n <> 0 -> NoZMod a -> NoZMod b -> (a + b) mod n = 
+((a mod n) + (b mod n)) mod n.
+Proof. intros; apply Z.add_mod; assumption. Qed.
+Hint Rewrite add_mod_push using solve [ NoZMod | lia ] : push_Zmod.
+
+Lemma mul_mod_l_push a b n : n <> 0 -> NoZMod a -> (a * b) mod n = ((a mod n) * 
+b) mod n.
+Proof. intros; apply mul_mod_l; assumption. Qed.
+Hint Rewrite mul_mod_l_push using solve [ NoZMod | lia ] : push_Zmod.
+
+Lemma mul_mod_r_push a b n : n <> 0 -> NoZMod b -> (a * b) mod n = (a * (b mod 
+n)) mod n.
+Proof. intros; apply mul_mod_r; assumption. Qed.
+Hint Rewrite mul_mod_r_push using solve [ NoZMod | lia ] : push_Zmod.
+
+Lemma add_mod_l_push a b n : n <> 0 -> NoZMod a -> (a + b) mod n = ((a mod n) + 
+b) mod n.
+Proof. intros; apply add_mod_l; assumption. Qed.
+Hint Rewrite add_mod_l_push using solve [ NoZMod | lia ] : push_Zmod.
+
+Lemma add_mod_r_push a b n : n <> 0 -> NoZMod b -> (a + b) mod n = (a + (b mod 
+n)) mod n.
+Proof. intros; apply add_mod_r; assumption. Qed.
+Hint Rewrite add_mod_r_push using solve [ NoZMod | lia ] : push_Zmod.
+
+Lemma sub_mod_push a b n : n <> 0 -> NoZMod a -> NoZMod b -> (a - b) mod n = 
+((a mod n) - (b mod n)) mod n.
+Proof. intros; apply Zminus_mod; assumption. Qed.
+Hint Rewrite sub_mod_push using solve [ NoZMod | lia ] : push_Zmod.
+
+Lemma sub_mod_l_push a b n : n <> 0 -> NoZMod a -> (a - b) mod n = ((a mod n) - 
+b) mod n.
+Proof. intros; symmetry; apply Zminus_mod_idemp_l; assumption. Qed.
+Hint Rewrite sub_mod_l_push using solve [ NoZMod | lia ] : push_Zmod.
+
+Lemma sub_mod_r_push a b n : n <> 0 -> NoZMod b -> (a - b) mod n = (a - (b mod 
+n)) mod n.
+Proof. intros; symmetry; apply Zminus_mod_idemp_r; assumption. Qed.
+Hint Rewrite sub_mod_r_push using solve [ NoZMod | lia ] : push_Zmod.
+
+Section equiv_modulo.
+  Context (N : Z).
+  Definition equiv_modulo x y := x mod N = y mod N.
+  Local Infix "==" := equiv_modulo (at level 70, no associativity).
+
+  Local Instance equiv_modulo_Reflexive : Reflexive equiv_modulo := fun _ => 
+Logic.eq_refl.
+  Local Instance equiv_modulo_Symmetric : Symmetric equiv_modulo := fun _ _ => 
+@ Logic.eq_sym _ _ _.
+  Local Instance equiv_modulo_Transitive : Transitive equiv_modulo := fun _ _ _ 
+=> @ Logic.eq_trans _ _ _ _.
+
+  Lemma mul_mod_Proper : Proper (equiv_modulo ==> equiv_modulo ==> 
+equiv_modulo) Z.mul.
+  Admitted.
+
+  Lemma add_mod_Proper : Proper (equiv_modulo ==> equiv_modulo ==> 
+equiv_modulo) Z.add.
+  Admitted.
+
+  Lemma sub_mod_Proper : Proper (equiv_modulo ==> equiv_modulo ==> 
+equiv_modulo) Z.sub.
+  Admitted.
+
+  Lemma opp_mod_Proper : Proper (equiv_modulo ==> equiv_modulo) Z.opp.
+  Admitted.
+
+  Lemma modulo_equiv_modulo_Proper
+    : Proper (equiv_modulo ==> (fun x y => x = N /\ N = y) ==> Logic.eq) 
+Z.modulo.
+  Proof.
+    repeat intro; hnf in *; intuition congruence.
+  Qed.
+  Lemma eq_to_ProperProxy : ProperProxy (fun x y : Z => x = N /\ N = y) N.
+  Proof. split; reflexivity. Qed.
+End equiv_modulo.
+
+Module Import EquivModuloInstances.
+  Existing Instance equiv_modulo_Reflexive.
+  Existing Instance equiv_modulo_Symmetric.
+  Existing Instance equiv_modulo_Transitive.
+  Existing Instance mul_mod_Proper.
+  Existing Instance add_mod_Proper.
+  Existing Instance sub_mod_Proper.
+  Existing Instance opp_mod_Proper.
+  Existing Instance modulo_equiv_modulo_Proper.
+  Existing Instance eq_to_ProperProxy.
+End EquivModuloInstances.
+
+
+Goal forall T N' R N R', N <> 0 -> 0 < R -> equiv_modulo N ((T + (T * N') mod R 
+* N - (T + (T * N') mod R * N) mod R) * R' - N * R * R') (T * R').
+Proof.
+  intros.
+  Time (autorewrite with push_Zmod; rewrite_strat topdown hints push_Zmod). (* 
+Finished transaction in 0.376 secs (0.375u,0.s) (successful) *)
+  match goal with
+  | |- equiv_modulo N
+    ((T + (T mod R * (N' mod R)) mod R * N -
+      (T mod R + ((T mod R * (N' mod R)) mod R * (N mod R)) mod R) mod R) * R' 
+- 
+     N * R * R') (T * R') => idtac end.
+  Undo 2.
+  Time (unfold equiv_modulo; rewrite_strat topdown hints push_Zmod). (* 
+Finished transaction in 1.279 secs (1.274u,0.004s) (successful) *)
+  Undo.
+  Time (unfold equiv_modulo; autorewrite with push_Zmod; rewrite_strat topdown 
+hints push_Zmod). (* Finished transaction in 1.418 secs (1.413u,0.s) 
+(successful) *)
+  Undo.
+  Time rewrite_strat topdown hints push_Zmod. (* Finished transaction in 9.542 
+secs (9.528u,0.s) (successful) *)
+  match goal with
+  | |- equiv_modulo N
+    ((T + (T mod R * (N' mod R)) mod R * N -
+      (T mod R + ((T mod R * (N' mod R)) mod R * (N mod R)) mod R) mod R) * R' 
+- 
+     N * R * R') (T * R') => idtac end.
+
+```

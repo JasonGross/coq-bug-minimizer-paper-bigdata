@@ -1,0 +1,3 @@
+Sorry, bad bug numbering in a commit comment closed this automatically.
+(Record update syntax would maybe also be beneficial in Coq, tho that should be a separate issue.)
+I marked this as an enhancement since IIUC you can work around this.

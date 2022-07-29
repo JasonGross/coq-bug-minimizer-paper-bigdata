@@ -1,0 +1,10 @@
+Comment author: @JasonGross
+
+Goal True.
+Proof.
+  let H := fresh "E" in
+  pose (fun H : Set => H).
+
+should give me [fun E : Set => E], not [fun H : Set => H].
+
+

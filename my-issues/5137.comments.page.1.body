@@ -1,0 +1,15 @@
+Comment author: @JasonGross
+
+I would like to be able to specify some things to not unfold when running 
+[vm_compute].  Since [vm_compute] can correctly handle axioms, it shouldn't be 
+too hard to pretend that some identifiers are actually axioms when JITing code 
+for the VM, right?
+
+
+Comment author: @silene
+
+
+
+*** This bug has been marked as a duplicate of bug [BZ#4476](https://github.com/coq/coq/issues?q=is%3Aissue%20%22Original%20bug%20ID%3A%20BZ%234476%22) ***
+
+

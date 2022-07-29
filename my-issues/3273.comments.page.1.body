@@ -1,0 +1,46 @@
+Comment author: @JasonGross
+
+```
+(* File reduced by coq-bug-finder from 1099 lines to 59 lines, then from 77 lines to 41 lines. *)
+
+Parameter value : Set.
+Parameter pid : Set.
+Parameter address: Set.
+
+Axiom action : Set.
+Axiom proc : Set.
+Parameter processes : Set.
+Parameter procs_lookup: processes -> pid -> option proc.
+Parameter procs_disj_add: processes -> pid -> proc -> option processes.
+Notation " P &&& [ i -> p ] " := (procs_disj_add P i p) (no associativity, at level 10, i at level 0).
+Coercion procs_lookup : processes >-> Funclass.
+
+Lemma procs_disjoint_add_lookup_neq: forall {Procs Procs'} i j p,
+                                       i <> j ->
+                                       procs_disj_add Procs j p = Some Procs' -> Procs' i = Procs i.
+admit.
+Defined.
+
+Lemma procs_disjoint_add_lookup_neq': forall Procs Procs' i j p,
+                                       i <> j ->
+                                       procs_disj_add Procs j p = Some Procs' -> Procs' i = Procs i.
+admit.
+Defined.
+
+Goal forall (i j : pid) (Procs Procs' Procs0 : processes) (p : proc),
+       Procs0 &&& [j -> p] = Some Procs -> Procs' i = Procs i.
+intros.
+apply procs_disjoint_add_lookup_neq' with (i:=i) in H.
+Undo 1.
+apply procs_disjoint_add_lookup_neq with (i:=i) in H.
+```
+
+Comment author: @JasonGross
+
+In that example, the error message is `Error: No such bound variable i.`, and it depends on whether there are any implicit arguments at all, which seems like a poor dependency.
+
+
+Technically, this failed for bad reasons: the existential variables filling the implicit arguments depend on `i` leading to rename the `i` of `procs_disjoint_add_lookup_neq` into `i0`.
+
+Eventually fixable by #14639, depending on how much compatibility can be obtained.
+Closed by https://github.com/coq/coq/pull/13837

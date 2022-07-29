@@ -1,0 +1,19 @@
+Comment author: @JasonGross
+
+This code should work:
+
+Set Primitive Projections.
+Record idR T := { x : T }.
+Definition foo T (y : idR T) :=
+  match y with
+    | Build_idR _ x' => 0
+  end. (* Toplevel input, characters 0-79:
+Error: Pattern-matching expression on an object of inductive type idR
+has invalid information. *)
+
+
+Comment author: @silene
+
+This seems to have been fixed, I cannot reproduce it.
+
+

@@ -1,0 +1,38 @@
+Comment author: @JasonGross
+
+I think all of these should succeed:
+```coq
+Ltac foo1 := tryif fail then abstract constructor else abstract constructor. (* 
+Error: The reference abstract was not found in the current environment. *)
+Ltac foo2 := tryif fail then (abstract constructor) else abstract constructor. 
+(* Error: The reference abstract was not found in the current environment. *)
+Ltac foo3 := tryif fail then abstract constructor else (abstract constructor). 
+(* success *)
+Ltac foo4 := tryif fail then (abstract constructor) else (abstract 
+constructor). (* success *)
+Ltac foo5 := tryif fail then (abstract constructor) else let x := idtac in 
+abstract constructor. (* success *)
+```
+
+Comment author: @psteckler
+
+I traced through the code using gdb, and found that things go wrong in tacentries.ml::register_ltac, in the call to the local function `map', which appears to have something to do with interning names.
+
+I'd say it's not simply a parsing here issue here, something about the coherence of environments is going on.
+
+
+` tryif fail then abstract constructor else abstract constructor` is parsed as
+~~~
+    TacIfThenCatch (TacFail (TacLocal, Locus.ArgArg 0, []),
+     TacAbstract
+      (TacAlias
+        {CAst.v = (Coq.Init.Ltac.constructor_5219278F, []);
+         loc = ...},
+      None),
+     TacArg
+      {CAst.v =
+        TacCall
+         {CAst.v = (abstract, [Reference constructor]); loc = ...};
+       loc = ...})
+~~~
+I guess there's some parsing level issue.

@@ -1,0 +1,70 @@
+Comment author: @JasonGross
+
+Where "> 25 minutes" might mean "forever".  Also, a recent commit broke many things; the test-suite now gives me:
+
+    success/AdvancedCanonicalStructure.v...Error! (should be accepted)
+    success/decl_mode.v...Error! (should be accepted)
+    success/Inversion.v...Error! (should be accepted)
+    success/Nsatz.v...Error! (should be accepted)
+    success/polymorphism.v...Error! (should be accepted)
+    success/PrintSortedUniverses.v...Error! (should be accepted)
+    success/proof_using.v...Error! (should be accepted)
+    success/rewrite.v...Error! (should be accepted)
+    success/unification.v...Error! (should be accepted)
+    failure/subterm2.v...Error! (should be rejected)
+    failure/subterm3.v...Error! (should be rejected)
+    bugs/closed/1951.v...Error! (bug seems to be opened, please check)
+    bugs/closed/2080.v...Error! (bug seems to be opened, please check)
+    bugs/closed/2406.v...Error! (bug seems to be opened, please check)
+    bugs/closed/3036.v...Error! (bug seems to be opened, please check)
+    bugs/closed/HoTT_coq_036.v...Error! (bug seems to be opened, please check)
+    bugs/closed/HoTT_coq_041.v...Error! (bug seems to be opened, please check)
+    bugs/closed/HoTT_coq_045.v...Error! (bug seems to be opened, please check)
+    bugs/closed/HoTT_coq_053.v...Error! (bug seems to be opened, please check)
+    bugs/closed/HoTT_coq_064.v...Error! (bug seems to be opened, please check)
+    bugs/closed/HoTT_coq_097.v...Error! (bug seems to be opened, please check)
+    bugs/closed/HoTT_coq_098.v...Error! (bug seems to be opened, please check)
+    bugs/closed/HoTT_coq_102.v...Error! (bug seems to be opened, please check)
+    bugs/closed/HoTT_coq_107.v...Error! (bug seems to be opened, please check)
+    bugs/closed/HoTT_coq_108.v...Error! (bug seems to be opened, please check)
+    bugs/closed/HoTT_coq_113.v...Error! (bug seems to be opened, please check)
+    bugs/opened/1596.v...Error! (bug seems to be closed, please check)
+    bugs/opened/HoTT_coq_007.v...Error! (bug seems to be closed, please check)
+    bugs/opened/HoTT_coq_027.v...Error! (bug seems to be closed, please check)
+    bugs/opened/HoTT_coq_029.v...Error! (bug seems to be closed, please check)
+    bugs/opened/HoTT_coq_062.v...Error! (bug seems to be closed, please check)
+    bugs/opened/HoTT_coq_105.v...Error! (bug seems to be closed, please check)
+    output/inference.v...Error! (unexpected output)
+    output/Notations.v...Error! (unexpected output)
+    output/simpl.v...Error! (unexpected output)
+    misc/universes...Error! (5/4 universes)
+    stm/Nijmegen_QArithSternBrocot_Zaux.v...Error! (should be accepted)
+
+
+Comment author: @ppedrot
+
+Seems fixed in trunk.
+
+
+Comment author: @JasonGross
+
+It was fixed for me, and now it seems open again in trunk.
+
+
+Comment author: @JasonGross
+
+For the record, my current tip is
+
+commit 0dfaecc2de2306ff9674a4aa3e546d3123015169
+Author: Pierre-Marie Pédrot <pierre-marie.pedrot@ inria.fr>
+Date:   Sun Jun 8 20:39:58 2014 +0200
+
+    Moving hook code from Future to Lemmas. This seemed to disrupt compilation of
+    the checker, and it was not used before that anyway.
+
+
+Comment author: @ppedrot
+
+It passes like 75% in List.memq because universe polymorphism seems to generate more universes, and displays a quadratic or so behaviour. My patch for imperative graph traversal in Univ does divide by 4 the time needed to compile Nsatz. I am waiting a bit to commit it, in order to leave time to Matthieu to clean this file up so that we can put a copy of it in the checker directory.
+
+

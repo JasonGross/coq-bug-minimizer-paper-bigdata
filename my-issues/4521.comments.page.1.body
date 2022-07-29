@@ -1,0 +1,27 @@
+Comment author: @JasonGross
+
+It's annoying that I have to do something like this:
+
+Set Universe Polymorphism.
+Definition fooT@ {i} := (Type@ {i} * Type@ {i})%type.
+Definition foo : ltac:(let T := eval unfold fooT in fooT in exact T).
+Proof.
+  pose (nat : Type).
+  exact (nat, nat).
+Defined.
+
+or that I have to declare all universes introduced in a proof script.  I'd like 
+to be able to declare definitions, sometimes, that declare only the universes 
+in their type, and not in their body, and have [Defined] allow universes in the 
+body that aren't declared.  For example, I'd like something like this to work:
+
+Set Universe Polymorphism.
+Definition foo@ {i ..} : Type@ {i}.
+Proof.
+  pose (nat : Type).
+  exact nat.
+Defined. (* Error: Universe {Top.22} is unbound. *)
+
+
+@JasonGross 
+There is now `Definition foo@{i +} : Type@{i}. ...`, see #688.

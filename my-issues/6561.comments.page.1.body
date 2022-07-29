@@ -1,0 +1,3 @@
+What name would you give to such an option? 
+`Unset Printing Lets` or `Unset Printing Match As Let` a la `Add Printing Let <inductive>`
+If created, that flag could be added to the set of flags that `Set Printing All` operates on, per my suggestion in #6560.

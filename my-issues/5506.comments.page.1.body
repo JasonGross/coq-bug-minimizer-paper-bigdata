@@ -1,0 +1,8 @@
+Comment author: @JasonGross
+
+I get this on `par:abstract t` when I'm in a proof with 256 subgoals, and I've 
+already used par:abstract t on the first 221 of them (by shelving the last 25, 
+and then unshelving them).  This should probably be a proper error message and 
+not an anomaly.
+
+

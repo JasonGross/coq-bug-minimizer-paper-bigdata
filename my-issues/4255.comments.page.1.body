@@ -1,0 +1,25 @@
+Comment author: @JasonGross
+
+Section a.
+  Section b.
+    Definition c := 1.
+    Global Arguments c / .
+  End b.
+  Section d.
+    Global Arguments c / .
+  End d. (* Anomaly: Uncaught exception Not_found. Please report. *)
+End a.
+
+This only happens in Coq 8.4.
+
+
+Comment author: @ppedrot
+
+This is probably an alter-ego of bug [BZ#3001](https://github.com/coq/coq/issues?q=is%3Aissue%20%22Original%20bug%20ID%3A%20BZ%233001%22).
+
+
+Comment author: @maximedenes
+
+It seems fixed in 8.5 and I'm afraid we won't have time to backport the fix to 8.4.
+
+

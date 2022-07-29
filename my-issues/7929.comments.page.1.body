@@ -1,0 +1,46 @@
+In fact, it seems like this is already the algorithm being used for parameters of the inductive type?
+For each non-parameter argument `name : type : sort` of a constructor the level of the inductive must be at least `sort`. `c1` has an argument `A : Type@{Top.3} : Type@{Top.3+1}`.
+Right, that is what is currently implemented.  What goes wrong if instead we say:
+For each argument (parameter or otherwise) `name : type : sort` of a constructor, if `type` is itself a sort, then the level of the inductive must be at least `type`, otherwise it must be at least `sort`?
+
+I could not get Hurkens to go through with this weakening, and it seems like there should be an isomorphism that shows that it is consistent with what is already implemented.
+That's inconsistent
+~~~coq
+Record boxt : Type@{i} := { unboxt : Type@{i} }.
+~~~
+This makes a type at level `i` which is equivalent to `Type@{i}`.
+What you can do is not count arguments which appear in pattern position in the indices.
+Basically recognising that you can do the transformation to the parameter version.
+Oh, I see, thanks.
+> What you can do is not count arguments which appear in pattern position in the indices.
+
+Oh, hm.  Would it be reasonable to implement that in Coq?
+> Oh, hm. Would it be reasonable to implement that in Coq?
+
+I think so. To be in pattern position is a particular case of "small inversion" where any pattern structure can be inverted and thus not being counted as a proper part of the arguments of the constructors (e.g. in `v : Vector.t A (S n)`, even if a `cons` contains a `n` argument, this `n` is forced).
+
+I would vote in favor of this refinement.
+Forced arguments not counting towards universes is almost done in my sprop branch, it's just disabled to be compatible with extraction. Maybe we could do that by treating Prop/SProp specially and enable the feature for inductives in Set/Type though.
+~~~coq
+Inductive NonZero : nat -> Prop := nonzero : forall n, NonZero (S n).
+Definition pred n (H:NonZero n) := match H with nonzero k => k end.
+Extraction pred. (* what should this say? *)
+~~~
+> Maybe we could do that by treating Prop/SProp specially and enable the feature for inductives in Set/Type though.
+
+Actually that's what I did already, I just didn't remember (0549e1c4b3).
+> Actually that's what I did already, I just didn't remember (0549e1c).
+
+Happy to learn that this is already done!
+
+(And moreover that it allows more `match`, what I did not realize at once.)
+```
+Inductive NonZero : nat -> Prop := nonzero : forall n, NonZero (S n).
+Definition pred n (H:NonZero n) := match H with nonzero k => k end.
+Extraction pred. (* what should this say? *)
+```
+The reason `n` does not have to be counted as relevant in the constructor is that it can be canonically reconstructed from the type. So, I would say that `Extraction pred` should return `let pred n = n` (i.e. dropping the `H` because in `Prop` and returning `n`, i.e. the first parameter, rather than the `n` copied under name `k` in the branch of the `match`).
+>Forced arguments not counting towards universes is almost done in my sprop branch
+
+So in the end it didn't make it in the sprop PR. It could still be done as a separate change, not sure if it's worth the added kernel complexity.
+It would be incorrect to have ‘pred n = n’, we should rather have ‘pred n = match n with 0 => assert false | S n => n` The match on NonZero is incorrect as you write it because NonZero is not a singleton whereas ‘NonZero n = match n with 0 => False | S n’ => S n’ = n` is fine (this is what the inversion yo put it in SProp would produce more or less). With a bit of dependent elimination at least `pred` can be defined such that it extracts to the right pred.

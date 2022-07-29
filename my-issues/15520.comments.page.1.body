@@ -1,0 +1,82 @@
+>  a bug in pattern_of_constr?
+
+I'd bet so.
+Technically, in the first case, After the period, the evar, which was initially a hole, is turned into a proper component of the goal, so it gets a goal-style "evar source" marker, i.e. `GoalEvar` or `VarInstance`. It is thus considered as a proper evar. 
+
+In the second case, without a period, the evar is still considered to be a `_`, i.e. a hole which has not yet been resolved and which thus matches anything (its evar source is `QuestionMark`).
+
+I don't know what to think about it though. Maybe it is `eexists n` which should be responsible to declare that `n` is not any more an `open_constr` (i.e. an constr with holes) but a `constr` with evars, and that the holes it contains should be considered proper evars.
+I think it would be fine to have any tactic that adds an evar to the proof context turn it into a goal evar.
+On
+```
+Goal True.
+let n := open_constr:(_) in
+pose n as N1;
+pose n as N2.
+match N1 with N2 => idtac "match" | _ => idtac "nomatch" end.
+```
+Do you expect a "match" or a "nomatch"?
+
+Or similarly in:
+```
+Goal exists n : nat, n=0.
+let n := open_constr:(_) in
+eexists n; pose n as N;
+let n := (eval cbv delta [N] in N) in
+match goal with |- n = 0 => idtac "match" | _ => idtac "nomatch" end.
+```
+
+And in:
+```
+Goal 0=1.
+let p := open_constr:(_ = _) in
+match goal with |- p => idtac "match" | _ => idtac "nomatch" end.
+```
+If the answer is match, match, nomatch then, I would lean towards thinking that it is `open_constr` which should be changed so that it "goalifies" its evars.
+
+I would say nomatch, match, not sure leaning nomatch.
+Please don't pile hacks over hacks in the Ltac implementation. We should never convert contrs to patterns there, instead we should keep the term as is in the pattern and use (one particular variant we can bicker about of) syntactic equality. Really, I insist, stop relying on the `evar_kind` flag for good.
+You mean not type-checking the pattern? That's certainly a possibility.
+
+What bothered me was that without "pretyping" the pattern, we loose the ability to automatically insert coercions and to use non basic pattern-matching.
+
+In any case, I agree that we should not pile hacks but rather put some "order" in the current hacks (evar kinds for example...).
+> You mean not type-checking the pattern?
+
+No, the problem is the other way around, that is the inclusion of a term (a `constr`) into a pattern (a `constr_pattern`). Instead of trying to interpret it back, just add a node to `constr_pattern` that keeps a term and when asked to check whether it matches, check for syntactic equality. I had an old patch that tried to do this but there were weird things going on IIRC.
+
+Ah, interesting. Seems worth to see if we can eventually make it working.
+
+Actually, maybe `constr_pattern` was a bad idea in the first place and we can just use annotations on evars to remember which of those are second-order metavariables 😟 
+> we can just use annotations on evars
+
+No no no no no!!!!!!!! That's the root of the problem, this perennial confusion between evars and holes. The very fact we're using the same surface syntax is preventing us from splitting them, but they're really two things that have literally nothing to do with one another! The `constr_pattern` type is a good thing, the problem is (as usual) the lack of Ltac expressivity where one would like to manipulate patterns as a first-class construct.
+
+But then what do you mean by a node in `constr_pattern` for terms. That would be only for terms with no holes?
+
+In particular, what is your solution to `constr_of_pattern`, that is to the question of type-checking a pattern by reusing the typing algorithm for constr?
+
+> the lack of Ltac expressivity where one would like to manipulate patterns as a first-class construct.
+
+This seems to be a different question, but why not to have a first-class construct for patterns in Ltac?
+> that is to the question of type-checking a pattern by reusing the typing algorithm for constr?
+
+We don't do that, the typing flag is statically set to false in Tacinterp. Currently a pattern is just an untyped AST in which we may replace some variables by `constr` to handle the weird Ltac semantics. I have a very simple patch that enforces this statically, I can unearth it. The replacement of variables is precisely where the `pattern_of_constr` horror happens because we need to cast a `constr` to a `constr_pattern`. My proposal is simply to keep it verbatim, and this way we don't have to fiddle with evars.
+@herbelin see #15536 for the first patch in the (globally broken) series tweaking the semantics of constr inclusion. The key observation is that `instantiate_pattern` only takes a `constr_pattern` + a list of variables to replace with some `constr`.
+You mean that patterns of `match goal` are not type-checked in practice? I believe we would have expected they are. So we can write `Ltac f := match goal with |- 0 0 => idtac end` without failing. Don't we want consider it to be a bug?
+> Don't we want consider it to be a bug?
+
+Nobody seems to have been complaining loudly so far, so probably not. It keeps the nice invariant that patterns are just that, i.e. syntactic objects.
+Whatever choice you're doing is ok for me. The `pattern_of_constr` thing was anyway not primarily for converting a constr to a pattern per se but for typing patterns (as e.g. `change` does) and there was then no other choice than transiting via a constr.
+
+With respect to the current issue, I believe that keeping a "term" node in patterns to host the `n` open_constr would solve the problem.
+> we need to cast a `constr` to a `constr_pattern`. My proposal is simply to keep it verbatim, and this way we don't have to fiddle with evars.
+
+I think I agree with this proposal, but to make sure we're on the same page, I think the following should be possible:
+- inject a constr into a constr_pattern, verbatim (should also be exposed in Ltac2)
+- inject a uconstr into a constr_pattern, turning holes into unnamed matching variables (this should be what happens when notations are used in constr_patterns)
+- binding a constr_pattern to an Ltac variable via `constr_pattern:(...)`
+- interpreting an expression as a constr_pattern when it contains both constr and constr_pattern subterms, so that users can manipulate constr_patterns somewhat programmatically
+- inspection and building of constr_pattern in Ltac2 a la Constr.Unsafe.kind
+
+Is this feasible and in alignment with your plans?

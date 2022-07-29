@@ -1,0 +1,14 @@
+Comment author: @JasonGross
+
+Ltac foo := match goal with
+            | [ |- ?G ] => pose ?G
+            end.
+Goal True.
+  foo.
+
+It should be an error to define [foo], just like it's an error to define
+Ltac foo := match goal with
+            | [ |- ?G ] => pose H
+            end.
+
+

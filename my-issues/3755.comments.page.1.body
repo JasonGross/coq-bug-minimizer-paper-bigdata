@@ -1,0 +1,205 @@
+Comment author: @JasonGross
+
+(* File reduced by coq-bug-finder from original input, then from 6729 lines to 411 lines, then from 148 lines to 115 lines *)
+(* coqc version trunk (October 2014) compiled on Oct 16 2014 13:27:5 with OCaml 4.01.0
+   coqtop version cagnode16:/afs/csail.mit.edu/u/j/jgross/coq-trunk,trunk (d0da8a75cd1d600afa68da5e995d39a415234c2d) *)
+Require Import Coq.Lists.List.
+Set Printing Universes.
+Axiom smem : Type.
+Record settings := { }.
+Set Implicit Arguments.
+Section machine.
+  Variables pc state : Type.
+  Inductive propX (i := pc) (j := state) : list Type -> Type :=
+  | Imply : forall G, propX G -> propX G -> propX G
+  | Exists : forall G A, (A -> propX G) -> propX G.
+  Definition PropX := propX nil.
+  Definition spec := state -> PropX.
+  Definition codeSpec := pc -> option spec.
+  Section specs.
+    Variable specs : codeSpec.
+    Inductive valid (i := specs) (G : list PropX) : PropX -> Prop :=.
+    Inductive normal (G : list PropX) : PropX -> Prop :=    with neutral (G : list PropX) : PropX -> Prop := .
+    Lemma normal_neutral_weaken : forall G,
+                                    (forall Q, normal G Q
+                                               -> (forall G', incl G G'
+                                                              -> normal G' Q))
+                                    /\ (forall Q, neutral G Q
+                                                  -> (forall G', incl G G'
+                                                                 -> neutral G' Q)).
+      admit.
+    Defined.
+    Definition interp := valid nil.
+  End specs.
+End machine.
+Infix "--->" := Imply (at level 86, right associativity).
+Module Type SepTheoryX.
+  Parameter hprop : forall (pcType stateType : Type), list Type -> Type.
+  Section Env.
+    Variable pcType : Type.
+    Variable stateType : Type.
+    Parameter settings : Type.
+    Parameter heq : forall (cs : codeSpec pcType stateType),
+                      hprop pcType stateType nil -> hprop pcType stateType nil -> Prop.
+    Parameter ex : forall {sos} (T : Type) (p : T -> hprop pcType stateType sos),
+                     hprop pcType stateType sos.
+  End Env.
+End SepTheoryX.
+Module SepTheoryX_Ext (ST : SepTheoryX).
+  Section param.
+    Variables pcT stT : Type.
+
+    Variable type : Type.
+    Variable typeD : type -> Type.
+    Definition existsEach (sos : list Type) (ts : list type) (f : list (@ sigT _ typeD) -> ST.hprop pcT stT sos)
+    : ST.hprop pcT stT sos.
+      admit.
+    Defined.
+    Lemma existsEach_cons : forall cs v vs P,
+                              ST.heq cs (existsEach (v :: vs) P)
+                                     (ST.ex (fun x => existsEach vs (fun env => P (@ existT _ _ v x :: env)))).
+      admit.
+    Defined.
+  End param.
+  Module Make <: SepTheoryX.
+    Section env.
+      Variable pcType : Type.
+      Variable stateType : Type.
+      Definition settings := settings.
+      Definition hprop (sos : list Type) : Type := settings -> propX pcType stateType sos.
+      Variable cs : codeSpec pcType stateType.
+      Definition himp (gl gr : hprop nil) : Prop.
+        exact (forall s, interp cs (gl s ---> gr s)).
+      Defined.
+      Definition heq (gl gr : hprop nil) : Prop.
+        exact (himp gl gr /\ himp gr gl).
+      Defined.
+      Definition ex sos (T : Type) (p : T -> hprop sos) : hprop sos.
+        exact (fun s => Exists (fun t => p t s)).
+      Defined.
+    End env.
+  End Make. (* Toplevel input, characters 15-24:
+Error: Universe inconsistency. Cannot enforce Top.302 = Top.320 because
+Top.320 <= Top.284 < Coq.Lists.List.252 <= Coq.Lists.List.15
+<= Coq.Init.Specif.8 <= Top.302). *)
+
+
+Note 1: removing the "<: SepTheoryX" removes the universe inconsistency.
+
+Note 2: This is from bedrock.
+
+
+Comment author: @JasonGross
+
+Shorter version:
+
+(* File reduced by coq-bug-finder from original input, then from 6729 lines to 
+411 lines, then from 148 lines to 115 lines, then from 99 lines to 70 lines, 
+then from 85 lines to 63 lines, then from 76 lines to 55 lines *)
+(* coqc version trunk (January 2015) compiled on Jan 17 2015 21:58:5 with OCaml 
+4.01.0
+   coqtop version cagnode15:/afs/csail.mit.edu/u/j/jgross/coq-trunk,trunk 
+(9e6b28c04ad98369a012faf3bd4d630cf123a473) *)
+Require Import Coq.Lists.List.
+Set Printing Universes.
+Record settings := { }.
+Set Implicit Arguments.
+Section machine.
+  Variables pc state : Type.
+  Inductive propX (i := pc) (j := state) : list Type -> Type :=
+  | Exists : forall G A, (A -> propX G) -> propX G.
+  Definition PropX := propX nil.
+  Section specs.
+    Inductive normal (G : list PropX) : PropX -> Prop :=    with neutral (G : 
+list PropX) : PropX -> Prop := .
+    Lemma normal_neutral_weaken : forall G,
+                                    (forall Q, normal G Q
+                                               -> (forall G', incl G G'
+                                                              -> normal G' Q)).
+      admit.
+    Defined.
+  End specs.
+End machine.
+Module Type SepTheoryX.
+  Parameter hprop : forall (pcType stateType : Type), Type.
+  Section Env.
+    Variable pcType : Type.
+    Variable stateType : Type.
+    Parameter ex : forall (T : Type) (p : T -> hprop pcType stateType),
+                     hprop pcType stateType.
+  End Env.
+End SepTheoryX.
+Declare Module ST : SepTheoryX.
+Section param.
+  Variables pcT stT : Type.
+
+  Variable type : Type.
+  Variable typeD : type -> Type.
+  Variable STheq :  ST.hprop pcT stT -> Prop.
+  Lemma existsEach_cons : forall v (P : list (@ sigT _ typeD) -> ST.hprop pcT 
+stT),
+                            STheq
+                              (ST.ex (fun x => P (@ existT _ _ v x :: nil))).
+    admit.
+  Defined.
+End param.
+Module Make <: SepTheoryX.
+  Section env.
+    Variable pcType : Type.
+    Variable stateType : Type.
+    Definition hprop : Type := settings -> PropX pcType stateType.
+    Definition ex (T : Type) (p : T -> hprop) : hprop.
+      exact (fun s => Exists (fun t => p t s)).
+    Defined.
+  End env.
+End Make.
+
+(* Toplevel input, characters 15-24:
+Error: Universe inconsistency. Cannot enforce Top.19 = Top.29 because Top.29
+<= Top.7 < Coq.Lists.List.301 <= Coq.Lists.List.13 <= Coq.Init.Specif.8
+<= Top.19). *)
+
+(* Toplevel input, characters 15-24:
+Error: Universe inconsistency. Cannot enforce Top.19 = Top.29 because
+Top.29 <= (ex)
+Top.7 < (normal_neutral_weaken)
+Coq.Lists.List.301 <= (incl_tl)
+Coq.Lists.List.13 <=  (nil_cons)
+Coq.Init.Specif.8 <= (existsEach_cons)
+Top.19). *)
+
+
+Comment author: @JasonGross
+
+Here's an even shorter version.  (Thanks for the pointer, Mattheiu!)  I'm not 
+sure you'll get much shorter than this:
+
+(* File reduced by coq-bug-finder from original input, then from 6729 lines to 
+411 lines, then from 148 lines to 115 lines, then from 99 lines to 70 lines, 
+then from 85 lines to 63 lines, then from 76 lines to 55 lines, then from 61 
+lines to 17 lines *)
+(* coqc version trunk (January 2015) compiled on Jan 17 2015 21:58:5 with OCaml 
+4.01.0
+   coqtop version cagnode15:/afs/csail.mit.edu/u/j/jgross/coq-trunk,trunk 
+(9e6b28c04ad98369a012faf3bd4d630cf123a473) *)
+Set Printing Universes.
+Section param.
+  Variable typeD : Set -> Set.
+  Variable STex : forall (T : Type) (p : T -> Set), Set.
+  Definition existsEach_cons' v (P : @ sigT _ typeD -> Set) :=
+    @ STex _ (fun x => P (@ existT _ _ v x)).
+  Check @ existT _ _ STex STex.
+(* Toplevel input, characters 15-43:
+Error: Universe inconsistency. Cannot enforce Top.1 <
+Coq.Init.Specif.8 because Coq.Init.Specif.8 <= Top.1). *)
+
+A workaround is to replace [@ STex _ (fun x => P (@ existT _ _ v x))] with [@ STex 
+_ (fun x : typeD v => P (@ existT _ _ v x))]; this is sufficient to get rid of 
+the universe inconsistency.
+
+
+Comment author: @mattam82
+
+Nice job tracking this down, the fix became obvious! It's fixed in 8.5 now, and I think no such errors can happen again.
+
+

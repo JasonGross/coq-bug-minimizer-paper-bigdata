@@ -1,0 +1,61 @@
+Comment author: @JasonGross
+
+This is similar to HoTT/coq [BZ#83](https://github.com/coq/coq/issues?q=is%3Aissue%20%22Original%20bug%20ID%3A%20BZ%2383%22).
+
+Set Primitive Projections.
+Set Implicit Arguments.
+Set Universe Polymorphism.
+
+Record category := { ob : Type }.
+
+Goal forall C, ob C -> ob C.
+intros C X.
+
+let y := (eval compute in (ob C)) in constr_eq y (ob C). (* success *)
+let y := (eval compute in (@ ob C)) in constr_eq y (ob C). (* success *)
+let y := (eval compute in (@ ob C)) in constr_eq y (@ ob C). (* failure *)
+constr_eq (@ ob C) (ob C). (* failure *)
+let y := constr:(@ ob C) in
+match y with
+  | ?f C => idtac
+end. (* success *)
+let y := constr:(@ ob C) in
+match eval compute in y with
+  | ?f C => idtac
+end. (* failure: no matching clauses for match *)
+
+
+
+The original bug report used the following:
+
+Goal forall C, ob C -> ob C.
+intros C X.
+generalize dependent (ob C).
+(* 1 subgoals, subgoal 1 (ID 7)
+
+  C : category
+  ============================
+   forall T : Type, T -> T
+(dependent evars:) *)
+intros T t.
+Undo 2.
+generalize dependent (@ ob C).
+(* 1 subgoals, subgoal 1 (ID 6)
+
+  C : category
+  X : ob C
+  ============================
+   Type -> ob C
+(dependent evars:) *)
+Fail intros T t.
+(* Toplevel input, characters 9-10:
+Error: No product even after head-reduction. *)
+
+
+Comment author: @mattam82
+
+@ ob C and ob C are syntactically different for primitive projections. The no-parameter case is maybe a bit weird indeed. All the results here are correct. The last one is a duplicate of 3377.
+
+*** This bug has been marked as a duplicate of bug [BZ#3377](https://github.com/coq/coq/issues?q=is%3Aissue%20%22Original%20bug%20ID%3A%20BZ%233377%22) ***
+
+

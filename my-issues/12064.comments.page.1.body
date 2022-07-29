@@ -1,0 +1,16 @@
+8.9 is just too old in terms of coqchk for this bug report to be taken into account.
+
+Waiting to hear from `master` at least.
+Okay, I'll cancel the run on 8.11, and spin up a run on master (c5c8ce135606f311834d4c0b9ac3e72be5ee4a36).  Should have it done in ... maybe 2--5 hours?
+Actually, wait, no, this issue is not about the error itself in coqchk, it's about the error message.  (I've just checked, and master does generate any error in coqchk on fiat-crypto.  So I don't know how to check whether or not errors on coqchk master come with constant locations.  If they do, feel free to close this bug.  If they don't, that should be fixed.
+I had a look at the code, there is no reason that this is solved currently. I will write a patch though.
+As the typical exception hell goes, it's actually hard to do properly, there are different trade-offs to consider:
+- Wrap exceptions in a container adding constant metadata, but then I risk wreaking havoc with code matching on it. There doesn't seem to be a lot in coqchk, luckily.
+- Use some global reference set to the last constant being checked. It's small, robust, but not correct in general since the checker can fail in other places (e.g. monomorphic module constraints).
+- Rely on the `Exninfo` strategy. I'd be happy not to have to do that in the checker.
+- Rewrite the checker in monadic code to be aware of the places where we rely on exceptions for control. Definitely don't want to do that, but that'd be ideal.
+
+> Use some global reference set to the last constant being checked. It's small, robust, but not correct in general since the checker can fail in other places (e.g. monomorphic module constraints).
+
+What about using a sum lazy string here that describes the current thing being checked?  Or even a constant and a bool for "finished checking constant", and then you could print "while checking constant" vs "while checking something between constant and the next one".  Alternatively/additionally, just knowing the module name containing the thing currently being checked (or knowing what .vo file it came from) would already be an enormous improvement.
+The typical strategy here indeed is a mix of 1 and 2 , for example what's done in coqtop is that every time you enter a sentence you capture exceptions, then if no more precise location is available you can wrap it with the information on the sentence you have entered. This doesn't require to use a ref.

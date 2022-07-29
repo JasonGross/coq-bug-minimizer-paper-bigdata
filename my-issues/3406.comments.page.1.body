@@ -1,0 +1,79 @@
+Comment author: @JasonGross
+
+I propose that coq_makefile should generate something like
+
+$(VOFILES): %.vo : %.v
+	$(COQC) $(COQDEBUG) $(COQFLAGS) $*
+
+$(GLOBFILES): %.glob : %.v
+	$(COQC) $(COQDEBUG) $(COQFLAGS) $*
+
+$(VIFILES): %.vi : %.v
+	$(COQC) -i $(COQDEBUG) $(COQFLAGS) $*
+
+$(VFILES:.v=.g): %.g : %.v
+	$(GALLINA) $<
+
+$(VFILES:.v=.tex): %.tex : %.v
+	$(COQDOC) $(COQDOCFLAGS) -latex $< -o $@ 
+
+$(HTMLFILES): %.html : %.v %.glob
+	$(COQDOC) $(COQDOCFLAGS) -html $< -o $@ 
+
+$(VFILES:.v=.g.tex): %.g.tex : %.v
+	$(COQDOC) $(COQDOCFLAGS) -latex -g $< -o $@ 
+
+$(GHTMLFILES): %.g.html : %.v %.glob
+	$(COQDOC)$(COQDOCFLAGS)  -html -g $< -o $@ 
+
+$(VFILES:.v=.v.d): %.v.d : %.v
+	$(COQDEP) -slash $(COQLIBS) "$<" > "$@ " || ( RV=$$?; rm -f "$@ "; exit $${RV} )
+
+$(VFILES:.v=.v.beautified): %.v.beautified :
+	$(COQC) $(COQDEBUG) $(COQFLAGS) -beautify $*
+
+
+
+
+Rather than something like
+
+%.vo %.glob: %.v
+	$(COQC) $(COQDEBUG) $(COQFLAGS) $*
+
+%.vi: %.v
+	$(COQC) -i $(COQDEBUG) $(COQFLAGS) $*
+
+%.g: %.v
+	$(GALLINA) $<
+
+%.tex: %.v
+	$(COQDOC) $(COQDOCFLAGS) -latex $< -o $@ 
+
+%.html: %.v %.glob
+	$(COQDOC) $(COQDOCFLAGS) -html $< -o $@ 
+
+%.g.tex: %.v
+	$(COQDOC) $(COQDOCFLAGS) -latex -g $< -o $@ 
+
+%.g.html: %.v %.glob
+	$(COQDOC)$(COQDOCFLAGS)  -html -g $< -o $@ 
+
+%.v.d: %.v
+	$(COQDEP) -slash $(COQLIBS) "$<" > "$@ " || ( RV=$$?; rm -f "$@ "; exit $${RV} )
+
+%.v.beautified:
+	$(COQC) $(COQDEBUG) $(COQFLAGS) -beautify $*
+
+
+
+
+
+
+The reason is that if I change what arguments I pass to coq_makefile, but have old .v.d files lying around, I want to know that I forgot about some dependencies in my arguments to coq_makefile.  This is much, much, much less confusing than getting sporadic "Error: Compiled library foo.vo makes inconsistent assumptions over library bar" messages when doing parallel make.
+
+
+Comment author: @pirbo
+
+Good idea, pushed to trunk. I hope there won't be backward compatibility issues ...
+
+

@@ -1,0 +1,3 @@
+Fixed in master somehow.
+Note this isn't just `cbv`, replacing it with `lazy` gives the same result.
+If you like you can make a PR adding a regression test.

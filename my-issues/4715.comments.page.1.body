@@ -1,0 +1,17 @@
+Comment author: @JasonGross
+
+On trunk:
+
+Building file index-list.prehtml... Error: none of doc/stdlib/index-list.html and doc/stdlib/hidden-files mention theories/Init/Tauto.v
+
+
+Comment author: @JasonGross
+
+Also theories/QArith/Qcabs.v
+
+
+Comment author: @JasonGross
+
+Fixed by 9f3be24242f5397886875b51eaee7392a4aba473.  (Thanks Guillaume!)
+
+

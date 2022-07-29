@@ -1,0 +1,134 @@
+Comment author: @JasonGross
+
+In the attached development, in src/Specific/FancyMachine256/Barrett.v, there 
+is a [vm_compute] that I estimate will take about 2-5 hours to run, while 
+[native_compute], [lazy], and [compute] all run in under 0.1 seconds.  The 
+subsequent proof shows a [do] statement that partially reduces one of the 
+subterms; telling it to go around 21 times makes the [vm_compute] take about 
+0.4 seconds.  It takes multiple seconds starting at around 16.  What's going on 
+here?
+
+With the exception of a single [Fail Timeout 5 Eval native_compute in ...] 
+line, the attached repo should build with 8.4pl1-8.4pl6, 8.5, 8.5pl1, 8.5pl2, 
+and the tip of the v8.6 branch.
+
+
+Comment author: @JasonGross
+
+Created attachment 767
+example of exponential vm_compute
+
+> Attached file: [slow_fiat_crypto_vm_compute.zip](https://coq.inria.fr/bugfiles/attachment.cgi?id=767) (application/zip, 57856 bytes)
+> Description:   example of exponential vm_compute
+
+
+Comment author: @ppedrot
+
+It seems this comes from the whd_all call in Inductiveops.find_mrectype function, which is used in turn in Vnorm...
+
+
+Comment author: @maximedenes
+
+But how can native_compute be fast? It is doing the same call to whd_all, isn't it?
+
+
+Comment author: @maximedenes
+
+Oh sorry, I misread. You're right that there is a difference between vnorm and nativenorm there. Interesting! I'll have a closer look.
+
+
+Comment author: @ppedrot
+
+OK, the difference comes from the implementation of whd_all called. In the native variant, it comes from the kernel, while in the VM variant, it comes from Reductionops (there is a leading open module atop of the file). In particular, the following one-line patch solves your issue:
+
+diff --git a/pretyping/inductiveops.ml b/pretyping/inductiveops.ml
+index 214e19f..f37bc81 100644
+--- a/pretyping/inductiveops.ml
++++ b/pretyping/inductiveops.ml
+@ @  -451,7 +451,7 @ @  let extract_mrectype t =
+     | _ -> raise Not_found
+ 
+ let find_mrectype_vect env sigma c =
+-  let (t, l) = decompose_appvect (whd_all env sigma c) in
++  let (t, l) = decompose_appvect (Reduction.whd_all env c) in
+   match kind_of_term t with
+     | Ind ind -> (ind, l)
+     | _ -> raise Not_found
+
+I still have no clue why this costs so much though.
+
+
+Comment author: @maximedenes
+
+Isn't this refolding again?
+
+
+Comment author: @ppedrot
+
+Wasn't this fixed already? But yes, it could be. I'm scrutinizing the code to check this assumption.
+
+
+Comment author: @maximedenes
+
+No, but wait.
+
+Isn't Reductionops.whd_all doing call by name, while Reduction.whd_all is call by need?
+
+
+Comment author: @ppedrot
+
+The kernel is clearly by-need, but I have no idea about the pretyper. I overheard it was by-name, but it may be rumours!
+
+
+Comment author: @ppedrot
+
+I don't think it has to do with sharing. Even when unsetting the Kernel Term Sharing option, native_compute answers quickly (albeit a little slower than with the option turned on).
+
+
+Comment author: @maximedenes
+
+Ok, but it is definitely not smart to have these two functions with the same short name... Reductionops.whd_all is call by name it seems.
+
+
+Comment author: @ppedrot
+
+I confirm that it is call-by-name, but I did not find out whether this was the source of the inefficiency. I tried to track down this stepwise, but the terms are so horrendous that it is hard to picture anything out of it, even when relying only on the slightly more palatable output of the Set RAKAM Debug option. What about applying my patch and claim that this bug is fixed?
+
+
+Comment author: @maximedenes
+
+Your patch is fine, but we should also investigate if there isn't a severe inefficiency to fix in the pretyping reduction. Please leave the bug open so that we remember, but you can apply the patch.
+
+
+Comment author: @ppedrot
+
+Note that the correct fix is actually reverting f22ad60. We should probably be aware that the Pretyping version of whd_all is potentially computationally explosive and scan for other uses in the codebase...
+
+
+Comment author: @ppedrot
+
+Bug fixed in 1e3d73a, leaving it open while the exact cause of slowness is unknown.
+
+
+Comment author: @herbelin
+
+Well done. Sorry for having been trapped by the whd_all overloading. All my support in your further investigations.
+
+
+Comment author: @ppedrot
+
+I've pushed a minimalistic test in commit 8463f0a. It is based on Jason's example, but I stripped it down quite a lot to a mere ~250 lines. If somebody wants to fiddle with it to see where things go awry...
+
+
+Comment author: @ppedrot
+
+From my experiments, there is a value which keeps being normalized, which is "forall Name var : Type, Context Name var -> Type". I don't know why this does not answer immediately, though, as it is already in whf...
+
+
+Comment author: @ppedrot
+
+The previous comment was a red herring, this was actually triggered by the printer of terms I war using to debug.
+
+Essentially, I've crawled through the reduction, and I can't find any obvious bug. The steps are the expected ones, and I don't see anything suspicious, which was *not* the case with the refolding bug. The code for the machine seems OK as well. So I'm willing to buy the fact that it is a by-name vs. by-need issue, and I unilaterally decide to close this bug.
+
+

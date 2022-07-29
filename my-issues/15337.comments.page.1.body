@@ -1,0 +1,2 @@
+Hi @JasonGross, there is actually already a command `Print Custom Grammar foo` documented [here](https://coq.inria.fr/refman/user-extensions/syntax-extensions.html#coq:cmd.Print-Custom-Grammar) and which seems to do what you describe.
+Ah, I missed that, sorry, and thanks!

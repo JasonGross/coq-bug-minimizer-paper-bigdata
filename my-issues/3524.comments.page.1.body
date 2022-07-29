@@ -1,0 +1,26 @@
+Comment author: @JasonGross
+
+Here is some code that I think should work:
+
+Ltac my_rewrite_by foo rewrite_tac :=
+  rewrite_tac foo.
+
+Tactic Notation "my_rewrite" open_constr(foo) := my_rewrite_by foo ltac:(fun lem => rewrite lem).
+Tactic Notation "my_rewrite" open_constr(foo) "in" hyp_list(H) := my_rewrite_by foo ltac:(fun lem => rewrite lem in H).
+Tactic Notation "my_rewrite" open_constr(foo) "in" hyp_list(H) "|-" := my_rewrite_by foo ltac:(fun lem => rewrite lem in H |- ).
+Tactic Notation "my_rewrite" open_constr(foo) "in" hyp_list(H) "|-" "*" := my_rewrite_by foo ltac:(fun lem => rewrite lem in H |- *; idtac).
+Tactic Notation "my_rewrite" open_constr(foo) "in" "|-" "*" := my_rewrite_by foo ltac:(fun lem => rewrite lem in |- *; idtac).
+
+Goal forall (A B : Set) (H H' : A = B), A = B.
+  intros.
+  my_rewrite H in H' |- *. (* Toplevel input, characters 0-20:
+In nested Ltac calls to "my_rewrite''''''", "my_rewrite_by", 
+"rewrite_tac" (bound to fun lem => rewrite lem in H |- *; idtac) and
+"rewrite lem in H |- *", last call failed.
+Error: Ltac variable H is bound to a list (first element is H') which cannot
+be coerced to a variable. *)
+
+(And similarly for [rewrite ->], [rewrite <-], [erewrite], [setoid_rewrite], etc.)
+
+
+I think that this kind of Tactic Notation tinkering should be an automatic WONTFIX.

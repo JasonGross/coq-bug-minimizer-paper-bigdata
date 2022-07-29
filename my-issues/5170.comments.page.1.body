@@ -1,0 +1,39 @@
+Comment author: @JasonGross
+
+Pierre-Marie mentioned in https://coq.inria.fr/bugs/show_bug.cgi?id=4643#c5 
+that it's possible to profile [native_compute] in some cases on some OSes.  
+It'd be nice to have documentation on how to do this.  (Do I just run `gprof` 
+on `coqc` while it's running native_compute?)  Even better would be [Set Native 
+Profiling] and [Show Native Profile], which give appropriate warning messages 
+on operating systems that lack the relevant support.
+
+
+Comment author: @maximedenes
+
+I'll document it once I learn how to do it :)
+
+
+Comment author: @JasonGross
+
+Paul, could you talk with PMP and take a look at doing this?  At the very 
+least, I'd like documentation for how to do this.  Ideally, there'd be a [Set 
+NativeCompute Profiling] and [Show NativeCompute Profile], which would show the 
+profile of the most recent [native_compute] (or an aggregate profile, if that's 
+not hard, in which case there'd also be a [Reset NativeCompute Profiling]).  
+I'm fine if the profiling option uses os-specific features and only works on 
+Linux (and emits a warning if the OS is wrong or something), and I'm fine if it 
+needs an extra ./configure flag.
+
+
+Comment author: @psteckler
+
+I created PR [BZ#950](https://github.com/coq/coq/issues?q=is%3Aissue%20%22Original%20bug%20ID%3A%20BZ%23950%22):
+
+  https://github.com/coq/coq/pull/950
+
+
+Comment author: @ppedrot
+
+Fixed by f1806ab00.
+
+

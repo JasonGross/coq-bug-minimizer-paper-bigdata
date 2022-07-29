@@ -1,0 +1,47 @@
+Comment author: @JasonGross
+
+Enter "Section foo. Defined." into proof general.  Evaluate both.  Then erase the erroring "Defined.", type "End foo.", and evaluate.  It should succeed, but it fails.  Here's the log from the *coq* buffer:
+
+Welcome to Coq cagnode15:/afs/csail.mit.edu/u/j/jgross/coq-trunk,trunk (9e6b28c04ad98369a012faf3bd4d630cf123a473)
+
+<prompt>Coq < 1 || 0 < </prompt>Set Undo 500 .
+
+
+<prompt>Coq < 1 || 0 < </prompt>Set Printing Depth 50 .
+
+
+<prompt>Coq < 1 || 0 < </prompt>Set Undo 500 .
+
+
+<prompt>Coq < 1 || 0 < </prompt>Set Silent.
+
+
+<prompt>Coq < 1 || 0 < </prompt>Section foo.
+
+<prompt>Coq < 6 || 0 < </prompt>Unset Silent.
+
+<prompt>Coq < 6 || 0 < </prompt>Defined.
+Toplevel input, characters 15-23:
+> Defined.
+> ^^^^^^^^
+Error: No focused proof (No proof-editing in progress).
+
+<prompt>Coq < 1 || 0 < </prompt>End foo.
+Toplevel input, characters 0-8:
+> End foo.
+> ^^^^^^^^
+Error: There is nothing to end.
+
+<prompt>Coq < 1 || 0 < </prompt>
+
+
+Comment author: @gares
+
+That must be me and undo handling.  My compatibility layer for proof general must have a bug
+
+
+Comment author: @gares
+
+Push soon
+
+

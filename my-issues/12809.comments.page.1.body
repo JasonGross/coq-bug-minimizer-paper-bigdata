@@ -1,0 +1,26 @@
+And, indeed, I can give the term by hand...
+```coq
+Definition seq_bool_rect (x : bool)
+           (P : forall y, seq x y -> Type)
+           (h : P x seq_refl)
+           y
+  : forall p, P y p
+  := match x, y return forall (P : forall y', seq x y' -> Type)
+                              (h : P x seq_refl)
+                              p, P y p with
+     | true, true => fun P h p => h
+     | false, false => fun P h p => h
+     | true, false => fun P _ pf => match true_nseq_false pf return P _ pf with end
+     | false, true => fun P _ pf => match false_nseq_true pf return P _ pf with end
+     end P h.
+```
+It's a know problem about relevance annotations not being correctly set. cc @SkySkimmer, FWIW.
+Yes, the relevance on `p` is incorrect because its type is implicit. For instance if you do
+~~~coq
+Definition seq_bool_rect (x : bool)
+           (P : forall y, seq x y -> Type)
+           (h : P x seq_refl)
+  : forall y (p : _ : SProp), P y p.
+~~~
+it works.
+Why did you close this?  It seems like clearly a bug to me, even if it's not a bug in conversion and is instead a bug in elaboration, and even if it's hard to solve.

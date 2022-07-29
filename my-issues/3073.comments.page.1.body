@@ -1,0 +1,56 @@
+Comment author: @JasonGross
+
+The following code produces the following error in HoTT/coq
+
+Code:
+
+Require Import FunctionalExtensionality.
+
+Goal forall A B (f g : forall a : A, B a) (H : f = g) x, f x = g x.
+intros.
+Set Printing All.
+pose (@ equal_f _ _ _ _ H).
+
+
+
+Error:
+
+The term "H" has type "@ eq (forall a : A, B a) f g"                                                                                         
+while it is expected to have type "@ eq (forall _ : A, ?16) ?17 ?18"                                                                         
+(cannot instantiate "?16" because "_UNBOUND_REL_1" is not in its scope:                                                                     
+available arguments are "A" "B" "f" "g" "H" "x").
+
+
+It might also exist in Coq trunk.  Apologies if it is not, or if _UNBOUND_REL_N can be visible in user facing code.
+
+
+Comment author: @JasonGross
+
+Note that, intuitively, the problem with the code is that [equal_f] is about nondependent functions, while I'm trying to instantiate it with dependent functions.
+
+
+Comment author: @DanGrayson
+
+I also see this type of message, and it's too confusing for any user, so a better message would be welcome.
+
+...
+while it is expected to have type
+ "@ identity
+    (forall _ : pr1hSet (@ ac_set (abgrtogr ℤ) (@ underlyingAction (abgrtogr ℤ) T)),
+     ?758) ?759 ?760" (cannot instantiate "?758" because 
+"_UNBOUND_REL_1" is not in its scope: available arguments are 
+"Y" "T" "t0" "f" "s" "a3").
+
+
+Comment author: @silene
+
+I cannot reproduce it on 8.5.
+
+That said, _UNBOUND_REL warns that an ill-formed term (e.g. De Bruijn variable without binder) got created. Obviously, if a Coq was bug-free, it would never occur. But Coq is not and "_UNBOUND_REL" is better than "Anomaly. Please report" in my opinion.
+
+
+Comment author: @DanGrayson
+
+Thanks for looking at it.  One way to make the error message more informative for the ordinary user, but not less informative for the developers, as you desire, would be retain all the information currently displayed, but to add an indication that this is an internal error (coq bug) that should be reported, rather than something provoked by incorrect behavior on the part of the user, as you have informed us.
+
+

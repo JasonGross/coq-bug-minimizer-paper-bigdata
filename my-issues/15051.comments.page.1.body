@@ -1,0 +1,25 @@
+The STM cannot classify such a command.
+>There is no good sequence of local transformations that removes the section.
+
+Could you remove every command which fails after removing the `Section`? ie
+- try removing Section
+  - End fails, remove End 
+  - success
+Indeed this command is too dynamic for the current model, tho IMHO it doesn't pose problem per-se and we shouldn't restrict features due to limitations of the STM.
+
+But I'm unconvinced for the use case; if the minimizer needs access to speculative execution or document structure it could use a better API than just text; document structure is provided by both SerAPI and PyCoq, only SerAPI implements speculative execution [in a bit clumsy way], but PyCoq could likely do much better.
+> Could you remove every command which fails after removing the `Section`? ie
+> 
+> * try removing Section
+>   
+>   * End fails, remove End
+>   * success
+
+This is clever, but I fear it may be too costly in the current bug minimizer model.  Indeed if the minimizer gets a SerAPI/PyCoq interface, then we can do something like this, but currently the model of interaction is to invoke coqc on the file, and this requires either switching to coqtop (and waiting for feedback on each statement, which adds a bit of overhead to each run of Coq), or else running coqc many many more times per change (which adds a lot of overhead).
+
+I'll think about implementing the coqtop solution.
+@JasonGross another solution would be to implement `Try` outside of the stm, we have a "minimal" `coqc` that compiles coq files skipping the stm altogether, in this model, it is easy to have "dynamic deps" for example to support try. In a sense, this would amount to writing a special coqc for the minimizer, and IMHO you can do _a lot_ of cool stuff with that, with a quite reduced effort in terms of implementation.
+
+The situation with the stm is indeed that it has a "static" view of the document, so the structure can't depend on the result of a command. That's indeed too limited for my taste, but Gaëtan is right, a command such as `Try` may be just not feasible to implement in the current model.
+
+But there are many tradeoffs to do here in terms of manpower etc.... let me know if I can help.

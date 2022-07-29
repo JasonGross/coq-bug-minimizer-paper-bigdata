@@ -1,0 +1,25 @@
+Comment author: @JasonGross
+
+This breaks pretty much every use of "solve [ typeclasses eauto ]", "progress 
+typeclasses eauto", and "try typeclasses eauto".  This code should not succeed, 
+leaving a goal on the shelf:
+
+Goal True.
+  Typeclasses eauto := debug.
+  typeclasses eauto.
+
+
+Comment author: @JasonGross
+
+Also, this code should definitely not succeed:
+
+Goal True.
+  Typeclasses eauto := debug.
+  solve [ typeclasses eauto ].
+
+
+Comment author: @mattam82
+
+This will be fixed before the beta, reverting the shelving and replacing it with a failure, indeed I overlooked that removing the check for shelved goals at the end made typeclasses eauto always succeed on non-typeclass goals
+
+

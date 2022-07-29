@@ -1,0 +1,71 @@
+Comment author: @JasonGross
+
+Axiom proof_admitted : False.
+Goal forall (A B : Type) (P : forall _ : prod A B, Type) (a : A) (b : B) (p p0 : forall (x : A) (x' : B), P (@ pair A B x x')),
+    @ eq (P (@ pair A B a b)) (p (@ fst A B (@ pair A B a b)) (@ snd A B (@ pair A B a b)))
+        (p0 (@ fst A B (@ pair A B a b)) (@ snd A B (@ pair A B a b))).
+Proof.
+  intros.
+  generalize dependent (a, b). (* succeed in trunk, fails in 8.5rc1 *)
+  abstract case proof_admitted.
+
+
+Here is a script that passes in 8.5rc1, but fails in trunk:
+
+Axiom proof_admitted : False.
+Goal forall (A B : Type) (P : forall _ : prod A B, Type) (a : A) (b : B) (p p0 : forall (x : A) (x' : B), P (@ pair A B x x')),
+    @ eq (P (@ pair A B a b)) (p (@ fst A B (@ pair A B a b)) (@ snd A B (@ pair A B a b)))
+        (p0 (@ fst A B (@ pair A B a b)) (@ snd A B (@ pair A B a b))).
+Proof.
+  intros.
+  try generalize dependent (a, b);
+  abstract case proof_admitted. (* Error: Illegal application:
+The term "@ eq" of type "forall A : Type, A -> A -> Prop"
+cannot be applied to the terms
+ "P p1" : "Type"
+ "p (fst p1) (snd p1)" : "P (fst p1, snd p1)"
+ "p0 (fst p1) (snd p1)" : "P (fst p1, snd p1)"
+The 2nd term has type "P (fst p1, snd p1)" which should be coercible to "P p1". *)
+Qed.
+
+
+Comment author: @ppedrot
+
+This bug has been introduced by commit 37ab45726. I'm investigating it.
+
+
+Comment author: @ppedrot
+
+Fixed by 024cf5a.
+
+
+Comment author: @maximedenes
+
+Are you sure this is the right fix? I don't understand why we keep having these idioms of unsafe primitives (like apply_type, from what you say) and local safety checks in tactics. It is just calling for problems... Why not safe primitives instead?
+
+
+Comment author: @JasonGross
+
+Is there a trade off between efficiency and safety here?
+
+
+Comment author: @maximedenes
+
+Having some unsafe primitives for the cases when a check is not required, and efficiency is critical probably make sense. But using by default an unsafe primitive, including when it is just incorrect (like here) is certainly not the way we should recommend.
+
+
+Comment author: @herbelin
+
+Maxime: You're complaining but what are you proposing, concretely?
+
+
+Comment author: @ppedrot
+
+A full-fledged safe refine is costly indeed. Here, we know that we only have to check the well-formedness of the generalized goal (just as in, say, a dependent pattern-matching) so that it is always better to just do that. Otherwise, Jason is going to legitimately pop up with examples that take 5 seconds to execute on goals with hypotheses larger than the garden of my uncle ('en français dans le texte').
+
+
+Comment author: @ppedrot
+
+That said, I deeply agree that having the unsafe flag of refine turned on by default is pure madness. I tend to think we should fix that before the release of 8.6, but we're a bit in a rush...
+
+

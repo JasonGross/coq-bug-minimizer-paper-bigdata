@@ -1,0 +1,180 @@
+Comment author: @JasonGross
+
+```coq
+(* -*- mode: coq; coq-prog-args: ("-emacs" "-R" "." "Top") -*- *)
+(* File reduced by coq-bug-finder from original input, then from 196 lines to 185 lines, then from 195 lines to 151 lines *)
+(* coqc version 8.5beta1 (April 2015) compiled on Apr 9 2015 15:39:28 with OCaml 4.01.0
+   coqtop version cagnode13:/afs/csail.mit.edu/u/j/jgross/coq-8.5,v8.5 (33650e275a4b3f00541ea87ee4b39892be5fdb2f) *)
+Axiom proof_admitted : False.
+Tactic Notation "admit" := case proof_admitted.
+Module Export Overture.
+
+  Definition relation (A : Type) := A -> A -> Type.
+
+  Class Symmetric {A} (R : relation A) :=
+    symmetry : forall x y, R x y -> R y x.
+  Delimit Scope function_scope with function.
+
+  Notation compose := (fun g f x => g (f x)).
+
+  Notation "g 'o' f" := (compose g%function f%function) (at level 40, left associativity) : function_scope.
+
+  Inductive paths {A : Type} (a : A) : A -> Type :=
+    idpath : paths a a.
+
+  Arguments idpath {A a} , [A] a.
+
+  Notation "x = y :> A" := (@ paths A x y) : type_scope.
+  Notation "x = y" := (x = y :>_) : type_scope.
+
+  Definition inverse {A : Type} {x y : A} (p : x = y) : y = x
+    := match p with idpath => idpath end.
+
+  Global Instance symmetric_paths {A} : Symmetric (@ paths A) | 0 := @ inverse A.
+
+End Overture.
+Set Implicit Arguments.
+
+Delimit Scope morphism_scope with morphism.
+Delimit Scope category_scope with category.
+Delimit Scope object_scope with object.
+
+Record PreCategory :=
+  Build_PreCategory' {
+      object :> Type;
+      morphism : object -> object -> Type;
+
+      identity : forall x, morphism x x;
+      compose : forall s d d',
+                  morphism d d'
+                  -> morphism s d
+                  -> morphism s d'
+      where "f 'o' g" := (compose f g);
+
+      associativity : forall x1 x2 x3 x4
+                             (m1 : morphism x1 x2)
+                             (m2 : morphism x2 x3)
+                             (m3 : morphism x3 x4),
+                        (m3 o m2) o m1 = m3 o (m2 o m1);
+
+      associativity_sym : forall x1 x2 x3 x4
+                                 (m1 : morphism x1 x2)
+                                 (m2 : morphism x2 x3)
+                                 (m3 : morphism x3 x4),
+                            m3 o (m2 o m1) = (m3 o m2) o m1;
+
+      left_identity : forall a b (f : morphism a b), identity b o f = f;
+      right_identity : forall a b (f : morphism a b), f o identity a = f;
+
+      identity_identity : forall x, identity x o identity x = identity x
+    }.
+
+Bind Scope category_scope with PreCategory.
+Arguments identity {!C%category} / x%object : rename.
+Arguments compose {!C%category} / {s d d'}%object (m1 m2)%morphism : rename.
+
+Definition Build_PreCategory
+           object morphism compose identity
+           associativity left_identity right_identity
+  := @ Build_PreCategory'
+       object
+       morphism
+       compose
+       identity
+       associativity
+       (fun _ _ _ _ _ _ _ => symmetry _ _ (associativity _ _ _ _ _ _ _))
+       left_identity
+       right_identity
+       (fun _ => left_identity _ _ _).
+Infix "o" := compose : morphism_scope.
+Notation "1" := (identity _) : morphism_scope.
+Local Open Scope morphism_scope.
+
+Section prod.
+  Variables C D : PreCategory.
+
+  Definition prodC : PreCategory.
+    refine (@ Build_PreCategory
+              (C * D)%type
+              (fun s d => (morphism C (fst s) (fst d)
+                           * morphism D (snd s) (snd d))%type)
+              (fun x => (identity (fst x), identity (snd x)))
+              (fun s d d' m2 m1 => (fst m2 o fst m1, snd m2 o snd m1))
+              _
+              _
+              _); admit.
+  Defined.
+End prod.
+Infix "*" := prodC : category_scope.
+
+Delimit Scope functor_scope with functor.
+
+Section Functor.
+  Variables C D : PreCategory.
+
+  Record Functor :=
+    {
+      object_of :> C -> D;
+      morphism_of : forall s d, morphism C s d
+                                -> morphism D (object_of s) (object_of d);
+      composition_of : forall s d d'
+                              (m1 : morphism C s d) (m2: morphism C d d'),
+                         morphism_of _ _ (m2 o m1)
+                         = (morphism_of _ _ m2) o (morphism_of _ _ m1);
+      identity_of : forall x, morphism_of _ _ (identity x)
+                              = identity (object_of x)
+    }.
+End Functor.
+Arguments morphism_of [C%category] [D%category] F%functor [s%object d%object] m%morphism : rename, simpl nomatch.
+
+Section law4.
+  Variables C1 C2 D : PreCategory.
+  Variable F : Functor (C1 * C2) D.
+
+  Definition inverse_object_of_object_of
+  : C1 -> (C2 -> D)%category.
+  Proof.
+    intro c1.
+    refine (Build_Functor
+              C2 D
+              (fun c2 => F (c1, c2))
+              (fun s2 d2 m2 => morphism_of
+                                 F
+                                 (s := (_, _))
+                                 (d := (_, _))
+                                 (identity c1, m2))
+              _
+              _) || fail 1 "too early".
+    Undo.
+    refine (Build_Functor
+              C2 D
+              (fun c2 => F (c1, c2))
+              (fun s2 d2 m2 => morphism_of
+                                 F
+                                 (identity c1, m2))
+              _
+              _). (* Toplevel input, characters 189-206:
+Error:
+In environment
+C1, C2, D : PreCategory
+F : Functor (C1 * C2) D
+c1 : C1
+s2 : C2
+d2 : C2
+m2 : morphism C2 s2 d2
+The term "(1, m2)" has type "(morphism C1 c1 c1 * morphism C2 s2 d2)%type"
+while it is expected to have type "morphism (C1 * C2) ?s ?d".
+ *)
+```
+
+Comment author: @JasonGross
+
+Note: A workaround is to insert at the top of the file:
+```coq
+Set Implicit Arguments.
+Record prod A B := pair { fst : A ; snd : B }.
+Notation "x * y" := (prod x y) : type_scope.
+Notation "( x , y , .. , z )" := (pair .. (pair x y) .. z) : core_scope.
+Canonical Structure default_Pair {A B : Type} a b : (A * B)%type := (a, b).
+
+```

@@ -1,0 +1,20 @@
+Comment author: @JasonGross
+
+I would like a variant or extension of `Axiom` that allows me to take advantage of the fact that definitional equality is decidable in Coq's internals, to extend an axiom with judgmental reduction rules.
+
+For example, I'd like to say
+```coq
+Axiom functional_extensionality_dep
+  : forall {A P} (f g : forall x : A, P x), (forall x, f x = g x) -> f = g.
+
+Declare Reduction forall A P f, @functional_extensionality_dep A P f f (fun x => eq_refl)
+   := eq_refl.
+```
+These rules would presumably be subject to the restriction that they require no higher-order unification, that they are well-typed (i.e., the axiom application and the term have the same type), that the axiom be in the head position after binders/quantification, and, perhaps, some kind of syntactic non-overlapping condition (e.g., they must differ by constructors in one of the arguments, or they must have different constructors-or-non-reducing-axioms) or some kind of unification condition.  (Use case: axiomatize and alternative path elimination principle that reduces on both refl and univalence.)  Alternatively, the reduction declaration could come with a warning that typechecking might diverge in the presence of these, and then these restrictions could be lifted.
+
+Presumably, these would be forbidden in `Module Type`s, or checked, or something.
+
+Use cases involve functional extensionality, univalence, and higher inductive types with better computation properties, proof irrelevance that computes in more cases, etc.
+
+
+See also https://github.com/coq/ceps/pull/50

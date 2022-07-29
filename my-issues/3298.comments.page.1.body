@@ -1,0 +1,19 @@
+Comment author: @JasonGross
+
+Hint Extern 1 => match goal with |- match ?E with end => case E end.
+
+Goal forall H : False, match H return Set with end.
+  intros.
+  solve [ eauto ]. (* No applicable tactic *)
+
+
+Comment author: Ben Delaware &lt;<bendy@csail.mit.edu>&gt;
+
+Appears the problem is that when the goal is 'match ..' , eauto doesn't use hint databases. 
+
+So "Hint Extern 0 => admit" fails to solve the goal 
+   forall (H : False), match H return Set with end. 
+but will solve 
+    forall (H : False), id (match H return Set with end).
+
+

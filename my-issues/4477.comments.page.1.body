@@ -1,0 +1,29 @@
+Comment author: @JasonGross
+
+It's impossible to write a _CoqProject which passes -compat 8.4 in a way that works with both ProofGeneral and coq_makefile.  (See also https://github.com/ProofGeneral/PG/issues/21.)  If I write
+  -arg "-compat 8.4"
+then coq_makefile works, but PG tries to pass "-compat 8.4" to coqc (as a single argument, rather than -compat 8.4 as two arguments), which fails.  If I write
+  -arg -compat -arg 8.4
+then PG works, but coq_makefile tries to pass
+  8.4 -compat
+to coqc, which fails.  Similarly if I reverse the order, then coq_makefile works but PG fails.
+
+I think that both
+  -arg "-compat 8.4"
+and
+  -arg -compat -arg 8.4
+should work with both coq_makefile and PG.
+
+What's the behavior of CoqIDE?
+
+
+Comment author: @silene
+
+Coqide handles both [-arg "-compat 8.4"] and [-arg -compat -arg 8.4]. As to why coq_makefile outputs the arguments in reverse order while it uses the same parsing code as coqide, I have no clue. I have not been able to locate the place where the argument list gets reversed.
+
+
+Comment author: @silene
+
+Fixed by commit 8b5d02d. Thanks for the report. There might be a lot of fallout though, since it is not just -arg that coq_makefile was parsing in reverse order.
+
+

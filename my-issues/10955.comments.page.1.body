@@ -1,0 +1,5 @@
+cc @mattam82 
+Note that `rewrite_strat topdown (hints mydb; eval cbv beta)` succeeds in both cases, but does more work in the `assert` case than the `Goal` case.  In order to get all of the work that's done in the `assert` case to be done in the `Goal` case, I need to issue `rewrite_strat repeat (topdown (hints mydb; eval cbv beta); eval cbv beta)`
+Ah, and the difference between `Goal` and `assert` is that the latter does beta reduction.  I'll open a separate issue for this.
+Given the factoring out of #13700, I believe this can be closed
+Duplicate of #4175

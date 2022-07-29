@@ -1,0 +1,91 @@
+Comment author: @JasonGross
+
+(* File reduced by coq-bug-finder from original input, then from 14001 lines to 844 lines, then from 848 lines to 615 lines, then fro\
+m 624 lines to 301 lines, then from 190 lines to 89 lines *)
+(* coqc version trunk (September 2014) compiled on Sep 29 2014 14:5:39 with OCaml 4.01.0
+   coqtop version cagnode16:/afs/csail.mit.edu/u/j/jgross/coq-HoTT,(no branch) (e8726550e01e51ef3ccf8602f2ecbe2b3737cca3) *)
+Set Universe Polymorphism.
+Set Implicit Arguments.
+Record PreCategory := { object :> Type ; morphism : object -> object -> Type }.
+Bind Scope category_scope with PreCategory.
+Record Functor (C D : PreCategory) :=
+  { object_of :> C -> D;
+    morphism_of : forall s d, morphism C s d -> morphism D (object_of s) (object_of d);
+    identity_of : forall s m, morphism_of s s m = morphism_of s s m }.
+Definition sub_pre_cat (P : PreCategory -> Type) : PreCategory.
+Proof.
+  exact (@ Build_PreCategory PreCategory Functor).
+Defined.
+Definition opposite (C : PreCategory) : PreCategory.
+Proof.
+  exact (@ Build_PreCategory C (fun s d => morphism C d s)).
+Defined.
+Local Notation "C ^op" := (opposite C) (at level 3, format "C '^op'") : category_scope.
+Definition prod (C D : PreCategory) : PreCategory.
+Proof.
+  refine (@ Build_PreCategory
+            (C * D)%type
+            (fun s d => (morphism C (fst s) (fst d) * morphism D (snd s) (snd d))%type)).
+Defined.
+Local Infix "*" := prod : category_scope.
+Axiom functor_category : PreCategory -> PreCategory -> PreCategory.
+Local Notation "C -> D" := (functor_category C D) : category_scope.
+Module Export PointwiseCore.
+  Definition pointwise
+             (C C' : PreCategory)
+             (F : Functor C' C)
+             (D D' : PreCategory)
+             (G : Functor D D')
+  : Functor (C -> D) (C' -> D').
+  Proof.
+    refine (Build_Functor
+              (C -> D) (C' -> D')
+              _
+              _
+              _);
+    abstract admit.
+  Defined.
+End PointwiseCore.
+Axiom Pidentity_of : forall (C D : PreCategory) (F : Functor C C) (G : Functor D D), pointwise F G = pointwise F G.
+Local Open Scope category_scope.
+Definition functor_uncurried (P : PreCategory -> Type)
+           (has_functor_categories : forall C D : @ sub_pre_cat P, P (C -> D))
+: object (((@ sub_pre_cat P)^op * (@ sub_pre_cat P)) -> (@ sub_pre_cat P)).
+Proof.
+  pose (let object_of := (fun CD => (((fst CD) -> (snd CD))))
+        in Build_Functor
+             ((@ sub_pre_cat P)^op * (@ sub_pre_cat P)) (@ sub_pre_cat P)
+             object_of
+             (fun CD C'D' FG => pointwise (fst FG) (snd FG))
+             (fun _ _ => Pidentity_of _ _)) || fail "early".
+  Include PointwiseCore.
+  pose (let object_of := (fun CD => (((fst CD) -> (snd CD))))
+        in Build_Functor
+             ((@ sub_pre_cat P)^op * (@ sub_pre_cat P)) (@ sub_pre_cat P)
+             object_of
+             (fun CD C'D' FG => pointwise (fst FG) (snd FG))
+             (fun _ _ => Pidentity_of _ _)).
+  (* Toplevel input, characters 21-297:
+Error: Conversion test raised an anomaly *)
+
+
+Comment author: @maximedenes
+
+On the current v8.5 branch, the definition of sub_pre_cat fails with a universe inconsistency. Does that solve the problem?
+
+
+Comment author: @JasonGross
+
+[sub_pre_cat] should work fine.  If this gives you a universe inconsistency with [Set Universe Polymorphism] on, that is a separate bug.  But the entire file works fine for me in b8efac9f2cadbc0f700408fcb6f8187ef6527fd9.
+
+
+Comment author: @maximedenes
+
+I do get a universe inconsistency with 6900909e90dfa65d1c42bfcd67135e91317a8b2c. Maybe Matthieu can have a look at the problem?
+
+
+Comment author: @maximedenes
+
+Sorry, I ran the test with the wrong version. Seems fixed in v8.5 branch (the example runs fine).
+
+

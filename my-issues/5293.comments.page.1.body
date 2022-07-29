@@ -1,0 +1,241 @@
+Comment author: @JasonGross
+
+I would like a type of parametrized record (with primitive projections) that is 
+not judgmentally injective into `Type`.  I think this is best demonstrated by 
+example:
+
+```coq
+Set Record Family Judgmental Reduction. (* made up option name *)
+Record foo (A : Type) (P : option A -> Type)
+  := { a : A ; p : P (Some a) }.
+Definition foo_sigma (A : Type) (P : option A -> Type)
+  := { a : A & P (Some a) }.
+Check eq_refl
+  : foo_sigma unit (fun x => match x with Some _ => True | None => False end)
+    = foo_sigma unit (fun _ => True). (* success *)
+Check eq_refl
+  : foo unit (fun x => match x with Some _ => True | None => False end)
+    = foo unit (fun _ => True). (* I want this to work too *)
+```
+
+Importantly, this should work even with primitive projections on.  It's 
+possible to fake this, as in https://github.com/HoTT/HoTT/pull/849, but this 
+seems to come at a speed penalty (about a 17% increase in the overall build 
+time, with some files taking 4x-5x as long to build), and is painful.  Together 
+with bug [BZ#5291](https://github.com/coq/coq/issues?q=is%3Aissue%20%22Original%20bug%20ID%3A%20BZ%235291%22) (actually a feature request), I believe this would let me make 
+the categories `1 → Cᵒᵖ` and `(1 → C)ᵒᵖ`  judgmentally equal.  Without this, 
+I'd need to do for natural transformations the same thing I did for functors in 
+https://github.com/HoTT/HoTT/pull/849, and I'm not sure how to make the 
+coercion that I use work nicely for this.
+
+(Note that to be sound, I think all fields, including the let-in-bound fields, 
+need to be unifiable.)
+
+
+Comment author: @ppedrot
+
+This means going from nominal typing to structural typing for inductive types, and probably requires local inductive definitions. Definitely not something that's going to occur tomorrow.
+
+
+Comment author: @JasonGross
+
+Do you have a reference for nominal typing vs inductive typing?
+
+I'm not sure it'll need anonymous inductives (this is what you meant by local, right?).  In particular, in this request, inductives in different inductive families never unify, even if all of their fields are the same.  It seems like it should be possible to implement this by relaxing the conversion rule for inductive families applied to parameters (although maybe the current conversion algorithm isn't written to be able to distinguish this case).
+
+
+Comment author: @ppedrot
+
+(In reply to Jason Gross from comment [BZ#2](https://github.com/coq/coq/issues?q=is%3Aissue%20%22Original%20bug%20ID%3A%20BZ%232%22))
+> Do you have a reference for nominal typing vs inductive typing?
+
+Not in the case of dependent type theory, as far as I know.
+
+> I'm not sure it'll need anonymous inductives (this is what you meant by
+> local, right?).  In particular, in this request, inductives in different
+> inductive families never unify, even if all of their fields are the same. 
+> It seems like it should be possible to implement this by relaxing the
+> conversion rule for inductive families applied to parameters (although maybe
+> the current conversion algorithm isn't written to be able to distinguish
+> this case).
+
+Well, then I don't know how you would make this work. Inductive types are just names, so that when you write [foo unit (fun _ => True)] you really get [App (Ind(Top.foo), Ind(Coq.unit), Lam (_, _, Ind(Coq.True))]. There is no way I can think of to unfold the body of Ind(Top.foo) without having some anonymous representation of inductive types, but I may be wrong.
+
+
+Comment author: @ppedrot
+
+Note that I do find this to be a useful feature, because it morally turns inductive parameters into real products, which is an issue I did encounter when writing syntactic translations of type theory (e.g. for forcing).
+
+
+Comment author: @herbelin
+
+A few comments in passing on this issue:
+
+- For the historical record, the first implementation of conversion of inductive types in versions 5.X was structural. It is only in a second step that names became "generative" in conversion, following the experience of ML on that matter, avoiding e.g. that "bw := black | white" is identified with "bool", since making them distinct is clearly the natural expectation.
+
+- Afaics, generative inductive types can be encoded from non-generative ones by just adding an extra "string" parameter to types and constructors. This is e.g. how we can simulate Coq on top of Arnaud's presentation of a CIC with only a primitive collection of algebraic types (empty, unit, sum, sigma/equality, mu, nu, Prop-bracket and impredicative-Set-bracket) in "The Rooster and the Syntactic Bracket".
+
+- My understanding of Jason's suggestion is then that the conversion of "I params args" and "I' params' args'" is to check I=I' and args=args' as usual but, then, instead of checking params=params', to check that the types of constructors are the same after instantiation of the params and normalization of these types.
+
+- This has obviously an extra cost in term of efficiency, though probably controllable.
+
+Then a possible strategy could be to implement this variant of conversion by default so as to globally improve the user experience without having him/her to be aware of the underlying subtlety. To minimize the extra cost, we could e.g. precompute in advance when the instantiation of params may create redexes in the type of constructors. I guess this kind of situation is rare (e.g. "sig" is not like this, only Jason's "foo" is so in the report) so the extra cost penalty would certainly be peanut in practice.
+
+But maybe the first question is to understand more precisely what this kind of extension would give in practice. I don't see at once how it impacts the intensional equality of [1 → Cᵒᵖ] and [(1 → C)ᵒᵖ] (or writing translations such as forcing).
+
+
+Comment author: @ppedrot
+
+(In reply to Hugo Herbelin from comment [BZ#5](https://github.com/coq/coq/issues?q=is%3Aissue%20%22Original%20bug%20ID%3A%20BZ%235%22))
+> - For the historical record, the first implementation of conversion of
+> inductive types in versions 5.X was structural. It is only in a second step
+> that names became "generative" in conversion, following the experience of ML
+> on that matter, avoiding e.g. that "bw := black | white" is identified with
+> "bool", since making them distinct is clearly the natural expectation.
+
+Interesting, I didn't know that!
+
+> But maybe the first question is to understand more precisely what this kind
+> of extension would give in practice. I don't see at once how it impacts the
+> intensional equality of [1 → Cᵒᵖ] and [(1 → C)ᵒᵖ] (or writing translations
+> such as forcing).
+
+I can give you the motivation in the case of forcing. Essentially, we would like to write inductive types with irrelevant parameters. As of today, it is possible to emulate it for non recursive types by using an intermediate definition, for instance:
+
+Inductive unit_ := tt.
+Definition unit (p : ℙ) := unit_.
+
+But you can't do that for recursive types if the p argument is used somewhere in the constructor but not in the type. For instance, you have to put p in the parameters in the case of:
+
+Inductive foo_ (p : ℙ) := Foo_ : (forall q ≤ p, foo_ q) -> foo_ p.
+
+even though the structure of foo_ does not depend on p.
+
+Intuitively, this is because inductive types are not first-class, you can only define them at toplevel. Parameters then behave like a restricted form of λ-abstraction. If you had first-class inductive types, you could get rid of parameters altogether by defining them as [fun param => μX : index -> Type. F X] with F a positive functor. In particular, you would get the reduction rules asked by Jason.
+
+
+Comment author: @JasonGross
+
+> My understanding of Jason's suggestion is then that the conversion of
+> "I params args" and "I' params' args'" is to check I=I' and args=args' as 
+> usual but, then, instead of checking params=params', to check that the types 
+> of constructors are the same after instantiation of the params and 
+> normalization of these types.
+
+No, I want it to check I=I', and then instead of checking args=args' and params=params', I want it to check "that the types of constructors are the same after instantiation of the params [and args] and normalization of these types."
+
+> I don't see at once how it impacts the intensional equality of [1 → Cᵒᵖ] and
+> [(1 → C)ᵒᵖ] (or writing translations such as forcing).
+
+Alone, it doesn't.  It only impacts the judgmental equality here if we also have a unit type with judgmental eta (bug [BZ#5291](https://github.com/coq/coq/issues?q=is%3Aissue%20%22Original%20bug%20ID%3A%20BZ%235291%22)).
+
+However, here's a simplified example (without any proofs or natural transformations) which, I believe, would work if we had this feature, but doesn't currently:
+
+```coq
+Set Universe Polymorphism.
+Set Primitive Projections.
+
+Record unit : Set := tt {}.
+Record Category :=
+  { obj :> Type;
+    hom : obj -> obj -> Type;
+    id : forall x, hom x x }.
+Bind Scope object_scope with obj.
+Bind Scope morphism_scope with hom.
+Bind Scope category_scope with Category.
+Notation "x ~> y" := (hom _ x y) (at level 40) : morphism_scope.
+Notation "1" := (id _ _) : morphism_scope.
+Local Open Scope morphism_scope.
+Record Functor (C D : Category) :=
+  { on_obj :> C -> D;
+    on_hom : forall x y, (x ~> y) -> (on_obj x ~> on_obj y) }.
+Bind Scope functor_scope with Functor.
+Notation "F ₀" := (@ on_obj _ _ F) (at level 10, format "F ₀") : object_scope.
+Notation "F ₁" := (@ on_hom _ _ F _ _) (at level 10, format "F ₁") : morphism_scope.
+Definition UnitCategory : Category :=
+  {| obj := unit ; hom := fun _ _ => unit ; id := fun _ => tt |}.
+Notation "1" := UnitCategory : category_scope.
+Definition Opposite (C : Category) : Category :=
+  {| obj := C;
+     hom x y := hom C y x;
+     id x := id C x |}.
+Notation "C 'ᵒᵖ'" := (Opposite C) (at level 10, format "C 'ᵒᵖ'") : category_scope.
+Notation "C -> D" := (Functor C D) : functor_scope.
+Delimit Scope functor_scope with functor.
+Delimit Scope category_scope with category.
+Goal forall C, ((1 -> C) = (1 -> C ᵒᵖ))%functor.
+  intros.
+  Fail reflexivity.
+
+(* this is a simplified version of the objects part of the unification problem between [1 → Cᵒᵖ] and [(1 → C)ᵒᵖ] as functor categories *)
+```
+
+Comment author: @JasonGross
+
+Actually, I'm no longer sure that we'd need a unit type with judgmental eta (bug [BZ#5291](https://github.com/coq/coq/issues?q=is%3Aissue%20%22Original%20bug%20ID%3A%20BZ%235291%22))
+
+
+Comment author: @herbelin
+
+Isn't an "op" missing somewhere in your example?
+
+
+Comment author: @JasonGross
+
+Op doesn't change the type of objects; [object (1 → C)ᵒᵖ] and [object (1 → C)]'are the same.  Indeed, though, if I extended the example (which I could do, if you're interested in a test case), I'd need another op.
+
+
+Comment author: @herbelin
+
+Ok, I see your point. Let me rephrase the needed equality explicitly so that reading this thread afterwards is easier.
+
+One needs "Functor 1 D" = "Functor 1 Dᵒᵖ". If conversion were done on the type of constructors after expansion of parameters, one would need to identify
+
+unit -> obj D ≣ unit -> obj Dᵒᵖ
+              ≣ unit -> obj D
+
+which holds
+
+forall x y : unit, unit -> hom D (on_obj x) (on_obj y)
+ ≣ forall x y : unit, unit -> hom Dᵒᵖ (on_obj x) (on_obj y)
+ ≣ forall x y : unit, unit -> hom D (on_obj y) (on_obj x)
+
+which would hold with η for unit.
+
+So both would hold (up to η for unit) even though the parameters are not convertible.
+
+Very interesting.
+
+
+Comment author: @JasonGross
+
+Indeed, that's what I wanted to say.  Thanks!
+
+
+Hello! I don't know if this is on the roadmap at all or of this feature will never happen. But structural rather than nominal equality of inductive types would make it much easier to implement a verified refactoring tool for Coq. Right now, simple refactoring operations like renaming preserve definitional equality for functions and so on, so a refactoring tool can just generate a proof of reflexivity. But, as soon as there is an inductive type, the correctness statement for the refactoring becomes equivalence. And then, as soon as there are proofs about the inductive type, the correctness statement for the refactoring becomes equivalence up to transport! Ouch.
+Another cool optimization I think this would enable is having linear-sized proof terms for conjunctions.  Namely, if we have
+```coq
+Set Record Family Judgmental Reduction. (* made up option name *)
+Record and (A B : Prop)
+  := conj { proj1 : A ; proj2 : B }.
+```
+Then we don't need to carry `A` and `B` as arguments of `conj`; we can have primitive constructors as a sort-of dual to primitive projections.  (This can be allowed only if we don't need the parameters of two instantiations of the same inductive type family to match in order for them to be convertible.  That is, if we have
+```coq
+Record Foo (A : Type) := foo {}.
+```
+then we can only drop `A` from `foo` if `Foo nat` and `Foo bool` can be considered convertible, i.e., both proven by `foo`.)
+
+@ppedrot I'm curious if you have thoughts on this.  (Also if there's any update on the status of this feature.)
+@JasonGross no update on my side. Note that if this feature gets implemented, it will definitely be opt-in, because it would incur a huge cost in conversion. In particular, no inductive from the stdlib would get turned into a structural one.
+I don't think that there will be a cost in conversion for inductives like `and` and `prod`.  In particular, the field names should be able to serve the same purpose that the inductive type family does today, and we would only end up checking convertibility of the parameters once (as parameters for nominal types, or else as the types of fields for structural types).
+Reacting to the current discussion on Coq-club about eta (cc @tabareau).
+
+> For unit however, there is a workaround by defining it in a definitionally proof irrelevant sort (SProp in Coq, Prop in Agda),
+> in which case you get extensionality by the property of the sort, instead of the type.
+
+Naive question then, by curiosity: would there be a way to hijack the relevance mark infrastructure to support eta in `unit` even when `unit` is declared in `Prop` or `Type`? Would the problem be to efficiently track the instantiation of a `c:forall A:Type, ...` to `unit` falling back in `unit`? Is it what polymorphism over discrete sorts would permit (rather than the current polymorphism over levels)? How difficult would this extended form of polymorphism be to implement? Would e.g. the problems be to efficiently manage (presumably disjunctive?) subtyping over such form of polymorphism? Etc...
+Relevance marks need to be stable by substitution, that's why sprop is non cumulative. Sort polymorphism is orthogonal.
+To complement Gaetan's answer, sort polymorphism would only permit to define for instance a sort polymorphic version of lists : `List@s : forall (A:s), s`, so that to be able to use lists for `unit` in `SProp` as well as `nat` in `Type`.  
+Thanks!
+
+Maybe one of my question is how sort polymorphism is represented. For instance, if `s` and `s'` are variables of sort with `A:s`, `B:s'`, is `A -> B` of some algebraic type `if s'=SProp or s'=Prop then s' else max(s,s')`? Or is such parametric sort of a type presented extensionally as an input/output function of the form `[SProp ↦ SProp; Prop ↦ Prop; Type(α) ↦ max (s, α)]`? 

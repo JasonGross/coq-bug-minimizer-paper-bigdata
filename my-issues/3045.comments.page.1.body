@@ -1,0 +1,187 @@
+Comment author: @JasonGross
+
+I get `Anomaly: Signature and its instance do not match. Please report.` with the following code in coq 8.4, and HoTT/coq (which is closer to trunk).  The debug log is from HoTT/coq.
+```coq
+Set Asymmetric Patterns.
+Generalizable All Variables.
+Set Implicit Arguments.
+Set Universe Polymorphism.
+
+Record SpecializedCategory (obj : Type) :=
+  {
+    Object :> _ := obj;
+    Morphism : obj -> obj -> Type;
+
+    Compose : forall s d d', Morphism d d' -> Morphism s d -> Morphism s d'
+  }.
+
+Arguments Compose {obj} [C s d d'] m1 m2 : rename.
+
+Inductive ReifiedMorphism : forall objC (C : SpecializedCategory objC), C -> C -> Type :=
+| ReifiedComposedMorphism : forall objC C s d d', ReifiedMorphism C d d' -> ReifiedMorphism C s d -> @ ReifiedMorphism objC C s d'.
+
+Fixpoint ReifiedMorphismDenote objC C s d (m : @ ReifiedMorphism objC C s d) : Morphism C s d :=
+  match m in @ ReifiedMorphism objC C s d return Morphism C s d with
+    | ReifiedComposedMorphism _ _ _ _ _ m1 m2 => Compose (@ ReifiedMorphismDenote _ _ _ _ m1)
+                                                         (@ ReifiedMorphismDenote _ _ _ _ m2)
+  end.
+
+Fixpoint ReifiedMorphismSimplifyWithProof objC C s d (m : @ ReifiedMorphism objC C s d)
+: { m' : ReifiedMorphism C s d | ReifiedMorphismDenote m = ReifiedMorphismDenote m' }.
+refine match m with
+         | ReifiedComposedMorphism _ _ s0 d0 d0' m1 m2 => _
+       end; clear m.
+destruct (@ ReifiedMorphismSimplifyWithProof _ _ _ _ m1) as [ [] ? ].
+
+(* In HoTT/coq:
+Toplevel input, characters 15-83:
+Anomaly: Signature and its instance do not match. Please report.
+frame @  file "toplevel/vernac.ml", line 343, characters 6-16
+raise @  file "toplevel/vernac.ml", line 335, characters 18-25
+frame @  file "toplevel/vernac.ml", line 327, characters 14-104
+raise @  file "library/states.ml", line 40, characters 45-46
+frame @  file "library/states.ml", line 38, characters 4-7
+raise @  file "toplevel/vernacentries.ml", line 1829, characters 12-13
+frame @  file "toplevel/vernacentries.ml", line 1818, characters 4-12
+raise @  file "proofs/proof.ml", line 326, characters 23-30
+frame @  file "proofs/proof.ml", line 323, characters 6-10
+frame @  file "toplevel/vernacentries.ml", line 812, characters 4-65
+raise @  unknown
+frame @  file "proofs/pfedit.ml", line 129, characters 4-58
+raise @  file "proofs/proof.ml", line 423, characters 10-17
+frame @  file "proofs/proof.ml", line 418, characters 30-56
+frame @  file "proofs/proofview.ml", line 200, characters 13-49
+frame @  file "proofs/monads.ml", line 135, characters 22-27
+raise @  unknown
+raise @  unknown
+frame @  file "proofs/proofview.ml", line 459, characters 25-60
+frame @  file "proofs/goal.ml", line 453, characters 24-29
+frame @  file "proofs/proofview.ml", line 450, characters 23-60
+raise @  unknown
+frame @  file "tactics/tacinterp.ml", line 72, characters 6-11
+raise @  unknown
+frame @  file "tactics/tacinterp.ml", line 72, characters 6-11
+frame @  file "proofs/refiner.ml", line 107, characters 13-78
+frame @  file "proofs/refiner.ml", line 85, characters 6-134
+frame @  file "lib/cList.ml", line 290, characters 19-24
+frame @  file "proofs/refiner.ml", line 43, characters 16-35
+frame @  file "proofs/refiner.ml", line 107, characters 13-78
+frame @  file "proofs/refiner.ml", line 85, characters 6-134
+frame @  file "lib/cList.ml", line 290, characters 19-24
+frame @  file "proofs/refiner.ml", line 43, characters 16-35
+frame @  file "proofs/refiner.ml", line 107, characters 13-78
+frame @  file "proofs/refiner.ml", line 85, characters 6-134
+frame @  file "lib/cList.ml", line 290, characters 19-24
+frame @  file "proofs/refiner.ml", line 43, characters 16-35
+frame @  file "proofs/refiner.ml", line 107, characters 46-77
+frame @  file "proofs/refiner.ml", line 85, characters 6-134
+frame @  file "lib/cList.ml", line 290, characters 19-24
+frame @  file "proofs/refiner.ml", line 43, characters 16-35
+frame @  file "proofs/refiner.ml", line 107, characters 13-78
+frame @  file "proofs/refiner.ml", line 85, characters 6-134
+frame @  file "lib/cList.ml", line 290, characters 19-24
+frame @  file "proofs/refiner.ml", line 43, characters 16-35
+frame @  file "proofs/refiner.ml", line 107, characters 13-78
+frame @  file "proofs/refiner.ml", line 85, characters 6-134
+frame @  file "lib/cList.ml", line 290, characters 19-24
+frame @  file "proofs/refiner.ml", line 43, characters 16-35
+frame @  file "proofs/refiner.ml", line 107, characters 46-77
+frame @  file "proofs/refiner.ml", line 85, characters 6-134
+frame @  file "lib/cList.ml", line 290, characters 19-24
+frame @  file "proofs/refiner.ml", line 43, characters 16-35
+frame @  file "proofs/refiner.ml", line 107, characters 13-78
+frame @  file "proofs/refiner.ml", line 85, characters 6-134
+frame @  file "lib/cList.ml", line 290, characters 19-24
+frame @  file "proofs/refiner.ml", line 43, characters 16-35
+frame @  file "proofs/refiner.ml", line 107, characters 13-78
+frame @  file "proofs/refiner.ml", line 85, characters 6-134
+frame @  file "lib/cList.ml", line 290, characters 19-24
+frame @  file "proofs/refiner.ml", line 43, characters 16-35
+raise @  unknown
+frame @  file "tactics/tactics.ml", line 1968, characters 6-56
+frame @  file "proofs/refiner.ml", line 107, characters 13-78
+frame @  file "proofs/refiner.ml", line 85, characters 6-134
+frame @  file "lib/cList.ml", line 290, characters 19-24
+frame @  file "proofs/refiner.ml", line 43, characters 16-35
+frame @  file "proofs/refiner.ml", line 107, characters 46-77
+frame @  file "proofs/refiner.ml", line 85, characters 6-134
+frame @  file "lib/cList.ml", line 290, characters 19-24
+frame @  file "proofs/refiner.ml", line 43, characters 16-35
+frame @  file "proofs/refiner.ml", line 107, characters 46-77
+frame @  file "proofs/refiner.ml", line 85, characters 6-134
+frame @  file "lib/cList.ml", line 290, characters 19-24
+frame @  file "proofs/refiner.ml", line 43, characters 16-35
+frame @  file "proofs/refiner.ml", line 107, characters 13-78
+frame @  file "proofs/refiner.ml", line 85, characters 6-134
+frame @  file "lib/cList.ml", line 290, characters 19-24
+frame @  file "proofs/refiner.ml", line 43, characters 16-35
+frame @  file "proofs/refiner.ml", line 107, characters 13-78
+frame @  file "proofs/refiner.ml", line 85, characters 6-134
+frame @  file "lib/cList.ml", line 290, characters 19-24
+frame @  file "proofs/refiner.ml", line 43, characters 16-35
+frame @  file "proofs/clenvtac.ml", line 80, characters 26-66
+frame @  file "proofs/clenv.ml", line 283, characters 12-58
+raise @  unknown
+frame @  file "pretyping/unification.ml", line 1279, characters 15-56
+frame @  file "pretyping/unification.ml", line 1213, characters 13-72
+frame @  file "pretyping/unification.ml", line 90, characters 4-86
+raise @  unknown
+raise @  unknown
+frame @  file "pretyping/evarconv.ml", line 755, characters 16-48
+frame @  file "pretyping/typing.ml", line 290, characters 10-32
+frame @  file "pretyping/typing.ml", line 228, characters 16-37
+frame @  file "pretyping/typing.ml", line 58, characters 5-46
+frame @  file "pretyping/evarconv.ml", line 960, characters 8-46
+frame @  file "pretyping/evarconv.ml", line 137, characters 12-18
+frame @  file "pretyping/evarconv.ml", line 159, characters 8-17
+frame @  file "pretyping/evarconv.ml", line 226, characters 12-63
+frame @  file "pretyping/evarconv.ml", line 171, characters 15-26
+frame @  file "pretyping/evarconv.ml", line 172, characters 33-41
+raise @  unknown
+frame @  file "pretyping/evarsolve.ml", line 1404, characters 10-69
+raise @  unknown
+frame @  file "pretyping/evarsolve.ml", line 1329, characters 15-58
+frame @  file "pretyping/evarsolve.ml", line 1050, characters 8-61
+frame @  file "pretyping/evarconv.ml", line 137, characters 12-18
+frame @  file "pretyping/evarconv.ml", line 159, characters 8-17
+frame @  file "pretyping/evarconv.ml", line 226, characters 12-63
+frame @  file "pretyping/evarconv.ml", line 172, characters 33-41
+raise @  unknown
+frame @  file "pretyping/evarsolve.ml", line 1405, characters 4-37
+frame @  file "list.ml", line 86, characters 24-34
+frame @  file "pretyping/evarutil.ml", line 187, characters 36-65
+frame @  file "pretyping/evd.ml", line 560, characters 28-63
+frame @  file "pretyping/evd.ml", line 118, characters 13-41
+frame @  file "pretyping/evd.ml", line 111, characters 45-64
+frame @  file "pretyping/evd.ml", line 111, characters 45-64
+raise @  file "lib/errors.ml", line 27, characters 18-39
+*)
+```
+
+Comment author: Ian Johnson &lt;<ianj@ccs.neu.edu>&gt;
+
+Created attachment 427
+Exhibits the anomaly
+
+I'm using 8.4pl2 and get the some anomaly message in my own development. Pared down to only the necessary bits.
+
+> Attached file: [anomaly.v](https://coq.inria.fr/bugfiles/attachment.cgi?id=427) (text/x-verilog, 9705 bytes)
+> Description:   Exhibits the anomaly
+
+
+Comment author: @herbelin
+
+Ian Johnson's bug is a replicate of [BZ#3003](https://github.com/coq/coq/issues?q=is%3Aissue%20%22Original%20bug%20ID%3A%20BZ%233003%22) which is solve since V8.4pl3. Jason Gross' bug is a specific bug.
+
+
+Comment author: @herbelin
+
+Anomaly fixed in trunk and 8.4. 
+
+Besides, the one-block `destruct` is failing, which is a pity, because
+
+`destruct (@ ReifiedMorphismSimplifyWithProof _ _ _ _ m1) as [ x ? ]. destruct x.`
+
+works. So this is future work for destruct...
+
+

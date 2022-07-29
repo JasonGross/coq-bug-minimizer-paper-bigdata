@@ -1,0 +1,61 @@
+Comment author: @JasonGross
+
+This is obviously an instance of "Doctor, poking myself hurts" to which the correct response is "don't do that".  However, this can come up in generic scripts (see the [match goal with]); this [generalize] should either succeed, or should trigger a "no such subterm" error, but definitely should not trigger an anomaly.
+
+Goal forall n m (H : n = m :> nat),
+    match H as H in (_ = y) return
+          match H in (_ = y') return y' = y' with
+          | eq_refl => eq_refl
+          end
+          = match H in (_ = y') return y' = y' with
+            | eq_refl => eq_refl
+            end
+    with
+    | eq_refl => eq_refl
+    end
+    = eq_refl.
+intros.
+pattern (fun (y' : nat) (_ : n = y') => y' = y'). (* Anomaly: Not enough lambda/let's. Please report. *)
+(* or:
+match goal with
+| [ |- context[?e] ]
+  => match e with
+     | fun _ _ => _ => idtac
+     end;
+       generalize e
+end. *)
+
+
+Comment author: @JasonGross
+
+Or, uh, here's another example of this bug, on [clearbody].
+
+Goal forall n m (H : n = m :> nat),
+    match H as H in (_ = y) return
+          match H in (_ = y') return y' = y' with
+          | eq_refl => eq_refl
+          end
+          = match H in (_ = y') return y' = y' with
+            | eq_refl => eq_refl
+            end
+    with
+    | eq_refl => eq_refl
+    end
+    = eq_refl.
+intros.
+set (k := (fun (y' : nat) (_ : n = y') => y' = y')).
+clearbody k.  (* Anomaly: Not enough lambda/let's. Please report. *)
+
+
+Comment author: @ppedrot
+
+Isn't that one just another instance of bug [BZ#3166](https://github.com/coq/coq/issues?q=is%3Aissue%20%22Original%20bug%20ID%3A%20BZ%233166%22)?
+
+
+Comment author: @JasonGross
+
+Indeed.  Oops.
+
+*** This bug has been marked as a duplicate of bug [BZ#3166](https://github.com/coq/coq/issues?q=is%3Aissue%20%22Original%20bug%20ID%3A%20BZ%233166%22) ***
+
+

@@ -1,0 +1,28 @@
+Comment author: @JasonGross
+
+These tactics trigger the failed assertion.
+
+Require Import Coq.micromega.Psatz.
+Axiom H : True -> False = True.
+Goal False.
+  psatz_Z 1 (let x := idtac in x).
+  xlia (let x := idtac in x).
+  xnlia (let x := idtac in x).
+  xnra (let x := idtac in x).
+  xnqa (let x := idtac in x).
+  (* probably everything else in g_micromega.ml4 *)
+  firstorder (let x := idtac in x).
+  gintuition (let x := idtac in x).
+  progress_evars (let x := idtac in x).
+  replace False with False by (let x := idtac in x).
+proof.
+  suffices to have HP':(True) to show False by HP' using (let x := idtac in x).
+
+
+Comment author: @ppedrot
+
+
+
+*** This bug has been marked as a duplicate of bug [BZ#2800](https://github.com/coq/coq/issues?q=is%3Aissue%20%22Original%20bug%20ID%3A%20BZ%232800%22) ***
+
+

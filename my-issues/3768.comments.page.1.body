@@ -1,0 +1,37 @@
+Comment author: @JasonGross
+
+This code works in trunk e8726550e01e51ef3ccf8602f2ecbe2b3737cca3, but fails in trunk 9973cd2ca529076388710e90f2c46180581397cf.
+```coq
+
+(* File reduced by coq-bug-finder from original input, then from 7916 lines to 292 lines, then from 476 lines to 306 lines *)
+Set Primitive Projections.
+Set Implicit Arguments.
+Record sigT {A} (P : A -> Type) := existT { projT1 : A ; projT2 : P projT1 }.
+Notation "{ x : A  & P }" := (sigT (fun x:A => P)) : type_scope.
+Unset Implicit Arguments.
+Notation "( x ; y )" := (existT _ x y).
+Inductive paths {A : Type} (a : A) : A -> Type := idpath : paths a a where "x = y" := (@ paths _ x y) : type_scope.
+Arguments idpath {A a} , [A] a.
+Delimit Scope path_scope with path.
+Notation "1" := idpath : path_scope.
+Axiom ap : forall {A B:Type} (f:A -> B) {x y:A} (p:x = y), f x = f y.
+Axiom dummy_funext_type : Set.
+Class Funext := { dummy_funext_value : dummy_funext_type }.
+Record Functor := { object_of :> Type -> Type ; identity_of : Type }.
+Axiom path_functor'_sig : forall `{Funext} (F G : Functor), { HO : object_of F = object_of G & Set = Set } -> F = G.
+Axiom path_functor'_sig_fst : forall `{Funext} F G HO HM, ap object_of (@ path_functor'_sig _ F G (HO; HM)) = HO.
+Goal forall (H : Funext) (objof : Type -> Type) io1 io2 k,
+       (ap object_of
+           (path_functor'_sig (Build_Functor objof io1)
+                              (Build_Functor objof io2)
+                              (1%path; 1%path))) = k.
+  intros.
+  match goal with
+    | [ |- context [path_functor'_sig ?F ?G (?x; ?y)] ]
+      => rewrite (@ path_functor'_sig_fst _ F G x y)
+  end || fail.
+  Undo.
+  rewrite path_functor'_sig_fst.
+```
+
+

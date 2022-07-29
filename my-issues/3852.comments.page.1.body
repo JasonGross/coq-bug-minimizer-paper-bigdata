@@ -1,0 +1,20 @@
+Comment author: @JasonGross
+
+COQC      theories/Numbers/Natural/Abstract/NBits.v
+File "./theories/Numbers/Natural/Abstract/NBits.v", line 1300, characters 1-10:
+Error: In environment
+a, b : t
+c0 : bool
+Ha : a <= 0
+Hb : b <= 0
+Unable to unify "c0" with "b2n c0".
+Makefile.build:1029: recipe for target 'theories/Numbers/Natural/Abstract/NBits.vo' failed
+
+https://launchpadlibrarian.net/192379976/buildlog_ubuntu-utopic-amd64.coq_8.5~git~201412112046%2B16556-0~daily279~ubuntu14.10.1_FAILEDTOBUILD.txt.gz
+
+
+Comment author: @ppedrot
+
+It is fixed, isn't it?
+
+

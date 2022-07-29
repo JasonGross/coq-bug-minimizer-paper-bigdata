@@ -1,0 +1,37 @@
+On a related note, perhaps votour should be renamed to coqvotour to match with all the other installed binaries? (cc @ppedrot)
+It has no end user, this is an internal tool and should never be installed. I'm surprised that's the case right now.
+cc @jfehrle 
+Yeah, no need to install, it's only for developers.
+
+At the time I think I used the coqpp rules as a model.  How would a non-developer use coqpp?
+coqpp is invoked by coq_makefile to build plugin grammar files (.mlp), as the successor to using camlp4/5.  So it's needed by plugin authors and users.
+If, say, coqdoc is meant to invoke doc_grammar when documenting plugins, that would be a reason to install doc_grammar.
+> [coqpp is] needed by plugin authors and users.
+
+Um, OK.  Not what I expected.  For plugins not shipped with Coq?  (Coqpp is needed/used by users to load such plugins??  And plugin authors don't do the usual developer build??)
+
+> If, say, coqdoc is meant to invoke doc_grammar when documenting plugins, that would be a reason to install doc_grammar.
+
+Probably it will be useful for that but at the moment I'm focused on getting the doc to accurately and fully describe Coq's grammar.  We hope to complete that for 8.12.  The tool is still evolving a bit and some additional socialization will be needed on how to use it.
+> Coqpp is needed/used by users to load such plugins??
+
+Not to load, but to build.  For example, if coqpp is not installed, then it becomes impossible to install any Coq opam package that has a plugin with .mlp files.
+
+> And plugin authors don't do the usual developer build??
+
+Not sure what you mean here.  Any installed build of Coq will just fail to build plugins using .mlp files, if you don't install coqpp, regardless of whether or not it is a developer build, due to this line:
+https://github.com/coq/coq/blob/614643e6fb1b5029d1c2bf50cd51f95d621010cf/tools/CoqMakefile.in#L92
+Oops, the extension is not .mlp but .mlg.  Anyway, here's an example of a project that needs coqpp: https://github.com/Mtac2/Mtac2/blob/master/src/metaCoqInit.mlg
+Yes, `coqpp` is a build dependency of any plugin, so not the same status indeed.
+> Yes, `coqpp` is a build dependency of any plugin, so not the same status indeed.
+
+Just a small note, `coqpp` is only a dependency of a plugin if it ships `mlg` files; otherwise for example the dune build will not mark the plugin depending on coqpp.
+Can a plugin not ship `mlg` files? What would the use case be?
+Some plugins do define the grammar using `.ml` files directly.
+> Some plugins do define the grammar using .ml files directly
+
+I suppose that's permitted but no longer the best practice?
+Definitely not best practice.
+I don't particularly see a problem with that; if you want to deal with the ML API why not?
+Which ML API? The ex-Camlp5 ones (now gramlib)? For these you do have all you need with sugar in .mlg files.
+Messing by hand with the grammar engine is actively looking for trouble, e.g. w.r.t. backtracking and the like.

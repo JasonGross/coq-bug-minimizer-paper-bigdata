@@ -1,0 +1,4 @@
+This should indeed be rather straightforward by taking inspiration from #11948 your idea seems indeed good and if that works it should avoid most of the bulky duplications that came with hexadecimal numbers.
+
+I don't have neither time nor use for this but if you implement it, I can promise a careful review.
+

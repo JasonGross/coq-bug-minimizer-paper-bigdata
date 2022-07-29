@@ -1,0 +1,7 @@
+Comment author: @JasonGross
+
+File ".\theories/Numbers/Integer/Abstract/ZDivEucl.v", line 33, characters 0-70:
+Warning: Notation _ / _ was already used [notation-overridden,parsing]
+
+
+Doesn't seem to happen any more.

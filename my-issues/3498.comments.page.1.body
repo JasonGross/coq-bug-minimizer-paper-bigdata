@@ -1,0 +1,63 @@
+Comment author: @JasonGross
+
+These two snippets of code both produce the error:
+
+Ltac basicseq tac :=
+  let rec_tac := basicseq tac in
+  idtac.
+Goal True.
+  basicseq idtac.
+
+Ltac basicseq tac :=
+  let rec_tac := basicseq tac in
+  idtac;
+  idtac.
+Goal True.
+  basicseq idtac.
+
+My understanding is that Coq should infer that we're a running tactic, not an immediate value, and so should defer the calling of basicseq.  It seems like it's this inference code that's buggy, because the following works fine:
+
+Ltac basicseq tac :=
+  idtac;
+  let rec_tac := basicseq tac in
+  idtac.
+Goal True.
+  basicseq idtac.
+
+
+Comment author: @JasonGross
+
+Another problematic example:
+
+Ltac foo tac := do 1 foo tac.
+Goal True.
+  foo idtac.
+
+
+Comment author: @maximedenes
+
+On my machine, it is a stack overflow.
+
+
+Comment author: @JasonGross
+
+Both of them?  In the first case, it should not be a stack overflow, I think it should finish instantly.  In the latter case (do 1 ...), yeah, I guess that's right.
+
+
+Comment author: @maximedenes
+
+On my machine yes, they all give stack overflows (except the one you said works fine).
+
+I have no clue if this is ok w.r.t. Ltac's "semantics" or not.
+
+
+Comment author: @JasonGross
+
+Where in the documentation is there an explanation of what gets evaluated immediately and what is deferred?
+
+
+Comment author: @JasonGross
+
+Sorry, I had the wrong notion of Ltac semantics in my head.  I thought that tactics were either expressions or values, and that a value was anything that had a semicolon outside of a [match].  I didn't realize that [let] was treated the same way as [match], in that it's an expression that gets evaluated immediately.
+
+

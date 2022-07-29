@@ -1,0 +1,36 @@
+Comment author: @JasonGross
+
+```coq
+Module WithoutPoly.
+  Unset Universe Polymorphism.
+  Definition foo (A : Type@ {i}) (B : Type@ {i}) := A -> B.
+  Set Printing Universes.
+  Check ((@ foo : Set -> _ -> _) : _ -> Type -> _).
+  (* ((fun A : Set => foo A):Set -> Type@ {Top.55} -> Type@ {Top.55})
+:Set -> Type@ {Top.55} -> Type@ {Top.55}
+     : Set -> Type@ {Top.55} -> Type@ {Top.55}
+(*  |= Set <= Top.55
+         *) *)
+End WithoutPoly.
+Module WithPoly.
+  Set Universe Polymorphism.
+  Definition foo (A : Type@ {i}) (B : Type@ {i}) := A -> B.
+  Set Printing Universes.
+  Check ((@ foo : Set -> _ -> _) : _ -> Type -> _).
+  (* Toplevel input, characters 23-43:
+Error:
+The term "foo@ {Set}:Set -> Set -> Set" has type "Set -> Set -> Set"
+while it is expected to have type "Set -> Type@ {Top.71} -> ?T0"
+(cannot unify "Type@ {Top.71}" and "Set").
+ *)
+End WithPoly.
+
+```
+I'm not sure if this is actually a bug, but if it wouldn't slow things down too much, it might be nice to have.
+
+
+Comment author: @mattam82
+
+This is not a bug. This relies on coercion eta expanding in the first case because Set = Type@ {Top.55} is refused, while in the polymorphic case it is ok to instantiate the flexible universe in place of Top.55.
+
+

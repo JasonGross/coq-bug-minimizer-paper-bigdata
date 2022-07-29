@@ -1,0 +1,11 @@
+Why do you think re-running the tactic if it fails would always only have a small performance cost? Here's a snippet from an Ltac profile I was analyzing this week, where the tactic passed to `assert_succeeds` did take some time, and I could imagine situations where it costs even more.
+
+```
+ │└assert_succeeds ---------------------   0.0%   5.3%    1756    0.092s
+ │└assert_fails ------------------------   0.0%   5.3%    1756    0.092s
+ │└tac ---------------------------------   0.1%   5.2%    1756    0.091s
+ │ ├─clear - (ne_var_list) -------------   3.1%   3.1%    1756    0.073s
+ │ └─case dummy ------------------------   2.0%   2.0%    1756    0.064s
+```
+
+But I think re-implementing it in OCaml in a way which preserves the error message would be useful.

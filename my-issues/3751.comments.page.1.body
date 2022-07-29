@@ -1,0 +1,10 @@
+Comment author: @JasonGross
+
+As noted on the coq-club mailing list, they should be absorption, not absoption.
+
+
+Comment author: @herbelin
+
+Fixed in trunk. Will be in 8.4.
+
+

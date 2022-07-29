@@ -1,0 +1,47 @@
+Here is the backtrace, looks like a serious issue:
+```ocaml
+frame @ file "toplevel/coqloop.ml", line 384, characters 19-59
+raise @ file "clib/exninfo.ml", line 65, characters 8-15
+frame @ file "str.ml", line 259, characters 6-29
+raise @ file "map.ml", line 131, characters 16-25
+frame @ file "stm/stm.ml", line 2622, characters 4-60
+frame @ file "stm/stm.ml", line 2512, characters 4-105
+raise @ file "clib/exninfo.ml", line 65, characters 8-15
+frame @ file "stm/stm.ml", line 935, characters 6-10
+frame @ file "stm/stm.ml", line 2371, characters 12-251
+raise @ file "stm/stm.ml", line 2291, characters 40-174
+frame @ file "stm/stm.ml", line 2309, characters 10-14
+frame @ file "stm/stm.ml", line 2375, characters 20-47
+raise @ file "clib/exninfo.ml", line 65, characters 8-15
+frame @ file "stm/stm.ml", line 1088, characters 12-91
+raise @ file "clib/exninfo.ml", line 65, characters 8-15
+frame @ file "vernac/vernacentries.ml", line 2335, characters 4-36
+raise @ file "clib/exninfo.ml", line 65, characters 8-15
+frame @ file "lib/flags.ml", line 17, characters 14-17
+raise @ unknown
+frame @ file "vernac/vernacentries.ml", line 2302, characters 8-666
+frame @ file "vernac/vernacentries.ml", line 2305, characters 15-58
+raise @ file "clib/exninfo.ml", line 65, characters 8-15
+frame @ file "lib/flags.ml", line 17, characters 14-17
+frame @ file "vernac/vernacentries.ml", line 2149, characters 30-66
+raise @ file "clib/exninfo.ml", line 65, characters 8-15
+frame @ file "engine/eConstr.ml", line 350, characters 14-41
+frame @ file "clib/cArray.ml", line 653, characters 17-24
+frame @ file "engine/eConstr.ml", line 320, characters 13-18
+frame @ file "engine/eConstr.ml", line 350, characters 14-41
+frame @ file "clib/cArray.ml", line 653, characters 17-24
+frame @ file "engine/eConstr.ml", line 320, characters 13-18
+frame @ file "engine/eConstr.ml", line 350, characters 14-41
+[1000 lines like this removed]
+frame @ file "clib/cArray.ml", line 653, characters 17-24
+raise @ unknown
+frame @ file "pretyping/evarsolve.ml", line 928, characters 8-87
+frame @ file "pretyping/evarsolve.ml", line 834, characters 20-71
+frame @ file "map.ml", line 315, characters 26-41
+frame @ file "map.ml", line 315, characters 19-42
+raise @ unknown
+frame @ file "pretyping/evarsolve.ml", line 799, characters 15-56
+frame @ file "pretyping/evarsolve.ml", line 784, characters 9-27
+```
+Is someone already looking at it? Otherwise, I can do it.
+That was a missing lift causing a circularity in de Bruijn indices. Fixed in #7787.

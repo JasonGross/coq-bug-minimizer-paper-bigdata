@@ -1,0 +1,15 @@
+Comment author: @JasonGross
+
+This is wrong:
+
+Ltac foo := match goal with |- forall x, @ ?P x => pose P end.
+Print Ltac foo. (* Ltac foo := match goal with
+            | |- forall x, ?P x => pose P
+            end *)
+
+
+Comment author: @silene
+
+Thanks for the report. Fixed by commit 3fe764d.
+
+

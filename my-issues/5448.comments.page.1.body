@@ -1,0 +1,765 @@
+Comment author: @JasonGross
+
+In the attached development, best made with `make quick`, starting on line 192 
+of src/Specific/IntegrationTestLadderstep.v, there is the code:
+```
+    lazymatch goal with
+    | [ |- { a : ?A | ?P } ]
+      => let P'' := fresh a in
+         let P' := fresh P'' in
+         let term := constr:(fun a : A => match P with
+                                          | P' => ltac:(let v := (eval cbv 
+delta [P'] in P') in
+                                                        idtac v; exact I)
+                                          end) in
+         idtac end.
+```
+This stack overflows after 5-15 seconds.  Removing the [let v := (eval cbv 
+delta [P'] in P') in idtac v] gets rid of the stack overflow (removing [idtac 
+v] does not).  Sorry it's so big; I've spun up my bug minimizer, but this is 
+one of those nasty bugs where copy-pasting the goal makes it go away, and where 
+the present goal relies on complicated definitions.  So I expect that any 
+minimized example will still be a few thousand lines.
+
+Paul, could you take a look at this one, and see where the stack overflow is 
+coming from?  I suspect something is confused about either the context or the 
+evar map regarding tactics in terms...
+
+
+Comment author: @JasonGross
+
+Created attachment 830
+fiat-crypto development, builds with v8.6
+
+> Attached file: [fiat-crypto-zzz-stack-overflow-tactics-in-terms.zip](https://coq.inria.fr/bugfiles/attachment.cgi?id=830) (application/zip, 739524 bytes)
+> Description:   fiat-crypto development, builds with v8.6
+
+
+Comment author: @JasonGross
+
+*** Bug [BZ#5447](https://github.com/coq/coq/issues?q=is%3Aissue%20%22Original%20bug%20ID%3A%20BZ%235447%22) has been marked as a duplicate of this bug. ***
+
+
+Comment author: @psteckler
+
+I'm on it.
+
+
+Comment author: @psteckler
+
+Trying to build the .vio files needed by ItegrationTestLadderstep.v, I got a stack overflow in WeierstrassCurveTheorems.v, which may be the same or a different issue.
+
+Trying again with a larger Linux stack ...
+
+
+Comment author: @ppedrot
+
+I don't think that the stack overflow in WeierstrassCurveTheorems.v is related. As discussed in https://github.com/coq/coq/pull/532, this is rather due to the implementation of Nsatz. Here is a patch that should fix this on master:
+```
+diff --git a/plugins/nsatz/ideal.ml b/plugins/nsatz/ideal.ml
+index 48bdad826..bf522cadf 100644
+--- a/plugins/nsatz/ideal.ml
++++ b/plugins/nsatz/ideal.ml
+@ @  -755,7 +755,15 @ @  let sortcpairs lcp =
+   List.sort ordcpair lcp
+ 
+ let mergecpairs l1 l2 =
+-  List.merge ordcpair l1 l2 
++  let rec merge l1 l2 accu = match l1, l2 with
++  | [], [] -> List.rev accu
++  | l, [] | [], l -> List.rev_append accu l
++  | x1 :: r1, x2 :: r2 ->
++    if ordcpair x1 x2 <= 0
++    then merge r1 l2 (x1 :: accu)
++    else merge l1 r2 (x2 :: accu)
++  in
++  merge l1 l2 []
+ 
+ let ord i j =
+   if i<j then (i,j) else (j,i)
+```
+
+Comment author: @psteckler
+
+Increasing the stack size allowed WeierstrassCurveTheorems.v to build with 8.6.
+
+PMP, should that patch work with 8.6?
+
+
+Comment author: @psteckler
+
+I'm able to reproduce the stack overflow, investigating.
+
+
+Comment author: @ppedrot
+
+> PMP, should that patch work with 8.6?
+
+I think so.
+
+
+Comment author: @psteckler
+
+Think I've found the culprit, verifying ...
+
+
+Comment author: @psteckler
+
+Here's the humongous call stack I see in gdb:
+```
+(gdb) bt
+#0 camlCList__map_i_1598 () at lib/cList.ml:270
+#1  0x00000000008da5b6 in camlCbv__cbv_norm_value_5230 () at pretyping/cbv.ml:356
+#2  0x00000000008da2a7 in camlCbv__apply_stack_5228 () at pretyping/cbv.ml:334
+#3  0x00000000008da5f9 in camlCbv__cbv_norm_value_5230 () at pretyping/cbv.ml:358
+#4  0x0000000000ada90c in camlArray__map_1256 () at array.ml:91
+#5  0x00000000008da283 in camlCbv__apply_stack_5228 () at pretyping/cbv.ml:335
+#6  0x00000000008da5f9 in camlCbv__cbv_norm_value_5230 () at pretyping/cbv.ml:358
+#7  0x0000000000ada90c in camlArray__map_1256 () at array.ml:91
+#8  0x00000000008da283 in camlCbv__apply_stack_5228 () at pretyping/cbv.ml:335
+#9  0x00000000008da5f9 in camlCbv__cbv_norm_value_5230 () at pretyping/cbv.ml:358
+#10 0x0000000000ada90c in camlArray__map_1256 () at array.ml:91
+#11 0x00000000008da283 in camlCbv__apply_stack_5228 () at pretyping/cbv.ml:335
+#12 0x00000000008da5f9 in camlCbv__cbv_norm_value_5230 () at pretyping/cbv.ml:358
+#13 0x0000000000ada90c in camlArray__map_1256 () at array.ml:91
+#14 0x00000000008da283 in camlCbv__apply_stack_5228 () at pretyping/cbv.ml:335
+```
+which goes on in a similar pattern for about 126,000 stack frames, until:
+```
+#126182 0x0000000000ae3edd in camlCamlinternalLazy__force_lazy_block_1258 () at camlinternalLazy.ml:27
+#126183 0x0000000000860895 in camlRedexpr__fun_7061 () at proofs/redexpr.ml:204
+#126184 0x000000000064d829 in camlTacinterp__interp_may_eval_12119 () at ltac/tacinterp.ml:795
+#126185 0x000000000064db21 in camlTacinterp__interp_constr_may_eval_12331 () at ltac/tacinterp.ml:828
+#126186 0x000000000065357f in camlTacinterp__fun_18827 () at ltac/tacinterp.ml:1348
+#126187 0x00000000009854b7 in camlFtactic__fun_3026 () at engine/ftactic.ml:80
+#126188 0x00000000009838e9 in camlProofview__wrap_exceptions_6471 () at engine/proofview.ml:1241
+#126189 0x0000000000959cef in camlLogic_monad__fun_2364 () at engine/logic_monad.ml:189
+#126190 0x000000000097ce99 in camlProofview__apply_3186 () at engine/proofview.ml:212
+#126191 0x000000000085a764 in camlProof__run_tactic_2661 () at proofs/proof.ml:351
+#126192 0x0000000000867498 in camlPfedit__refine_by_tactic_5753 () at proofs/pfedit.ml:205
+#126193 0x0000000000946a54 in camlPretyping__pretype_7818 () at pretyping/pretyping.ml:595
+#126194 0x0000000000935b5f in camlCases__build_leaf_7005 () at pretyping/cases.ml:1212
+#126195 0x0000000000936db0 in camlCases__shift_problem_7061 () at pretyping/cases.ml:1401
+#126196 0x0000000000940439 in camlCases__compile_for_one_predicate_8481 () at pretyping/cases.ml:2577
+#126197 0x000000000092eda8 in camlCases__aux_5563 () at pretyping/cases.ml:69
+#126198 0x000000000094019f in camlCases__compile_cases_8467 () at pretyping/cases.ml:2586
+#126199 0x0000000000944ca0 in camlPretyping__pretype_7818 () at pretyping/pretyping.ml:543
+#126200 0x00000000009495e2 in camlPretyping__ise_pretype_gen_8296 () at pretyping/pretyping.ml:1102
+#126201 0x0000000000648eb6 in camlTacinterp__catch_error_10687 () at ltac/tacinterp.ml:219
+#126202 0x000000000064c27b in camlTacinterp__interp_gen_11967 () at ltac/tacinterp.ml:639
+#126203 0x00000000006592a3 in camlTacinterp__fun_19780 () at ltac/tacinterp.ml:2048
+#126204 0x00000000009852b7 in camlFtactic__fun_2983 () at engine/ftactic.ml:72
+#126205 0x00000000009838e9 in camlProofview__wrap_exceptions_6471 () at engine/proofview.ml:1241
+#126206 0x0000000000959cef in camlLogic_monad__fun_2364 () at engine/logic_monad.ml:189
+#126207 0x000000000062e86c in caml_apply2 ()
+#126208 0x0000000000959b61 in camlLogic_monad__run_1395 () at engine/logic_monad.ml:114
+#126209 0x000000000097ce9e in camlProofview__apply_3186 () at engine/proofview.ml:213
+#126210 0x000000000085a764 in camlProof__run_tactic_2661 () at proofs/proof.ml:351
+#126211 0x0000000000866cf4 in camlPfedit__solve_5387 () at proofs/pfedit.ml:138
+#126212 0x00000000006bfb83 in camlG_ltac__fun_7075 () at ltac/g_ltac.ml4:357
+#126213 0x000000000085b99d in camlProof_global__with_current_proof_4617 () at proofs/proof_global.ml:160
+#126214 0x00000000006bfa75 in camlG_ltac__vernac_solve_4954 () at ltac/g_ltac.ml4:352
+#126215 0x0000000000744005 in camlVernacinterp__call_1894 () at toplevel/vernacinterp.ml:69
+#126216 0x0000000000a71b69 in camlFlags__without_option_1216 () at lib/flags.ml:30
+#126217 0x000000000075261f in camlVernacentries__fun_14379 () at lib/flags.ml:151
+#126218 0x00000000007524a9 in camlVernacentries__aux_10104 () at toplevel/vernacentries.ml:2232
+#126219 0x0000000000a71b69 in camlFlags__without_option_1216 () at lib/flags.ml:30
+#126220 0x000000000076de0d in camlStm__vernac_interp_4304 () at stm/stm.ml:122
+#126221 0x000000000077cb77 in camlStm__fun_18138 () at stm/stm.ml:2175
+#126222 0x000000000077b972 in camlStm__resilient_tactic_9972 () at stm/stm.ml:2097
+#126223 0x000000000077cac5 in camlStm__step_15496 () at stm/stm.ml:2172
+#126224 0x00000000007734a2 in camlStm__define_inner_16586 () at stm/stm.ml:893
+#126225 0x000000000077c5b7 in camlStm__reach_inner_17752 () at stm/stm.ml:2315
+```
+
+As shown here, there's a call to `reach' in stm.ml, which calls `define', which is passed `step', which is bound to an anonymous function. Those calls were about all I could see by using OCaml's Printexc call-stack and backtrace calls; printing the stack size didn't reveal anything interesting. Using gdb to probe deeper revealed the horror here.
+
+Comment author: @psteckler
+
+So it looks like there's a very deep or unbounded recursion in the use of [cbv] in the lazymatch.
+
+Is there any other diagnostic info that would be useful?
+
+
+Comment author: @psteckler
+
+I'll use ocamldebug to look at the data.
+
+
+Comment author: @JasonGross
+
+Here's a minimized example file
+
+
+Comment author: @JasonGross
+
+Created attachment 832
+file demonstrating stack overflow
+
+> Attached file: [bug_stack_overflow_tactics_in_terms_03.v](https://coq.inria.fr/bugfiles/attachment.cgi?id=832) (text/plain, 23645 bytes)
+> Description:   file demonstrating stack overflow
+
+
+Comment author: @psteckler
+
+(In reply to Jason Gross from comment [BZ#13](https://github.com/coq/coq/issues?q=is%3Aissue%20%22Original%20bug%20ID%3A%20BZ%2313%22))
+> Here's a minimized example file
+
+Thanks, running the full example in ocamldebug is very slow.
+
+
+Comment author: @JasonGross
+
+Alas, I'm not sure the attached file will be any faster, unless most of your 
+time is spent on [Require Import]; the goal itself is the same size.  You might 
+want to factor out the final goal into a separate file that just [Require 
+Import]s a file that builds all of the prerequisites.  Also, thanks for looking 
+into this!
+
+
+Comment author: @psteckler
+
+(In reply to Jason Gross from comment [BZ#16](https://github.com/coq/coq/issues?q=is%3Aissue%20%22Original%20bug%20ID%3A%20BZ%2316%22))
+> Alas, I'm not sure the attached file will be any faster, unless most of your 
+> time is spent on [Require Import]; the goal itself is the same size.
+
+Right, that seems to be so, still very slow.
+
+
+Comment author: @psteckler
+
+Submitting the goal as printed to Coq via PG gives me a syntax error (does Coq have read/write invariance?).
+
+But I've just learned that there's a library to make gdb work nicely with OCaml code (libmonda from Mark Shinwell at Jane St). The vanilla gdb can't show OCaml locals and parameters; it looks like I can do that with libmonda. If I can get that to work, that will be the easiest path forward, I believe.
+
+
+Comment author: @JasonGross
+
+To fix the parsing error, you may need one or both of [Set Printing Implicits] (not sure about the pluralization), and [Set Printing Depth n] for a large n like 1000000.  The latter will get rid of the "..." that show up.  If there are any evars (?x), it will still fail; try replacing anything like (f ?x = g) with (exists x, f x = g).  However, I seem to recall that doing this made the stack overflow go away, and if this is true, it may have something to do with evars (and may in fact be fixed by PMP's econstr branch?)
+
+
+Comment author: @psteckler
+
+Well, I think ocamldebug is far too slow, even if I simply present an already-baked goal. I had made it to the goal during one run, and then waited beyond my patience for ocamldebug to make it to the CBV breakpoints I'd set.
+
+I'm still hoping to get gdb+libmonda working.
+
+
+Comment author: @ejgallego
+
+good ol' printf may be the way to go here (you could the ppx serializers too to read/print/save stuff).
+
+
+Comment author: @psteckler
+
+(In reply to Emilio J. Gallego Arias from comment [BZ#21](https://github.com/coq/coq/issues?q=is%3Aissue%20%22Original%20bug%20ID%3A%20BZ%2321%22))
+> good ol' printf may be the way to go here (you could the ppx serializers too
+> to read/print/save stuff).
+
+You mean building Coq with @ @ deriving annotations on the types I want to see?
+
+
+Comment author: @ejgallego
+
+For this example you could actually use SerAPI + a hook in CBV, or yeah, do that if you want but I'll be more work.
+
+
+Comment author: @psteckler
+
+That means simply statically linking against the SerAPI library, and using the calls I need? Any other changes I would need to make?
+
+
+Comment author: @ejgallego
+
+We could discuss that in twitter, but it would mean using the SerAPI toplevel + a printing hook in CBV, and tweaking the toplevel to register the hook. So that's a few lines.
+
+Depending on the use case you could save a lot or almost nothing.
+
+Ping me in gitter if you wanna try that (instead of adding loads of [@ @ derivings])
+
+
+Comment author: @psteckler
+
+Update: libmonda, while mostly working, isn't so useful, because many of the values are displayed as "optimized out".
+
+SerAPI will be useful if I can provide path mappings to coqtop.
+
+
+Comment author: @psteckler
+
+I'm able to use the term printer in Termops, to see the term being passed to `apply_stack'.
+
+For the most part, the terms are of reasonable size. There are many repetitions, like this one:
+```Coq
+apply_stack, t: (Cst(Coq.ZArith.BinIntDef.Z.add)
+ (Cst(Coq.ZArith.BinIntDef.Z.mul)
+  (Constr(Coq.Numbers.BinNums.Z,0,2)
+   Constr(Coq.Numbers.BinNums.positive,0,3))
+  (Cst(Coq.ZArith.BinIntDef.Z.mul) [BZ#31](https://github.com/coq/coq/issues?q=is%3Aissue%20%22Original%20bug%20ID%3A%20BZ%2331%22) [BZ#1](https://github.com/coq/coq/issues?q=is%3Aissue%20%22Original%20bug%20ID%3A%20BZ%231%22)))
+ (Cst(Coq.ZArith.BinIntDef.Z.add)
+  (Cst(Coq.ZArith.BinIntDef.Z.mul)
+   (Constr(Coq.Numbers.BinNums.Z,0,2)
+    (Constr(Coq.Numbers.BinNums.positive,0,2)
+     Constr(Coq.Numbers.BinNums.positive,0,3)))
+   (Cst(Coq.ZArith.BinIntDef.Z.mul) [BZ#29](https://github.com/coq/coq/issues?q=is%3Aissue%20%22Original%20bug%20ID%3A%20BZ%2329%22) [BZ#3](https://github.com/coq/coq/issues?q=is%3Aissue%20%22Original%20bug%20ID%3A%20BZ%233%22)))
+  (Cst(Coq.ZArith.BinIntDef.Z.add)
+   (Cst(Coq.ZArith.BinIntDef.Z.mul)
+    (Constr(Coq.Numbers.BinNums.Z,0,2)
+     Constr(Coq.Numbers.BinNums.positive,0,3))
+    (Cst(Coq.ZArith.BinIntDef.Z.mul) [BZ#27](https://github.com/coq/coq/issues?q=is%3Aissue%20%22Original%20bug%20ID%3A%20BZ%2327%22) [BZ#5](https://github.com/coq/coq/issues?q=is%3Aissue%20%22Original%20bug%20ID%3A%20BZ%235%22)))
+   (Cst(Coq.ZArith.BinIntDef.Z.add)
+    (Cst(Coq.ZArith.BinIntDef.Z.mul)
+     (Constr(Coq.Numbers.BinNums.Z,0,2)
+      (Constr(Coq.Numbers.BinNums.positive,0,2)
+       Constr(Coq.Numbers.BinNums.positive,0,3)))
+     (Cst(Coq.ZArith.BinIntDef.Z.mul) [BZ#25](https://github.com/coq/coq/issues?q=is%3Aissue%20%22Original%20bug%20ID%3A%20BZ%2325%22) [BZ#7](https://github.com/coq/coq/issues?q=is%3Aissue%20%22Original%20bug%20ID%3A%20BZ%237%22)))
+    (Cst(Coq.ZArith.BinIntDef.Z.add)
+     (Cst(Coq.ZArith.BinIntDef.Z.mul)
+      (Constr(Coq.Numbers.BinNums.Z,0,2)
+       Constr(Coq.Numbers.BinNums.positive,0,3))
+      (Cst(Coq.ZArith.BinIntDef.Z.mul) [BZ#23](https://github.com/coq/coq/issues?q=is%3Aissue%20%22Original%20bug%20ID%3A%20BZ%2323%22) [BZ#9](https://github.com/coq/coq/issues?q=is%3Aissue%20%22Original%20bug%20ID%3A%20BZ%239%22)))
+     (Cst(Coq.ZArith.BinIntDef.Z.add)
+      (Cst(Coq.ZArith.BinIntDef.Z.mul)
+       (Constr(Coq.Numbers.BinNums.Z,0,2)
+        (Constr(Coq.Numbers.BinNums.positive,0,2)
+         Constr(Coq.Numbers.BinNums.positive,0,3)))
+       (Cst(Coq.ZArith.BinIntDef.Z.mul) [BZ#21](https://github.com/coq/coq/issues?q=is%3Aissue%20%22Original%20bug%20ID%3A%20BZ%2321%22) [BZ#11](https://github.com/coq/coq/issues?q=is%3Aissue%20%22Original%20bug%20ID%3A%20BZ%2311%22)))
+      (Cst(Coq.ZArith.BinIntDef.Z.add)
+       (Cst(Coq.ZArith.BinIntDef.Z.mul)
+        (Constr(Coq.Numbers.BinNums.Z,0,2)
+         Constr(Coq.Numbers.BinNums.positive,0,3))
+        (Cst(Coq.ZArith.BinIntDef.Z.mul) [BZ#19](https://github.com/coq/coq/issues?q=is%3Aissue%20%22Original%20bug%20ID%3A%20BZ%2319%22) [BZ#13](https://github.com/coq/coq/issues?q=is%3Aissue%20%22Original%20bug%20ID%3A%20BZ%2313%22)))
+       (Cst(Coq.ZArith.BinIntDef.Z.add)
+        (Cst(Coq.ZArith.BinIntDef.Z.mul)
+         (Constr(Coq.Numbers.BinNums.Z,0,2)
+          (Constr(Coq.Numbers.BinNums.positive,0,2)
+           Constr(Coq.Numbers.BinNums.positive,0,3)))
+         (Cst(Coq.ZArith.BinIntDef.Z.mul) [BZ#20](https://github.com/coq/coq/issues?q=is%3Aissue%20%22Original%20bug%20ID%3A%20BZ%2320%22) [BZ#15](https://github.com/coq/coq/issues?q=is%3Aissue%20%22Original%20bug%20ID%3A%20BZ%2315%22)))
+        Constr(Coq.Numbers.BinNums.Z,0,1)))))))))
+```
+`apply_stack' and `cbv_norm_value' are mutually recursive in a non-tail way, so it makes sense that there's some stack build-up. But the terms aren't especially huge.
+
+I can post the log somewhere (4+ Gb) if it's helpful.
+
+
+Comment author: @JasonGross
+
+Here is a way to make the invocation not stack overflow, that might help you for comparison's sake (or might point you or Pierre-Marie in the right direction):
+
+If you replace:
+```coq
+    Timeout 1 lazymatch goal with
+    | [ |- { a : ?A | ?P } ]
+      => let P'' := fresh a in
+         let P' := fresh P'' in
+         let term := constr:(fun a : A => match P with
+                                          | P' => ltac:(let v := (eval cbv delta [P'] in P') in
+                                                        exact I)
+                                          end) in
+         idtac end.
+```
+
+with
+
+
+    Timeout 1 lazymatch goal with
+    | [ |- { a : ?A | ?P } ]
+      => rename a into AAA
+         let P'' := fresh a in
+         let P' := fresh P'' in
+         let term := constr:(fun a : A => match P with
+                                          | P' => ltac:(let v := (eval cbv delta [P'] in P') in
+                                                        exact I)
+                                          end) in
+         idtac end.
+
+(only change is that I added "rename a into AAA" in the first line), it's instantaneous.
+
+
+Comment author: @psteckler
+
+(In reply to Jason Gross from comment [BZ#28](https://github.com/coq/coq/issues?q=is%3Aissue%20%22Original%20bug%20ID%3A%20BZ%2328%22))
+> (only change is that I added "rename a into AAA" in the first line), it's
+> instantaneous.
+
+Do you have an intuition why that should make a difference?
+
+
+Comment author: @JasonGross
+
+> Do you have an intuition why that should make a difference?
+
+The binder name that is bound to "a" already exists in the environment, as a hypothesis.  I suspect something is picking up the "a" that's a hypothesis rather than the "a" that's newly bound in the lambda.  It's not clear to me which part of the code is doing this, but knowing that lets me create a much smaller example for you to play with:
+
+```coq
+Goal forall a : nat, { a : a = a | a = a }.
+  clear.
+  intros.
+  lazymatch goal with
+  | [ |- { a : ?A | ?P } ]
+    => let P'' := fresh a in
+       let P' := fresh P'' in
+       let term := constr:(fun a : A => match P with
+                                        | P' => ltac:(let v := (eval cbv delta [P'] in P') in
+                                                      exact I)
+                                        end) in
+       idtac end.
+```
+
+Comment author: @JasonGross
+
+Oh, ew, and for more fun, the name bound to "P'" collides with the name Coq gives to "a" when it's shadowing the context variable.
+
+
+Comment author: @psteckler
+
+So the issue here isn't about CBV, really, that's just an side effect of the underlying issue with bindings.
+
+
+Comment author: @JasonGross
+
+I'm not sure.  The issue might be with cbv.  It might be with how Ltac talks to cbv.  It might be in Ltac.  I suspect that somehow [cbv] is seeing a term [a := a = a], and so it goes into a loop trying to unfold [a] (into [a = a] into [(a = a) = (a = a)] into ...).  Interestingly, when I use Hugo's cbv debug branch, the stack overflow occurs before cbv prints out that it's unfolding anything, so that's interesting.  I'd be curious to see a stack trace of the smaller example, if it's easy for you to make one.
+
+And perhaps Pierre-Marie will have an idea as to why this happens.
+
+
+Comment author: @psteckler
+
+Thanks for the short example!
+
+Interestingly, the term printer I added to `apply_stack' is never called with this example before the stack overflow.
+
+
+Comment author: @psteckler
+
+Created attachment 841
+Backtrace in CBV
+
+> Attached file: [backtrace.txt](https://coq.inria.fr/bugfiles/attachment.cgi?id=841) (text/plain, 3368 bytes)
+> Description:   Backtrace in CBV
+
+
+Comment author: @psteckler
+
+(In reply to Paul Steckler from comment [BZ#35](https://github.com/coq/coq/issues?q=is%3Aissue%20%22Original%20bug%20ID%3A%20BZ%2335%22))
+> Created attachment 841 [details]
+> Backtrace in CBV
+
+This is a backtrace in ocamldebug after hitting a breakpoint in `norm_head'.
+
+
+Comment author: @herbelin
+
+Hi Paul, did you make some progress?
+
+I had a look at the "fresh" idempotency issue, and I suspect that for the "cbv" bug we are superimposing several bugs.
+
+One of the bug is suspectingly an instance of the bug reported by Beta on coq-club "Bug or feature?" (Feb 3, 2017), this bug being itself a combination of  the absence of variables bound by indices in evars and of the shift of existing names introduced in v8.5 when a same name is added.
+
+A second issue is with the "match goal" which binds the "a" in "forall a, a = a" to "a" rather than say to "a0" (as printed), so as to avoid the collision with the "a" in the context. (I'm considering here the example in the comment number 30 below). I don't know if it should properly called a bug, but this is the cause of having both P' and P'' returning the same name a0.
+
+Then, there is obviously a bug in the transmission of the context to reduction tactics, as discussed in comment 33, and actually also to "lazy" and "vm_compute", since the stack overflow occurs also with these strategies.
+
+If I try "eval cbv delta [ a ] in P'", I get an error (a not an evaluable reference). If I try "eval cbv delta [ P'' ] in P'" I got the stack overflow, as if P'', which should just be a name, like "a", seemed to be considered instead as a local definition "a0:=a0" or something like that.
+
+So, first thing I would do would be to try to print what is the env passed to the function reduction.
+
+
+Comment author: @psteckler
+
+For the short example, each time the breakpoint at ln 268 is hit, the `env' argument to `cbv_stack_term' is consistently:
+
+  env: cbv_value Esubst.subs = ESID 0
+
+
+Comment author: @psteckler
+
+(In reply to Paul Steckler from comment [BZ#38](https://github.com/coq/coq/issues?q=is%3Aissue%20%22Original%20bug%20ID%3A%20BZ%2338%22))
+> For the short example, each time the breakpoint at ln 268 is hit, the `env'
+> argument to `cbv_stack_term' is consistently:
+> 
+>   env: cbv_value Esubst.subs = ESID 0
+
+Hugo, does this constant environment make sense?
+
+Since we get the stack overflow with other reducers, where does the transfer of context take place? Is that a piece of code that's common to them all?
+
+
+Comment author: @herbelin
+
+(In reply to Paul Steckler from comment [BZ#39](https://github.com/coq/coq/issues?q=is%3Aissue%20%22Original%20bug%20ID%3A%20BZ%2339%22))
+> (In reply to Paul Steckler from comment [BZ#38](https://github.com/coq/coq/issues?q=is%3Aissue%20%22Original%20bug%20ID%3A%20BZ%2338%22))
+> > For the short example, each time the breakpoint at ln 268 is hit, the `env'
+> > argument to `cbv_stack_term' is consistently:
+> > 
+> >   env: cbv_value Esubst.subs = ESID 0
+> 
+> Hugo, does this constant environment make sense?
+
+It is the identity environment.
+
+> Since we get the stack overflow with other reducers, where does the transfer
+> of context take place? Is that a piece of code that's common to them all?
+
+It is constructor ConstrMayEval, it is interpreted in tacinterp.ml, using redexpr.ml.
+
+Your trace is passing through line 295 of cClosure.ml, right? So this means that some unfolding happens, but I can't see the unfolding of what. Reasonably, it can only be the unfolding of a let-in since there is no unfoldable global constant around, but if a let-in, but would add it. (And if a let-in, in an environment maybe like (a: P'=P'; P':=a).)
+
+So, one would need for instance to know the env and the term under consideration in tacinterp.ml, while interpreting ConstrMayEval.
+
+
+Comment author: @psteckler
+
+(In reply to Hugo Herbelin from comment [BZ#40](https://github.com/coq/coq/issues?q=is%3Aissue%20%22Original%20bug%20ID%3A%20BZ%2340%22))
+> So, one would need for instance to know the env and the term under
+> consideration in tacinterp.ml, while interpreting ConstrMayEval.
+
+Thanks, I'll look at that.
+
+
+Comment author: @psteckler
+
+Note: It looks like ocamldebug does not support examining dynamically-loaded code, like tacinterp.ml.
+
+There's an OCaml patch that I think addresses this issue: https://caml.inria.fr/mantis/print_bug_page.php?bug_id=6792. But that patch has been languishing.
+
+
+Comment author: @ppedrot
+
+(In reply to Paul Steckler from comment [BZ#42](https://github.com/coq/coq/issues?q=is%3Aissue%20%22Original%20bug%20ID%3A%20BZ%2342%22))
+> Note: It looks like ocamldebug does not support examining dynamically-loaded
+> code, like tacinterp.ml.
+```
+For plugins distributed with Coq, you can hack around this by statically linking them through the Makefile as follows.
+
+diff --git a/Makefile.common b/Makefile.common
+index d5f79d76b..5749498d9 100644
+--- a/Makefile.common
++++ b/Makefile.common
+@ @  -128,13 +128,13 @ @  PLUGINSCMO:=$(LTACCMO) $(OMEGACMO) $(ROMEGACMO) $(MICROMEGACMO) \
+         $(FUNINDCMO) $(NSATZCMO) $(NATSYNTAXCMO) $(OTHERSYNTAXCMO) \
+        $(DERIVECMO) $(SSRMATCHINGCMO)
+ 
+-ifeq ($(HASNATDYNLINK)-$(BEST),false-opt)
++# ifeq ($(HASNATDYNLINK)-$(BEST),false-opt)
+  STATICPLUGINS:=$(PLUGINSCMO)
+  PLUGINS:=
+-else
+- STATICPLUGINS:=
+- PLUGINS:=$(PLUGINSCMO)
+-endif
++# else
++#  STATICPLUGINS:=
++#  PLUGINS:=$(PLUGINSCMO)
++# endif
+ PLUGINSOPT:=$(PLUGINSCMO:.cmo=.cmxs)
+ 
+ LINKCMO:=$(CORECMA) $(STATICPLUGINS)
+```
+
+Comment author: @psteckler
+
+(In reply to Pierre-Marie Pédrot from comment [BZ#43](https://github.com/coq/coq/issues?q=is%3Aissue%20%22Original%20bug%20ID%3A%20BZ%2343%22))
+> For plugins distributed with Coq, you can hack around this by statically
+> linking them through the Makefile as follows.
+> ...
+
+Excellent, I'll try that.
+
+
+Comment author: @psteckler
+
+After static linking, I can now see stack frames in Ltac_plugin, though I can't set breakpoints there symbolically, though I can do so using their addresses.
+
+Some progress. In `interp_tacarg`, the `env` argument is:
+
+ [a1 : nat  a : eq nat a1 a1  a0 := eq (eq nat a0 a0) a a : Prop] []
+
+The looping occurs with this environment.
+
+In the earlier call to `interp_gen`, the `env` argument is just:
+
+ [a : nat] []
+
+
+Comment author: @silene
+
+So it seems there are two errors here. One is a user error: by the time P' is used, it is no longer a fresh identifier. The other one is a system error: either Coq should have refused to use a non-fresh binder, or it should have refreshed it. I think let-in and fun avoid the issue by doing the latter, so the bug is specific to degenerate matches.
+
+
+Comment author: @psteckler
+
+(In reply to Guillaume Melquiond from comment [BZ#46](https://github.com/coq/coq/issues?q=is%3Aissue%20%22Original%20bug%20ID%3A%20BZ%2346%22))
+> I think let-in and fun avoid the issue by doing
+> the latter, so the bug is specific to degenerate matches.
+
+Do you know where the let-in and fun code is, that detects and remedies non-freshness?
+
+
+Comment author: @psteckler
+
+(In reply to Paul Steckler from comment [BZ#47](https://github.com/coq/coq/issues?q=is%3Aissue%20%22Original%20bug%20ID%3A%20BZ%2347%22))
+> (In reply to Guillaume Melquiond from comment [BZ#46](https://github.com/coq/coq/issues?q=is%3Aissue%20%22Original%20bug%20ID%3A%20BZ%2346%22))
+> > I think let-in and fun avoid the issue by doing
+> > the latter, so the bug is specific to degenerate matches.
+
+Also, if this is a common concern, could there be a common bit of code that addresses it?
+
+
+Comment author: @herbelin
+
+(In reply to Paul Steckler from comment [BZ#48](https://github.com/coq/coq/issues?q=is%3Aissue%20%22Original%20bug%20ID%3A%20BZ%2348%22))
+> (In reply to Paul Steckler from comment [BZ#47](https://github.com/coq/coq/issues?q=is%3Aissue%20%22Original%20bug%20ID%3A%20BZ%2347%22))
+> > (In reply to Guillaume Melquiond from comment [BZ#46](https://github.com/coq/coq/issues?q=is%3Aissue%20%22Original%20bug%20ID%3A%20BZ%2346%22))
+> > > I think let-in and fun avoid the issue by doing
+> > > the latter, so the bug is specific to degenerate matches.
+> 
+> Also, if this is a common concern, could there be a common bit of code that
+> addresses it?
+
+There seems to be something wrong in the translation from the context build by the degenerate match which should informally be something like
+
+named_context:
+
+ a : nat
+
+rel_context:
+
+ a : eq nat (Var a) (Var a)
+ a := eq (eq nat (Var a) (Var a)) (Rel a) (Rel a) : Prop
+
+to the context used in the ltac:() quotation:
+
+ [a1 : nat  a : eq nat a1 a1  a0 := eq (eq nat a0 a0) a a : Prop] []
+
+One should instead find
+
+ [a1 : nat  a : eq nat a1 a1  a0 := eq (eq nat a1 a1) a a : Prop] []
+
+So, there seems to be a bug in Evarutil.push_rel_context_to_named_context. As if "a" was shifted to "a0" to let room for the second "a" but then "a0" not shifted to "a1" when letting room for the third "a".
+
+
+Comment author: @psteckler
+
+Running the Ltac expression results in 2 calls to `push_rel_context_to_named_context'. The environment `env' is passed in.
+
+For the first call, `env' is:
+```
+env: Environ.env = [a : nat] [(a : eq nat a a) (e : Prop) (e : Prop := e)] 
+```
+I assume the two a's on the right refer to the outer a : nat.
+
+There's a second `env' that's created, of a different type:
+```
+env: EConstr.named_context =
+  [LocalDef (e, e0, Prop); LocalAssum (e0, Prop);
+   LocalAssum (a, eq nat a0 a0); LocalAssum (a0, nat)]
+```
+which gets converted to an isomorphic (an explicitly-named `val_of_named_context env' for debugging):
+```
+val_env: Environ.named_context_val =
+    a0 : nat  a : eq nat a0 a0  e0 : Prop  e := e0 : Prop
+```
+This looks OK, I think.
+
+In the second call, the passed-in `env' is:
+```
+env: Environ.env = [a : nat] [(a : eq nat a a)
+  (a0 : Prop := eq (eq nat a a) a a)]
+```
+Here, we have two bindings for `a'. This looks wrong: the last two a's should refer to the inner binding for a, while the preceding two should refer to the outer binding. Somewhere, the a-names should have been disambiguated.
+
+In this call, the other `env' becomes:
+```
+env: EConstr.named_context =
+  [LocalDef (a0, eq (eq nat a0 a0) a a, Prop); LocalAssum (a, eq nat a1 a1);
+   LocalAssum (a1, nat)]
+```
+which has the funny apparently-recursive structure; `val_env' looks the same:
+```
+val_env: Environ.named_context_val =
+    a1 : nat  a : eq nat a1 a1  a0 := eq (eq nat a0 a0) a a : Prop
+```
+
+
+Comment author: @herbelin
+
+Basically, the naming strategy done by function push_rel_context_to_named_context changed in v8.5. Formerly, in case of conflict, the new name was renamed. From v8.5, the former name was renamed.
+
+So, this bug report shows a bug in the implementation of the new strategy.
+
+The original motivation, introduced in 8.5, was to have `refine (fun x => _)` introduce exactly the name `x`, even if an `x` was already present, and, in order to achieve this, that existing `x` is renamed, as in:
+```
+Lemma lem (x:nat) : forall y, x+y=y+x.
+refine (fun x => _).
+(*
+x0:nat
+x:nat
+============================
+x0 + x = x + x0
+*).
+```
+I understand the motivation, but this changes is not going without breaking invariants which users are used to and on which the rest of the system is also somehow relying. The current situation is unstable as this bug or the inconsistency with instance printing (see https://github.com/coq/coq/pull/307) shows.
+
+Wouldn't it be wiser not to change existing names by side-effect? What are the opinions or ongoing projects about this? I don't think that we should stay in an unstable situation for too long...
+
+
+Comment author: @maximedenes
+
+We've had this discussion a few times already, and I must confess I keep forgetting what was said.
+
+Maybe it would be good to take some time at the next WG for a quick recap of the issue and to take a clear decision on this?
+
+
+Comment author: @psteckler
+
+Is there any more debugging I can/should do on this that would be helpful?
+
+
+Comment author: @herbelin
+
+> Is there any more debugging I can/should do on this that would be helpful?
+
+From my point of view, it continues to make sense to fix the alpha-conversion bug, if the decision is eventually to keep the 8.5 behavior, or if the decision is to provide both optionally (as in #307), or if you are interested by fixing the bug anyway for your own sake.
+
+
+Comment author: @psteckler
+
+I'm testing #307, in an attempt to understand what the alpha-conversion bug is, exactly.
+
+
+Comment author: @psteckler
+
+FWIW, the short example fails with #307:
+```
+Error: Ltac variable P' is bound to a value of type intropattern which cannot
+be coerced to an evaluable reference.
+```
+I patched the current v8.6 branch with the PR. The unpatched v8.6 fails with the stack overflow.
+
+
+This continues to be an issue in Coq 8.7.0
+I'm looking at this again, to see where the alpha-renaming occurs, exactly.
+It's not obvious to me where the clashes are detected, and where the rename occurs. A pointer would be useful.
+https://github.com/coq/coq/blob/master/engine/evarutil.ml#L335 looks like a candidate.
+Working on a possible fix. Update: nope.
+On entry to `pretyping`:
+```
+env: ExtraEnv.t =
+  {env = [a : nat] [(a : eq nat a a) (P':=eq (eq nat a a) a a)];
+   extra = <lazy>}
+```
+It looks like the names are already confused before any renaming in `push_rel_context_to_named_context` occurs.
+@psteckler: I think I agree with your analysis in `evarutil.ml`. What do you mean by "It looks like the names are already confused before any renaming in push_rel_context_to_named_context occurs"?
+@psteckler I don't think there is a clash in the environment you wrote. The right-hand-side is a De Bruijn context, and the fact it's wrongly printed doesn't mean there is a loop in there.
+@herbelin The comment by @ppedrot suggests that it's a printing error, rather than a badly-structured environment.
+I'm afraid I'm not getting much insight for a fix here. The code I mentioned above just does a fixed substitution of one id for another via a `List.map`, where the comment from @herbelin from May 7 suggests that maybe previous substitutions should be taken into account.
+
+On May 9, @maximedenes said:
+> Maybe it would be good to take some time at the next WG for a quick recap of the issue and to take a clear decision on this?
+
+where "this" means the method of avoid name clashes (update old or new bindings). This could be a topic for the upcoming December WG.
+
+I've added the issue to the Next-Working-Group wiki page: https://github.com/coq/coq/wiki/Next-Coq-Working-Group#issues-that-need-to-be-discussed-possibly-around-a-computer
+@Zimmi48 Was there any resolution of this at the WG?
+Unfortunately, none of the PR / issues mentioned in the WG page were actually discussed :(

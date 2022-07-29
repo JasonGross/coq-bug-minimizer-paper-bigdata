@@ -1,0 +1,70 @@
+Comment author: @JasonGross
+
+When trying to make a validate target for HoTT, I ran into the following issue:
+
+$ cat a.v
+Set Universe Polymorphism.
+Inductive option (A:Type) : Type :=
+| Some (_ : A) : option A
+| None : option A.
+$ ~/.local64/coq/coq-v8.6/bin/coqc -q -nois a.v
+$ ~/.local64/coq/coq-v8.6/bin/coqchk a
+Welcome to Chicken jgross-Leopard-WS:/home/jgross/Downloads/coq/coq-v8.6,(HEAD 
+detached from 7e992fa) (0129c6d5481205dd7de82f52acde57bd4cbd4a26)
+[intern /tmp/foo/a.vo ... done]
+
+Ordered list:
+  a
+
+Checking library: a
+  checking ind: a.option
+Error:
+Anomaly: Universe Var(0) undefined. Please report at
+http://coq.inria.fr/bugs/.
+
+
+Comment author: @ejgallego
+
+Please use `-debug` so we get a backtrace, thanks.
+
+
+Comment author: @JasonGross
+
+With debug, the tail is:
+Ordered list:
+  a
+
+Checking library: a
+  checking ind: a.option
+Raised at file "lib/cErrors.ml", line 40, characters 18-39
+Called from file "checker/univ.ml", line 554, characters 24-103
+Called from file "checker/univ.ml", line 749, characters 13-21
+Called from file "checker/univ.ml", line 116, characters 22-25
+Called from file "checker/univ.ml", line 120, characters 22-25
+Called from file "checker/univ.ml", line 779, characters 4-45
+Called from file "checker/univ.ml", line 803, characters 4-24
+Called from file "checker/indtypes.ml", line 185, characters 15-55
+Called from file "checker/indtypes.ml", line 236, characters 2-42
+Called from file "checker/indtypes.ml", line 257, characters 4-67
+Called from file "array.ml", line 77, characters 31-48
+Called from file "checker/indtypes.ml", line 549, characters 2-73
+Called from file "list.ml", line 84, characters 24-34
+Called from file "checker/mod_checking.ml", line 148, characters 20-111
+Called from file "checker/mod_checking.ml", line 86, characters 4-58
+Called from file "checker/safe_typing.ml", line 82, characters 2-143
+Called from file "checker/check.ml", line 122, characters 6-58
+Called from file "list.ml", line 73, characters 12-15
+Called from file "checker/check.ml", line 413, characters 2-40
+Called from file "checker/checker.ml", line 386, characters 4-20
+Error:
+Anomaly: in Univ.repr: Universe Var(0) undefined. Please report at
+http://coq.inria.fr/bugs/.
+
+
+Comment author: @Zimmi48
+
+The anomaly doesn't appear in trunk but it still does in v8.6. I don't know what fixed it. Can we mark this as fixed or should the fix be applied to v8.6? Temporarily setting the target to 8.6.1. It should be changed to 8.7 if this is closed without further action.
+
+
+@Zimmi48 8.6 is not updated anymore, do you want to close this?
+Yes, let's close it.

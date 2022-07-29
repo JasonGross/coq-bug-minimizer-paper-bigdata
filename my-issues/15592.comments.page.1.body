@@ -1,0 +1,14 @@
+? is try not repeat
+> ? is try not repeat
+
+Coq disagrees:
+```coq
+Goal forall (f g : nat -> nat) x y, (forall a, f a = g a) -> f x = f y.
+intros f g x y H.
+rewrite H. (* g x = f y *)
+Undo.
+rewrite ?H. (* g x = g y *)
+```
+
+The documentation says "? (without natural) performs the rewrite as many times as possible (possibly zero times)."  I believe `try` is `1?`.
+You're right

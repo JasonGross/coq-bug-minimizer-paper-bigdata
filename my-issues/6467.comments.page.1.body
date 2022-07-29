@@ -1,0 +1,12 @@
+There is a conjuction of two problems here.
+- The `Tacmach.New.pf_global`, which happens to be used only by Quote, is somewhat buggy because it raises a `Not_found` exception through a ad-hoc call to internalization to check that a variable is bound.
+- The `quote` tactic is using an indentifier as argument, while it should use a global reference instead.
+
+It is rather easy to fix anyways, but I thought that `quote` was one of the most unmaintained plugins from the Coq archive and implicitly deprecated...
+> but I thought that quote was one of the most unmaintained plugins from the Coq archive and implicitly deprecated...
+
+I'm benchmarking all the methods of reification I can think of, and when I read about this one in CPDT, I figured I'd include it.
+What should we do then? Properly deprecate quote?
+What are people expected to use instead?
+Template-coq?
+The quote pluging has been removed from Coq, so closing.

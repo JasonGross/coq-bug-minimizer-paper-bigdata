@@ -1,0 +1,67 @@
+Comment author: @JasonGross
+
+(* -*- mode: coq; coq-prog-args: ("-emacs" "-R" "." "Top" "-top" 
+"bug_bad_match_08") -*- *)
+(* File reduced by coq-bug-finder from original input, then from 204 lines to 
+52 lines, then from 434 lines to 321 lines, then from 328 lines to 62 lines, 
+then from 246 lines to 97 lines, then from 348 lines to 149 lines, then from 
+276 lines to 201 lines, then from 318 lines to 248 lines, then from 628 lines 
+to 568 lines, then from 555 lines to 112 lines, then from 551 lines to 137 
+lines, then from 338 lines to 238 lines, then from 430 lines to 242 lines, then 
+from 256 lines to 242 lines, then from 205 lines to 168 lines, then from 182 
+lines to 168 lines, then from 173 lines to 89 lines, then from 103 lines to 89 
+lines, then from 100 lines to 47 lines, then from 61 lines to 47 lines, then 
+from 40 lines to 22 lines, then from 36 lines to 23 lines *)
+(* coqc version 8.6 (February 2017) compiled on Feb 16 2017 14:36:53 with OCaml 
+4.02.3
+   coqtop version jgross-Leopard-WS:/home/jgross/Downloads/coq/coq-v8.6,(HEAD 
+detached from 7e992fa) (29d7872c0159d2aab7264c0577a2f5a9dc7c90c9) *)
+Require Import Coq.ZArith.BinInt.
+Definition eq' {F} (P Q:F*F) :=
+  match P, Q with
+    (x1,y1), (x2,y2) => x1 = x2 /\ y1 = y2
+  end.
+Definition l : BinNums.Z := 8.
+Axiom B : (BinNums.Z * BinNums.Z)%type.
+Fixpoint force' (n : nat) (acc : nat) :=
+  match n with
+  | 0%nat => acc
+  | S n' => force' n' (S acc)
+  end.
+Definition force n := force' n O.
+Definition mul : nat -> _
+  := fun n => match force (Nat.pow n n) with S _ => B | O => B end.
+Definition ed25519 (l_order_B: eq' (mul (BinInt.Z.to_nat l)) B) :
+  True.
+Proof.
+  timeout 1 try match goal with H:?P |- ?P => idtac end. (* Error: Tactic 
+failure: Error: Tactic timeout!. *)
+
+What is Ltac doing?  Why is the time dependent on the definition of [l]?
+
+
+Comment author: @ppedrot
+
+The answer is in this comment of Tactic_matching:
+
+(* spiwack: it doesn't seem to be quite the same rule for non-linear
+   term patterns and non-linearity between hypotheses and/or
+   conclusion. Indeed, in [Matching], matching is made modulo
+   syntactic equality, and here we merge modulo conversion. It may be
+   a good idea to have an entry point of [Matching] with a partial
+   substitution as argument instead of merging substitution here. That
+   would ensure consistency. *)
+
+To check that the two instances of ?P agree, full-blown conversion is called, which joyfully expands your huge term.
+
+
+Comment author: @ppedrot
+
+Morale of the story: don't use non-linear patterns, and use your own conversion algorithm whenever needed in the branches of your pattern-matching if you're concerned with performance.
+
+
+Comment author: @JasonGross
+
+Urgh.  At the very least, this should be documented in the refman.  Could we also have an option/setting that determines whether to use syntactic equality or unification?  (Either an option only for backwards compatibility, or an actual supported option.)
+
+

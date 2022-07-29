@@ -1,0 +1,39 @@
+Comment author: @JasonGross
+
+Goal exists f, forall x : nat, f x = x.
+Proof.
+  clear; eexists; intro x.
+  refine (_ : (fun k => _) x = _); cbv beta.
+  Fail reflexivity. (* => Error: Impossible to unify "?3649" with "x". *)
+  instantiate (1 := x). (* _UNBOUND_REL_2 = x *)
+  Fail abstract reflexivity. (* => Error: Impossible to unify "x" with "_UNBOUND_REL_1". *)
+  Undo.
+  instantiate (1 := k).
+  let lhs := match goal with |- ?lhs = _ => constr:true end in
+  pose true.
+  Fail admit. (* The command has indeed failed with message:
+=> Error: Illegal application (Type Error): 
+   The term "eq" of type "forall A : Type, A -> A -> Prop"
+   cannot be applied to the terms
+    "nat" : "Set"
+    "b" : "bool"
+    "x" : "nat"
+   The 2nd term has type "bool" which should be coercible to 
+   "nat".
+ *)
+  Undo.
+  Fail reflexivity. (* => Error: Impossible to unify "x" with "_UNBOUND_REL_1". *)
+  abstract reflexivity. (* success *)
+Defined. (* success *)
+
+
+Comment author: @silene
+
+It seems like none of these issues can be reproduced with 8.5.
+
+
+Comment author: @ppedrot
+
+I'll mark this bug as closed, without adding a test because most of the issues were actually due to the first anomalous tactic call.
+
+

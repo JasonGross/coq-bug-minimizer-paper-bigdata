@@ -1,0 +1,102 @@
+Comment author: @JasonGross
+
+(** Coq is slow, interactively, even if there is nothing big being displayed, if there are big cleared things *)
+
+This only shows up in coqtop -emacs, since in 8.5, [Time] doesn't catch display issues.
+
+Axiom iter2 : bool -> bool -> bool.
+Fixpoint do2 (n : nat) (A : bool) :=
+  match n with
+    | 0 => A
+    | S n' => do2 n' (iter2 A A)
+  end.
+Ltac display2 := hnf; unfold do2; cbv beta.
+Axiom x : bool.
+Notation hidden := (_ = _).
+Goal let n := 20 in do2 n x = do2 n x.
+  display2.
+  Time let G := match goal with |- ?G => G end in set (H := G). (* 1 s *)
+  Time clearbody H. (* 0.134 *)
+  Time evar (e : Set). (* 0.4 s *)
+  Time clear e. (* 0.4 *)
+Admitted.
+
+
+Comment author: @JasonGross
+
+See also https://github.com/JasonGross/slow-coq-examples/blob/master/interactive_proof_state_slowness.v and https://github.com/JasonGross/slow-coq-examples/blob/master/interactive_proof_state_slowness.sh
+
+
+Comment author: @ppedrot
+
+The problem is that your term has huge implicit arguments. In the current architecture, they have to be detyped even if they're not going to be printed anyway. This has nothing to do with the proof tree.
+
+
+Comment author: @JasonGross
+
+What are the implicit arguments after [clearbody]?
+
+
+Comment author: @ppedrot
+
+Ah, yes, indeed. But it turns out that actually I can't reproduce your example on trunk. Wasn't this fixed by fixing bug [BZ#4777](https://github.com/coq/coq/issues?q=is%3Aissue%20%22Original%20bug%20ID%3A%20BZ%234777%22)?
+
+
+Comment author: @JasonGross
+
+It's true that in 8.5pl1, bug [BZ#4777](https://github.com/coq/coq/issues?q=is%3Aissue%20%22Original%20bug%20ID%3A%20BZ%234777%22) takes around 1.3-2 seconds, while in trunk it takes around 0.6 seconds.  But this example takes around 0.4 seconds per goal-printing in 8.5pl1, and still takes around 0.4 seconds per goal-printing in trunk.  While I can understand the issue with needing to detype implicit arguments taking 0.4 seconds, I don't understand the issue with printing the goal when there's nothing laying around being slow.  Have you tried running ./interactive_proof_state_slowness.sh from the slowness repo?
+
+For
+
+  time $HOME/.local64/coq/coq-trunk/bin/coqtop -time -emacs < ./interactive_proof_state_slowness.v
+
+I get
+
+real	0m13.547s
+user	0m8.936s
+sys	0m4.588s
+
+and when I comment out the evar (e : Set) and clear e lines, I get
+
+real	0m10.884s
+user	0m7.660s
+sys	0m3.212s
+
+
+Comment author: @ppedrot
+
+OK, this is -emacs specific. I can't reproduce this while just using the toplevel loop. Meh, that means I have to crawl through this stuff...
+
+
+Comment author: @ppedrot
+
+And the winner is... The well-named Printer.emacs_print_dependent_evars function! This looks like it is used to get info on the goals, but it eagerly normalizes the proof term just for fun. Not sure how to fix this. Are you sure you can't wait for Paul's reimplementation of Proof General with the new API?
+
+
+Comment author: @JasonGross
+
+Normalizes the proof term(!) or the evar map?
+
+Can you add a command-line flag that makes that function always print the empty list, so that if I develop in trunk, I can enable that?
+
+
+Comment author: @JasonGross
+
+Which function does the normalization happen in?  (I'm having trouble figuring out the dependencies of gather_dependent_evars...)
+
+
+Comment author: @mattam82
+
+I don't see gather_dependent_evars normalizing anything, however it does crawl the entire evar_map (with memoization though). Looking at it closely it seems to be redoing work though.
+
+
+Comment author: @ppedrot
+
+Yes, sorry, I was mistaken: this is not evar normalization per se, rather computation of the evars of the terms at line:
+
+let subevars = evars_of_term b in
+
+in Evarutil.process_dependent_evar.
+
+
+I think this is fixed by f558a0552b49b533c1c79ee3eb6d49015eeb6084

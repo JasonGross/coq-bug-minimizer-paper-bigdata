@@ -1,0 +1,14 @@
+Comment author: @JasonGross
+
+Goal True.
+shelve. {
+(* Toplevel input, characters 0-1:
+Anomaly: Uncaught exception Proofview.IndexOutOfRange(_). Please report.
+ *)
+
+
+Comment author: @aspiwack
+
+Well… I thought I had solve these uncaught exceptions long ago. It was apparently not the case, but is now fixed (5a57af79). Thanks.
+
+

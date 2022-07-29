@@ -1,0 +1,14 @@
+Comment author: @JasonGross
+```
+
+Fail Definition bar : True := I2. (* it indeed fails *)
+Lemma foo : True /\ True.
+Proof.
+  split; [ abstract constructor using I2 | ].
+  Fail Fail Definition bar : True := I2. (* [Fail] indeed fails *)
+  Definition bar : True := I2. (* Error: The reference I2 was not found in the 
+current environment. *)
+
+
+```
+Looks fixed.

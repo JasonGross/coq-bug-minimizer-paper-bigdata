@@ -1,0 +1,10 @@
+Comment author: @JasonGross
+
+File ".\plugins/romega/ReflOmegaCore.v", line 2903, characters 1-1054:
+Warning: Collision between bound variables of name
+x0 [variable-collision,ltac]
+
+(There are others, too.)
+
+
+Doesn't seem to happen any more.

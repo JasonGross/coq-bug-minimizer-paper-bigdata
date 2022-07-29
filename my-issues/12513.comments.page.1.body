@@ -1,0 +1,6 @@
+This is not surprising as the vo format changed in #12092, so the old format probably looks completely foreign to the new code and the new format looks foreign to the old code. I think there is nothing we can do about the latter, but we could probably do a bit better about the former. @ppedrot WDYT?
+@JasonGross Can you confirm that the problem doesn't appear (Coq still reports a mismatched version number) when you try to load a file compiled with master in Coq 8.12+beta1 and conversely?
+We could try a best effort from the newer code, upon realizing the format is not correct it could try to parse the old version number. That's a bit ugly though, and I don't know for how long we should maintain this kind of hack.
+Just for a few versions, I would say.
+@ppedrot Is this something that you think will be doable to fix in time for the 8.12.0 release?
+ping @ppedrot 

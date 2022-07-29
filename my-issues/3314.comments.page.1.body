@@ -1,0 +1,42 @@
+Comment author: @JasonGross
+
+Set Universe Polymorphism.
+Definition Lift
+: $(let U1 := constr:(Type) in
+    let U0 := constr:(Type : U1) in
+    exact (U0 -> U1))$
+  := fun T => T.
+
+Fail Check nat:Prop. (* The command has indeed failed with message:
+=> Error:
+The term "nat" has type "Set" while it is expected to have type "Prop". *)
+Set Printing All.
+Set Printing Universes.
+Check Lift nat : Prop. (* Lift (* Top.8 Top.9 Top.10 *) nat:Prop
+     : Prop
+(* Top.10
+   Top.9
+   Top.8 |= Top.10 < Top.9
+             Top.9 < Top.8
+             Top.9 <= Prop
+              *)
+ *)
+Eval compute in Lift nat : Prop.
+(*      = nat
+     : Prop *)
+
+
+
+I bet you could use this to push through Hurkens or similar (though this doesn't give you [Set : Prop] or anything quite that bad).
+
+
+Comment author: @JasonGross
+
+Once this is fixed, I'll submit a patch to the stdlib for having a definition of [Lift].
+
+
+Comment author: @JasonGross
+
+This bug has been fixed; I'll submit a file for the test-suite soon.
+
+

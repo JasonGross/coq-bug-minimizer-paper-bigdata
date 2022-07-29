@@ -1,0 +1,95 @@
+Note: Unnecessary use of -X or --request, GET is already inferred.
+  % Total    % Received % Xferd  Average Speed   Time    Time     Time  Current
+                                 Dload  Upload   Total   Spent    Left  Speed
+  0     0    0     0    0     0      0      0 --:--:-- --:--:-- --:--:--     0*   Trying 172.65.251.78:443...
+* TCP_NODELAY set
+* Connected to gitlab.com (172.65.251.78) port 443 (#0)
+* ALPN, offering h2
+* ALPN, offering http/1.1
+* successfully set certificate verify locations:
+*   CAfile: /etc/ssl/certs/ca-certificates.crt
+  CApath: /etc/ssl/certs
+} [5 bytes data]
+* TLSv1.3 (OUT), TLS handshake, Client hello (1):
+} [512 bytes data]
+* TLSv1.3 (IN), TLS handshake, Server hello (2):
+{ [122 bytes data]
+* TLSv1.3 (IN), TLS handshake, Encrypted Extensions (8):
+{ [19 bytes data]
+* TLSv1.3 (IN), TLS handshake, Certificate (11):
+{ [2410 bytes data]
+* TLSv1.3 (IN), TLS handshake, CERT verify (15):
+{ [78 bytes data]
+* TLSv1.3 (IN), TLS handshake, Finished (20):
+{ [52 bytes data]
+* TLSv1.3 (OUT), TLS change cipher, Change cipher spec (1):
+} [1 bytes data]
+* TLSv1.3 (OUT), TLS handshake, Finished (20):
+} [52 bytes data]
+* SSL connection using TLSv1.3 / TLS_AES_256_GCM_SHA384
+* ALPN, server accepted to use h2
+* Server certificate:
+*  subject: C=US; ST=California; L=San Francisco; O=Cloudflare, Inc.; CN=gitlab.com
+*  start date: Jul  4 00:00:00 2022 GMT
+*  expire date: Oct  2 23:59:59 2022 GMT
+*  subjectAltName: host "gitlab.com" matched cert's "gitlab.com"
+*  issuer: C=US; O=Cloudflare, Inc.; CN=Cloudflare Inc ECC CA-3
+*  SSL certificate verify ok.
+* Using HTTP2, server supports multi-use
+* Connection state changed (HTTP/2 confirmed)
+* Copying HTTP/2 data in stream buffer to connection buffer after upgrade: len=0
+} [5 bytes data]
+* Using Stream ID: 1 (easy handle 0x5583b1abb8c0)
+} [5 bytes data]
+> GET /api/v4/projects/coq%2Fcoq/pipelines/422611189/jobs?page=1&per_page=100 HTTP/2
+> Host: gitlab.com
+> accept: application/json
+> private-token: glpat-XDp_z_rcbYZNNy2yefRv
+> user-agent: JasonGross/coq-bug-minimizer-paper
+> 
+{ [5 bytes data]
+* TLSv1.3 (IN), TLS handshake, Newsession Ticket (4):
+{ [230 bytes data]
+* TLSv1.3 (IN), TLS handshake, Newsession Ticket (4):
+{ [230 bytes data]
+* old SSL session ID is stale, removing
+{ [5 bytes data]
+* Connection state changed (MAX_CONCURRENT_STREAMS == 256)!
+} [5 bytes data]
+  0     0    0     0    0     0      0      0 --:--:--  0:00:01 --:--:--     0< HTTP/2 200 
+< date: Thu, 28 Jul 2022 18:01:56 GMT
+< content-type: application/json
+< cache-control: max-age=0, private, must-revalidate
+< content-security-policy: base-uri 'self'; child-src https://www.google.com/recaptcha/ https://www.recaptcha.net/ https://content.googleapis.com https://content-compute.googleapis.com https://content-cloudbilling.googleapis.com https://content-cloudresourcemanager.googleapis.com https://www.googletagmanager.com/ns.html https://gitlab.com/admin/ https://gitlab.com/assets/ https://gitlab.com/-/speedscope/index.html https://gitlab.com/-/sandbox/mermaid https://gitlab.com/assets/ blob: data:; connect-src 'self' https://gitlab.com wss://gitlab.com https://sentry.gitlab.net https://customers.gitlab.com https://snowplow.trx.gitlab.net https://sourcegraph.com; default-src 'self'; font-src 'self'; form-action 'self' https: http:; frame-ancestors 'self'; frame-src 'self' https://www.google.com/recaptcha/ https://www.recaptcha.net/ https://content.googleapis.com https://content-cloudresourcemanager.googleapis.com https://content-compute.googleapis.com https://content-cloudbilling.googleapis.com https://*.codesandbox.io https://customers.gitlab.com; img-src * data: blob:; manifest-src 'self'; media-src 'self' data:; object-src 'none'; report-uri https://sentry.gitlab.net/api/105/security/?sentry_key=a42ea3adc19140d9a6424906e12fba86; script-src 'strict-dynamic' 'self' 'unsafe-inline' 'unsafe-eval' https://www.google.com/recaptcha/ https://www.gstatic.com/recaptcha/ https://www.recaptcha.net/ https://apis.google.com 'nonce-BF8r/PIR056n4nDEokoMjA=='; style-src 'self' 'unsafe-inline'; worker-src https://gitlab.com blob: data:
+< etag: W/"8f65aa9720c61a86e41b732372615b49"
+< link: <https://gitlab.com/api/v4/projects/coq%2Fcoq/pipelines/422611189/jobs?id=coq%2Fcoq&include_retried=false&page=1&per_page=100&pipeline_id=422611189>; rel="first", <https://gitlab.com/api/v4/projects/coq%2Fcoq/pipelines/422611189/jobs?id=coq%2Fcoq&include_retried=false&page=1&per_page=100&pipeline_id=422611189>; rel="last"
+< vary: Origin
+< x-content-type-options: nosniff
+< x-frame-options: SAMEORIGIN
+< x-next-page: 
+< x-page: 1
+< x-per-page: 100
+< x-prev-page: 
+< x-request-id: da74bed69fe6a82cf28cf08c826ade8b
+< x-runtime: 1.144448
+< x-total: 79
+< x-total-pages: 1
+< strict-transport-security: max-age=31536000
+< referrer-policy: strict-origin-when-cross-origin
+< ratelimit-observed: 29
+< ratelimit-remaining: 1970
+< ratelimit-reset: 1659031376
+< ratelimit-resettime: Thu, 28 Jul 2022 18:02:56 GMT
+< ratelimit-limit: 2000
+< gitlab-lb: fe-26-lb-gprd
+< gitlab-sv: localhost
+< cf-cache-status: DYNAMIC
+< expect-ct: max-age=604800, report-uri="https://report-uri.cloudflare.com/cdn-cgi/beacon/expect-ct"
+< report-to: {"endpoints":[{"url":"https:\/\/a.nel.cloudflare.com\/report\/v3?s=2SdpS%2BbgwZs1Vx1cPIvaNJeGE4K6fYqZKYyU%2BJ%2BPz8at8FFAHKl5hcvrS%2BUGvZxthSn4KaOUD564jDMPstFra1KyMZ9dSrJlMdlzBqlmizWpLUD9b9sopoVls%2Fc%3D"}],"group":"cf-nel","max_age":604800}
+< nel: {"success_fraction":0.01,"report_to":"cf-nel","max_age":604800}
+< server: cloudflare
+< cf-ray: 731f85d90c5d8cbd-EWR
+< 
+{ [508 bytes data]
+100  182k    0  182k    0     0   138k      0 --:--:--  0:00:01 --:--:--  138k
+* Connection #0 to host gitlab.com left intact

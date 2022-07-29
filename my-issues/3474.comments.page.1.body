@@ -1,0 +1,68 @@
+Comment author: @JasonGross
+
+I would like a tactical [fail_harder] (or some other name) that, when passed an argument [tac], will:
+- if [tac] is a constr, [fail_harder tac] should evaluate to [tac]
+- if [tac] is a tactic, and running [tac] succeeds, running [fail_harder tac] should also succeed
+- if [tac] is a tactic, and running [tac] fails at level [n] with message [msg], then running [fail_harder tac] should fail at level [n + 1] with message [msg]
+
+
+Comment author: @aspiwack
+
+I think it is a bit too specific, I would rather you do a plugin on that. Bumping failure level is easy (see the available tactics in proofs/proofview.mli, and the definitions used by Ltac in the submodule New of tactics/tactics.ml). You will find it harder to deal with the possibility of a constr.
+
+Please reopen if you think you have a compelling case for this.
+
+
+Comment author: @jonleivent
+
+Jason, 
+
+I think I have found the tactic you want.  It uses the fact that fail N  "neutralizes" the M preceeding "+" tacticals before becoming fail N-M with respect to throwing out of a construct.  Thus, if one generates the proper M preceding "+" tacticals by recursion, the next fail N becomes fail N-M with respect to its behavior prior to those generated "+" tacticals.
+
+So, fail_harder can take an arg saying how much harder:
+
+Ltac fail_harder N :=
+let n := eval compute in N in 
+let rec f m := 
+  lazymatch m with (S ?m') => (idtac + fail);f m' | _ => idtac end in
+  f n.
+
+Tactic Notation "test_fail_harder" constr(N) int_or_var(M) :=
+try (try (try (fail_harder N; idtac 0; fail M); idtac 1); idtac 2).
+
+Goal True.
+test_fail_harder 1 2. (*test with different values*)
+
+
+Comment author: @jonleivent
+
+Oh - never mind.  This fail_harder tactic is obviously really just a fail_easier - but that's trivial to do other ways.  Sorry.
+
+Anyway - if you develop a fail_harder plugin, please share.
+
+
+Comment author: @jonleivent
+
+Here's a workaround for some cases:
+
+Tactic Notation 
+  "if" tactic3(cond) "then" tactic3(tpart) "else" tactic3(epart) :=
+  let R := fresh in
+  first [cond; set (R:=true) | set (R:=false)];
+  let x := eval cbv delta in R in 
+  clear R; lazymatch x with true => tpart | false => epart end.
+
+This if-then-else tactical avoids capturing fails from the then or else parts by first converting the condition into a boolean and lazymatching on that.
+
+I'm not sure if this idiom can be used in all cases where one wants to avoid capturing a fail.  But, maybe it covers the most likely cases.
+
+
+Comment author: @JasonGross
+
+> This if-then-else tactical avoids capturing fails from the then or else
+> parts by first converting the condition into a boolean and lazymatching on
+> that.
+
+Nice!  Thanks!  Presumably combining this with [test] (https://github.com/JasonGross/coq-tactics/blob/master/Common.v#L25) to not have [cond] give side-effects if desired.
+
+

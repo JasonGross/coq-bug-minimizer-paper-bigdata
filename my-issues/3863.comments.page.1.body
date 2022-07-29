@@ -1,0 +1,115 @@
+Comment author: @JasonGross
+
+Created attachment 523
+test case
+
+I was dubious about this error, so I went and reproduced it on travis: https://travis-ci.org/JasonGross/coqc-coqtop-univ-bug/builds/44014792.
+
+All six of these should be identical, but they are not:
+jgross@ cagnode14:/tmp/baz$ coqc -nois -indices-matter -no-native-compiler bug_extensions_univ_helper_05.v
+ishprop_ooextendable
+     : forall (C : ?B -> Type) (f : ?A -> ?B),
+       IsHProp (ooExtendableAlong f C)
+where
+?A : [ |- Type]
+?B : [ |- Type]
+jgross@ cagnode14:/tmp/baz$ coqtop -nois -indices-matter -no-native-compiler -compile bug_extensions_univ_helper_05
+ishprop_ooextendable
+     : forall (C : ?B -> Type) (f : ?A -> ?B),
+       IsHProp (ooExtendableAlong f C)
+where
+?A : [ |- Type]
+?B : [ |- Type]
+jgross@ cagnode14:/tmp/baz$ coqtop -nois -indices-matter -no-native-compiler -load-vernac-source bug_extensions_univ_helper_05.v
+Welcome to Coq cagnode15:/afs/csail.mit.edu/u/j/jgross/coq-trunk,trunk (c938cb8e85f741ce697e7486d35c27c1aa31fe7a)
+Error during initialization:
+Error while reading bug_extensions_univ_helper_05.v:
+File "/tmp/baz/bug_extensions_univ_helper_05.v", line 218, characters 6-26:
+Error: Universe instance should have length 7
+jgross@ cagnode14:/tmp/baz$ ln -s bug_extensions_univ_helper_05.v tmp.v
+jgross@ cagnode14:/tmp/baz$ ls -la tmp.v
+lrwxrwxrwx 1 jgross jgross 31 Dec 14 13:26 tmp.v -> bug_extensions_univ_helper_05.v
+jgross@ cagnode14:/tmp/baz$ coqc -nois -indices-matter -no-native-compiler tmp.v
+File "./tmp.v", line 218, characters 6-26:
+Error: Universe instance should have length 7
+jgross@ cagnode14:/tmp/baz$ coqtop -nois -indices-matter -no-native-compiler -compile tmp
+File "./tmp.v", line 218, characters 6-26:
+Error: Universe instance should have length 7
+jgross@ cagnode14:/tmp/baz$ coqtop -nois -indices-matter -no-native-compiler -load-vernac-source tmp.v
+Welcome to Coq cagnode15:/afs/csail.mit.edu/u/j/jgross/coq-trunk,trunk (c938cb8e85f741ce697e7486d35c27c1aa31fe7a)
+Error during initialization:
+Error while reading tmp.v:
+File "/tmp/baz/tmp.v", line 218, characters 6-26:
+Error: Universe instance should have length 7
+
+> Attached file: [bug_extensions_univ_helper_05.v](https://coq.inria.fr/bugfiles/attachment.cgi?id=523) (application/octet-stream, 7885 bytes)
+> Description:   test case
+
+
+Comment author: @herbelin
+
+Note: declarations are made in module Top when using "coqtop -load-vernac-source", while they are made in a module named after the name of the file in the case of "coqtop -compile", what explains the difference.
+
+
+Comment author: @mattam82
+
+As said on github, it's minimization not being invariant w.r.t. the order of constraints.
+
+
+Comment author: @herbelin
+
+PS: If you want -load-vernac-source to use the same module name as if calling "coqtop -compile", use the option "-top logical_name", in your case "-top bug_extensions_univ_helper_05".
+
+
+Comment author: @JasonGross
+
+Hugo, thanks for the info!
+
+Matthieu, thanks for tracking this down!
+
+For future reference, the github comment (https://github.com/HoTT/HoTT/pull/593#issuecomment-67018165) was:
+
+> Ok, now I get it. Minimization is not invariant w.r.t the ordering of
+> constraints, it folds over the set of constraints and depending on the
+> order they're given it gives different results. If the library name changes
+> then the ordering of constraints in the set differs. If only we had HITs in
+> OCaml I couldn't have made that mistake :) I hope to fix it sometime this
+> week.
+
+
+Comment author: @mattam82
+
+Upon further investigation, minimization is not exactly the problem. The issue is that going through the universes and back to constraints is not "normalizing" as I expected, in particular one can start with constraints:
+
+ i <= j, j <= k and i <= k and get (depending on the order they're processed)
+
+ i <= j, j <= k or the initial set (as i <= k) is implied by the other constraints.
+
+Now thinking about how to get a kind of normal form or be insensitive to that.
+
+
+Comment author: @mattam82
+
+Upon further investigation, minimization is not exactly the problem. The issue is that going through the universes and back to constraints is not "normalizing" as I expected, in particular one can start with constraints:
+
+ i <= j, j <= k and i <= k and get (depending on the order they're processed)
+
+ i <= j, j <= k or the initial set (as i <= k) is implied by the other constraints.
+
+Now thinking about how to get a kind of normal form or be insensitive to that.
+
+
+Comment author: @jhjourdan
+
+I may be a bit naive, but I think there is an algorithm that is stable to the addition of redundant constraints and simple to describe:
+
+Let's take the universe graph, and add a new special arc b <= a for each constraint a <= b such that a OR b is flexible. Then, for each of these arcs that is not part of a strict cycle in this new graph, set a:=b (or b:=a). There is no problem of order, because it should be done once and for all in the whole graph.
+
+What do you think ?
+
+
+Comment author: @silene
+
+Thanks to Matthieu's rework of universe levels, all the variations fail in the same way, so it seems fixed. Please reopen if you encounter new discrepancies.
+
+

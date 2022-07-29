@@ -1,0 +1,14 @@
+Comment author: @JasonGross
+
+My primary use case for [lazy] is when I have a term with many (potentially opaque) proofs, but I think that they should all disappear from the final result.  When I accidentally make something opaque that should be transparent, [lazy] will just sit there running for a very long time.  It would be more useful to know which lemma I forgot to make transparent.  As such, I'd like to have one (or both) of the following two variants of [lazy] (possibly determined via flags):
+
+A variant that fails fast whenever it encounters an opaque term; currently, the rule it uses for application, I believe, is that to reduce [f x], first it finds the (w)hnf of [f], and then, if that's a lambda, it substitutes [x], and otherwise it reduces [x].  I would like like it to instead fail if the (w)hnf of [f] is neither a lambda nor a constructor applied to arguments, and the error message should mention the name of the constant that is not a constructor applied to arguments.
+
+AND/OR
+
+A variant that ignores applications of opaque lemmas.  This is the same as above, but instead of failing with an error message, it simply leaves [x] as it is, and continues reducing the rest of the term.
+
+
+I think the first variant would be more useful, though the second variant would probably end up giving me the same information.
+
+

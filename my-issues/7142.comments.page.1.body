@@ -1,0 +1,3 @@
+This is fixed in `master`, second, after an anomaly, the system is in random state so we cannot guarantee that you can continue your session.
+On the other hand master may enjoy of a small tweak as to guard goal printing better.
+After thinking a bit more, I consider this bug valid, but not as critical as it looks as the desynch in master will be corrected after a bit [in a sense it is a problem of the proof protocol the toplevel/emacs use]

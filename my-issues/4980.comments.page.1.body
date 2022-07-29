@@ -1,0 +1,41 @@
+Comment author: @JasonGross
+
+I was trying to test Keyed Unification, and could not make it work in the 
+following case.  (Perhaps I am just using the wrong keys, though)
+
+Axiom foo : nat -> nat -> nat -> nat -> Prop.
+Axiom bar : nat -> nat -> Prop.
+Axiom H : forall x y, foo (x + y) (x * y) x y = bar x y.
+Require Import Setoid.
+Goal foo (1 + 2) 2 1 2.
+  rewrite H.
+  Undo.
+  Fail setoid_rewrite H. (* nothing to rewrite *)
+Abort.
+Goal foo 3 (1 * 2) 1 2.
+  Fail rewrite H. (* no matching subterm *)
+  Fail setoid_rewrite H. (* nothing to rewrite. *)
+Abort.
+Set Keyed Unification.
+Declare Equivalent Keys Nat.mul (fun _ => S).
+Declare Equivalent Keys Nat.add (fun _ => S).
+Goal foo 3 (1 * 2).
+  rewrite H.
+
+I would like to be able to say "When rewriting with H, try deferring the 
+unification of [?1 + ?2] with [3] until after you've unified other things, 
+namely [?1 * ?2] with [1 * 2]."
+
+
+Comment author: @mattam82
+
+Existing Instance Morphisms.eq_subrelation. makes the first one go through, I'm 
+not sure why I decided
+not to make this a proper instance but it might have to do with long 
+resolutions... Anyway the second one 
+could be done by postponing indeed but the unification algorithm used by 
+rewrite and setoid_rewrite does
+not have postponing, so it will have to wait until we move to the other 
+algorithm (wip with Beta and Hugo).
+
+

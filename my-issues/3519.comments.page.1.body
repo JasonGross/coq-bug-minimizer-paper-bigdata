@@ -1,0 +1,68 @@
+Comment author: @JasonGross
+
+Module nonprim.
+  Unset Primitive Projections.
+  Class foo (a : Type) := { bar : Type }.
+  About bar.
+  Check (bar (a := Set)).
+End nonprim.
+
+Module prim.
+  Set Primitive Projections.
+  Class foo (a : Type) := { bar : Type }.
+  About bar.
+  Check (bar (a := Set)). (* Toplevel input, characters 26-36:
+Error: Wrong argument name: a. *)
+End prim.
+
+
+Comment author: @JasonGross
+
+The expected behavior is that [bar] is applied to [_ : foo a], as a primitive projection.  Furthermore, this should be a reversable syntax that can be used in notations.  Here are two attempts at this which failed:
+
+Module nonprim.
+  Unset Primitive Projections.
+  Class foo (a : Type) := { bar : Type }.
+  Notation baz x := (bar (a := x)).
+  Goal forall f : foo Set, baz Set.
+  Proof.
+    intros.
+    match goal with |- baz ?s => pose s end.
+    admit.
+  Qed.
+End nonprim.
+
+Module prim.
+  Set Primitive Projections.
+  Class foo (a : Type) := { bar : Type }.
+  Fail Notation baz x := (bar (a := x)).  (* Toplevel input, characters 23-31:
+Error: Wrong argument name: a. *)
+  Arguments bar _ {_} / .
+  Notation baz x := (bar x).  (* Toplevel input, characters 23-31:
+Error: Wrong argument name: a. *)
+  Goal forall f : foo Set, baz Set.
+  Proof.
+    intros.
+    match goal with |- baz ?s => pose s end.
+    simpl.
+    Fail match goal with |- baz ?s => pose s end. (* Toplevel input, characters 34-35:
+Error: The reference s was not found in the current environment; it's not primitive *)
+    admit.
+  Qed.
+  Arguments bar {_} _ / .
+  Notation qux x := (bar (_ : foo x)).
+  Goal forall f : foo Set, qux Set.
+  Proof.
+    intros.
+    Fail match goal with |- baz ?s => pose s end. (* Toplevel input, characters 34-35:
+Error: The reference s was not found in the current environment; the [qux] notation doesn't actually bind it *)
+    admit.
+  Qed.
+End prim.
+
+
+Comment author: @silene
+
+It seems to have been fixed somehow, I cannot reproduce it.
+
+

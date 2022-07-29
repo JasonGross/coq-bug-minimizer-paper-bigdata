@@ -1,0 +1,182 @@
+Comment author: @JasonGross
+
+Sorry it's a bit long.  I may try to minimize it later.  The pose proof at the bottom gives "Anomaly: Not enough lambda/let's. Please report."  Perhaps it has something to do with the hypothesis not being beta reduced?
+```coq
+Set Asymmetric Patterns.
+
+Section eq.
+  Let A := { X : Type & X }.
+  Let B := (fun x : A => projT1 x).
+  Let T := (fun (a' : A) (b' : B a') => projT2 a' = b').
+  Let T' := T.
+  Let t1T := (fun _ : A => unit).
+  Let f1 := (fun x (_ : t1T x) => projT2 x).
+  Let t1 := (fun x (y : t1T x) => @ eq_refl (projT1 x) (projT2 x)).
+  Let t1T' := t1T.
+  Let f1' := f1.
+  Let t1' := t1.
+
+  Theorem eq_matches_commute
+          a' b' (t' : T a' b')
+          (rta : forall b'', T' a' b'' -> A)
+          (rtb : forall b'' t'', B (rta b'' t''))
+          (rt1 : forall y, T _ (rtb (f1' a' y) (@ t1' a' y)))
+          (R : forall (b : B (rta b' t')), T _ b -> Type)
+          (r1 : forall y, R (f1 _ y) (@ t1 _ y))
+  : match
+      match t' as t0' in (@ eq _ _ b0') return T (rta b0' t0') (rtb b0' t0') with
+        | eq_refl => rt1 tt
+      end
+      as t0 in (@ eq _ _ b0)
+      return R b0 t0
+    with
+      | eq_refl => r1 tt
+    end
+    =
+    match t'
+          as t0' in (@ eq _ _ b0')
+          return (forall (R : forall (b : B (rta b0' t0')), T _ b -> Type)
+                         (r1 : forall y, R (f1 _ y) (@ t1 _ y)),
+                    R _ (match t0' as t0'0 in (@ eq _ _ b0'0) return T (rta b0'0 t0'0) (rtb b0'0 t0'0) with
+                           | eq_refl => rt1 tt
+                         end))
+    with
+      | eq_refl => fun _ r1 =>
+                      match rt1 tt with
+                        | eq_refl => r1 tt
+                      end
+    end R r1.
+  Proof.
+    destruct t'; reflexivity.
+  Defined.
+
+  Theorem eq_match_beta2
+          a b (t : T a b)
+          X
+          (R : forall b' (t' : T a b'), X b' -> Type)
+          (r1 : forall y x, R _ (@ t1 _ y) x)
+          x
+  : match t as t' in (@ eq _ _ b') return forall x, R b' t' x with
+      | eq_refl => r1 tt
+    end (x b)
+    =
+    match t as t' in (@ eq _ _ b') return R b' t' (x b') with
+      | eq_refl => r1 tt (x _)
+    end.
+  Proof.
+    destruct t; reflexivity.
+  Defined.
+End eq.
+
+Definition typeof {T} (_ : T) := T.
+
+Eval compute in (eq_sym (eq_sym _)).
+Goal forall T (x y : T) (p : x = y), True.
+  intros.
+  pose proof
+       (@ eq_matches_commute
+          (existT (fun T => T) T x) y p
+          (fun b'' _ => existT (fun T => T) T b'')
+          (fun _ _ => x)
+          (fun _ => eq_refl)
+          (fun x' _ => x' = y)
+          (fun _ => eq_refl)
+        ) as H0.
+  compute in H0.
+  change (fun (x' : T) (_ : y = x') => x' = y) with ((fun y => fun (x' : T) (_ : y = x') => x' = y) y) in H0.
+  pose proof (fun k => @ eq_trans _ _ _ k H0).
+```
+Comment author: @silene
+
+Here is a reduced testcase. The change tactic is hitting right in the return clause of the match and, from there, everything goes wrong. (pose and clearbody are not even needed to get the anomaly, but they hasten it.)
+```coq
+Parameter T : Set.
+Inductive eq x : T -> Prop := eq_refl : eq x x.
+Parameter any: forall {T : Prop} (_:T), Prop.
+Lemma foo (y : T) : True.
+refine (_ (_ : any match _ in (eq _ x) return (eq x y)
+  with eq_refl _ => eq_refl _ end)).
+change (fun x (_ : eq y x) => eq x y) with ((fun y x (_ : eq y x) => eq x y)
+y).
+intro H.
+pose (e := H).
+clearbody e.
+```
+
+
+Comment author: @herbelin
+
+This bug touches at a deep issue in the design of the CCI: what is the
+definition of a subterm of a term?
+
+My own view, which is maybe not the one of the early designers of the CIC, is that in `match t as x in I yi return P with Cj xij => tj end`, the subterms are `t`, `P`, the `tj` and their own subterms. This contrasts with the internal representation of `match` where all subterms of `fun yi x => P` and of `fun xij => tj` are subterms of the `match`, even though the types of `yi`, `x` and `xij` are canonically derivable from the type of `t`, and even though there are not explicit in the concrete syntax.
+
+It is long time ago that changing the internal representation of the return predicate and of the branches of a `match` has been discussed (probably more than 10 years ago). At some time, Benjamin Grégoire had almost something working but for some reason, it did not converge.
+
+In my opinion, the best way to ensure this notion of subterm is to change the internal representation of terms.
+
+An alternative would be to change only the iter/fold/map/etc combinators over terms, which by the way could be done step by step.
+
+In any case, I think this is not of the "bug fix" kind but of the "design" kind issue.
+
+Comment author: @maximedenes
+
+Just out of curiosity, isn't there some flexibility in the domains of lambdas in return clauses with universe subtyping?
+
+
+Comment author: @JasonGross
+
+Maxime, that does seem to be the case, though I'm not sure what the flexibility could be useful for...
+
+See, e.g.,
+```coq
+Universe i j.
+Axiom admit : False.
+Set Printing Universes.
+Goal forall (A : Type@{i}) (x y : Type@{i}) (X : x) (p : x = y) (P : _ -> Prop),
+P match p in (_ = y') return y' with
+| eq_refl => X
+end.
+intros.
+change Type@{i} with Type@{j}.
+change (fun (y' : ?T) (y'' : eq x y') => @ ?B y' y'') with
+(fun (y' : T) (y'' : eq x y') => (fun (y' : T) (y'' : eq x y') => B y' y'') y' y''). (* shows Type@{j} rather than Type@{i} *)
+case admit.
+Defined.
+Print Universes.
+```
+
+Comment author: @JasonGross
+
+*** Bug #4676 has been marked as a duplicate of this bug. ***
+
+
+Comment author: @herbelin
+
+The more I'm thinking about this issue, the more I'm leaning towards considering that the hidden part of a "match" is a part which is canonically generated from the signature of the inductive types by substitution of the parameters of the inductive types.
+
+The drawback is that one would need typing the matched term in order to build the typing environment of the predicate and branches of a "match" and it remains to be evaluated whether it would not be to difficult to implement.
+
+The clear advantage of this approach is that one would get an internal representation in exact adequation with the external, and it would be clear that matching subterms would not traverse at all the context of the return type and the contexts of the branches of a "match", and these contexts would remain correct by construction.
+
+
+Comment author: @silene
+
+I am not sure to understand. Why would it be harder to type a return clause `(fun (p:?1) (x:I p) => f p x : ?2)` than to type a return clause `(f _1 _2 : ?2)` with `(_1:?1) (_2:I _1)` for an inductive type `I`? It seems to me we have exactly the same information and that, in both cases, we might have to type the matched term in order to deduce `?1` if it is not readily apparent from `?2`.
+
+Comment author: @silene
+
+Sorry, obviously I meant it the other way. Why is the actual form (fun _ => _) simpler?
+
+
+Comment author: @maximedenes
+
+IIRC, for an inductive I with parameters p and index a, the current form is fun (a : ?1) (x : I p a) => t. If we remove the lambdas, we need to get the instantiated parameter p from somewhere else. That said, I think it would be worth trying!
+
+
+Comment author: @silene
+
+Yes, that was a dumb question of mine. In one case, the pretyper-inferred types are remembered, while in the other case, the typechecker has to infer them anew. So it might not be harder (?), but it is at least slower.
+
+
+Note: @silene example (in his first comment) now works, but initial bug not (i.e. the underlying CCI issue is still there).

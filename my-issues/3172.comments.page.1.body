@@ -1,0 +1,23 @@
+Comment author: @JasonGross
+
+I get
+
+You tried to change the See Also field to https://coq.inria.fr/bugs/show_bug.cgi?id=3171 , but only the assignee or reporter of the bug, or a user with the required permissions may change that field.
+
+when I try to add a "see also" to https://coq.inria.fr/bugs/show_bug.cgi?id=3171, which I reported.
+
+
+Comment author: @pirbo
+
+I looked anywhere I can in the administration board and I don't see where you can set up that users are allowed to modify See Also for other users !!!
+
+Anyway, you have been personally grands in the caneditbugs group ;-)
+
+
+Comment author: @JasonGross
+
+The problem here was not that I couldn't modify someone else's bug, but my own(!).  Anyway, it seems to be fixed now, possibly by itself.
+
+What's the caneditbugs group?
+
+

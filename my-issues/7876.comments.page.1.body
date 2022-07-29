@@ -1,0 +1,5 @@
+@ppedrot also proposed this in https://github.com/coq/coq/issues/15330#issuecomment-991349161.
+
+That'd be a strict improvement, but it'll break syntactic matches on terms. [Unless that can be hidden from users perfectly (and better than primitive projections).]
+
+But the alternative for users is to eta-expand these types by hand _and_ break the matches anyway. @JasonGross sketched this in https://github.com/coq-community/coq-ext-lib/pull/123#discussion_r783638620. Yet, I think it's a serious proposal to fix https://gitlab.mpi-sws.org/iris/stdpp/-/issues/80, if this wish is rejected.

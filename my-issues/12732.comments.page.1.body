@@ -1,0 +1,21 @@
+Note that this works:
+```coq
+Require Import Coq.extraction.Extraction.
+
+Module A.
+  Axiom ty_int : Set.
+  Extract Inlined Constant ty_int => "int".
+  Definition foo := ty_int.
+End A.
+
+Recursive Extraction A.foo.
+(*
+
+module A =
+ struct
+  type foo = int
+ end
+
+*)
+```
+I think this is a duplication or variant of #4749.

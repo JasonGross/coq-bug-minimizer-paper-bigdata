@@ -1,0 +1,6 @@
+Probably the goal evar behaviour, see also https://github.com/coq/coq/issues/15520
+@SkySkimmer I don't see how that could cause this.  That issue is until `.`, new evars are treated as holes by `pattern_of_constr` and therefore match anything.  But here we have a case where `eassumption` is *failing* to find a match.  What evar-containing term do you think is going through `pattern_of_constr` to cause this?
+I don't know if pattern_of_constr is involved, I just think the evar status is involved.
+eassumption on a goal with evars calls tactic unification https://github.com/coq/coq/blob/aed24f10e97349fdd993ede2868d448c14e979f3/tactics/eauto.ml#L55
+tactic unification requires that all no_goals evars are resolved https://github.com/coq/coq/blob/aed24f10e97349fdd993ede2868d448c14e979f3/pretyping/unification.ml#L1544-L1545 (note the fail:true)
+no_goals uses the evar status https://github.com/coq/coq/blob/aed24f10e97349fdd993ede2868d448c14e979f3/pretyping/typeclasses.ml#L223-L228

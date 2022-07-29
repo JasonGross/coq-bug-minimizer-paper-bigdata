@@ -1,0 +1,90 @@
+Comment author: @JasonGross
+
+[match] constructs should reduce when the discriminee is another [match] construct, and should also reduce in some cases when applied to arguments.
+
+Here is a rule for reducing a [match (match ... with ... end) with ... end] construct on arbitrary inductive types (actually, here's the two constructor one parameter one index case, which should be straightforwardly generalizable to all cases) (code compiles in Coq 8.4):
+
+Set Implicit Arguments.
+
+Module match_commutes.
+  Axiom A : Type.
+  Axiom A' : Type.
+  Axiom B t1T t2T : A -> Type.
+  Axiom B' t1T' t2T' : A' -> Type.
+  Axiom f1 : forall x, t1T x -> B x.
+  Axiom f2 : forall x, t2T x -> B x.
+  Axiom f1' : forall x, t1T' x -> B' x.
+  Axiom f2' : forall x, t2T' x -> B' x.
+
+  (** Suppose we have types [A] and [A'] and fibrations [B : A → Type] and [B' : A' → Type].  Suppose we have two inductive families with one parameter and one index (the multi-parameter multi-index case should be a straightforward generalization) defined as: *)
+
+  Inductive T (x : A) : B x -> Type :=
+  | t1 : forall y : t1T x, T x (f1 x y)
+  | t2 : forall y : t2T x, T x (f2 x y).
+
+  Inductive T' (x : A') : B' x -> Type :=
+  | t1' : forall y : t1T' x, T' x (f1' x y)
+  | t2' : forall y : t2T' x, T' x (f2' x y).
+
+  (** for some [t1T], [t2T], [t1T'], [t2T'], [f1], [f2], [f1'], and [f2'].  Then we have the following theorem: *)
+
+  Theorem matches_commute a' b' (t' : T' a' b')
+          (rta : forall b'', T' a' b'' -> A)
+          (rtb : forall b'' t'', B (rta b'' t''))
+          (rt1 : forall y, T _ (rtb (f1' a' y) (@ t1' a' y)))
+          (rt2 : forall y, T _ (rtb (f2' a' y) (@ t2' a' y)))
+          (R : forall (b : B (rta b' t')), T _ b -> Type)
+          (r1 : forall y, R (f1 _ y) (@ t1 _ y))
+          (r2 : forall y, R (f2 _ y) (@ t2 _ y))
+  : match
+      match t' as t0' in (T' _ b0') return T (rta b0' t0') (rtb b0' t0') with
+        | t1' y => rt1 y
+        | t2' y => rt2 y
+      end
+      as t0 in (T _ b0)
+      return R b0 t0
+    with
+      | t1 y => r1 y
+      | t2 y => r2 y
+    end
+    =
+    match t'
+          as t0' in (T' _ b0')
+          return (forall (R : forall (b : B (rta b0' t0')), T _ b -> Type)
+                         (r1 : forall y, R (f1 _ y) (@ t1 _ y))
+                         (r2 : forall y, R (f2 _ y) (@ t2 _ y)),
+                    R _ (match t0' as t0'0 in (T' _ b0'0) return T (rta b0'0 t0'0) (rtb b0'0 t0'0) with
+                           | t1' y => rt1 y
+                           | t2' y => rt2 y
+                         end))
+    with
+      | t1' y => fun _ r1 r2 =>
+                      match rt1 y with
+                        | t1 y' => r1 y'
+                        | t2 y' => r2 y'
+                      end
+      | t2' y => fun _ r1 r2 =>
+                      match rt2 y with
+                        | t1 y' => r1 y'
+                        | t2 y' => r2 y'
+                      end
+    end R r1 r2.
+  Proof.
+    destruct t'; reflexivity.
+  Defined.
+End matches_commute.
+
+
+I'm still working on a rule for reducing a [match] applied to arguments which doesn't require solving higher order unification.  (The rule I use mentally only works when the arguments are sufficiently polymorphic, so it's not a good candidate for implementation.)
+
+
+Comment author: @JasonGross
+
+(The rule I use in my head is essentially the commutation rule I mention in https://coq.inria.fr/bugs/show_bug.cgi?id=3119, for [f := (fun m x => m x)].)
+
+
+Comment author: @ppedrot
+
+This feature wish being overly deep (it needs some formal proofs of the feasibility & soundness of the resulting system), I think it is better to close it for now. If you wish to write down such proofs, you're welcome!
+
+

@@ -1,0 +1,2 @@
+Indeed, in the second case the compared terms are physically equal and the function takes a fast path. I don't think hashconsing would help here, you'd just pay a tremendous amount for systematic hashconsing while only gaining on corner cases such as the one presented here. We're already paying a high toll due to hashconsing, I doubt adding any would do any good.
+wontfix

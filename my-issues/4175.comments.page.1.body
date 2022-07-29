@@ -1,0 +1,56 @@
+Comment author: @JasonGross
+
+```coq
+Require Import Setoid.
+Axiom dummy : nat = bool.
+Axiom foo : forall X, (X + 0) = X.
+Hint Rewrite foo.
+Theorem t: (1 + 0 = 1).
+  autorewrite with core.
+  Undo.
+  rewrite_strat topdown (hints core).
+  Undo.
+  Hint Rewrite dummy.
+  autorewrite with core.
+  Undo.
+  rewrite_strat topdown (hints core). (* Toplevel input, characters 15-50:
+Error: build_signature: no constraint can apply on a dependent argument *)
+
+
+```
+Perhaps more generally, `Error: build_signature: no constraint can apply on a dependent argument` should not prevent rewriting at other locations, and should not break out of `repeat`.
+We stumbled upon this problem and here's a very hacky fix. I am not sure if it is worth opening a PR with it.
+```diff
+diff --git a/plugins/ltac/rewrite.ml b/plugins/ltac/rewrite.ml
+index 77162ce89a..fb0c2c4e00 100644
+--- a/plugins/ltac/rewrite.ml
++++ b/plugins/ltac/rewrite.ml
+@@ -1016,13 +1016,16 @@ let subterm all flags (s : 'a pure_strategy) : 'a pure_strategy =
+                       | None -> false
+                       | Some r -> not (is_rew_cast r.rew_prf)) args'
+                   then
+-                    let evars', prf, car, rel, c2 =
+-                      resolve_morphism env m args args' (prop, cstr') evars'
+-                    in
+-                    let res = { rew_car = ty; rew_from = t;
+-                                rew_to = c2; rew_prf = RewPrf (rel, prf);
+-                                rew_evars = evars' }
+-                    in Success res
++                    try
++                      let evars', prf, car, rel, c2 =
++                        resolve_morphism env m args args' (prop, cstr') evars'
++                      in
++                      let res = { rew_car = ty; rew_from = t;
++                                  rew_to = c2; rew_prf = RewPrf (rel, prf);
++                                  rew_evars = evars' }
++                      in Success res
++                   with
++                   | _ -> Fail
+                   else
+                     let args' = Array.map2
+                       (fun aorig anew ->
+```
+`build_signature` is only used internally in rewrite.ml so maybe the error it throws should not be a `user_err`?
+Presumably, an actual fix should catch this particular error and not things like keyboard interrupt and other random exceptions.  Having `build_signature` not throw a `user_err` and catching that particular exception seems even better.
+Agreed.
+Here's one more user who just stumbled on this... :wink: The problem seems to be still present in 8.15.

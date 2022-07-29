@@ -1,0 +1,61 @@
+Comment author: @JasonGross
+
+This is a confusing error message for an arguments list like:
+
+Arguments id _ _ /, {_} _.
+
+
+Comment author: @maximedenes
+
+What version of 8.6 are you using?
+
+
+Comment author: @ejgallego
+
+In current v8.6 this gives:
+
+> Error: Multiple sequences of implicit arguments available only for references
+> that cannot be applied to an arbitrarily large number of arguments.
+
+
+Comment author: @ejgallego
+
+which IMO is an even more confusing error message than before ;)
+
+
+Comment author: @JasonGross
+
+I'm using ff0fea7a07d85342586f65d68e9fdee0ff0c3d74.
+
+Maybe this was a bad example, because "Arguments id _ _ /, {_} _ /." gives Emilio's error message.  However
+  Arguments pred _ /, {_} /.
+works, but I get the error message I mentioned on 
+  Arguments pred _ /, {_}.
+
+Should I update my version of 8.6?  (When is beta1 being released?)
+
+
+Comment author: @maximedenes
+
+I suggest you update, because I merged a lot of fixes on Arguments since then.
+
+The message quoted by Emilio looks confusing to me, but it comes from the implicit arguments API, not Arguments. Note that it is an independent one, just previously hidden by a bug in Arguments.
+
+
+Comment author: @ejgallego
+
+> Arguments pred _ /, {_}.
+
+works fine for me on current v8.6
+
+
+Comment author: @JasonGross
+
+See https://coq.inria.fr/bugs/show_bug.cgi?id=5175
+
+
+Comment author: @maximedenes
+
+So this one has been fixed in 8.6, right? Can I close it?
+
+

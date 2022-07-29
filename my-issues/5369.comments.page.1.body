@@ -1,0 +1,67 @@
+Comment author: @JasonGross
+
+```coq
+Require Import Coq.Classes.Morphisms Coq.Setoids.Setoid.
+Axiom f g : nat -> nat -> nat.
+Axiom Hfg : forall n m, n = n -> f n m = g n m.
+Axiom LetIn : forall {A B} (x : A) (f : A -> B), B.
+Axiom LetIn_Proper : forall A B, Proper (eq ==> pointwise_relation _ eq ==> eq) 
+(@ LetIn A B).
+Existing Instance LetIn_Proper.
+Goal forall n, LetIn n (fun n' => f 1 n') = LetIn n (fun n' => g 1 n').
+Proof.
+  intros.
+  Fail setoid_rewrite Hfg. (* The command has indeed failed with message:
+         Ltac call to "setoid_rewrite (orient) (glob_constr_with_bindings)" 
+failed.
+         Tactic failure: setoid rewrite failed: Nothing to rewrite. *) (* why 
+does this fail?  I think it should not *)
+  setoid_rewrite (fun n m => @ Hfg n m eq_refl).
+  Undo.
+  apply LetIn_Proper; [ reflexivity | intro ].
+  setoid_rewrite Hfg.
+```
+
+
+The following failure is a bit less surprising, but I think it should still 
+work in this case, because the bound variables should be accessible to be named 
+in the side condition by the time the lemma is used:
+```coq
+Require Import Coq.Classes.Morphisms Coq.Setoids.Setoid.
+Axiom f g : nat -> nat -> nat.
+Axiom Hfg : forall n m, n = m -> f n m = g n m.
+Axiom LetIn : forall {A B} (x : A) (f : A -> B), B.
+Axiom LetIn_Proper : forall A B, Proper (eq ==> pointwise_relation _ eq ==> eq) 
+(@ LetIn A B).
+Existing Instance LetIn_Proper.
+Goal forall n, LetIn n (fun n' => f n' n') = LetIn n (fun n' => g n' n').
+Proof.
+  intros.
+  Fail setoid_rewrite Hfg. (* The command has indeed failed with message:
+         Ltac call to "setoid_rewrite (orient) (glob_constr_with_bindings)" 
+failed.
+         Tactic failure: setoid rewrite failed: Nothing to rewrite. *) (* I 
+think this should also succeed *)
+  setoid_rewrite (fun n => @ Hfg n n eq_refl).
+  Undo.
+  apply LetIn_Proper; [ reflexivity | intro ].
+  setoid_rewrite Hfg.
+```
+Comment author: @psteckler
+
+Did you mean "n = m" instead of "n = n" on line 3 of this script?
+
+
+Comment author: @psteckler
+
+(In reply to Paul Steckler from comment [BZ#1](https://github.com/coq/coq/issues?q=is%3Aissue%20%22Original%20bug%20ID%3A%20BZ%231%22))
+> Did you mean "n = m" instead of "n = n" on line 3 of this script?
+
+No, you didn't.
+
+
+Comment author: @mattam82
+
+Indeed the side conditions should be handled correctly.
+
+

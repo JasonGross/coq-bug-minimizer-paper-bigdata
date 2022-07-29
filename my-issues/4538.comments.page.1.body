@@ -1,0 +1,15 @@
+Comment author: @JasonGross
+
+The following succeeds:
+  Reserved Notation "(∪ *) ".
+but the following does not:
+  Reserved Notation "(∪  *)  ". (* Error: Cannot determine the level. *)
+
+This seems wrong (and is at the root of an issue I ran into with my bug-minimizer: https://github.com/JasonGross/coq-tools/issues/20).
+
+
+Comment author: @silene
+
+Fixed by commit 857e9ff. Thanks for the report.
+
+

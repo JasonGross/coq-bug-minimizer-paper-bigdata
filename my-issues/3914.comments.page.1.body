@@ -1,0 +1,55 @@
+Comment author: @JasonGross
+
+Until recently, this code used to work.  Now it does not.  I will bisect it.
+
+(* File reduced by coq-bug-finder from original input, then from 1638 lines to 36 lines, then from 35 lines to 20 lines *)
+(* coqc version trunk (January 2015) compiled on Jan 12 2015 10:58:30 with OCaml 4.01.0
+   coqtop version cagnode15:/afs/csail.mit.edu/u/j/jgross/coq-trunk,trunk (13a55aa2e8fd999a96cf1e4df5a0e34f26e3dcc8) *)
+
+Notation idmap := (fun x => x).
+Notation compose := (fun g f x => g (f x)).
+Notation "g 'o' f" := (compose g f) (at level 40, left associativity) : function_scope.
+Open Scope function_scope.
+Inductive paths {A : Type} (a : A) : A -> Type := idpath : paths a a where "x = y" := (@ paths _ x y) : type_scope.
+Arguments idpath {A a} , [A] a.
+Definition pointwise_paths {A} {P:A->Type} (f g:forall x:A, P x) := forall x:A, f x = g x.
+Notation "f == g" := (pointwise_paths f g) (at level 70, no associativity) : type_scope.
+Class IsPreIdempotent {X : Type} (f : X -> X) := isidem : forall x, f (f x) = f x.
+Global Instance ispreidem_idmap (X : Type) : @ IsPreIdempotent X idmap := fun _ => idpath.
+Goal forall X A (r : X -> A) (s : A -> X) (H : s o r == idmap -> forall x : X, x = x), Type.
+  intros.
+  exact {p : s o r == idmap &
+             forall x, H p x = isidem (f := idmap) x } || fail "too early".
+  Undo.
+  exact {p : s o r == idmap &
+             forall x, H p x = isidem x }. (* Toplevel input, characters 15-85:
+Error:
+Unable to satisfy the following constraints:
+In environment:
+X : Type
+A : Type
+r : X -> A
+s : A -> X
+H : s o r == idmap -> forall x : X, x = x
+p : s o r == idmap
+x : X
+
+?IsPreIdempotent : "IsPreIdempotent (fun _ : X => x)" *)
+
+
+Comment author: @mattam82
+
+It's really debatable if solving
+ (x = x) ~= (?f[x] (?f[x] x)) = (?f[x] x) by setting f to the identity or (fun _ => x) should be allowed as both are incomparable solutions...
+
+
+Comment author: @mikeshulman
+
+I agree; this code should probably never have worked in the first place.
+
+
+Comment author: @ppedrot
+
+That deserves a WONTFIX then.
+
+

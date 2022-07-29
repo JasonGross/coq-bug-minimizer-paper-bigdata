@@ -1,0 +1,17 @@
+Comment author: @JasonGross
+
+Set Universe Polymorphism.
+Definition Type1@ {i} := Eval hnf in let gt := (Set : Type@ {i}) in Type@ {i}.
+Definition Type2@ {i} := Eval hnf in let gt := (Type1 : Type@ {i}) in Type@ {i}. (* Error: Universe {Top.3} is unbound. *)
+
+
+Comment author: @JasonGross
+
+Either this is a bug, or the error message should be more descriptive (e.g., give character numbers where the universe is introduced, list the universes that are declared, suggest a correction to the term that declares the universe.)
+
+
+Comment author: @ppedrot
+
+Fixed in trunk by commit a4b457bef. If you want a backport, complain loudly.
+
+

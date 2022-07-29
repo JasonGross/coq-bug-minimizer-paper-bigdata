@@ -1,0 +1,57 @@
+What's the point to introduce parsing rules, which are non-modular, when you can use directly the `tactic` scope?
+Ah, if int and string can be obtained with `tactic` scope (which I guess it makes sense that they can, along with tuple and Ltac2 list, and hopefully array literals someday), this should be documented if it's not already.  cc @jfehrle 
+> What's the point to introduce parsing rules, which are non-modular, when you can use directly the tactic scope?
+
+Well, it would be a misleading to see
+
+```
+Ltac2 Notation "bar" c(tactic) := print (of_string c).
+```
+
+when you really mean
+
+```
+Ltac2 Notation "bar" c(string) := print (of_string c).
+```
+
+The examples are contrived since the type can be inferred from the RHS.
+
+But this raises another issue: `ltac2_expr` is not always a `tactic`, so that syntactic class name is misleading.  Maybe it should be `ltac2_expr`.
+Also, this looks like a bug:
+
+```
+Ltac2 Notation "bar" c("match") := print (of_string c).
+Goal True.
+bar "abc".
+
+(* Unbound value bar *)
+```
+Were you expecting a syntax error of "expected match after bar" or something?
+I'll leave that to @ppedrot to specify.  I don't know if this construct is meant to handle, say "A /\ B" as the regular notations do or if you have to break it up somehow.  Would be useful to have that in the doc.  I didn't even consider this earlier.  (Not sure if these are independent features.)
+> Also, this looks like a bug:
+
+Doesn't look like one to me. You notation parses `bar match`, and you wrote something that doesn't match, so you get the default Ltac2 parsing rules.
+Fair enough, although `c("match")` is a rather odd construction.  `c` looks like a formal parameter, but the `("match")` seems to negate that. `foo match` gives `This expression has type unit but an expression was expected of type string`.  Would be user-friendly to flag this but not strictly necessary.
+
+Looks like I mis-edited the grammar for `Ltac2 Notation`, BTW, which I'll fix.
+
+`Ltac2 Notation` seems to overlap with `Notation`.  Are they equivalent or are there guidelines for when to use each?
+> Would be user-friendly to flag this but not strictly necessary.
+
+What do you mean?  And note that `c` is a parameter, it's type is unit, and the error message is that you're passing a thing of type unit to a thing that expects a string.
+
+> `Ltac2 Notation` seems to overlap with `Notation`. Are they equivalent or are there guidelines for when to use each?
+
+`Ltac2 Notation` creates a(n Ltac2) tactic notation which can be used in tactic-land, and the replacement expression is an Ltac2 expression.  `Notation` creates a notation which is used in Gallina-land, and the replacement expression is Gallina.
+It's easy to get confused.  So much guesswork, so many details.
+
+> `Ltac2 Notation` creates a(n Ltac2) tactic notation which can be used in tactic-land, and the replacement expression is an Ltac2 expression.  `Notation` creates a notation which is used in Gallina-land, and the replacement expression is Gallina.
+
+Ah, `Notation` extends `term` and `Ltac2 Notation` extends `ltac2_expr`?
+
+But `ltac2_expr` can have `term`\s within them, so tactic-land and Gallina-land are not so separate, right?
+> But `ltac2_expr` can have `term`\s within them, so tactic-land and Gallina-land are not so separate, right?
+
+Sure, but `Notation` is also used for printing, while `Ltac2 Notation` is not.  And `Notation` is more flexible with respect to inference of holes in its arguments (there's no way to delay the typechecking of constr arguments passed to `Ltac2 Notation` until they are inserted into a larger expression.).  And I don't think you'd want to have to write `ltac2:(let v := x + y in exact v)` every time you wanted to use addition in Gallina.
+I was thinking more about mentioning in the doc that `Notation` extends `term`, `Tactic Notation` extends `ltac_expr` and `Ltac2 Notation` extends `ltac2_expr`.  Sometimes it helps to state the obvious for basic orientation.
+You are quick-draw on the emojis!

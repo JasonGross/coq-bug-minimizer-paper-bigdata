@@ -1,0 +1,72 @@
+Comment author: @JasonGross
+
+Unless I pass ./configure the -no-native-compiler option, I get error messages like
+Dynlink error, cannot find file D:\coq\theories\Init\NCoq_Init_Datatypes.cmxs in search path
+Warning:
+Dynlink error, cannot find file D:\coq\theories\Init\NCoq_Init_Logic_Type.cmxs in search path
+Warning:
+Dynlink error, cannot find file D:\coq\theories\Init\NCoq_Init_Specif.cmxs in search path
+Warning:
+Dynlink error, cannot find file D:\coq\theories\Init\NCoq_Init_Peano.cmxs in search path
+Warning:
+Dynlink error, cannot find file D:\coq\theories\Init\NCoq_Init_Wf.cmxs in search path
+Warning:
+Dynlink error, cannot find file D:\coq\theories\Init\NCoq_Init_Tactics.cmxs in search path
+Warning:
+Dynlink error, cannot find file D:\coq\theories/Init\NCoq_Init_Prelude.cmxs in search path
+The input line is too long.
+Error: Could not compile the library to native code. Skipping.
+COQC      theories/ZArith/Zquot.v
+Warning:
+Dynlink error, cannot find file D:\coq\theories\Init\NCoq_Init_Notations.cmxs in search path
+Warning:
+Dynlink error, cannot find file D:\coq\theories\Init\NCoq_Init_Logic.cmxs in search path
+Warning:
+Dynlink error, cannot find file D:\coq\theories\Init\NCoq_Init_Datatypes.cmxs in search path
+Warning:
+Dynlink error, cannot find file D:\coq\theories\Init\NCoq_Init_Logic_Type.cmxs in search path
+Warning:
+Dynlink error, cannot find file D:\coq\theories\Init\NCoq_Init_Specif.cmxs in search path
+Warning:
+Dynlink error, cannot find file D:\coq\theories\Init\NCoq_Init_Peano.cmxs in search path
+Warning:
+Dynlink error, cannot find file D:\coq\theories\Init\NCoq_Init_Wf.cmxs in search path
+Warning:
+Dynlink error, cannot find file D:\coq\theories\Init\NCoq_Init_Tactics.cmxs in search path
+Warning:
+Dynlink error, cannot find file D:\coq\theories/Init\NCoq_Init_Prelude.cmxs in search path
+
+for most/all .v files.  I am using cygwin-x86_64, OCaml 4.01.0 from http://wodi.forge.ocamlcore.org/, camlp5-6.11 compiled from source, and lablgtk2 from wodi's package manager.  I am on Windows 8.1.
+
+
+Comment author: @JasonGross
+
+This is with cygwin-x86_64, and ocaml installed via wodi (http://wodi.forge.ocamlcore.org/download.html) (the ocaml package that comes with cygwin64 doesn't have a dynlink.cmxa).  In 32-bit cygwin, using the cygwin ocaml package, everything works fine.  So either it's a problem with the particular variant/build of ocaml I was using, or it's only a problem on x86_64.
+
+
+Comment author: @JasonGross
+
+Note that cygwin x86_32, which I now use, has sufficient OCaml packages for building Coq, and this error does not occur with 32-bit cygwin using the bundled OCaml packages
+
+
+Comment author: @siegebell
+
+*** Bug [BZ#3836](https://github.com/coq/coq/issues?q=is%3Aissue%20%22Original%20bug%20ID%3A%20BZ%233836%22) has been marked as a duplicate of this bug. ***
+
+
+Comment author: @siegebell
+
+Created attachment 522
+proposed fix
+
+Replaced usage of Sys.command with CUnix.sys_command in function call_compiler of kernel/nativelib.ml, which now constructs a list of arguments rather than an entire argument string. Also changed the return type from into to bool because CUnix.sys_command does not return an exit code directly and the exit code was never checked for anything but success/failure.
+
+> Attached file: [3836.patch](https://coq.inria.fr/bugfiles/attachment.cgi?id=522) (text/plain, 4172 bytes)
+> Description:   proposed fix
+
+
+Comment author: @maximedenes
+
+Patch merged, thanks a lot! And sorry for the delay, I don't have an easy access to windows for testing.
+
+

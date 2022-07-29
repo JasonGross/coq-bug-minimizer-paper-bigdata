@@ -1,0 +1,16 @@
+Hi @JasonGross, the factual reason for the failure is the following: since `eq` is not the registered `eq`, `Tactics.prove_symmetry` is called. But the latter (naively) uses some form of `case` on the hypothesis `eq 2 1` in order to prove `eq 1 2`. Thus, it replaces the two occurrences of `1` with `2`, resulting in `eq 2 3` instead of `eq 2 2`. A reflexivity is then supposed to apply but it fails with the message you see...
+Huh, interesting.  Perhaps the symmetry prover should generalize over the variables being swapped before trying to prove symmetry? 
+Yes, that's a possibility.
+
+@gares, @ppedrot, does it seem a correct direction to go for you? Should it be then declared as a scheme? 
+@herbelin What did you mean by declared as a scheme?
+I meant that `Tactics.prove_symmetry` could call `find_scheme Eqschemes.sym_scheme_kind` from the Scheme system to generate the symmetry proof (as if `Set Rewriting Schemes` had been set) rather than trying to prove it naively.
+
+For instance:
+```
+Set Rewriting Schemes.
+Inductive eq {A} (x : A) : A -> Prop := eq_refl : eq x x.
+Print eq_sym_internal.
+(* symmetry has been produced automatically *)
+```
+

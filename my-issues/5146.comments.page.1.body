@@ -1,0 +1,397 @@
+Comment author: @JasonGross
+
+The reification alone takes about 10 minutes in the attached example.
+
+
+Comment author: @JasonGross
+
+Created attachment 773
+nsatz being slow at reification
+
+> Attached file: [slow_nsatz.v](https://coq.inria.fr/bugfiles/attachment.cgi?id=773) (text/plain, 63345 bytes)
+> Description:   nsatz being slow at reification
+
+
+Comment author: @JasonGross
+
+Created attachment 774
+Alternate version that just does reification and doesn't try to solve it.
+
+> Attached file: [slow_nsatz.v~](https://coq.inria.fr/bugfiles/attachment.cgi?id=774) (text/plain, 63346 bytes)
+> Description:   Alternate version that just does reification and doesn't try to solve it.
+
+
+Comment author: @ppedrot
+
+Most of the time seems to be passed in evar normalization, most precisely because of the function Proofview.contained_in_info. Investigating.
+
+
+Comment author: @ppedrot
+
+I'm not sure I fully understand the typeclass algorithm, so I'm assigning this bug to Matthieu. The root of the problem comes from line 1041 in Class_tactics:
+
+  let dep' = info.search_dep || Proofview.unifiable s' (Goal.goal gl') gls in
+
+which keeps nf-evarizing the various goals at hand. I don't know if the proper solution is to cache the result or to be more clever not to normalize. I'll have a look at a few possible solutions in parallel.
+
+An alternative way would be to get rid of the typeclass-based reification of Nsatz. It does not seem to scale, and for performance-sensitive code such as this one it may be reasonable to switch to ML.
+
+
+Comment author: @mattam82
+
+Hmm, yes dependency information should be cached at some point. A quick workaround would be to switch to the 8.5 version of the code for this.
+
+
+Comment author: @mattam82
+
+Hmm, this could certainly be done more efficiently by nf'ing the goals ones before the DISPATCH below and having a variant of unifiable that does not do nf_evar_info. Then we'd check the dependencies statically when we see the created subgoals, and not dynamically after each subgoal is solved. Actually there's quite a big bug currently because the nf_evar_info will be done on the previously instantiated subgoals!
+
+
+Comment author: @JasonGross
+
+Here's some code that does it all in Ltac, with no typeclass resolution, and 
+it's still slow, though not nearly as slow (this one only takes 106 seconds).  
+(Perhaps the version in the standard library should be replaced by something 
+like this?)  What's taking time in this version?
+
+(** override this for more reification; if extra reification fails; invoke 
+[fail_cont]  *)
+(** N.B. We do almost everything in continuation-passing-style so that we can 
+morally return two values while taking advantage of uconstr (there's no way to 
+return a uconstr pair and get the components out) *)
+Ltac do_reify_extra Rr lvar lterm cont fail_cont :=
+  fail_cont Rr lvar lterm cont.
+Ltac do_reify_binop do_reify PEop Rr lvar x y cont :=
+  do_reify Rr lvar x
+           ltac:(fun lvar rx
+                 => do_reify Rr lvar y
+                             ltac:(fun lvar ry
+                                   => let ret := uconstr:(PEop rx ry) in
+                                      cont lvar ret)).
+Ltac do_reify_unop do_reify PEop Rr lvar x cont :=
+  do_reify Rr lvar x
+           ltac:(fun lvar rx
+                 => let ret := uconstr:(PEop rx) in
+                    cont lvar ret).
+Ltac do_reify_var i Rr lvar lterm cont :=
+  (* grumble, grumble, we can't do Ltac matching against uconstr, so we have to 
+use [constr] in this function *)
+  lazymatch lvar with
+  | nil
+    => let new_lvar := constr:(cons lterm nil) in
+       let ret := uconstr:(@ PEX Z (Pos.of_succ_nat i)) in
+       cont new_lvar ret
+  | cons lterm ?lvars
+    => let ret := uconstr:(@ PEX Z (Pos.of_succ_nat i)) in
+       cont lvar ret
+  | cons ?x ?xs
+    => do_reify_var
+         uconstr:(S i) Rr xs lterm
+                       ltac:(fun lvar ret
+                             => cont constr:(cons x lvar) ret)
+  end.
+Ltac do_reify Rr lvar lterm cont :=
+  lazymatch type of Rr with
+  | @ Ring ?T ?ring0 ?ring1 ?add ?mul ?sub ?opp ?ring_eq ?ops
+    => lazymatch lterm with
+       | ring0 => let ret := uconstr:(PEc 0%Z) in
+                  cont lvar ret
+       | @ zero _ (@ zero_notation _ ring0 _ _ _ _ _ _ _)
+         => let ret := uconstr:(PEc 0%Z) in
+            cont lvar ret
+       | ring1 => let ret := uconstr:(PEc 1%Z) in
+                  cont lvar ret
+       | @ one _ (@ one_notation _ _ ring1 _ _ _ _ _ _)
+         => let ret := uconstr:(PEc 1%Z) in
+            cont lvar ret
+       | pow_N ?x ?n
+         => do_reify Rr lvar x
+                     ltac:(fun lvar rx
+                           => let ret := uconstr:(@ PEpow _ rx n) in
+                              cont lvar ret)
+       | add ?x ?y
+         => do_reify_binop do_reify uconstr:(@ PEadd _) Rr lvar x y cont
+       | @ addition _ (@ add_notation _ _ _ add _ _ _ _ _) ?x ?y
+         => do_reify_binop do_reify uconstr:(@ PEadd _) Rr lvar x y cont
+       | sub ?x ?y
+         => do_reify_binop do_reify uconstr:(@ PEsub _) Rr lvar x y cont
+       | @ subtraction _ (@ sub_notation _ _ _ _ _ sub _ _ _) ?x ?y
+         => do_reify_binop do_reify uconstr:(@ PEsub _) Rr lvar x y cont
+       | opp ?x
+         => do_reify_unop do_reify uconstr:(@ PEopp _) Rr lvar x cont
+       | @ opposite _ (@ opp_notation _ _ _ _ _ _ opp _ _) ?x
+         => do_reify_unop do_reify uconstr:(@ PEopp _) Rr lvar x cont
+       | @ multiplication Z _ _ ?z ?t2 (* | 9 *)
+         => do_reify_unop do_reify uconstr:(@ PEmul _ (PEc z)) Rr lvar t2 cont
+       | mul ?x ?y (* | 10 *)
+         => do_reify_binop do_reify uconstr:(@ PEmul _) Rr lvar x y cont
+       | @ multiplication T T (@ mul_notation _ _ _ _ mul _ _ _ _) _ ?x ?y
+         => do_reify_binop do_reify uconstr:(@ PEmul _) Rr lvar x y cont
+       | Z0 (* | 11 *)
+         => let ret := uconstr:(PEc Z0) in
+            cont lvar ret
+       | Zpos ?x (* | 11 *)
+         => let ret := uconstr:(PEc (Zpos x)) in
+            cont lvar ret
+       | Zneg ?x (* | 11 *)
+         => let ret := uconstr:(PEc (Zneg x)) in
+            cont lvar ret
+       | ?lterm
+         => do_reify_extra Rr lvar lterm cont ltac:(do_reify_var O)
+       end
+  end.
+Ltac do_reifylist Rr lvar lterm cont :=
+  lazymatch lterm with
+  | nil => let ret := uconstr:(@ nil (PExpr Z)) in
+           cont lvar ret
+  | cons ?x ?xs
+    => do_reify Rr lvar x
+                ltac:(fun lvar rx
+                      => do_reifylist Rr lvar xs
+                                      ltac:(fun lvar rxs
+                                            => let ret := uconstr:(cons rx rxs) 
+in
+                                               cont lvar ret))
+  end.
+Ltac list_reifyl lterm :=
+  let R := lazymatch type of lterm with list ?R => R end in
+  let Rr := constr:(_ : Ring (T:=R)) in
+  do_reifylist Rr (@ nil R) lterm
+               ltac:(fun lvar lexpr
+                     => constr:((lvar, lexpr))).
+Ltac nsatz0 r0 :=
+  let radicalmax := constr:(6%N) in
+  let info := constr:(1%Z) in
+  let lparam := constr:(@ nil Q) in
+  let lvar := constr:(@ nil Q) in
+  let nparam := eval compute in (Z.of_nat (List.length lparam)) in
+      match goal with
+        |- ?g => let lb := lterm_goal g in
+                 let k := match lvar with
+                          |(@ nil _) =>
+                           match lparam with
+                           |(@ nil _) =>
+                            let r := list_reifyl lb in r
+                           end end in pose k as r0 end.
+
+
+Comment author: @JasonGross
+
+Created attachment 776
+slow example with Ltac reification for nsatz
+
+> Attached file: [slow_nsatz_no_tc.v](https://coq.inria.fr/bugfiles/attachment.cgi?id=776) (text/plain, 69683 bytes)
+> Description:   slow example with Ltac reification for nsatz
+
+
+Comment author: @JasonGross
+
+And here's an even faster version, at about 27 seconds, which does away with 
+the typechecked list of variables and instead passes around the specialized 
+version of [list_rect], as an Ltac function (i.e., it takes continuations for 
+the nil case and for the cons case), so that we only have to typecheck each 
+variable a single time.  I'm curious what's taking time here, and also if 
+retypechecking of terms in Ltac (or whatever is happening) can be sped up 
+uniformly:
+
+(** override this for more reification; if extra reification fails; invoke 
+[fail_cont]  *)
+(** N.B. We do almost everything in continuation-passing-style so that we can  
+morally return two values while taking advantage of uconstr (there's no way to  
+return a uconstr pair and get the components out) *)
+Ltac do_reify_extra Rr lvar lterm cont fail_cont :=
+  fail_cont Rr lvar lterm cont.
+Ltac do_reify_binop do_reify PEop Rr lvar x y cont :=
+  do_reify Rr lvar x
+           ltac:(fun lvar rx
+                 => do_reify Rr lvar y
+                             ltac:(fun lvar ry
+                                   => let ret := uconstr:(PEop rx ry) in
+                                      cont lvar ret)).
+Ltac do_reify_unop do_reify PEop Rr lvar x cont :=
+  do_reify Rr lvar x
+           ltac:(fun lvar rx
+                 => let ret := uconstr:(PEop rx) in
+                    cont lvar ret).
+Ltac do_reify_var i Rr lvar_elim lterm cont :=
+  lvar_elim
+    ltac:(fun _ (* nil case *) =>
+            let lterm := constr:(lterm) in
+            let new_lvar := ltac:(fun nil_case cons_case
+                                  => cons_case lterm lvar_elim) in
+            let ret := uconstr:(@ PEX Z (Pos.of_succ_nat i)) in
+            cont new_lvar ret)
+           ltac:(fun x xs_elim =>
+                   lazymatch x with
+                   | lterm
+                     => let ret := uconstr:(@ PEX Z (Pos.of_succ_nat i)) in
+                        cont lvar_elim ret
+                   | _
+                     => let Si := uconstr:(S i) in
+                        do_reify_var
+                          Si Rr xs_elim lterm
+                          ltac:(fun lvar ret
+                                => let new_lvar_elim := ltac:(fun nil_case 
+cons_case
+                                                              => cons_case x 
+xs_elim) in
+                                   cont new_lvar_elim ret)
+                   end).
+Ltac do_reify Rr lvar lterm cont :=
+  lazymatch type of Rr with
+  | @ Ring ?T ?ring0 ?ring1 ?add ?mul ?sub ?opp ?ring_eq ?ops
+    => lazymatch lterm with
+       | ring0 => let ret := uconstr:(PEc 0%Z) in
+                  cont lvar ret
+       | @ zero _ (@ zero_notation _ ring0 _ _ _ _ _ _ _)
+         => let ret := uconstr:(PEc 0%Z) in
+            cont lvar ret
+       | ring1 => let ret := uconstr:(PEc 1%Z) in
+                  cont lvar ret
+       | @ one _ (@ one_notation _ _ ring1 _ _ _ _ _ _)
+         => let ret := uconstr:(PEc 1%Z) in
+            cont lvar ret
+       | pow_N ?x ?n
+         => do_reify Rr lvar x
+                     ltac:(fun lvar rx
+                           => let ret := uconstr:(@ PEpow _ rx n) in
+                              cont lvar ret)
+       | add ?x ?y
+         => do_reify_binop do_reify uconstr:(@ PEadd _) Rr lvar x y cont
+       | @ addition _ (@ add_notation _ _ _ add _ _ _ _ _) ?x ?y
+         => do_reify_binop do_reify uconstr:(@ PEadd _) Rr lvar x y cont
+       | sub ?x ?y
+         => do_reify_binop do_reify uconstr:(@ PEsub _) Rr lvar x y cont
+       | @ subtraction _ (@ sub_notation _ _ _ _ _ sub _ _ _) ?x ?y
+         => do_reify_binop do_reify uconstr:(@ PEsub _) Rr lvar x y cont
+       | opp ?x
+         => do_reify_unop do_reify uconstr:(@ PEopp _) Rr lvar x cont
+       | @ opposite _ (@ opp_notation _ _ _ _ _ _ opp _ _) ?x
+         => do_reify_unop do_reify uconstr:(@ PEopp _) Rr lvar x cont
+       | @ multiplication Z _ _ ?z ?t2 (* | 9 *)
+         => do_reify_unop do_reify uconstr:(@ PEmul _ (PEc z)) Rr lvar t2 cont
+       | mul ?x ?y (* | 10 *)
+         => do_reify_binop do_reify uconstr:(@ PEmul _) Rr lvar x y cont
+       | @ multiplication T T (@ mul_notation _ _ _ _ mul _ _ _ _) _ ?x ?y
+         => do_reify_binop do_reify uconstr:(@ PEmul _) Rr lvar x y cont
+       | Z0 (* | 11 *)
+         => let ret := uconstr:(PEc Z0) in
+            cont lvar ret
+       | Zpos ?x (* | 11 *)
+         => let ret := uconstr:(PEc (Zpos x)) in
+            cont lvar ret
+       | Zneg ?x (* | 11 *)
+         => let ret := uconstr:(PEc (Zneg x)) in
+            cont lvar ret
+       | ?lterm
+         => do_reify_extra Rr lvar lterm cont ltac:(do_reify_var O)
+       end
+  end.
+Ltac do_reifylist Rr lvar lterm cont :=
+  lazymatch lterm with
+  | nil => let ret := uconstr:(@ nil (PExpr Z)) in
+           cont lvar ret
+  | cons ?x ?xs
+    => do_reify Rr lvar x
+                ltac:(fun lvar rx
+                      => do_reifylist Rr lvar xs
+                                      ltac:(fun lvar rxs
+                                            => let ret := uconstr:(cons rx rxs) 
+in
+                                               cont lvar ret))
+  end.
+Ltac list_elim_to_list T ls_elim :=
+  ls_elim ltac:(fun _ => uconstr:(@ nil T))
+                 ltac:(fun x xs_elim
+                       => let xs := list_elim_to_list T xs_elim in
+                          uconstr:(@ cons T x xs)).
+
+Ltac list_reifyl lterm :=
+  let R := lazymatch type of lterm with list ?R => R end in
+  let Rr := constr:(_ : Ring (T:=R)) in
+  do_reifylist
+    Rr ltac:(fun nil_case cons_case => nil_case ())
+              lterm
+              ltac:(fun lvar lexpr
+                    => let lvar := list_elim_to_list R lvar in
+                       constr:((lvar, lexpr))).
+Ltac nsatz0 r0 :=
+  let radicalmax := constr:(6%N) in
+  let info := constr:(1%Z) in
+  let lparam := constr:(@ nil Q) in
+  let lvar := constr:(@ nil Q) in
+  let nparam := eval compute in (Z.of_nat (List.length lparam)) in
+      match goal with
+        |- ?g => let lb := lterm_goal g in
+                 let k := match lvar with
+                          |(@ nil _) =>
+                           match lparam with
+                           |(@ nil _) =>
+                            let r := list_reifyl lb in r
+                           end end in pose k as r0 end.
+
+
+Comment author: @JasonGross
+
+Created attachment 777
+faster version of ltac-only nsatz reification
+
+> Attached file: [slow_nsatz_no_tc.v](https://coq.inria.fr/bugfiles/attachment.cgi?id=777) (text/plain, 70672 bytes)
+> Description:   faster version of ltac-only nsatz reification
+
+
+Comment author: @ppedrot
+
+(In reply to Jason Gross from comment [BZ#10](https://github.com/coq/coq/issues?q=is%3Aissue%20%22Original%20bug%20ID%3A%20BZ%2310%22))
+> faster version of ltac-only nsatz reification
+
+This stack overflows on my machine...
+
+
+Comment author: @JasonGross
+
+Interesting...  I've downloaded the file I attached and run it on my machine, 
+and it runs fine... maybe it's a machine difference?
+
+$ uname -a
+Linux jgross-Leopard-WS 4.4.0-38-generic [BZ#57](https://github.com/coq/coq/issues?q=is%3Aissue%20%22Original%20bug%20ID%3A%20BZ%2357%22)-Ubuntu SMP Tue Sep 6 15:42:33 UTC 
+2016 x86_64 x86_64 x86_64 GNU/Linux
+$ lsb_release -a
+No LSB modules are available.
+Distributor ID:	Ubuntu
+Description:	Ubuntu 16.04.1 LTS
+Release:	16.04
+Codename:	xenial
+$ echo | coqtop
+Welcome to Coq jgross-Leopard-WS:/home/jgross/Downloads/coq/coq-v8.6,v8.6 
+(dff1450d43909e8aeaf8ce2db8bc19be42ee1ab1)
+
+Coq < Coq < 
+$ /usr/bin/time -f "COQC (user: %U mem: %M ko)" coqc -q slow_nsatz_no_tc_1.v 
+Finished transaction in 28.502 secs (28.46u,0.048s) (successful)
+total time:      0.012s
+
+ tactic                                   local  total   calls       max 
+────────────────────────────────────────┴──────┴──────┴───────┴─────────┘
+─pose (r0 := k) ------------------------ 100.0% 100.0%       1    0.012s
+─nsatz0 --------------------------------   0.0%   0.0%       1    0.000s
+
+ tactic                                   local  total   calls       max 
+────────────────────────────────────────┴──────┴──────┴───────┴─────────┘
+─pose (r0 := k) ------------------------ 100.0% 100.0%       1    0.012s
+─nsatz0 --------------------------------   0.0%   0.0%       1    0.000s
+
+COQC (user: 31.48 mem: 948456 ko)
+
+
+Comment author: @maximedenes
+
+While it would be interesting to track down the inefficiencies in type class resolution, the proper fix here is probably to implement the reification in ML.
+
+
+Why is this labeled as a standard library issue?
+nsatz is part of the stdlib no?
+Components were chosen by bug reporters in the Bugzilla era. They are not always the best ones.
+> nsatz is part of the stdlib no?
+
+I think this is too coarse grained, otherwise tactics, ltac and others are also part of the stdlib...

@@ -1,0 +1,20 @@
+Comment author: @JasonGross
+
+(* File reduced by coq-bug-finder from original input, then from 7931 lines to 139 lines, then from 119 lines to 32 lines, then from 24 lines to 8 lines *)
+(* coqc version trunk (September 2014) compiled on Sep 29 2014 14:5:39 with OCaml 4.01.0
+   coqtop version cagnode16:/afs/csail.mit.edu/u/j/jgross/coq-HoTT,(no branch) (e8726550e01e51ef3ccf8602f2ecbe2b3737cca3) *)
+Set Implicit Arguments.
+Global Set Primitive Projections.
+Record Functor (C D : Type) := { object_of :> forall _ : C, D }.
+Axiom path_functor_uncurried : forall C D (F G : Functor C D) (_ : sigT (fun HO : object_of F = object_of G => Set)), F = G.
+Lemma path_functor_uncurried_snd C D F G HO HM
+: (@ path_functor_uncurried C D F G (existT _ HO HM)) = HM. (* Anomaly: Uncaught exception Not_found(_). Please report. *)
+
+From e8726550e01e51ef3ccf8602f2ecbe2b3737cca3; seems to possibly be fixed in latest trunk?  (Was this known?)
+
+
+Comment author: @ppedrot
+
+That's indeed fixed in trunk.
+
+

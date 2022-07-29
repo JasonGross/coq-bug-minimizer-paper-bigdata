@@ -1,0 +1,31 @@
+Comment author: @JasonGross
+
+Inductive A := B (_ : unit).
+Scheme Equality for A. (* success *)
+Inductive A' := B' (_ : let T := unit in unit).
+Scheme Equality for A'. (* Error:
+Unexpected error during scheme creation: Anomaly:
+                                         Uncaught exception 
+Auto_ind_decl.EqUnknown("LetIn").
+                                         Please report at 
+http://coq.inria.fr/bugs/. *)
+
+
+Comment author: @herbelin
+
+Scheme Equality is notoriously weak. To define a decidability scheme, alternative are "decide equality", Jonathan's deptacs library, Matthieu and Cyprien's Equations plugin.
+
+I turned the anomaly into a smoother error in 8.5 (but it is still not working then).
+
+The following works:
+
+Inductive A' := B' (_ : let T := unit in unit).
+
+Lemma A'_dec : forall x y : A', {x=y}+{x<>y}.
+decide equality.
+decide equality.
+
+Lemma A'_dec : forall x y : A', {x=y}+{x<>y}.
+dde. (* From deptacs *)
+
+

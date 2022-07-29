@@ -1,0 +1,23 @@
+That's likely to be a bug in your packaging of lablgtk3 3.1.1. OCaml packages released with dune-release provide a `.tbz` archive (https://github.com/garrigue/lablgtk/releases/download/3.1.1/lablgtk3-3.1.1.tbz) that should be used as source. In nixpkgs, it is a common issue that people used the auto-generated GitHub source archive instead and the consequence is usually that the version is unknown.
+I guess someone should report this as a bug in the package (I'm using the official Ubuntu package, not packaging this myself)
+What does `ocamlfind query -format "%v" lablgtk3` return? Indeed Coq uses this value, so if it returned unspecified looks like a bug in the packaging.
+
+There is a planned configure revamp that will include an "ignore deps" flags so people can avoid these problems, meanwhile we are out of luck barring a similar patch.
+Reported at https://bugs.launchpad.net/ubuntu/+source/lablgtk3/+bug/1897171
+Honestly, Debian maintainers could rightly complain that a distributed file (`dune-project`, I guess) has been tampered with, since it is different from the versioned file at the corresponding tag. If file `dune-project` is meant to be generated on the fly by `dune-release`, then having it in the `lablgtk3` repository is bound to cause some misunderstanding.
+The `dune-project` file is also meant to be in the repository because you need it to build the development version of the project. Why should Debian maintainers have to care about the version controlled file? It's an oversight not to use the proper archive distributed by the maintainers.
+> Why should Debian maintainers have to care about the version controlled file?
+
+They do not need to. But as I said, you cannot expect them to guess that the file that is shipped in the tarball is different from the one in the repository.
+
+Here is a bit more context. For various reasons (security, accountability, auditing, and so on), Debian maintains a git mirror of all the packages. Except for the `debian/` subdirectory in the packages, this is a pristine copy of the upstream repository. They have no problem working with projects that have no upstream repository; they just create one from scratch then. But, when there exists one, they have a priori no reason not to use it, unless they are told that it is not authoritative. 
+
+Anyway, once they try to ship Coq 8.13, they will notice the issue. And at that point they will either patch Lablgtk or Coq to fix it.
+I would hope that they fix their packaging of lablgtk given how general this issue is in the OCaml ecosystem nowadays (as I've said before, I faced it more than once with OCaml packages in nixpkgs).
+Again this is a bug on Debian packaging, if you are building from `git` you gotta call `dune subst` , then use `-p`, see for example most opam files that do this step correctly, for example in lablgtk3 current git head:
+```
+$ dune subst && dune build -p lablgtk3 && dune exec -- ocamlfind query -format "%v" lablgtk3
+3.1.1-1-g034d4fbb
+```
+That being said current configure version parsing should be better as to detect this kind of versions.
+Moved to https://bugs.debian.org/cgi-bin/bugreport.cgi?bug=971439

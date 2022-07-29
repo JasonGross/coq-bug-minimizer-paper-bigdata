@@ -1,0 +1,27 @@
+I noted this change on commands that generate multiple constants automatically. It was useful to know which constants were defined, even if in some cases there were a bit too many of them.
+
+For instance with `Function`:
+```
+Require Import Recdef.
+
+Function div2 n { wf lt n } :=
+  match n with
+  | 0 | 1 => 0
+  | S (S n) => S (div2 n)
+  end.
+Proof.
+  - intros. apply le_S, le_n.
+  - apply Wf_nat.lt_wf.
+Qed.
+```
+With Coq 8.9:
+```
+div2_tcc is defined
+div2_terminate is defined
+div2_ind is defined
+div2_rec is defined
+div2_rect is defined
+R_div2_correct is defined
+R_div2_complete is defined
+```
+With Coq 8.12, there is no output at all.

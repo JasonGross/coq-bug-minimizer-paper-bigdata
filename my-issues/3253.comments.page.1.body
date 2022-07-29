@@ -1,0 +1,210 @@
+Comment author: @JasonGross
+~~~coq
+(* File reduced by coq-bug-finder from 185 lines to 174 lines. *)
+Require Import Coq.Classes.Morphisms Coq.Classes.RelationClasses Coq.Program.Program Coq.Setoids.Setoid.
+
+Global Set Implicit Arguments.
+
+Axiom admit : False.
+Ltac admit := abstract destruct admit.
+
+Reserved Infix "~>" (at level 70).
+Delimit Scope bundled_comp_scope with bundled_comp.
+Global Open Scope bundled_comp_scope.
+
+Class Context :=
+  { names : Type;
+    dom : names -> Type;
+    cod : names -> Type }.
+
+Inductive Comp `{ctx : Context} : Type -> Type :=
+| Return : forall A, A -> Comp A
+| Bind : forall A B, Comp A -> (A -> Comp B) -> Comp B
+| Pick : forall A, (A -> Prop) -> Comp A
+| Call : forall name : names, dom name -> Comp (cod name).
+
+Class LookupContext :=
+  { LContext :> Context;
+    lookup : forall name, dom name -> Comp (cod name) }.
+
+Coercion LContext : LookupContext >-> Context.
+
+Record BundledComp A :=
+  Bundle { CompContext : LookupContext;
+           Unbundle :> Comp A }.
+
+Notation "``[ c 'with' l ]``" := (@ Bundle _ l c) (only parsing) : bundled_comp_scope.
+
+Axiom computes_to : forall `{ctx : LookupContext}, forall A, Comp A -> A -> Prop.
+
+Notation "c ~> v" := (computes_to c v).
+
+Definition refine {A}
+           {oldCtx newCtx : LookupContext}
+           (old : @ Comp oldCtx A)
+           (new : @ Comp newCtx A)
+  := forall v, new ~> v -> old ~> v.
+
+Definition refineBundled {A} (old new : BundledComp A)
+  := refine old new.
+
+Definition refineEquiv {A}
+           {oldCtx newCtx : LookupContext}
+           (old : @ Comp oldCtx A)
+           (new : @ Comp newCtx A)
+  := refine old new /\ refine new old.
+
+Definition refineBundledEquiv {A} (old new : BundledComp A)
+  := refineEquiv old new.
+
+Local Obligation Tactic := admit.
+
+Global Program Instance refine_PreOrder A `{LookupContext} : PreOrder (@ refine A _ _).
+Global Program Instance refineBundled_PreOrder A : PreOrder (@ refineBundled A).
+
+Add Parametric Morphism `{LookupContext} A B
+: (@ Bind _ A B)
+    with signature
+    (@ refine A _ _)
+      ==> (pointwise_relation _ (@ refine B _ _))
+      ==> (@ refine B _ _)
+      as refine_bind.
+admit.
+Defined.
+
+Ltac equate_evar_context :=
+  unfold refineBundledEquiv, refineBundled; simpl;
+  lazymatch goal with
+| [ |- @ refineEquiv ?A ?ctx1 (@ CompContext ?B ?e) ?v1 ?v2 ]
+  => is_evar e; refine (_ : @ refineEquiv A ctx1 (@ CompContext B {| CompContext := ctx1 |}) v1 v2)
+| [ |- @ refine ?A ?ctx1 (@ CompContext ?B ?e) ?v1 ?v2 ]
+  => is_evar e; refine (_ : @ refine A ctx1 (@ CompContext B {| CompContext := ctx1 |}) v1 v2)
+end;
+  simpl.
+
+Local Open Scope type_scope.
+
+Definition Build_ADTContext
+           (rep : Type)
+           (indices : Context)
+: Context :=
+  {| names := names;
+     dom idx := rep * dom idx;
+     cod idx := rep * cod idx |}.
+
+Definition methodTypeUnbundled (Ty : Type)
+           (indices : Context)
+           (idx : names)
+
+           (ctx := Build_ADTContext Ty indices)
+  := Ty
+     -> dom idx
+     -> Comp (Ty * cod idx)  .
+
+Definition methodType (Ty : Type)
+           (indices : Context)
+           (idx : names)
+  := Ty
+     -> dom idx
+     -> BundledComp (Ty * cod idx) .
+
+Record ADT :=
+  {
+    Rep : Type;
+    MethodNames : Context;
+    ADTContext : Context := Build_ADTContext Rep MethodNames;
+    UnbundledMethods : forall idx, methodTypeUnbundled Rep MethodNames idx
+  }.
+
+Definition ADTLookupContext (A : ADT) : LookupContext
+  := {| LContext := ADTContext A;
+        lookup idx state_value := UnbundledMethods A idx (fst state_value) (snd state_value) |}.
+
+Definition Methods (A : ADT) (i : names)
+: methodType (Rep A) (MethodNames A) i
+  := fun m x => ``[ UnbundledMethods A i m x with ADTLookupContext A ]`` .
+
+Goal forall (Rep0 : Type) (MethodNames0 : Context)
+            (UnbundledMethods0 : forall idx : @ names MethodNames0,
+                                   methodTypeUnbundled Rep0 MethodNames0 idx)
+            (idx : @ names MethodNames0) (r_n : Rep0) (n : @ dom MethodNames0 idx),
+       @ refineBundled (prod Rep0 (@ cod MethodNames0 idx))
+                      (@ Bundle (prod Rep0 (@ cod MethodNames0 idx))
+                               (ADTLookupContext (@ Build_ADT Rep0 MethodNames0 UnbundledMethods0))
+                               (@ Bind (ADTContext (@ Build_ADT Rep0 MethodNames0 UnbundledMethods0))
+                                      (prod Rep0 (@ cod MethodNames0 idx))
+                                      (prod Rep0 (@ cod MethodNames0 idx)) (UnbundledMethods0 idx r_n n)
+                                      (fun r_o' : prod Rep0 (@ cod MethodNames0 idx) =>
+                                         @ Pick
+                                           (ADTContext (@ Build_ADT Rep0 MethodNames0 UnbundledMethods0))
+                                           (prod Rep0 (@ cod MethodNames0 idx))
+                                           (fun r_n' : prod Rep0 (@ cod MethodNames0 idx) =>
+                                              and
+                                                (@ eq Rep0 (@ fst Rep0 (@ cod MethodNames0 idx) r_o')
+                                                     (@ fst Rep0 (@ cod MethodNames0 idx) r_n'))
+                                                (@ eq (@ cod MethodNames0 idx)
+                                                     (@ snd Rep0 (@ cod MethodNames0 idx) r_o')
+                                                     (@ snd Rep0 (@ cod MethodNames0 idx) r_n'))))))
+                      (Methods (@ Build_ADT Rep0 MethodNames0 UnbundledMethods0) idx r_n n).
+intros.
+
+etransitivity;
+  [ equate_evar_context | ].
+
+assert (H : forall x : prod Rep0 (@ cod MethodNames0 idx),
+              @ refine (prod Rep0 (@ cod MethodNames0 idx))
+                      (ADTLookupContext (@ Build_ADT Rep0 MethodNames0 UnbundledMethods0))
+                      (ADTLookupContext (@ Build_ADT Rep0 MethodNames0 UnbundledMethods0))
+                      (@ Pick (ADTContext (@ Build_ADT Rep0 MethodNames0 UnbundledMethods0))
+                             (prod Rep0 (@ cod MethodNames0 idx))
+                             (fun v : prod Rep0 (@ cod MethodNames0 idx) =>
+                                and
+                                  (@ eq Rep0 (@ fst Rep0 (@ cod MethodNames0 idx) x)
+                                       (@ fst Rep0 (@ cod MethodNames0 idx) v))
+                                  (@ eq (@ cod MethodNames0 idx)
+                                       (@ snd Rep0 (@ cod MethodNames0 idx) x)
+                                       (@ snd Rep0 (@ cod MethodNames0 idx) v))))
+                      (@ Return
+                         (ADTContext (@ Build_ADT Rep0 MethodNames0 UnbundledMethods0))
+                         (prod Rep0 (@ cod MethodNames0 idx))
+                         (@ pair Rep0 (@ cod MethodNames0 idx)
+                                (@ fst Rep0 (@ cod MethodNames0 idx) x)
+                                (@ snd Rep0 (@ cod MethodNames0 idx) x)))) by admit.
+eapply refine_bind; [ reflexivity | intro ].
+Fail Fail setoid_rewrite H at 1.
+setoid_rewrite H. (** Toplevel input, characters 15-31:
+Error:
+Tactic failure:setoid rewrite failed: Unable to satisfy the rewriting constraints.
+
+Could not find an instance for "Proper (refine ==> refine ==> flip impl)
+                                  refine" in environment:
+
+Rep0 : Type
+MethodNames0 : Context
+UnbundledMethods0 : forall idx : names,
+                    methodTypeUnbundled Rep0 MethodNames0 idx
+idx : names
+r_n : Rep0
+n : dom idx
+H : forall x : Rep0 * cod idx,
+    refine (Pick (fun v : Rep0 * cod idx => fst x = fst v /\ snd x = snd v))
+      (Return (fst x, snd x))
+a : Rep0 * cod idx
+do_subrelation := do_subrelation : apply_subrelation
+
+.
+ *)
+~~~
+
+Comment author: @silene
+
+I cannot get the script to pass the "eapply refine_bind" step. I also tried to apply it to the second goal, but it did not work either. If you have another testcase, please submit it.
+
+
+Comment author: @JasonGross
+
+I'm not sure what version of Coq you're running, but the example works fine (gives the appropriate error on [setoid_rewrite]) in both 8.4pl6 and 8.5.  Do you want me to set up a repo with a travis build showing the problem?
+
+
+@JasonGross was this fixed by the recent changes around setoid_rewrite? In any case the example doesn't compile on a recent Coq, as it seems that some instances are missing.
+I edited to something which compiles on master, the issue is still present.

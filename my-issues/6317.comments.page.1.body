@@ -1,0 +1,23 @@
+Hmmm, apparently `Set Keyed Unification` and `Declare Equivalent Keys` is not necessary to get the working code to work.  I guess `rewrite` is sometimes modulo δ?  I am more confused.
+But `Keyed Unification` is required in this case?
+```coq
+Parameter T : Set.
+Parameter zero one: T.
+Parameter f : T -> T -> option T.
+Hypothesis f_unit : forall t, f zero t = None.
+
+Definition g := f zero zero.
+
+Set Keyed Unification.
+Goal (g = None).
+Proof.
+  Fail rewrite f_unit.
+  Declare Equivalent Keys g f.
+  rewrite f_unit.
+  reflexivity.
+Qed.
+```
+
+I remain confused.
+cc @mattam82 
+Perhaps @ppedrot knows about this.

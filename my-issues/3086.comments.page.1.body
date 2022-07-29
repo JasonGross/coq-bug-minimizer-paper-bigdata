@@ -1,0 +1,61 @@
+Comment author: @JasonGross
+
+[Class > Foo] should behave like [Record > Foo]
+
+This code compiles when it should not:
+
+Class > Foo := { Bar :> nat }.
+Coercion Build_Foo : nat >-> Foo.
+
+This code behaves correctly:
+
+Record > Foo := { Bar :> nat }.
+Coercion Build_Foo : nat >-> Foo.
+(* Error: in try_add_new_coercion_core: Build_Foo is already a coercion. *)
+
+
+Comment author: @JasonGross
+
+Created attachment 414
+patch which hopefully implements coercions for [Class]es, and a test-suite bug
+
+Here's a patch, I hope.  I'm confused by the "(List.map (fun _ -> false) fields)", but replacing it with "coers" gives me
+
+File "toplevel/record.ml", line 329, characters 35-40:
+Error: This expression has type bool option list
+       but an expression was expected of type bool list
+
+Why is this?  What's the "option" part?
+
+
+I was unable to test the patch, because attempting to compile coq trunk resulted in the error:
+CHECK revision
+OCAMLOPT  plugins/cc/g_congruence.ml
+/tmp/camlasmb100bf.s: Assembler messages:
+/tmp/camlasmb100bf.s:647: Error: file number less than one
+/tmp/camlasmb100bf.s:661: Error: file number less than one
+/tmp/camlasmb100bf.s:675: Error: file number less than one
+/tmp/camlasmb100bf.s:688: Error: file number less than one
+/tmp/camlasmb100bf.s:701: Error: file number less than one
+/tmp/camlasmb100bf.s:1086: Error: file number less than one
+/tmp/camlasmb100bf.s:1117: Error: file number less than one
+/tmp/camlasmb100bf.s:1153: Error: file number less than one
+/tmp/camlasmb100bf.s:1194: Error: file number less than one
+File "plugins/cc/g_congruence.ml4", line 1:
+Error: Assembler error, input left in file /tmp/camlasmb100bf.s
+make[1]: *** [plugins/cc/g_congruence.cmx] Error 2
+
+> Attached file: [class_coercion.patch](https://coq.inria.fr/bugfiles/attachment.cgi?id=414) (text/plain, 1057 bytes)
+> Description:   patch which hopefully implements coercions for [Class]es, and a test-suite bug
+
+
+Comment author: @JasonGross
+
+Also, field coercions don't seem to work properly for classes, either.
+
+
+Comment author: @JasonGross
+
+[Class > Foo] causes the final field to be an instance, not coercion.  Similarly, [:>] means "coercion" for records, but "instance" for classes.
+
+

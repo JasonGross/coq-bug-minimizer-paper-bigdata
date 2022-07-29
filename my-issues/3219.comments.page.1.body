@@ -1,0 +1,26 @@
+Comment author: @JasonGross
+
+Record Foo (obj : Type) := { foo :> _ := obj }.
+Record Bar (obj : Type) := { bar :> _ := obj }.
+Record Baz (obj : Type) := { bazfoo :> Foo obj; bazbar :> Bar obj }.
+(* Warning: Ambiguous paths: [bazbar; bar] : Baz >-> Sortclass *)
+
+Both paths give rise to a function which unifies with (fun x : Baz obj => obj), so there should be no warning.
+
+
+cc: @gares @maximedenes 
+A solution to this problem would also solve the problem of many ambiguous paths in MathComp because these ambiguous paths are convertible to each other. Relaxing the ambiguity condition of coercions by convertibility checking can eliminate meaningless warnings in the correct way. For example:
+
+```coq
+Require Import all_algebra.
+
+Goal
+(fun T => GRing.ComRing.ringType (GRing.ComUnitRing.comRingType T)) =
+GRing.ComUnitRing.ringType /\
+(fun T => GRing.UnitRing.ringType (GRing.ComUnitRing.unitRingType T)) =
+GRing.ComUnitRing.ringType.
+split; reflexivity.
+Qed.
+```
+
+However, coercions are indexed by only the head symbols of types, therefore, I'm not sure of the feasibility of this idea. If all the coercions respect the uniform inheritance condition, is it possible?

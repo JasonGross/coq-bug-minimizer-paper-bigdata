@@ -1,0 +1,21 @@
+Comment author: @JasonGross
+
+Inductive A (T : Prop) := B (_ : T /\ T).
+Scheme Equality for A. (* Error: Unexpected error during scheme creation: 
+Error: x is used in conclusion. *)
+
+
+Comment author: @JasonGross
+
+This gives the same error message:
+
+Set Keep Proof Equalities.
+Inductive A (T : Prop) : Prop := B (_ : T).
+Scheme Equality for A.
+
+
+Comment author: @herbelin
+
+*** Bug [BZ#5285](https://github.com/coq/coq/issues?q=is%3Aissue%20%22Original%20bug%20ID%3A%20BZ%235285%22) has been marked as a duplicate of this bug. ***
+
+

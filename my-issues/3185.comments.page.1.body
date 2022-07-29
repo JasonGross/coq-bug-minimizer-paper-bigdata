@@ -1,0 +1,23 @@
+Comment author: @JasonGross
+
+Ltac splus a b := let t := constr:(a + b) in let t' := eval simpl in t in exact t'.
+Notation "a 's+' b" := ($(splus a b)$) (at level 70).
+
+Toplevel input, characters 0-53:
+> Notation "a 's+' b" := ($(splus a b)$) (at level 70).
+> ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Error: a is unbound in the right-hand side.
+
+
+I'd expect the notation to go through fine, and then when I do
+
+Check 1 s+ 2.
+
+I expect it to first become "Check $(splus 1 2)$." and then evaluate that.
+
+
+Comment author: @ppedrot
+
+Well, we can do that indeed. That's quite simple to implement actually.
+
+

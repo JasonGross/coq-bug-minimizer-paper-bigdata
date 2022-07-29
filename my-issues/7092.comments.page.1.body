@@ -1,0 +1,4 @@
+OK, I'm going to add code for fixpoints in Ltac matching in the next hours.
+
+To @all: Any objection if I add a proper structure in type `pattern` for `fixpoint` in `PFix` rather than the current `constr` structure? 
+@herbelin I think it's OK.

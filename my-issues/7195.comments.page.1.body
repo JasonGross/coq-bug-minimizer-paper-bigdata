@@ -1,0 +1,55 @@
+I'm guessing the issue is that the P0 is just a print-time renamed P so 
+when you match N and U are both P.
+Someone who knows ltac matching tell me if I'm right.
+
+Gaëtan Gilbert
+
+On 07/04/2018 22:35, Jason Gross wrote:
+> 
+>         Version
+> 
+> 8.8+beta1
+> 
+> 
+>         Description of the problem
+> 
+> This code should work. It does not.
+> 
+> Goal True.
+>    let  x := constr:((O, tt))in
+>    let  rx := lazymatch (eval pattern nat, unit, O, ttin  x)with
+>              | ?rx _ _ _ _ => rxend  in
+>    idtac rx(*(fun (P P0 : Set) (n : P) (u : P0) => (n, u)) *);
+>      let  rx := lazymatch rxwith  fun  (N :Set) => ?rx => constr:(fun  N :Type  => rx)end  in
+>      idtac rx(*(fun (P : Type) (P0 : Set) (n : P) (u : P0) => (n, u)) *);
+>        let  __ := type of rxin
+>        unify x (rx nat unit O tt);
+>        let  rx := lazymatch rxwith  fun  (N :Type) (U :Set) => ?rx => constr:(fun  (N :Type) (U :Type) => rx)end  in
+>        idtac rx(*(fun (_ P0 : Type) (n u : P0) => (n, u)) *);
+>        let  __ := type of rxin
+>        unify x (rx nat unit O tt).
+>    (*Error: The term "0" has type "nat" while it is expected to have type 
+> "unit". *)
+> 
+> —
+> You are receiving this because you are subscribed to this thread.
+> Reply to this email directly, view it on GitHub 
+> <https://github.com/coq/coq/issues/7195>, or mute the thread 
+> <https://github.com/notifications/unsubscribe-auth/ACWQ7IwNzIEGwCQujJB01K2UQQ3MFxD_ks5tmSMpgaJpZM4TLPgq>.
+> 
+
+Yes, I'm pretty sure that's correct.  Here's another example:
+```coq
+Goal True.
+  let x := (eval cbv beta zeta in (fun P => let Q := P in fun P => P + Q)) in
+  unify x (fun a b => b + a); (* success *)
+    let x' := lazymatch x with
+              | (fun (a : ?A) (b : ?B) => ?k)
+                => constr:(fun (a : A) (b : B) => k)
+              end in
+    unify x x'.
+  (* Error:
+Ltac call to "unify (constr) (constr)" failed.
+Tactic failure: Not unifiable. *)
+```
+Fix at #7199 (note that this fails since 8.5).

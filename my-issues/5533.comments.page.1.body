@@ -1,0 +1,11 @@
+Comment author: @JasonGross
+
+If I have this:
+
+Goal True /\ True /\ True /\ True /\ True.
+  repeat apply conj.
+  par:repeat pose 1.
+
+Spamming C-c in PG does nothing, and I have to kill Coq from the command line.
+
+

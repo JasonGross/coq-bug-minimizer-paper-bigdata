@@ -1,0 +1,12 @@
+Well, the criterion was known to be neither sound nor complete, so ¯\_(ツ)_/¯
+Shouldn't it be possible to just have the code recurse over inner modules or something?
+Like, would it be enough to have
+https://github.com/coq/coq/blob/aa926429727f1f6b5ef07c8912f2618d53f6d155/checker/mod_checking.ml#L103-L112
+call itself recursively when it hits `SFBmodule`?
+> Like, would it be enough to have [...] call itself recursively when it hits `SFBmodule`?
+
+Quite probably yes (feel free to open a PR).
+
+However, as noticed by Pierre Marie, this would remain incomplete (I wouldn't bet for unsound but he certainly knows better than me). Having something complete seems feasible but requires some work which I didn't found time for yet (unlikely to change in a near future unfortunately). So, if you want to dig into this, feel free to, but the best I can promise is a careful review (maybe could I trade it for a review of #12218 ;-) ).
+Thanks for reporting anyway!
+

@@ -1,0 +1,95 @@
+Comment author: @JasonGross
+
+This code works in the released 8.5, but fails in v8.5 (e54d014ce10dea4a74b66e5091d25e4b26bd71fa) with "Error: Unable to find an instance for the variable n.":
+
+Require Import Coq.Lists.List Coq.Setoids.Setoid Coq.Classes.Morphisms.
+
+Coercion is_true (x : bool) := x = true.
+
+Goal forall (String0 : Type) (b : String0 -> nat -> bool) (str : String0) (level : nat) (s : forall n m : nat, {n > m} + {~ n > m})
+     (b0 : String0 -> nat -> bool) (s0 s1 : nat -> String0 -> String0),
+   (forall (str0 : String0) (n level0 : nat),
+    (if s level0 0 then b0 (s1 n str0) 0 else b (s1 n str0) 0) -> b (s0 n str0) level0 -> b str0 level0) ->
+   b str level.
+  intros ???????? H0.
+  rewrite H0.
+
+
+Comment author: @JasonGross
+
+My coq-bisect script (https://github.com/JasonGross/coq-bisect) says:
+
+65b901534649c5f29e245a4960fa66f6e9d9c257 is the first bad commit
+commit 65b901534649c5f29e245a4960fa66f6e9d9c257
+Author: Pierre-Marie Pédrot <pierre-marie.pedrot@ inria.fr>
+Date:   Wed Feb 17 18:11:02 2016 +0100
+
+    Fix bug [BZ#4574](https://github.com/coq/coq/issues?q=is%3Aissue%20%22Original%20bug%20ID%3A%20BZ%234574%22): Anomaly: Uncaught exception Invalid_argument("splay_arity").
+
+    The setoid_rewrite tactic was not checking that the relation it was looking for
+    was indeed a relation, i.e. that its type was an arity.
+
+:040000 040000 41104dc47773524c49c6c8ae7c2f004e46b05982 9a6872596a8fbfb4600d424692602e3331a036aa M      tactics
+:040000 040000 9656a5c6e29d6f9d372d36a12ef51cdc6b212e05 0291611d189831a87df39cc8d212ce58b494bc99 M      test-suite
+bisect run success
+
+
+Comment author: @JasonGross
+
+I suspect the issue is that the old code was looking for relations modulo delta (therefore unfolding [is_true]), while the new code requires that the relation be already exposed in the type?
+
+
+Comment author: @ppedrot
+
+Aha, interesting issue.
+
+I do not know the exact specification of the "rewrite" tactic, but it may have been a bug that your code worked before. Indeed, many parts of the code of setoid_rewrite expects that the relation you're rewriting on is indeed a relation, i.e. of type A -> A -> Type for some A.
+
+Here, you're rewriting over the relation b : String0 -> nat -> bool, which is not a relation actually. In simple cases like yours, the tactic could succeed, but I think that in more involved examples, it would have produced an anomaly just as before.
+
+What do the authors of setoid_rewrite think about this?
+
+
+Comment author: @ppedrot
+
+Fixed by db2c6f0.
+
+
+Comment author: @JasonGross
+
+Thanks!
+
+I think the spec should not be changed between pl versions, and it would be nice to have the -compat 8.5 / -compat 8.4 flags preserve the current behavior.  As for whether or not this should work in general, I don't have strong opinions (added Mattheiu to cc list).
+
+
+Comment author: @mattam82
+
+Ok, this mixes a few things.
+- First, the rewrite is on eq, after unfolding, and this is the spec of rewrite and setoid_rewrite called " through rewrite" to find the relation using delta reduction.
+The "weird" thing may be that leibniz rewrite does not see the eq at first (no delta) but then setoid_rewrite does (doing delta) but does not fall back to leibniz rewrite. 
+
+- Then there is the issue that there are unsolved dependent arguments in the lemma, which rewrite is not supposed to support (while erewrite does). Apparently setoid_rewrite "through rewrite" is buggy since 8.4 at least in this respect, allowing unresolved evars corresponding to arguments to the lemma to remain. I think this should be fixed but don't know how (there's no interface in Clenv do to that, but it should be easy, PMP?). To remain backwards compatible seems safe for the next pl1, but not in the long run (I have this noted for the upcoming cleanup of rewrite/setoid_rewrite).
+
+
+Comment author: @JasonGross
+
+The rewrite/setoid_rewrite cleanup should happen on trunk, not on v8.5.  I think the spec for pls should be something like "compatibility-breaking changes are only introduced if absolutely necessary to fix an implementation bug (not a design flaw), and should all be carefully documented in CHANGES".  A compatibility flag on trunk would be nice, but is not necessary.
+
+
+Comment author: @ppedrot
+
+I think that in the current situation (i.e. 65b901 + db2c6f0), I did not change the semantics of setoid_rewrite, except for some anomalies that are turned into proper errors, which is fine AFAIK. The first patch (65b901) was a bit naive, but hopefully this should be fixed now.
+
+Clearly, important changes are going to be done in trunk only. I don't think you should worry about this.
+
+
+Comment author: @mattam82
+
+Yes, I did not mean to put it in 8.5, if that wasn't clear.
+
+
+Comment author: @JasonGross
+
+Ah, okay, sorry.  Yes, I was worried about Matthieu's proposed cleanup going in 8.5.
+
+

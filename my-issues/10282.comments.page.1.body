@@ -1,0 +1,7 @@
+I guess so. The fast name printing option doesn't take into account the actual use of bound names in subterms, so any notation relying on this won't work.
+In that case, this caveat should be noted in the documentation.
+
+I would be interested in an option that does occurrence checking to determine whether or not bound names are used at all (this should incur at most one additional walk over the term, as you can just maintain the set of currently bound variables and of variables seen so far, and have each recursive call return the set of used variables together with the properly anonymized term), assuming such an option still has a performance benefit; fiat-crypto currently globally sets `Fast Name Printing`, and the fact that it breaks `->` has me reconsidering this decision.
+> this should incur at most one additional walk over the term, as you can just maintain the set of currently bound variables and of variables seen so far, and have each recursive call return the set of used variables together with the properly anonymized term
+
+Nope, because this breaks the lazy detyping of terms. You have to eagerly force the term to return the set of used variables.

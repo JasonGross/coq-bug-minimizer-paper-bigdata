@@ -1,0 +1,13 @@
+"Interrupt" is meant to reset coqtop.  Not sure why it's not working.  For the "coqtop died badly", maybe wait a second before pressing interrupt again (a bit complex to make a definitive fix to the "coqtop died badly").
+
+Pausing or backtracking would be new features, perhaps quite challenging to implement.  Not something I'll get to immediately.  Providing a way to freeze/resume the Messages panel output may be easier--would that be helpful?
+I'll report back on what happens if I delay more between the two interrupts.
+
+Pausing/backtracking can be implemented by wrapping the tactics (in the same way that I suggested implementing the step in/out/over in a way that plays well with backtracking): add an exception like interrupt (and however that's implemented), except instead of translating it to an uncatchable failure, translate it to a failure that gets caught by the tactic debugger which will then drop you into a prompt that will let you "retry" the wrapped tactic that just failed.
+Actually, pausing is much easier than I thought.  It would be hard to do through the message protocol sent by sockets, but `interrupt` just sends a signal, for which the receiving sets a flag that causes the debugger to stop at the next tactic.  I just implemented that though I haven't pushed it yet.
+
+I think backtracking is more complicated--I think it gets into the backtracking monad, which I don't fully understand.  I'll look at other things first.
+Great!
+
+Backtracking is only important in exceptional cases.  For example, I may want to interrupt a long-running `vm_compute` and have the debugger step to the beginning of the `vm_compute`.  But having it stop at the next tactic is at least 90% of what I want from this feature, and I'd consider this bug closed once it's implemented.
+I added a "Break" function (F11) that will cause a stop at the next step in the tactic.  Just pushed the updated code.

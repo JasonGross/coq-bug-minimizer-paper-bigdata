@@ -1,0 +1,9 @@
+Comment author: @JasonGross
+
+I'd like this to work:
+```
+Set Universe Polymorphism.
+Notation "type@ { i }" := Type@ {i} (i universe).
+Check type@ {Set}.
+```
+

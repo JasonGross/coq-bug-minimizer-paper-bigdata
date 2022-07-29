@@ -1,0 +1,79 @@
+Comment author: @JasonGross
+
+Module A1.
+  Inductive A (T : Type) := C (a : T).
+  Scheme Equality for A. (* success *)
+End A1.
+
+Module A2.
+  Inductive A (x : Type) := C (a : x).
+  Scheme Equality for A. (* Error:
+Unexpected error during scheme creation: Anomaly:
+                                         Uncaught exception 
+Pretype_errors.PretypeError(_, _, _).
+                                         Please report at 
+http://coq.inria.fr/bugs/. *)
+End A2.
+
+
+Comment author: @maximedenes
+
+Wow! How is that even possible?
+
+
+Comment author: @JasonGross
+
+I bet it's one of these lines:
+https://github.com/coq/coq/blob/93a03345830047310d975d5de3742fa58a0a224b/toplevel/auto_ind_decl.ml#L521 or https://github.com/coq/coq/blob/93a03345830047310d975d5de3742fa58a0a224b/toplevel/auto_ind_decl.ml#L544
+
+> let compute_bl_goal ind lnamesparrec nparrec =
+>   let eqI, eff = eqI ind lnamesparrec in
+>   let list_id = list_id lnamesparrec in
+>   let create_input c =
+>     let x = Id.of_string "x" and
+>         y = Id.of_string "y" in
+>       let bl_typ = List.map (fun (s,seq,_,_) ->
+>         mkNamedProd x (mkVar s) (
+>             mkNamedProd y (mkVar s) (
+>               mkArrow
+>                ( mkApp(Lazy.force eq,[|(Lazy.force bb);mkApp(mkVar seq,[|mkVar x;mkVar y|]);(Lazy.force tt)|]))
+>                ( mkApp(Lazy.force eq,[|mkVar s;mkVar x;mkVar y|]))
+>           ))
+>         ) list_id in
+>       let bl_input = List.fold_left2 ( fun a (s,_,sbl,_) b ->
+>         mkNamedProd sbl b a
+>       ) c (List.rev list_id) (List.rev bl_typ) in
+>       let eqs_typ = List.map (fun (s,_,_,_) ->
+>           mkProd(Anonymous,mkVar s,mkProd(Anonymous,mkVar s,(Lazy.force bb)))
+>           ) list_id in
+>       let eq_input = List.fold_left2 ( fun a (s,seq,_,_) b ->
+>         mkNamedProd seq b a
+>       ) bl_input (List.rev list_id) (List.rev eqs_typ) in
+>       List.fold_left (fun a decl -> mkNamedProd
+>                 (match RelDecl.get_name decl with Name s -> s | Anonymous ->  Id.of_string "A")
+>                 (RelDecl.get_type decl) a) eq_input lnamesparrec
+>     in
+>       let n = Id.of_string "x" and
+>           m = Id.of_string "y" in
+>       let u = Univ.Instance.empty in
+>      create_input (
+>         mkNamedProd n (mkFullInd (ind,u) nparrec) (
+>           mkNamedProd m (mkFullInd (ind,u) (nparrec+1)) (
+>             mkArrow
+>               (mkApp(Lazy.force eq,[|(Lazy.force bb);mkApp(eqI,[|mkVar n;mkVar m|]);(Lazy.force tt)|]))
+>               (mkApp(Lazy.force eq,[|mkFullInd (ind,u) (nparrec+3);mkVar n;mkVar m|]))
+>         ))), eff
+
+Note that the following also fails:
+
+Inductive A (y : Type) := C (a : y).
+
+
+There's probably some way to break it with the string "A", but I haven't found it.
+
+
+Comment author: @herbelin
+
+Thanks Jason for the hint. I cannot not fix it (trunk 50c7e47da5).
+
+

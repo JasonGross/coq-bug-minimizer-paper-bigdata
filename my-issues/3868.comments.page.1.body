@@ -1,0 +1,23 @@
+Comment author: @JasonGross
+
+Created attachment 526
+151 s [Qed] resulting from primitive projections
+
+Putting [Set Primitive Projections] at the top of the attached file results in the [Qed] at the end taking about 4s.  Removing it entirely makes the [Qed] take about 4s.  Leaving it where it is, so that most projections are non-primitive, but a few projections are primitive, results in the [Qed] taking 151s.
+
+> Attached file: [bug_factorization_slow_end_07_admitted.v](https://coq.inria.fr/bugfiles/attachment.cgi?id=526) (application/octet-stream, 13266 bytes)
+> Description:   151 s [Qed] resulting from primitive projections
+
+
+Comment author: @JasonGross
+
+Er, actually, this might not be quite so insanely slow.  Apparently going back and forth past a [Set Universe Polymorphism] results in code getting slower and slower?  I'll probably split this up into two bug reports and close this one.
+
+
+Comment author: @JasonGross
+
+
+
+*** This bug has been marked as a duplicate of bug [BZ#3870](https://github.com/coq/coq/issues?q=is%3Aissue%20%22Original%20bug%20ID%3A%20BZ%233870%22) ***
+
+

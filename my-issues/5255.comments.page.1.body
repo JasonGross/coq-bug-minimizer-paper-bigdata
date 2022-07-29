@@ -1,0 +1,23 @@
+Comment author: @JasonGross
+
+This should work, IMO:
+
+Section foo.
+  Context (x := 1).
+  Goal x = 1. reflexivity. Qed.
+End foo.
+
+The reasoning is that "Context STUFF. Definition foo : bar." should be the same 
+as "Definition foo STUFF : bar."
+
+
+Comment author: @ppedrot
+
+See https://github.com/coq/coq/pull/631.
+
+
+Comment author: @maximedenes
+
+PMP's fix merged in 8.6 branch. Thanks!
+
+

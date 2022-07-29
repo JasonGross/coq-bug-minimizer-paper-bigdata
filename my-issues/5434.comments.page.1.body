@@ -1,0 +1,162 @@
+Comment author: @JasonGross
+
+Definition mul (a b : nat * nat) : nat * nat
+:= Eval vm_compute in
+    let (x, y) := a in
+    let (z, w) := b in
+    (x, w).
+Goal forall a (x : nat * nat * (nat * nat)),
+    a = mul (fst x) (snd x).
+  clear.
+  intros a x.
+  cbv beta iota delta [mul].
+  let e := lazymatch goal with
+           | |- ?R ?LHS ?RHS => RHS
+           | |- forall x, ?R (@ ?LHS x) (@ ?RHS x) => RHS
+           end in
+  let e := lazymatch e with
+           | match ?ev with pair a b => @ ?e a b end
+             => e
+           end in
+  pose e as E.
+  lazymatch eval cbv [E] in E with
+  | (fun x : ?T => ?C) => idtac
+  end. (* Anomaly: File "pretyping/constr_matching.ml", line 115, characters 
+15-21: Assertion failed. Please
+report at http://coq.inria.fr/bugs/. *)
+
+  
+
+Line 115 is the assert in:
+
+let rec extract_bound_aux k accu frels ctx = match ctx with
+| [] -> accu
+| (na1, na2, _) :: ctx ->
+  if Int.Set.mem k frels then
+    begin match na1 with
+    | Name id ->
+      let () = assert (match na2 with Anonymous -> false | Name _ -> true) in
+      let () = if Id.Set.mem id accu then raise PatternMatchingFailure in
+      extract_bound_aux (k + 1) (Id.Set.add id accu) frels ctx
+    | Anonymous -> raise PatternMatchingFailure
+    end
+  else extract_bound_aux (k + 1) accu frels ctx
+
+
+Comment author: @JasonGross
+
+Note that replacing [vm_compute] with [compute] makes it go through.
+
+
+Comment author: @JasonGross
+
+I can also trigger this with only [refine]/[apply], without [vm_compute], so I 
+think the assertion is just bogus.  See 
+https://github.com/JasonGross/fiat-crypto/commit/af8c7f89ec794b687f04de1b023e7777b2b3c034.
+
+
+Comment author: @JasonGross
+
+Here's a much smaller, more self-contained example.  I think it almost-clearly 
+demonstrates what the issue is: when the name of a particular binder is chosen 
+by Coq, the assertion fails.
+
+(* File reduced by coq-bug-finder from original input, then from 402 lines to 
+11 lines, then from 319 lines to 12 lines, then from 62 lines to 14 lines, then 
+from 30 lines to 14 lines *)
+(* coqc version 8.6 (June 2017) compiled on Jun 15 2017 12:8:43 with OCaml 
+4.02.3
+   coqtop version jgross-Leopard-WS:/home/jgross/Downloads/coq/coq-v8.6,(HEAD 
+detached from 7e992fa) (ce1e1dba837ad6e2c79ff7e531b5e3adea3cd327) *)
+
+Global Set Asymmetric Patterns.
+
+Definition proj2_sig_map {A} {P Q : A -> Prop} (f : forall a, P a -> Q a) (x : 
+@ sig A P) : @ sig A Q
+  := let 'exist a p := x in exist Q a (f a p).
+Goal forall (feBW' : Type) (g : Prop -> Prop) (f' : feBW' -> Prop), {a0 : feBW' 
+| g True = g (f' a0)}.
+  clear; intros.
+  apply (fun f => proj2_sig_map (fun _ p => f_equal f p)).
+  lazymatch goal with
+  | [ |- sig (fun a : ?A => ?P) ]
+    => idtac
+  end. (* Anomaly: File "pretyping/constr_matching.ml", line 154, characters 
+15-21: Assertion failed. Please report at
+http://coq.inria.fr/bugs/. *)
+
+Here's an even more clear version:
+Global Set Asymmetric Patterns.
+
+Definition proj2_sig_map {A} {P Q : A -> Prop} (f : forall a, P a -> Q a) (x : 
+@ sig A P) : @ sig A Q
+  := let 'exist a p := x in exist Q a (f a p).
+Axioms (feBW' : Type) (g : Prop -> Prop) (f' : feBW' -> Prop).
+Definition foo := @ proj2_sig_map feBW' (fun _ (* H *) => True = f' _) (fun H => 
+g True = g (f' H))
+                                 (fun (a : feBW') (p : (fun H : feBW' => True = 
+f' H) a) => @ f_equal Prop Prop g True (f' a) p).
+Goal True.
+  lazymatch type of foo with
+  | sig (fun a : ?A => ?P) -> _
+    => idtac
+  end.
+
+If "_ (* H *)" is replaced with "H", then the anomaly goes away.
+
+Is there an easy fix for this?
+
+
+Comment author: @JasonGross
+
+Note that this assertion failure was original an anomaly (Unnamed bound 
+variable) until PMP changed it into an assertion failure at 
+https://github.com/coq/coq/commit/4659847d5fbe2ec119d224dbc68939249d1d6c30 
+("Code cleaning in Matching", from May 2013).  The anomaly dates back to the 
+original support for open terms that Hugo added in 
+https://github.com/coq/coq/commit/c3d45696c271df086c39488d8a86fd2b60ec8132 
+("Added support for Ltac-matching terms with variables bound in the pattern", 
+Jun 2010).  From Paul's investigations, removing the assert allows my example 
+to go through, but doesn't fix this example ("Variable P should be bound to a 
+term but is bound to a constr_under_binders")
+
+Global Set Asymmetric Patterns.
+
+Definition proj2_sig_map {A} {P Q : A -> Prop} (f : forall a, P a -> Q a) (x :  
+@ sig A P) : @ sig A Q
+  := let 'exist a p := x in exist Q a (f a p).
+Axioms (feBW' : Type) (g : Prop -> Prop) (f' : feBW' -> Prop).
+Definition foo := @ proj2_sig_map feBW' (fun _ (* H *) => True = f' _) (fun H => 
+ g True = g (f' H))
+                                 (fun (a : feBW') (p : (fun H : feBW' => True = 
+ f' H) a) => @ f_equal Prop Prop g True (f' a) p).
+Goal True.
+  lazymatch type of foo with
+  | sig (fun a : ?A => ?P) -> _
+    => pose (fun a : A => a = a /\ P = P)
+  end.
+
+
+Comment author: @herbelin
+
+I introduced this warning to track anonymous dependent variables, and, one source  of such anonymous dependent variables is unification, as an evar is allowed to be dependent on an anonymous variable (see e.g. Jason's example).
+
+I see three possible solutions:
+
+- We forbid existential variables to be dependent on variables explicitly written as anonymous.
+  Advantages:
+  - This gives a way to control which variables are allowed to occur in the instance of an evar.
+  Disadvantages:
+  - Not necessarily natural to write explicitly a name for a variable which occurs only invisibly in inferred arguments.
+  - Break of compatibility.
+
+- We name a posteriori dependent variables which the user did not name. For that, we need to do it late, after evars are resolved. The cost is a priori one pass through the whole term.
+
+- We accept dependent anonymous variables in terms (as we actually do de facto). Removing the assert in ltac pattern-matching is indeed not enough: we also need to rename such anonymous dependent variables on the fly. A possible fix in this direction is available as PR [BZ#811](https://github.com/coq/coq/issues?q=is%3Aissue%20%22Original%20bug%20ID%3A%20BZ%23811%22).
+
+
+Comment author: @Zimmi48
+
+PR [BZ#811](https://github.com/coq/coq/issues?q=is%3Aissue%20%22Original%20bug%20ID%3A%20BZ%23811%22) merged.
+
+

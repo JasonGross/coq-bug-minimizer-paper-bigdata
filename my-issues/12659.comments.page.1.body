@@ -1,0 +1,19 @@
+You would need to process arguments in a different order to make it work, that's not bidirectionality.
+IIRC, for this specific example, ssreflect provides a better "notation" for `if then else` that hints the type checker that the guard is a boolean (I don't recall which file/plugin):
+
+```coq
+Coq < Require Import ssreflect ssrfun ssrbool.
+[Loading ML file ssrmatching_plugin.cmxs ... done]
+[Loading ML file ssreflect_plugin.cmxs ... done]
+Overwriting previous delimiting key bool in scope bool_scope
+
+Coq < Check option_map (fun b => if b then 1 else 0) (Some true).
+option_map (fun b : bool => if b then 1 else 0) (Some true)
+     : option nat
+
+```
+I guess something tricked you Jason. Maybe the doc about bidirectional hints is misleading? I see that in English it could mean "from both left to right and right to left" but in type inference "bidirectional" is pretty standard.
+Otherwise we can close the issue I guess.
+Ah, okay, I guess I don't have a good understanding of BIDI, I should read up on it more.  In any case, I think this should then be turned into a more general feature request, to allow delayed constraints.  (I seem to recall this being an issue in `rewrite` matching too.)
+This isn't a failing constraint, typechecking simply cannot proceed without knowing what inductive you are matching at.
+You could suspend the elaboration of the subterm `if .... ` until the type of `b` is know. This is what Jason is asking for, but this example is trivially solved by loading ssr, so I'm closing this issue

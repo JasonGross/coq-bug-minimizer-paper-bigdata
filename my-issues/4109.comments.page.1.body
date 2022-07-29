@@ -1,0 +1,97 @@
+Comment author: @JasonGross
+
+Module Import A.
+  Module B.
+  End B.
+End A.
+Import B. (* success *)
+Module B.
+  Import B. (* Error: B is not a module *)
+
+
+Comment author: @ppedrot
+
+This is the expected behaviour. You need to write "Import A.B." for it to work.
+
+I assume this causes bugs in your bug minimizer, am I right?
+
+
+Comment author: @JasonGross
+
+No, it doesn't cause any issues in my minimizer; it only moves [Require]s up to the top of the file, and fully qualifies the associated [Import] before doing so.  I was moving [Require Imports]s to the top of files for stylistic reasons, separate from the minimizer, and noticed this behavior.
+
+Why is this expected?  It is different from definitions, where I can do:
+
+Module Import A.
+  Definition B := Type.
+End A.
+Module C.
+  Definition B := B.
+End C.
+Definition B : Type.
+  exact B.
+Defined.
+
+
+Comment author: @ppedrot
+
+If you do not have this feature, how do you make reference to the module currently being defined? There is no such thing as "Self" in Coq parlance...
+
+
+Comment author: @JasonGross
+
+A module can talk about itself?  I see that you need to refer to the current module to do things like
+
+Module Import A.
+  Definition X := Type.
+  Definition Y := A.X.
+End A.
+
+but why can't [A] (unqualified) talk about the previous [A]?  Coq already does mix-ins for module namespacing, i.e., the following works:
+
+Module Import A1.
+  Module A.
+    Definition X := Type.
+  End A.
+End A1.
+Module Import A2.
+  Module A.
+    Check A.X.
+    Definition Y := Type.
+  End A.
+End A2.
+Check A.X.
+Check A.Y.
+
+
+Comment author: @ppedrot
+
+I'm no module expert, but there are cases where you want to use a partially defined module, so you need to be able to name it.
+
+The behaviour you describe is an unfortunate (or fortunate, it depends) consequence of the semantics of short names in Coq. Superficially, It appears to you that A.X and A.Y live in the same namespace, but this is actually not the case, as the "Locate" command would tell you.
+
+More generally, the principle underlying the Coq naming system is that you can always reach all defined terms through a fully qualified name. (There are exceptional cases where you can break this, but this is due to functors and in that case, Coq tends to become quite talkative about it). If you cannot do it, you'll run into trouble, because you won't be able to typecheck former expressions, as the names they depend on have disappeared. I know that this is a problem that plagued the OCaml community until recently. To ensure this safety property, you need to give a name to the module currently being built.
+
+
+Comment author: @JasonGross
+
+Ah, sorry, I was confused by the behavior of 8.4, which, unlike 8.5, says:
+
+Module Import A1.
+  Module A.
+  End A.
+End A1.
+Module Import A2.
+  Module A.
+    Locate Module A. (* No module is referred to by basename A *)
+  End A.
+End A2.
+
+(8.5 correctly lists both modules A.  The one test case I came up with happened to fail in 8.5, but I see that this is reasonable behavior now.)
+
+
+Comment author: @JasonGross
+
+Thanks for the explanations!
+
+

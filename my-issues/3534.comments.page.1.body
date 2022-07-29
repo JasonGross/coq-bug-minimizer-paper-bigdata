@@ -1,0 +1,5 @@
+Comment author: @JasonGross
+
+Say I have a complicated notation, and it gives me a type error, and I want to see what it built.  I would like to be able to do [let x := uconstr:(foo) in idtac x].  But, currently, that just says <abstr>.  I'd like to see the term it built, without typechecking it.
+
+

@@ -1,0 +1,20 @@
+Comment author: @JasonGross
+
+This would help in writing code that runs in both 8.4 and 8.5, if such a thing is desirable.  It would also help in tracking down bugs in 8.5, because then I don't have to figure out fancy ways to work around differences in [refine] before 8.4 and 8.5 to run my automatic bug minimizer.
+
+
+Comment author: @JasonGross
+
+Any chance this can make it in to the next beta/release?
+
+
+Comment author: @aspiwack
+
+It's not very likely. I won't have time to think about that for a while.
+
+
+Comment author: @silene
+
+The "refine" tactic now performs "shelve_unifiable" (contrarily to "simple refine"), so marking the bug as resolved.
+
+

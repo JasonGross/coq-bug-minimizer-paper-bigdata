@@ -1,0 +1,28 @@
+Comment author: @JasonGross
+
+Require Import Coq.Arith.PeanoNat.
+Hint Extern 1 => admit : typeclass_instances.
+Goal forall a b (f : nat -> Set), Nat.eq a b -> f a = f b.
+  intros a b f H.
+  rewrite H. (* Toplevel input, characters 15-25:
+Anomaly: Evar ?X11 was not declared. Please report. *)
+
+
+Comment author: @ppedrot
+
+The evar is lost at line 1445 in rewrite.ml, because of the following code:
+
+let evars' = solve_constraints env res.rew_evars in
+let newt = Evarutil.nf_evar evars' res.rew_to in
+let evars = (* Keep only original evars (potentially instantiated) and goal evars,
+                the rest has been defined and substituted already. *)
+  Evar.Set.fold (fun ev acc -> Evd.remove acc ev) cstrs evars'
+in
+
+The removal of evars is done on an evar which is _not_ solved by the [solve_constraints] function, even though it is present in the list of evars to be solved. If useful, the evar has type
+
+?X11==[a b f H |- relation Set] (internal placeholder) {r}
+
+Matthieu, any advice?
+
+

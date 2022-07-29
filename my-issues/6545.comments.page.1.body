@@ -1,0 +1,17 @@
+It's retyping the term.
+More precisely, this seems to be due to a econstr-to-constr conversion in the type-checking of template-polymorphic inductive types. You're manipulating huge products, which are template-polymorphic, so you're hitting right in the algorithmic worst case.
+I don't think it's about econstr, this seems solely about template polymorphism and retyping.
+For instance if you do
+~~~coq
+Lemma foo: let n := 21 in twos n nat = twos n nat.
+  lazy [twos].
+  exact eq_refl.
+Time  Qed.
+~~~
+it takes a while even if you avoid template poly by adding `Axiom prod : Set -> Set -> Set.` at the beginning.
+However avoiding template poly makes the second `display` much quicker.
+Basically retyping on a stack of template poly types is close to full typing.
+> Basically retyping on a stack of template poly types is close to full typing.
+
+Which is were true polymorphic inductive types shine... But you have to pay the cost at node creation instead.
+Probably wontfix until the death of templates (may be correlated with the death of the universe)

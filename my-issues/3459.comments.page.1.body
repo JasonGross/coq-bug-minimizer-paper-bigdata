@@ -1,0 +1,80 @@
+Comment author: @JasonGross
+
+```coq
+Goal 1 = 2.
+match goal with
+  | [ |- context G[2] ] => let y := constr:(fun x => $(let r := constr:(@ eq Set x x) in
+                                                       clear x;
+                                                       exact r)$) in
+                           pose y
+end.
+(* [P := fun _ : Set => x = x : Set -> Prop] *)
+simpl in *. (* Toplevel input, characters 0-11:
+Anomaly: Uncaught exception Not_found(_). Please report. *)
+
+```
+
+Comment author: @ppedrot
+
+Whoops, I did not checked correctly...
+
+
+Comment author: @ppedrot
+
+This is not related to tactics in terms per se: the following similar code also raises a Not_found anomaly.
+```coq
+
+Section F.
+
+Variable x : nat.
+
+Goal True.
+
+evar (e : Prop).
+assert e.
+let r := constr:(eq_refl x) in clear x; exact r.
+
+
+```
+Comment author: @herbelin
+
+At the time of today (and apparently since at least several weeks), the Not_found on the first report does not occur any longer but an ill-typed context is produced. The second example by Pierre-Marie is still raising a Not_found.
+
+My naive approach to this would be that clear check ltac bindings and fail if one of them is referring to the variable being cleared (possibly doing a phase of lambda-lifting to avoid checking bindings not used after clearing, or alternatively erasing the bindings which had become ill-typed)?
+
+
+Comment author: @herbelin
+
+This somehow failed with no anomaly in v8.4 by chance.
+
+When executing `exact r`, with `r`=`eq_refl x`, `r` is typed-checked with the fast type-checker. This fast type-checker (`get_type_of`) does the minimum to infer the type of a term assuming the term is already type-checked.
+
+In 8.4, eq was inductive-polymorphic and the arguments of `eq_refl` were checked (here `x`). In 8.5, `eq` is not "template polymorphic" and the arguments of `eq_refl` are not checked any more.
+
+Of course, we could use the complete type-checker (`type_of`) to prevent the anomaly, but is this what you really want.
+
+Consider e.g. a situation
+
+```
+Goal nat -> nat -> nat.
+intros a b.
+let r:=a in clear a; rename b into a; apply r.
+```
+
+Do we want it to succeed and build the proof `fun a b => b` or to fail?
+
+I guess we want it to fail. So, type-checking is not enough. We really need clear and rename, and all tactics impacting the context to act on the constr binders of ltac (as if these were local definitions of the context!).
+
+
+I like the idea of tagging bugs like "known", but however I suggest we don't close them unless added to a know issues file.
+
+C.f. #12665 and #947
+We have plenty of open copies somewhere, I just can't be bothered to search for them to provide a link.
+I also think there's a difference between anomaly and type mismatch errors, and even when Ltac bypasses typing it should not result in anomalies.
+Let's make this the official master copy then.
+> Let's make this the official master copy then.
+
+I was not worried about the copies, but about the `wellknown` tagging, IMHO, if we tag like that, we should have a known issues section.
+I agree with both:
+- having documented known issues (but I think known issues should be documented in the refman close to the related feature, we could add an index of known issues if this is considered to be useful)
+- there is no excuse to not fix anomalies (if we cannot fix the underlying issue, then we should transform them info normal error messages instead).

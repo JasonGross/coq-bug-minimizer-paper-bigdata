@@ -1,0 +1,261 @@
+Comment author: @JasonGross
+
+I'll work on making a test case, but the error message is:
+```
+Toplevel input, characters 21-33:
+Error:
+In environment
+Char : Type
+HSL : StringLike Char
+HSLP : StringLikeProperties Char
+ls : list (string * productions Char)
+splitdata : split_dataT
+constT : Type
+varT : Type
+strC : str_carrier constT varT
+data := {| predata := rdp_list_predata; split_data := splitdata |}
+     : boolean_parser_dataT
+str : String
+nt : string
+a : nat * nat
+x,
+y : forall x : nat * nat,
+    prod_relation lt lt x a ->
+    list nat ->
+    varT ->
+    forall x2 : nat, x2 <= fst x -> rdp_list_nonterminal_carrierT -> bool
+H : forall (a0 : nat * nat) (a : prod_relation lt lt a0 a)
+      (a1 : list nat) (a2 : varT) (a3 : nat) (a4 : a3 <= fst a0)
+      (a5 : rdp_list_nonterminal_carrierT),
+    x a0 a a1 a2 a3 a4 a5 = y a0 a a1 a2 a3 a4 a5
+a0 : list nat
+a1 : varT
+a2 : nat
+a3 : a2 <= fst a
+a4 : rdp_list_nonterminal_carrierT
+H0 := sumbool_rect (fun _ : {a2 < fst a} + {~ a2 < fst a} => bool)
+        (fun x0 : a2 < fst a => ?X2798) (fun x0 : ~ a2 < fst a => ?b)
+        (lt_dec a2 (fst a)) : bool
+e := @ pull_sumbool_rect_dep
+  : forall (L R : Prop) (A B : {L} + {R} -> Type)
+      (P : forall b : {L} + {R}, A b -> B b) (a : forall x : L, A in_left)
+      (a' : forall x : R, A in_right) (b : {L} + {R}),
+    P b (sumbool_rect A a a' b) =
+    sumbool_rect B (fun x : L => P in_left (a x))
+      (fun x : R => P in_right (a' x)) b
+x0 : ~ a2 < fst a
+Unable to unify "?b1@ {c':=lt_dec a2 (fst a)}" with
+"?b".
+```
+
+What could possibly make the unification engine think that these two are not unifiable? (Coq 95a4fcf8cd36e29034e886682ed3a6e2914ce04f).
+
+
+Comment author: @JasonGross
+
+Test code:
+```coq
+Goal forall y : sumbool True True, exists x, x = sumbool_rect (fun _ => bool) (fun _ => true) (fun _ => true) y.
+  eexists.
+  let x := match goal with |- ?x = _ => constr:x end in
+  let k := fresh in
+  set (k := x);
+    match goal with
+      | [ |- _ = sumbool_rect ?T (fun b => _) (fun c => _) ?v ]
+        => refine (_ : sumbool_rect T (fun b => _) (fun c => _) v = _)
+    end;
+    match goal with
+      | [ |- _ = sumbool_rect ?T (fun b => _) (fun c => _) ?v ]
+        => refine (sumbool_rect
+                     (fun sb => sumbool_rect T _ _ sb = sumbool_rect T _ _ sb)
+                     _
+                     _
+                     v);
+          try intro; simpl sumbool_rect
+      | [ |- bool ] => idtac
+    end.
+  Fail reflexivity. (* Toplevel input, characters 0-12:
+Error:
+In environment
+y : {True} + {True}
+H := sumbool_rect (fun _ : {True} + {True} => bool)
+       (fun a : True => ?X31) (fun b : True => ?b) y : bool
+b : True
+Unable to unify "?b0@ {y:=y; sb:=y}" with "?b".
+ *)
+(* What is Coq trying to do?! *)
+  Undo 2.
+  match goal with
+    | [ |- _ = sumbool_rect ?T (fun b => _) (fun c => _) ?v ]
+      => refine (_ : sumbool_rect T (fun b => _) (fun c => _) v = _)
+  end; (* we need [try] to work around bug [BZ#4416](https://github.com/coq/coq/issues?q=is%3Aissue%20%22Original%20bug%20ID%3A%20BZ%234416%22) *)
+  try match goal with
+    | [ |- bool ] => idtac
+    | [ |- _ = sumbool_rect ?T (fun b => _) (fun c => _) ?v ]
+      => refine (sumbool_rect
+                   (fun sb => sumbool_rect T _ _ sb = sumbool_rect T _ _ sb)
+                   _
+                   _
+                   v);
+        try intro; simpl sumbool_rect
+    | [ |- ?G ] => idtac G
+  end.
+  reflexivity. (* success *)
+  reflexivity. (* success *)
+Defined.
+```
+
+Comment author: @silene
+
+Note that the issue is deeper than `reflexivity`, since even `exact` fails.
+```coq
+Goal exists x, x = true.
+evar (a : bool).
+exists a.
+refine (unit_rec (fun s => unit_rec _ _ s = _) _ tt).
+exact true.
+```
+
+```
+Error: In environment
+a := ?X5 : bool
+Unable to unify "?y1" with "?y@ {s:=tt}".
+```
+Strangely enough, `refine true` succeeds.
+
+
+Comment author: @ppedrot
+
+That's not strange. The exact tactic still uses the old engine. We can update it trivially, but it may probably change its semantics (e.g. making exact behave just as eexact).
+
+
+Comment author: @JasonGross
+
+Are there any cases where `exact` fails but `eexact` succeeds?  I can't recall ever running into one, and `exact` is generally happy to instantiate evars.  The reference manual says, of `eexact`, "This tactic behaves like exact but is able to handle terms and goals with meta-variables."  I assume it means evars, because, of `eassumption`, it says, "This tactic behaves like assumption but is able to handle goals with meta-variables," and I know `eassumption` will instantiate evars that `assumption` will not.  So, at the very least, the reference manual seems wrong, because this code works fine:
+```coq
+Goal (exists x y, x = 1 -> 1 = y).
+  do 2 eexists; intro H.
+  exact H.
+```
+
+Comment author: @JasonGross
+
+Note that this code succeeds:
+```coq
+Goal forall y : sumbool True True, exists x, x = sumbool_rect (fun _ => bool) (fun _ => true) (fun _ => true) y.
+  eexists.
+  let x := match goal with |- ?x = _ => constr:x end in
+  let k := fresh in
+  set (k := x);
+    let A' := fresh in
+    let B' := fresh in
+    match goal with
+      | [ |- _ = sumbool_rect ?T ?A ?B ?v ]
+        => let TA := type of A in
+           let TB := type of B in
+           evar (A' : TA); evar (B' : TB);
+           refine (_ : sumbool_rect T A' B' v = _)
+    end;
+    match goal with
+      | [ |- _ = sumbool_rect ?T (fun b => _) (fun c => _) ?v ]
+        => refine (sumbool_rect
+                     (fun sb => sumbool_rect T _ _ sb = sumbool_rect T _ _ sb)
+                     _
+                     _
+                     v);
+          subst A' B';
+          try intro; simpl sumbool_rect
+      | [ |- bool ] => idtac
+    end.
+  reflexivity.
+```
+
+But if we put the `subst A' B'` in between the two `match` statements, rather than in the second one, `reflexivity` goes back to failing.  So something is messing up the evars (and, moreover, in the actual code that I'm dealing with, I can get to a point where a goal is uniquely determined by the constraints, but Coq still makes me solve it, and complains when I get it wrong...)
+
+
+Comment author: @JasonGross
+
+If this is an issue with tactics coded in the old proof engine, then this seems to be a major flaw in the compatibility layer (since, e.g, `assert True`) also fails:
+```coq
+Goal exists x, x = true.
+Proof.
+  evar (a : bool).
+  exists a.
+  refine (unit_rec (fun s => unit_rec _ _ s = _) _ tt).
+  assert True. (* Error: In environment
+a := ?X5 : bool
+Unable to unify "?y1" with "?y@ {s:=tt}". *)
+```
+
+Comment author: @JasonGross
+
+Also, note that `eexact true` also fails:
+```
+Goal exists x, x = true.
+Proof.
+  evar (a : bool).
+  exists a.
+  unshelve refine (unit_rec (fun s => unit_rec _ _ s = _) _ tt).
+  eexact true.
+```
+
+Comment author: @herbelin
+
+As far as I could debug, in
+```coq
+Goal exists x, x = true.
+Proof.
+  evar (a : bool).
+  exists a.
+  refine (unit_rec (fun s => unit_rec _ _ s = _) _ tt).
+  (* ... any tactic with a term A to interpret with "interp_constr" ... *)
+```
+`refine` has left conversion problems unresolved.
+
+Is this what we expect?
+
+In particular, the message
+
+```
+In environment
+a := ?X5 : bool
+Unable to unify "?y1" with "?y@{s:=tt}".
+```
+comes from one of the two pending conversion problems, which the evaluation of the term A tries to solve, without success.
+
+One sees `?X5` because `nf_enter` normalizes the goal but the postponed problems are not normalized so ?X5 has not yet been instantiated with `unit_rec (fun _ : unit => bool) ?y1 tt` in the postponed problem.
+
+Arnaud, Pierre-Marie, any hints on what to do?
+
+
+Comment author: @herbelin
+
+The problem seems to be the same in the bigger example (comment 2) where the error message, as hinted by the unnormalized evar `?X31` in the error message, comes from an unresolved postponed problem which refine left pending.
+
+
+Comment author: @maximedenes
+
+It may be not clear from the bug report, but comment 1 is actually a regression from 8.4. Changing refine to simple refine doesn't solve it. Would PMP or Arnaud have a clue what is going on?
+
+
+The "refine unit_rec" lines in the small examples and the "refine sumbool_rect" in the large example fail in modern Coq.
+The failing conversion problem (resulting from `?P tt == (a = 0)` after setting `?P:=fun y => ?b@{a:=a; y:=tt} = 0`) is of the form:
+```
+Evars:
+                                                         |- ?x : bool
+a := unit_rec (fun _ : unit => bool) ?x tt = _, y : unit |- ?b : bool 
+
+Constraint:
+a := unit_rec (fun _ : unit => bool) ?x tt |- ?b@{a:=a; y:=tt} == ?x
+```
+Morally, the constraint actually simplifies to:
+```
+a := ?x |- ?b@{a:=a; y:=tt} == ?x
+```
+There are several possible solutions for `?b`, e.g. `?b:=a`, or `?b:=match y with tt => a end`, etc., exploiting the information that `a` is convertible to `?x`, or we can prefer to instantiate `?x := ?b'@{y:=t}` for a restriction `?b'` of `?b` which forces it to not use `a` (because of the circularity of `?x` in `a`, if we don't want `b` to be instantiated now to break the circularity).
+
+The second solution does not lose solutions up to convertibility, though it looses some syntactic solutions, and this is why (from memory) it is not adopted by default. However, in the final heuristic phase where the priority is to find a solution, I believe it is ok to favor it.
+
+So I made PR #14673 for that purpose.
+
+

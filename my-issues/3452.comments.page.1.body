@@ -1,0 +1,55 @@
+Comment author: @JasonGross
+
+OCAMLC    lib/iStream.mli
+OCAMLOPT  lib/iStream.ml
+File "lib/iStream.ml", line 41, characters 13-24:
+Error: Unbound value Lazy.is_val
+make[1]: *** [lib/iStream.cmx] Error 2
+
+confiure says
+$ ./configure -no-native-compiler -prefix /usr/local -debug
+You have GNU Make 3.81. Good!
+You have OCaml 3.12.1. Good!
+You have Camlp5 6.02.3. Good!
+You have native-code compilation. Good!
+No such directory '/usr/lib/ocaml/lablgtk2' (in OCaml library).
+LablGtk2 not found:
+=> no CoqIde will be built.
+latex was not found; documentation will not be available
+  Architecture                : Linux
+  Coq VM bytecode link flags  : -dllib -lcoqrun -dllpath /usr/local/lib/coq
+  Other bytecode link flags   : 
+  OS dependent libraries      : -cclib -lunix
+  OCaml/Camlp4 version        : 3.12.1
+  OCaml/Camlp4 binaries in    : /usr/bin
+  OCaml library in            : /usr/lib/ocaml
+  Camlp4 library in           : +camlp5
+  Native dynamic link support : true
+  CoqIde                      : no
+  Documentation               : None
+  Web browser                 : firefox -remote "OpenURL(%s,new-tab)" || firefox %s &
+  Coq web site                : http://coq.inria.fr/
+
+
+The full build log is at https://travis-ci.org/HoTT/HoTT/jobs/30592360
+
+
+Comment author: @JasonGross
+
+Note that this is recent; I'm pretty sure it built fine in this environment as of c4ecec191130a51975bf97d067472e0e5bd744f5.
+
+
+Comment author: @aspiwack
+
+It is, indeed, due to Pierre-Marie Pédrots's 062d07eb5446, yesterday-ish which uses a [Lazy.is_val] which available only since 4.00.
+
+I don't think having an [is_val] primitive on IStream warrants a bump in ocaml version (actually, I even believe that [is_val] is a unreasonable breach of abstraction and shouldn't be implemented even if we needed it).
+
+I suggest that the commit be reverted. But I'll wait for Pierre-Marie's opinion before doing so.
+
+
+Comment author: @ppedrot
+
+Let's revert it indeed.
+
+

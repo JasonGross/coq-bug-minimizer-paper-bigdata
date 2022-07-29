@@ -1,0 +1,62 @@
+see also https://github.com/coq/coq/issues/14506
+I agree with @JasonGross, and I've never run into a case where the default behavior is desirable.
+
+In the Iris ecosystem we often use
+```coq
+Context `{!Typeclass}.
+```
+
+but that disables generalization of arguments, so any one that needs generalization must be generalized explicitly. Here, you'd want those to be generalized I imagine.
+
+The `!` also has other fun behavior: https://coq.discourse.group/t/documentation-of-foo/129?u=blaisorblade.
+
+```
+From stdpp Require Import base finite.
+Section foo.
+  Fail Context `{!Finite A}.
+  Context `{!EqDecision A, !Finite A}.
+  Goal True. Show. Abort.
+
+  (* Now this works*)
+  Context `{!Finite A}.
+  Goal True. Show. Abort.
+
+  (* The [Context `{!EqDecision A, !Finite A}] above is equivalent to: *)
+  Context `{Finite A}.
+  (* And this one abstracts over a fresh EqDecision as well. *)
+  Goal True. Show. Abort.
+End foo.
+
+(* OUTPUT:
+
+The command has indeed failed with message:
+Cannot infer the implicit parameter EqDecision0 of Finite whose type is
+"EqDecision A" (no type class instance found) in environment:
+A : Type
+1 subgoal
+  
+  A : Type
+  EqDecision0 : EqDecision A
+  Finite0 : Finite A
+  ============================
+  True
+1 subgoal
+  
+  A : Type
+  EqDecision0 : EqDecision A
+  Finite0, Finite1 : Finite A
+  ============================
+  True
+1 subgoal
+  
+  A : Type
+  EqDecision0 : EqDecision A
+  Finite0, Finite1 : Finite A
+  EqDecision1 : EqDecision A
+  H : Finite A
+  ============================
+  True
+
+
+*)
+```

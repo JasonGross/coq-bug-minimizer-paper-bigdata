@@ -1,0 +1,4 @@
+Feel free to review and improve the modified documentation for these tactics at #13707. You probably understand better than us how they work.
+
+cc also @ybertot who has been working on making `simpl` and `cbn` more consistent.
+BTW, it's better to say "is incorrect" rather than "lies".  The latter implies an intention to deceive that I'm sure is not appropriate here.

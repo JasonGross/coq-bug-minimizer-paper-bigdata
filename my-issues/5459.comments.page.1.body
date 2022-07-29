@@ -1,0 +1,30 @@
+Comment author: @JasonGross
+
+I'd like to have an option (or a patched version of Coq) that has [cbv] print 
+out each new constant it hits which it does not unfold.  I'd like a version of 
+this for 8.4, and for 8.5/8.6.  The purpose is to debug a [cbv] that takes 
+forever in Bedrock, or blows up my ram, and see how it's choosing differently 
+than it's 8.4 counterpart; I expect there are some terms that the 8.5 stdlib 
+introduced which were not in 8.4.
+
+
+Comment author: @psteckler
+
+Here are Hugo's branches with CBV debugging:
+
+  https://github.com/herbelin/github-coq/tree/v8.4+cbv-debug
+  https://github.com/herbelin/github-coq/tree/v8.5+cbv-debug
+
+
+Comment author: @Zimmi48
+
+Can we consider this bug report as fixed?
+
+
+Comment author: @herbelin
+
+> Can we consider this bug report as fixed?
+
+Yes. And PR [BZ#714](https://github.com/coq/coq/issues?q=is%3Aissue%20%22Original%20bug%20ID%3A%20BZ%23714%22) can also be used to develop more debugging tools.
+
+

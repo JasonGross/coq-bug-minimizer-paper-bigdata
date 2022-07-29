@@ -1,0 +1,20 @@
+See the backtrace in #12558 for more information, some kind of cycle seems to be created.
+A shorter example is:
+```
+Check ((fun (v : nat) (pf : S (?[f] 0) = S v :> nat) => v) ?[x] eq_refl).
+```
+
+The occur-check in `Evarsolve.occur_evar_upto_types` is too weak. It accepts the circularity `?x := ?f[v:=?x] 0`.
+
+It is not bad that it accepts this circularity, because this is an erasable circularity. For instance `?f[v] := fun _ => v` would be an ok solution. But it is bad that it accepts it w/o first restricting the problem to its valid solutions.
+
+Possible strategies:
+- to postpone 
+- to restrict `?f` to remove the dependency in `v:=?x` (but possibly loosing solutions)
+- to refine the problem, making a disjunction on either depending on ?x and seeing that there is then no other choice than `?f:=fun _ => v` or restricting. Indeed, IINM, the problem has two disjoint most general solutions which cannot be discriminated anyway:
+  - `?f[v] := fun _ => v` and `?x` unresolved
+  - `?f[v] := ?f'` and `?x := ?f' 0` for unresolved restriction `?f'` of `?f`
+
+A way to implement this would be to absorb the argument `0` (with `evar_absorb_arguments`) and to send the problem to `solve_evar_evar`. In general, this should be done with care because it loses information on when to apply the 1st order unification heuristics, but in a `solve_simple_eqn` case like `?x = ?y args` this seems ok.
+
+I noticed that the example does not crash when using Unicoq. It might be worth looking into what their solution is.

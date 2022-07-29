@@ -1,0 +1,72 @@
+Comment author: @JasonGross
+```coq
+(* -*- mode: coq; coq-prog-args: ("-emacs" "-indices-matter" "-R" "." "Top") -*- *)
+(* File reduced by coq-bug-finder from original input, then from 58 lines to 47 lines, then from 40 lines to 30 lines *)
+(* coqc version 8.5beta1 (March 2015) compiled on Mar 15 2015 16:24:54 with OCaml 4.01.0
+   coqtop version cagnode15:/afs/csail.mit.edu/u/j/jgross/coq-8.5,v8.5 (1b3759e78f227eb85a128c58b8ce8c11509dd8c3) *)
+Axiom proof_admitted : False.
+Tactic Notation "admit" := case proof_admitted.
+Inductive paths {A : Type} (a : A) : A -> Type := idpath : paths a a where "x = y" := (@ paths _ x y) : type_scope.
+Inductive String : Set :=
+| empty : String
+| string (c : bool) (cs : String) : String.
+Definition head_type (s : String) : Set :=
+  match s with
+  | empty => unit
+  | string _ _ => bool
+  end.
+Definition head (s : String) : head_type s :=
+  match s return head_type s with
+  | empty => tt
+  | string c _ => c
+  end.
+Definition ne_head (x y : bool) (xs ys: String)
+: string x xs = string y ys -> head (string x xs) = head (string y ys).
+Proof.
+  intro H.
+  destruct H.
+  admit.
+Defined.
+(* Toplevel input, characters 15-23:
+Error:
+The term
+ "fun (x y : bool) (xs ys : String) (H : string x xs = string y ys) =>
+  let s := string y ys in
+  match H with
+  | idpath _ =>
+      match
+        proof_admitted return (head (string x xs) = head (string x xs))
+      with
+      end
+  end" has type
+ "forall (x y : bool) (xs ys : String),
+  string x xs = string y ys -> head (string x xs) = head (string x xs)"
+while it is expected to have type
+ "forall (x y : bool) (xs ys : String),
+  string x xs = string y ys -> head (string x xs) = head (string y ys)".
+ *)
+```
+Comment author: @silene
+
+This does not seem related to -indices-matter, since the following testcase fails whether the option is present or not.
+
+Inductive paths {A : Set} (a : A) : forall _ : A, Set := idpath : paths a a.
+Inductive bool := B.
+Inductive String : Set := string (c : bool) : String.
+Definition head_type (s : String) : Set :=
+  match s with string _ => bool end.
+Axiom head : forall s : String, head_type s.
+Definition ne_head (x y : bool) (H : paths (string x) (string y)) :
+  paths (head (string x)) (head (string y)).
+Proof.
+  case H.
+  apply idpath.
+Defined.
+
+Note that plain pattern-matching
+
+  refine (match H with idpath _ => _ end)
+
+succeeds. I say plain, but the inferred return type for the match construct is quite convoluted, in fact. Anyway, if "refine" can infer the correct return type, so should "case".
+
+

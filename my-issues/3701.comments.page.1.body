@@ -1,0 +1,36 @@
+Comment author: @JasonGross
+
+How does this even work internally?
+
+Set Implicit Arguments.
+Unset Primitive Projections.
+Record prod A B := pair { fst : A ; snd : B }.
+Goal (forall x : prod Set Set, let (a, b) := x in a = a)
+/\ (forall x : prod Set Set, match x with pair a b => a = a end).
+  Show. (*    (forall x : prod Set Set, let (a, _) := x in a = a) /\
+   (forall x : prod Set Set, match x with
+                             | {| fst := a |} => a = a
+                             end) *)
+  Set Printing All.
+  Show. (* and
+     (forall x : prod Set Set,
+      match x return Prop with
+      | pair a _ => @ eq Set a a
+      end)
+     (forall x : prod Set Set,
+      match x return Prop with
+      | pair a _ => @ eq Set a a
+      end) *)
+
+
+Comment author: @gares
+
+The fact that coq prints things as you input them is a feature I guess.
+Internally the two match constructs do have a logically irrelevant flag that the pretty printer takes into account.  Set Printing All does not print all the data that is stocked in the terms.
+
+
+Comment author: @JasonGross
+
+Perhaps the flag should be logically irrelevant, but this does not seem to be enforced.  See bug [BZ#4388](https://github.com/coq/coq/issues?q=is%3Aissue%20%22Original%20bug%20ID%3A%20BZ%234388%22), where [cbv zeta] apparently changes something here, resulting in an error from decompose_lam_n_decls.
+
+

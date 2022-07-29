@@ -1,0 +1,2 @@
+There is a similar issue with `String Notation`:
+https://github.com/coq/coq/blob/ac862fb5ae8eb15c15f81817d78ba8db4430ea8b/plugins/syntax/string_notation.ml#L53-L57

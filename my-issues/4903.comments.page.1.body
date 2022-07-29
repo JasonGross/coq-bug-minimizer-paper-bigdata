@@ -1,0 +1,17 @@
+Comment author: @JasonGross
+
+In today's issue of "Coq's Modules Hide Dragons", I discovered that name resolution (or ordering of constants in [Locate]) depends on the values I give to those constants.  Fixing this may cause backwards incompatibility (unlikely, but should be noted), but I don't see how this is anything other than a bug.  (Luckily, it seems like it only happens in this one case, where one notation shadows a definition of the same name.)
+
+Module Import A1. Definition nd1 := Set. End A1.
+Module Import B1. Notation nd1 := Set. End B1.
+Locate nd1.
+(* Notation Top.B1.nd1
+Constant Top.A1.nd1 (shorter name to refer to it in current context is A1.nd1) *)
+(* as expected *)
+Module Import A2. Definition nd2 := Set. End A2.
+Module Import B2. Notation nd2 := nd2. End B2.
+Locate nd2.
+(* Constant Top.A2.nd2
+Notation Top.B2.nd2 (shorter name to refer to it in current context is B2.nd2) *)
+
+

@@ -1,0 +1,42 @@
+Comment author: @JasonGross
+
+I have some code where
+  unfold foo in bar at 1; exact bar
+is fast (fractions of a second), but
+  abstract (unfold foo in bar at 1; exact bar)
+is slow (at least minutes), but
+  abstract (revert bar; unfold foo at 1; exact (fun x => x))
+is fast (fractions of a second).
+
+This should not be the case; if a tactic executes quickly, [Defined] should not be slow.  Would it be useful to have a test case here?  I can try to make a small one.
+
+
+Comment author: @JasonGross
+
+Created attachment 694
+file demonstrating bug
+
+> Attached file: [bug_4662_01.v](https://coq.inria.fr/bugfiles/attachment.cgi?id=694) (text/plain, 13614 bytes)
+> Description:   file demonstrating bug
+
+
+Comment author: @JasonGross
+
+Note: Add
+  Axiom proof_admitted : False.
+  Ltac admit := abstract case proof_admitted.
+at the top to make it compile with 8.5.  The final [abstract] takes longer than 6 minutes to complete.
+
+
+Comment author: @mattam82
+
+This is due to the fact that no REVERTcast annotation is added when doing unfold in a hypothesis rather than the conclusion, resulting in a different conversion path to be taken here, which blows up. This itself seems to be due to the huge [enumerate_ascii] list
+
+
+Comment author: @silene
+
+This looks like another instance of the fact that cast annotations are not expressive enough to represent conversions inside the context. Thus tactics would have to resort to various beta-expansions (or worse) to introduce them, as you are manually doing when you call "revert" before "unfold".
+
+*** This bug has been marked as a duplicate of bug [BZ#4637](https://github.com/coq/coq/issues?q=is%3Aissue%20%22Original%20bug%20ID%3A%20BZ%234637%22) ***
+
+

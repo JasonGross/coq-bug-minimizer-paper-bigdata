@@ -1,0 +1,10 @@
+Comment author: @JasonGross
+
+Notation Type0 := Type.
+Set Printing Universes.
+Check Type0. (* Toplevel input, characters 15-27:
+Anomaly: Uncaught exception Invalid_argument("List.for_all2"). Please report. *)
+
+This is with fdd6a17b272995237c9f95fc465bb1ff6871bedc
+
+

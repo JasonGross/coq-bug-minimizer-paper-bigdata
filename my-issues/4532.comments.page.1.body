@@ -1,0 +1,37 @@
+Comment author: @JasonGross
+
+Created attachment 657
+buggy file
+
+See attached.  Seems to be present in 8.5beta2-8.5 released, at the very least.
+
+Error:
+The term
+ "fun (O : ReflectiveSubuniverse) (A : Type) (B : A -> Type) (A_inO : In O A) (_ : forall a : A, In O (B a)) =>
+  let g := O_rec pr1 in
+  fun (x : O {x : A & B x}) (a : A) (b : B a) (q : g (to O {x0 : A & B x0} (a; b)) = g x) => concat_A1p (eissect (to O A)) q"
+has type
+ "forall (O : ReflectiveSubuniverse) (A : Type) (B : A -> Type) (A_inO : In O A),
+  (forall a : A, In O (B a)) ->
+  forall (x : O {x : A & B x}) (a : A) (b : B a) (q : O_rec pr1 (to O {x0 : A & B x0} (a; b)) = O_rec pr1 x),
+  ap (fun x0 : A => (to O A)^-1 (to O A x0)) q
+  @ ' eissect (to O A) (O_rec pr1 x) = eissect (to O A) (O_rec pr1 (to O {x0 : A & B x0} (a; b)))
+                                      @ ' q" while it is expected to have type
+ "forall (O : ReflectiveSubuniverse) (A : Type) (B : A -> Type) (A_inO : In O A),
+  (forall a : A, In O (B a)) ->
+  let g := O_rec pr1 in
+  forall (x : O {x : A & B x}) (a : A) (b : B a) (q : g (to O {x0 : A & B x0} (a; b)) = g x),
+  ap (fun x0 : A => (to O A)^-1 (to O A x0)) q
+  @ ' ((ap (O_rec idmap) (ap (to O A) (O_rec_beta idmap (g x))))^
+      @ ' (ap (O_rec idmap)
+            (O_indpaths (fun x0 : O A => to O A (O_rec idmap x0)) idmap (fun x0 : A => ap (to O A) (O_rec_beta idmap x0))
+               (to O A (g x)))
+          @ ' O_rec_beta idmap (g x))) = eissect (to O A) (g (to O {x0 : A & B x0} (a; b)))
+                                        @ ' q".
+
+> Attached file: [bug_lex_illtyped_refine_02.v](https://coq.inria.fr/bugfiles/attachment.cgi?id=657) (text/plain, 29587 bytes)
+> Description:   buggy file
+
+
+The example does not compile anymore on a current master.
+Without a reproducible test, let's close.

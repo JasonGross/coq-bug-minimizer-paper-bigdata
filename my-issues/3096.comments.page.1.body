@@ -1,0 +1,80 @@
+Comment author: @JasonGross
+
+It would be nice if notation interpretation backtracked on level assignment when it couldn't find a notation in the given scope.  That is, in the following rather than saying "Unknown interpretation for notation "_ ^".", it would be nice if it figured out that I want the notation in bar_scope at level 30.
+
+Notation "p ^" := (prod p p) (at level 3) : foo_scope.
+Notation "p ^ q" := (sum p q) (at level 30, right associativity) : bar_scope.
+
+Delimit Scope foo_scope with foo.
+Delimit Scope bar_scope with bar.
+
+Check (Type ^)%foo.
+Check (Type ^ Type)%bar.
+
+Is this reasonable/easy, or will it hopelessly complicate parsing?
+
+
+Comment author: @ppedrot
+
+I am afraid that won't be possible without changing the whole CAMLP4/5 parsing mechanism...
+
+
+Comment author: @JasonGross
+
+What is the reason for disallowing
+
+Notation "p ^ q" := (prod p q) (at level 3) : foo_scope.
+Notation "p ^ q" := (sum p q) (at level 30, right associativity) : bar_scope.
+
+but allowing
+
+Notation "p ^" := (prod p p) (at level 3) : foo_scope.
+Notation "p ^ q" := (sum p q) (at level 30, right associativity) : bar_scope.
+
+?
+
+
+Comment author: @ppedrot
+
+The fact that it is allowed does not mean that it will be parsed as you intend. The parser technology used by Coq is the one of CAMLP4/5, which is quite simple (LL + ε if I'm not mistaken), and it won't generate all the possible results in case of ambiguity. On the other hand, scopes are merely an convenience to put notations into namespaces, and it won't actually change the way it is parsed.
+
+If you wish, Coq parsing is done in two parts:
+
+1. Parse the string according to the current grammar rules, introducing notations like ["_ = _" x y] when it sees [x = y] for instance.
+
+2. Try to interpret those notations with the scope information at hand.
+
+The part 1. is done with CAMLP4/5. If you want to change this behaviour, you need to change the whole parsing strate of Coq.
+
+We do not actually check that the parsing rules you define are meaningful (not even sure that it is decidable). It is indeed quite easy to define notations that won't parse anything at all, resulting irrepressible murder urges in both beginner and well-seasoned Coq devs.
+
+Try to have a look at the [Print Grammar constr] command to see the current grammar state of Coq.
+
+
+Comment author: @JasonGross
+
+Indeed
+
+Notation "p ^" := (prod p p) (at level 3) : foo_scope.
+Notation "p ^ q" := (sum p q) (at level 30, right associativity) : bar_scope.
+
+does not do what I want.  Am I correct in interpreting your response to say that the reason this is permitted is because it is too complicated and perhaps undecidable to see that they will not behave well together?
+
+The original problem I was running in to was that the following is not accepted:
+
+Reserved Notation "p ^ q" (at level 30, right associativity).
+Notation "p ^" := (prod p p) (at level 3) : foo_scope.
+Notation "p ^ q" := (sum p q) (at level 3, right associativity) : bar_scope.
+
+where I wanted it to have the same effect as having not had the [Reserved Notation] line.  But I think this is a good sanity check, given that parsing does not backtrack, and am not asking for this limitation to be removed.
+
+
+Comment author: @ppedrot
+
+Having an ambiguous grammar is not a problem per se, as there exists libraries that generate all the possible AST corresponding to a string (e.g. dypgen).
+
+So ideally we could use such a tool to parse things. But we use CAMLP4/5, and we use it intensively.
+
+Bottom line: anyone is free to develop such a branch, though it won't be a piece of cake.
+
+

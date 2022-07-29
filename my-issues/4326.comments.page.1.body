@@ -1,0 +1,44 @@
+Comment author: @JasonGross
+
+About Permutation_cons.
+In 8.4:
+Permutation_cons :
+forall (A : Type) (a : A) (x y : list A),
+Permutation x y -> Permutation (a :: x) (a :: y)
+
+Arguments A, x, y are implicit
+Argument scopes are [type_scope _ list_scope list_scope _]
+Permutation_cons is transparent
+Expands to: Constant Coq.Sorting.Permutation.Permutation_cons
+
+
+In 8.5:
+Permutation_cons :
+forall A : Type,
+Proper (eq ==> Permutation (A:=A) ==> Permutation (A:=A)) cons
+
+Expanded type for implicit arguments
+Permutation_cons :
+forall (A : Type) (x y : A),
+x = y ->
+forall x0 y0 : list A, Permutation x0 y0 -> Permutation (x :: x0) (y :: y0)
+
+Arguments A, x, y, x0, y0 are implicit
+Argument scope is [type_scope]
+Permutation_cons is opaque
+Expands to: Constant Coq.Sorting.Permutation.Permutation_cons
+
+
+This change was made in 7511435a39d70625cde2949ddcc70684525a87e9, which makes no mention of it in the commit message, and I don't see any reason why it should have these extra arguments.
+
+
+Comment author: @ppedrot
+
+This change seems to have be done to remove the deprecated syntax to add morphisms. Is this really an annoyance for you?
+
+
+Comment author: @ppedrot
+
+I think we won't fix this one after the release of the 8.5. Sorry for the inconvenience.
+
+

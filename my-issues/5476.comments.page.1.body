@@ -1,0 +1,104 @@
+Comment author: @JasonGross
+
+This code works in v8.6, fails in trunk.  I suspect an econstr bug, given that 
+replacing [eauto] with [try eassumption] makes the code go through, as does 
+inserting [revert H0; intro] before the [lazymatch].
+
+Goal forall (P : Prop) (T : Type) (m m' : T) (T0 T1 : Type) (P2 : forall _ : 
+Prop, Prop) 
+            (P0 : Set) (x0 : P0) (P1 : forall (_ : P0) (_ : T), Prop)
+            (P3 : forall (_ : forall (_ : P0) (_ : T0) (_ : Prop), Prop) (_ : 
+T) (_ : Prop), Prop)
+            (o : forall _ : P0, option T1)
+            (_ : P3
+                   (fun (k : P0) (_ : T0) (_ : Prop) =>
+                      match o k return Prop with
+                      | Some _ => True
+                      | None => False
+                      end) m' P) (_ : P2 (P1 x0 m))
+            (_ : forall (f : forall (_ : P0) (_ : T0) (_ : Prop), Prop) (m1 m2 
+: T) 
+                        (k : P0) (e : T0) (_ : P2 (P1 k m1)), iff (P3 f m2 P) 
+(f k e (P3 f m1 P))), False.
+Proof.
+  intros ???????????? H0 H H1.
+  rewrite H1 in H0; eauto with nocore.
+  { lazymatch goal with
+    | H : match ?X with _ => _ end |- _
+      => first [ lazymatch goal with
+                 | [ H' : context[X] |- _ ] => idtac H
+                 end
+               | fail 1 "could not find" X ]
+    end. (* fails *)
+
+
+Comment author: @ppedrot
+
+My understanding is that it is a bug due to the infamous pattern_of_constr function which is evar-sensitive by design. Here, ?X gets bound to a term which is not nf-normal, so that when passed to another pattern-matching, the aforementioned function does not normalize it by design, and thus fails.
+
+I think it is possible to fix this by normalizing eagerly terms bound to variables in Pretyping, but I'm slightly afraid of the potential cost for such a stupid workaround to an otherwise unrelated issue.
+
+
+Comment author: @JasonGross
+
+The "correct" solution is to make EConstr.constr_pattern like EConstr.constr, no?  But why is pattern_of_constr evar-sensitive by design?
+
+But, uh, I'm a bit sketched out by the documentation:
+> (** [pattern_of_constr c] translates a term [c] with metavariables into
+>    a pattern; currently, no destructor (Cases, Fix, Cofix) and no
+>    existential variable are allowed in [c] *)
+
+If that is true, why does this work?
+> Goal forall b, match b with true => True | false => False end -> True.
+>   intros b H.
+>   let T := type of H in
+>   lazymatch goal with
+>   | [ H : context[T] |- _ ] => idtac
+>   end.
+
+
+Comment author: @ppedrot
+
+See https://github.com/coq/coq/pull/574.
+
+
+Comment author: @ppedrot
+
+> The "correct" solution is to make EConstr.constr_pattern like EConstr.constr,
+> no?  But why is pattern_of_constr evar-sensitive by design?
+> But, uh, I'm a bit sketched out by the documentation:
+
+The problem is that pattern_of_constr actually relies on evars to encode underscore patterns coming from a constr. But sometime, the pretyper solves such holes without being asked for it, so that the pattern disappears and is replaced by some actual term.
+
+Therefore, the current hack we did was to keep pattern_of_constr sensitive. The proper fix would be to understand why the pretyper fills holes randomly, or even better, getting rid of pattern_of_constr which is already a hack itself. Hugo said that we need to pretype to add coercions in the pattern, but I'm actually wondering how often we really need coercions in patterns, and if this tradeoff in complexity (both of code and runtime) is relevant.
+
+
+Comment author: @herbelin
+
+> Hugo said that we need to pretype to add coercions in the pattern,
+> but I'm actually wondering how often we really need coercions in patterns,
+> and if this tradeoff in complexity (both of code and runtime) is relevant.
+
+More generally, this is the question of whether we want to type pattern or not.
+
+Even if we can already statically define Ltac functions with ill-typed patterns as e.g.:
+
+Ltac f x := match x with S S => idtac end.  
+
+Don't we want at some time to inform the Ltac writer that s/he wrote such an ill-typed pattern?
+
+But if we renounce to type the patterns, then we can renounce to the idea of inserting coercions. After all, we already renounced to support complex patterns as in:
+
+Fail Ltac g x y := match x with (match y with 2 => _ | _ => _ end) => idtac end.
+
+
+Comment author: @maximedenes
+
+I believe it is useful to type the patterns. However, if we don't try to insert coercions, it looks trivial to do in a way that respects the evarmap abstraction: just type the term, if it succeeds, throw away the result (and its evar map), and keep the original one.
+
+
+Comment author: @maximedenes
+
+PMP's fix pushed to trunk. Thanks!
+
+

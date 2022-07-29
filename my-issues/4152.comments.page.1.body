@@ -1,0 +1,111 @@
+Comment author: @JasonGross
+
+This code fails.  It breaks my bug minimizer, which assumes that you can take the contents of a file foo.v, wrap it in [Module foo. ... End foo.], and have valid Coq code.
+
+Module A.
+  Notation "'foo'" := 1.
+End A.
+
+Module foo.
+  Import A.
+End foo. (* Toplevel input, characters 19-22:
+Syntax error: [Prim.identref] expected after 'End' (in [vernac:gallina_ext]). *)
+
+
+Comment author: @JasonGross
+
+It also makes some modules unimportable; breaking the assumption that I can split up [Import] statements; the following code does not work:
+
+Module A.
+  Notation "'foo'" := 1.
+End A.
+
+Module foo.
+End foo.
+
+Module A1.
+  Import A foo.
+End A1.
+
+Module A2.
+  Import A.
+  Import foo. (* Syntax error: [constr:global] expected after 'Import' (in [vernac:gallina_ext]). *)
+End A2.
+
+
+Comment author: @herbelin
+
+This problem is accordingly annoying but the instance of a more general issue with parsing rules defining new tokens. 
+
+Would certainly be possible to address it directly at the level of camlp5 by offering the possibility to convert unexpected keywords valid as some other class of token as a member of this other class (here the class of ident). 
+
+Maybe something could be tried at the level of Coq too for the special case you are mentioning, isolating out of the class of keywords a subclass of keywords interpretable as ident, say KWDID detected at lexing time, and so that the ident entry accept the keywords of this class and turn them on the fly from the class of keyword to the class of idents. We would need also to ensure that more specific rule (like << IDENT "foo" >> are tested before the less specific ones, like << ident >>).
+
+This would however not solve the other close problem which is of the following form:
+
+entry:
+[[ ...; IDENT "bar"; ... ]]
+
+Notation "... 'bar' ..." := ...
+
+Ideally, one would like to have << IDENT "bar" >> parses "bar" whenever "bar" is recognized by the lexer as a keyword or an ident, but IDENT is managed directly by camlp5 and I don't see how to solve this, except at introducing ad hoc rules for parsing ad hoc ident, say, rewriting entry above for each such "bar" into
+
+entry:
+[[ ...; ad_hoc_rule_for_ident_bar; ... ]]
+
+ad_hoc_rule_for_ident_bar:
+[[ IDENT "foo" -> () ]]
+
+and extending ad_hoc_rule_for_ident_bar to 
+
+ad_hoc_rule_for_ident_bar:
+[[ IDENT "foo" -> ()
+   KWDID "foo" -> ()  (* keyword case *) ]]
+
+whenever the ident is recognized as usable as a keyword.
+
+So, to me, the questions are:
+
+- whether we consider it an issue of the parsing tool (camlp5, camlp4, maybe decap, if PMP's investigations on it turn positive) and then ask for a change to the implementors of these tools
+- or we count on ourselves to solve the issue, even if it means a complexification of the grammar rules
+
+
+Comment author: @gares
+
+The issue ident/keyword affects ssr too.  I tried once to
+have a IDENT_OR_KEYWORD "foo" grammar entry, but I failed.
+IIRC it was possible in one of the parsing engines but not
+in the other, I don't recall which (I mean camlp4 and camlp5).
+
+Let's see if PMP finds a way around that.
+
+
+Comment author: @herbelin
+
+An add-on for the record
+
+One configuration to deal with is also the following
+
+... l = LIST1 ident; "kwd"; ...
+
+where ident should not include "kwd" as an either-keyword-or-ident string.
+
+So, the KWDID tricks would be possible for "End ident" but not in the general case. I.e. not all uses of ident can accept keywords downgraded into idents.
+
+Enrico, if what you did improved the situation for at least one of camlp4/5 that's already worth, isn't it?
+
+
+Comment author: @gares
+
+Hum... I guess I did not even propose the partial fix because making a .v file dependent on a camlpX variant is not that appealing to me (as long as Coq supports both X=4 and X=5).
+
+Of course I'm stupid and I've lost my attempt patch.
+
+
+Comment author: @ppedrot
+
+
+
+*** This bug has been marked as a duplicate of bug [BZ#2872](https://github.com/coq/coq/issues?q=is%3Aissue%20%22Original%20bug%20ID%3A%20BZ%232872%22) ***
+
+

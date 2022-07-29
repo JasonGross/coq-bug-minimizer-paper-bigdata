@@ -1,0 +1,45 @@
+Isn't this a duplicate of #5725?
+I cannot tell what the cause of failure there is, but it's not clear to me that the cause of failure here is a lack of `git`.  In particular, all of the `../template/init.sh: line 8: git: command not found` lines are red herrings; the file contains `|| true` after the `git clean -dfx` command.  I don't know how Coq goes about trying to guess a path for coq libraries, and whether it special-cases the existence of `.git`.
+Anyways, assigning this to @gares since he is the author of most of these tests.
+`Error: cannot guess a path for Coq libraries; please use -coqlib option` appears when running `coqtop` as soon as it was not compiled with `./configure -local`. This was already the case in 8.6.1 but the only tests that fail because of this are new tests from 8.7.
+What I don't understand though is that it should have been caught by GitLab CI (WDYT @SkySkimmer?). We should also make sure that at least one target of Travis does not rely on `./configure -local`.
+gitlab installs before running the test suite, so it finds the library in the expected -prefix path.
+This is a bit tricky, we're trying to test coq_makefile before installing Coq but the test of coq_makefile tests that it points Coq at the correct coqlib location.
+@gares Do you intend to address this? I think the compile -> test -> install chain of action is at least as legitimate as compile -> install -> test and we should make sure that this is possible. At the very least we should disable these tests when Coq hasn't been installed yet (and was not compiled with `-local`).
+@gares What's your take on this?
+Are @JasonGross and I the only two persons annoyed by this situation?
+I'm giving it a try now
+
+The scripts fail because `coq_makefile` is configured to look for the coqlib in X (if `-prefix X` if given) but
+it is not yet installed in there. The other tests work because we override the configure time path for coqlib by passing `-coqlib` to `coqtop`.
+
+There is not easy fix:
+- coq_makefile does not accept `-coqlib`
+- the `COQLIB` env variable does not exists (not used by envars)
+
+and of course all tests about `coq_makfile` do call `coq_makefile` to create the `Makefile`...
+
+For @JasonGross there are many ways to make the .deb package compile.
+I think that `export DEB_BUILD_OPTIONS=nocheck` should do it, but I've no time to check it.
+Are you envisioning a fix that would not be backportable? Otherwise, I'd rather have this fix in v8.7, so putting the 8.7.2 milestone.
+@gares please update the milestone to reflect your current schedule on this.
+@ejgallego's comment https://github.com/coq/coq/pull/6809#issuecomment-377218945 makes me think that this problem should go away with Dune.
+Yup, Dune in a sense is a bit similar to "Nix-like" approaches, when running something from Dune, `PATH` is set up in such a way that it simulates the environment you'd get when installing the package. So in fact, if you depend on `coqtop`, coqtop will be built and installed _first_, then used.
+
+Well, I took this choice, as you can also declare dependency on "internal", dev-only script. But my choice means that when the standard library is built, it is seeing `coqtop` as the installed one.
+
+This is what makes Dune compositional, as no matter whether coqtop is provided locally or system-wide, the stdlib build process sees the same layout.
+I hit the wrong button because a bump in the bus, sorry.
+In my personal opinion this bug is a WONTFIX, "installing" should be a pre-requisite for running programs that depend on a working install, such as building the library or the test suite.
+
+I write installing because that in practice means using a separate build dir that can be properly "brought into scope" by using PATH etc...
+
+
+By the way this is how Dune works and IMHO it is the right choice, if you depend on `coqtop` for example, it will be installed before use; you can also use build byproducts of course setting the build-tree path but what's not recommended is to have a conditional alias on the same thing depending on a configure flag.
+Locally installing (how Dune works) could be fine but the current situation doesn't allow locally installing, then properly installing easily. So I strongly object to a "won't fix". But I get that Dune could make this problem go away.
+Not only Dune requires that, Debian packages for example usually use this method.
+So we should have something in place already allowing to first install, then run.
+Local install sounds to me more like part of the build process anyways. The actual install phase is just about copying files to their final destinations.
+Should this be closed BTW?
+@JasonGross Does the solution proposed in #7977 satisfies your need?
+Yes, that should work fine for me

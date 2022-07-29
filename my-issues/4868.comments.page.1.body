@@ -1,0 +1,44 @@
+Comment author: @JasonGross
+
+Even when [Universe Minimization ToSet] is [Unset], it should be permissible to minimize some universes to [Set].  In particular, any universe which is not explicitly mentioned by the user (this corresponds to universes which are not Rigid?), and which does not appear anywhere in the body or the type of the resulting term, should definitely be minmizable (even to Set).  If this does not happen, then spurious "phantom" universes can appear from missing binders.  (See https://github.com/HoTT/HoTT/pull/813 for more examples where, e.g., [forall n : nat, f n] has fewer universes than [forall n, f n], resulting from the phantom annotation [forall n : (nat : Type@ {fresh}), ...].)
+
+(* -*- mode: coq; coq-prog-args: ("-emacs" "-R" "theories" "HoTT" "-top" "Unit") -*- *)
+(* File reduced by coq-bug-finder from original input, then from 148 lines to 17 lines, then from 57 lines to 16 lines, then from 879 lines to 44 lines, then from 58 lines to 44 lines *)
+(* coqc version 8.5pl1 (June 2016) compiled on Jun 13 2016 21:7:27 with OCaml 4.02.3                                                                                                                        
+   coqtop version 8.5pl1 (June 2016) *)
+Global Set Universe Polymorphism.
+Global Unset Strict Universe Declaration.
+Global Unset Universe Minimization ToSet.
+Class IsEquiv {A B : Type} (f : A -> B) := { equiv_inv : B -> A }.
+Inductive Unit : Set := tt : Unit.
+Notation unit_name x := (fun (_ : Unit) => x).
+Global Instance isequiv_unit_name@ {i j} (A : Type@ {i})
+: @ IsEquiv@ {i j} _ (Unit -> _) (fun (a:A) => unit_name a).
+Admitted.
+Global Instance isequiv_unit_name'@ {i j} (A : Type@ {i})
+: @ IsEquiv@ {i j} _ _ (fun (a:A) => unit_name a).
+Admitted.
+
+Goal True.
+  pose (@ isequiv_unit_name@ {i j}) || fail 0 "too early".
+  Set Printing Universes.
+  Set Printing All.
+  Print isequiv_unit_name'.
+  (* *** [ isequiv_unit_name'@ {Top.18 Top.19 Top.20} :                                                                                                                                                      
+forall A : Type@ {Top.18},                                                                                                                                                                                   
+@ IsEquiv@ {Top.18 Top.19} A (forall _ : Unit, A) (fun (a : A) (_ : Unit) => a) ]                                                                                                                             
+(* Top.18 Top.19 Top.20 |= Top.18 <= Top.19                                                                                                                                                                 
+                           Top.20 <= Top.19                                                                                                                                                                 
+                            *)                                                                                                                                                                              
+                                                                                                                                                                                                            
+isequiv_unit_name' is universe polymorphic                                                                                                                                                                  
+Argument scope is [type_scope]                                                                                                                                                                              
+ *)
+  pose (@ isequiv_unit_name'@ {i j}). (* Error: Universe instance should have length 3 *)
+
+
+Comment author: @JasonGross
+
+Also, it would be nice if there were an option [Set Universe Minimization ToSet Only In Bodies], which allowed minimization of universes to Set if they were not explicitly mentioned by the user, and also did not appear anywhere in the type of the definition (but might appear in the body).  I suspect this is actually the right behavior most of the time (unless I'm defining a [Type] or a type family, I usually only care about universes that appear in the types, and the ones in the bodies are somehow extra baggage that I keep around to appease Coq).
+
+

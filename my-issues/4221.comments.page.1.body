@@ -1,0 +1,149 @@
+Comment author: @JasonGross
+
+Created attachment 583
+Code displaying the bug
+
+This code works in 8.5, but fails in 8.5.  If I rename the hypothesis first, and use the new name in the second specialize, it works fine.  If I remove the type annotation on [H0], it says "Error: Cannot infer an internal placeholder of type "Type" in environment ..."  If I use the type annotations as in [specialize (fun (nt' str0 : string) (n' : nat) H0 => H nt' n' H0 str0)], the environment ends in 
+
+nt', str0 : string
+n' : nat
+x0 : string
+x1 : nat
+x2 : ?T
+x3 : string
+
+
+What are these x0, x1, x2, x3?  And what is H3?
+
+If I use [specialize (fun (nt' str0 : string) (n' : nat) H0' => H nt' n' H0' str0)], it works fine, so this seems to be an issue with [H0] referring to the hypothesis named [H0], rather than to the argument named [H0].
+
+> Attached file: [bug_fixed_length_specialize_type_04.v](https://coq.inria.fr/bugfiles/attachment.cgi?id=583) (application/octet-stream, 15639 bytes)
+> Description:   Code displaying the bug
+
+
+Comment author: @JasonGross
+
+Here's a shorter example:
+
+Goal (forall x : nat, x = 1 -> False) -> 1 = 1 -> False.
+  intros H0 x.
+  lazymatch goal with
+    | [ x : forall k : nat, _ |- _ ]
+      => specialize (fun H0 => x 1 H0)
+  end.
+(* Toplevel input, characters 0-102:
+Error: Cannot infer the type of
+H0 in environment:
+H0 : forall x : nat, x = 1 -> False
+x : 1 = 1
+x0 : nat
+x1 : ?T *)
+
+
+Comment author: @ppedrot
+
+The code for the specialize tactic seems to do strange things when applied to a function, which is the case here. I'll have a look.
+
+
+Comment author: @JasonGross
+
+For reference, [specialize (fun args => H other_args)] should be equivalent to [let H' := fresh in rename H into H'; pose proof (fun args => H' other_args) as H; clear H'].
+
+
+Comment author: @JasonGross
+
+Also, thanks!
+
+
+Comment author: @ppedrot
+
+Actually, it does not seem to be related to specialize. It is rather a defect of the interpretation of terms with free variables. In your example, (fun H0 => x 1 H0) is interpreted as (fun H0 => H0 1 H0) because x evaluates to H0. No idea if this is done willfully though.
+
+
+Comment author: @silene
+
+Any reason this bug is not marked critical? As far as I understand, it is no longer possible to write "fun" in a tactic and expects it to work correctly in 8.5. For instance, the following tactic no longer does what you think it does.
+
+Ltac foo :=
+  match goal with
+  | y : bool |- _ => pose (fun x : nat => if y then x else 0)
+  end.
+
+Solution (kind of):
+
+Ltac foo :=
+  match goal with
+  | y : bool |- _ => pose (fun no_user_would_use_such_a_name : nat => if y then no_user_would_use_such_a_name else 0)
+  end.
+
+
+Comment author: @ppedrot
+
+> Any reason this bug is not marked critical? As far as I understand, it is no
+> longer possible to write "fun" in a tactic and expects it to work correctly
+> in 8.5.
+
+Can't you just use the fresh tactic?
+
+
+Comment author: @silene
+
+Good point. I thought you could not use "fresh" to give name to binders in terms, but I was mistaken. So the bug is not really critical. But there should at least be a paragraph in the documentation and in CHANGES explaining that any use of "fun" in Ltac must be preceded by "fresh" to avoid thins kind of name conflicts.
+
+
+Comment author: @gares
+
+Well, it seems a pretty bad regression to me.  The point being that a code that works in 8.4 stops working in 8.5 because of a name capture.  Happy debugging...
+
+I fully agree with Jason, if I write (fun x => f x), the x I write after fun surely binds the x I pass to f and no other x.  If the Ltac machinery needs to
+compile it to "fresh x in ...", then it should do it for me.
+
+If I'm right it is a regression, then it is a major problem IMO.
+
+
+Comment author: @silene
+
+Yes, it is a regression. As far as I can tell, Coq 8.4 properly distinguishes between binders and the content of Ltac variables.
+
+
+Comment author: @herbelin
+
+Does someone online want to look at it? I primarily suspect that it is in Pretyping.pretype_id that something has to be done.
+
+
+Comment author: @silene
+
+I don't know enough about this code to deal with the issue. But in case it helps, a likely culprit is the following commit:
+
+commit 64dd654dde91deb0a61e8b607673203a81cf93c0
+Author: Arnaud Spiwack <arnaud@ spiwack.net>
+Date:   Fri Sep 5 15:16:25 2014 +0200
+
+    The pretyping of [uconstr] in [refine] uses the identifier of the ltac context for goal contexts.
+
+Excerpt:
+...
++    (* The name specified by ltac is used also to create bindings. So
++       the substitution must also be applied on variables before they are
++       looked up in the rel context. *)
+...
+-    (* The name specified by ltac is used only *after* pretying, when all bound
+-       names have been resolved to rels. *)
+...
+
+
+Comment author: @herbelin
+
+The culprit was instead 2fcc458a where some alpha-conversion was missing.
+
+I'm proposing an alternative approach where in
+
+(fun x y => x) with y ltac-bound to x,
+
+the bindings are computed on (fun x y => x) and the names of the bindings are computed only afterwards.
+
+This however requires some gymnastic afterwards because when declaring an evar, we want the context of the evar to be with the translated names, but only on the part of the environment which has been extended by pretyping...
+
+Fixed in 817308ab59daa4.
+
+

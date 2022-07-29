@@ -1,0 +1,13 @@
+Comment author: @JasonGross
+
+https://github.com/coq/coq/pull/79 was merged a year ago, right before the v8.6 
+deadline.  Coq v8.7 still has no syntax for this.  Can we get some syntax for 
+8.8?  (And maybe a plugin with syntax for 8.7?)
+
+
+Comment author: @ppedrot
+
+This depends on the attribute CEP, which is still to be found...
+
+
+Fixed by #10291

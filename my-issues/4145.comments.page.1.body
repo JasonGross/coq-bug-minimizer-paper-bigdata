@@ -1,0 +1,190 @@
+Comment author: @JasonGross
+
+This seems to have something to do with something using [Exc] in 8.5 where it used [option] in 8.4?
+
+(* File reduced by coq-bug-finder from original input, then from 2964 lines to 112 lines, then from 112 lines to 90 lines *)
+(* coqc version 8.5beta1 (March 2015) compiled on Mar 15 2015 16:24:54 with OCaml 4.01.0
+   coqtop version cagnode15:/afs/csail.mit.edu/u/j/jgross/coq-8.5,v8.5 (1b3759e78f227eb85a128c58b8ce8c11509dd8c3) *)
+```coq
+Require Coq.Lists.List.
+Global Set Implicit Arguments.
+Import Coq.Lists.List.
+Class IndexBound {A : Set} (a : A) (Bound : list A) :=
+  { ibound :> nat;
+    boundi : nth_error Bound ibound = Some a}.
+Global Arguments ibound {A} [a Bound] _ .
+Global Arguments boundi {A} [a Bound] _.
+Record BoundedIndex {A : Set} (Bound : list A) :=
+  { bindex : A;
+    indexb :> IndexBound bindex Bound }.
+
+Context {A : Type} {C : Set}.
+Variable (projAC : A -> C).
+Axiom None_neq_Some : forall (AnyT AnyT' : Type) (a : AnyT), None = Some a -> AnyT'.
+
+Definition nth_Bounded'
+           (Bound : list A)
+           (c : C)
+           (a_opt : option A)
+           (nth_n : option_map projAC a_opt = Some c)
+: A := match a_opt as x
+             return (option_map projAC x = Some c) -> A with
+         | Some a => fun _ => a
+         | None => fun f => None_neq_Some _ f
+       end nth_n.
+
+Axiom nth_error_map : forall n As c_opt, nth_error (map projAC As) n = c_opt -> option_map projAC (nth_error As n) = c_opt.
+
+Definition nth_Bounded
+           (Bound : list A)
+           (idx : BoundedIndex (map projAC Bound))
+: A := nth_Bounded' Bound (nth_error Bound (ibound idx))
+                    (nth_error_map _ _ (boundi idx)).
+
+Program Definition nth_Bounded_ind2
+        (P : forall As, BoundedIndex (map projAC As)
+                        -> BoundedIndex (map projAC As)
+                        -> A -> A -> Prop)
+: forall (Bound : list A)
+         (idx : BoundedIndex (map projAC Bound))
+         (idx' : BoundedIndex (map projAC Bound)),
+    match nth_error Bound (ibound idx), nth_error Bound (ibound idx') with
+      | Some a, Some a' => P Bound idx idx' a a'
+      | _, _ => True
+    end
+    -> P Bound idx idx' (nth_Bounded _ idx) (nth_Bounded _ idx'):=
+  fun Bound idx idx' =>
+    match (nth_error Bound (ibound idx)) as e, (nth_error Bound (ibound idx')) as e'
+          return
+          (forall (f : option_map _ e = Some (bindex idx))
+                  (f' : option_map _ e' = Some (bindex idx')),
+             (match e, e' with
+                | Some a, Some a' => P Bound idx idx' a a'
+                | _, _ => True
+              end)
+             -> P Bound idx idx'
+                  (match e as e'' return
+                         option_map _ e'' = Some (bindex idx)
+                         -> A
+                   with
+                     | Some a => fun _ => a
+                     | _ => fun f => _
+                   end f)
+                  (match e' as e'' return
+                         option_map _ e'' = Some (bindex idx')
+                         -> A
+                   with
+                     | Some a => fun _ => a
+                     | _ => fun f => _
+                   end f')) with
+      | Some a, Some a' => fun _ _ H => _
+      | _, _ => fun f => _
+    end (nth_error_map _ _ (boundi idx))
+        (nth_error_map _ _ (boundi idx')).
+
+Lemma nth_Bounded_eq
+: forall (Bound : list A)
+         (idx idx' : BoundedIndex (map projAC Bound)),
+    ibound idx = ibound idx'
+    -> nth_Bounded Bound idx = nth_Bounded Bound idx'.
+Proof.
+  intros.
+  eapply nth_Bounded_ind2 with (idx := idx) (idx' := idx').
+  simpl.
+  pattern (nth_error Bound (ibound idx')); case_eq (nth_error Bound (ibound idx')) || fail "too early".
+  Undo.
+  unfold Exc; case_eq (nth_error Bound (ibound idx')) || fail "too early".
+  Undo.
+  case_eq (nth_error Bound (ibound idx')). (* Toplevel input, characters 15-54:
+In nested Ltac calls to "case_eq" and "pattern x at - 1", last call failed.
+Error: The abstracted term
+"fun e : Exc A =>
+ forall e0 : nth_error Bound (ibound idx') = e,
+ match
+   nth_error Bound (ibound idx) as anonymous'0
+   return (anonymous'0 = nth_error Bound (ibound idx) -> e = e -> Prop)
+ with
+ | Some a =>
+     match
+       e as anonymous'
+       return
+         (Some a = nth_error Bound (ibound idx) -> anonymous' = e -> Prop)
+     with
+     | Some a' =>
+         fun (_ : Some a = nth_error Bound (ibound idx)) (_ : Some a' = e) =>
+         a = a'
+     | None =>
+         fun (_ : Some a = nth_error Bound (ibound idx)) (_ : None = e) =>
+         True
+     end
+ | None => fun (_ : None = nth_error Bound (ibound idx)) (_ : e = e) => True
+ end eq_refl e0" is not well typed.
+Illegal application:
+The term
+ "match
+    nth_error Bound (ibound idx) as anonymous'0
+    return (anonymous'0 = nth_error Bound (ibound idx) -> e = e -> Prop)
+  with
+  | Some a =>
+      match
+        e as anonymous'
+        return
+          (Some a = nth_error Bound (ibound idx) -> anonymous' = e -> Prop)
+      with
+      | Some a' =>
+          fun (_ : Some a = nth_error Bound (ibound idx)) (_ : Some a' = e)
+          => a = a'
+      | None =>
+          fun (_ : Some a = nth_error Bound (ibound idx)) (_ : None = e) =>
+          True
+      end
+  | None => fun (_ : None = nth_error Bound (ibound idx)) (_ : e = e) => True
+  end" of type
+ "nth_error Bound (ibound idx) = nth_error Bound (ibound idx) ->
+  e = e -> Prop"
+cannot be applied to the terms
+ "eq_refl" : "nth_error Bound (ibound idx) = nth_error Bound (ibound idx)"
+ "e0" : "nth_error Bound (ibound idx') = e"
+The 2nd term has type "nth_error Bound (ibound idx') = e"
+which should be coercible to "e = e".
+ *)
+```
+
+Comment author: @JasonGross
+
+This now fails with a different error message (b338af912c32ab87d6668923add72a56408bddf8 got rid of Exc in nth_error); apparently [pattern (nth_error Bound (ibound idx')) at -1] no longer works (why at -1?), complaining that:
+
+Toplevel input, characters 20-66:
+Error: The abstracted term
+"fun o : option A =>
+ match
+   nth_error Bound (ibound idx) as anonymous'0
+   return
+     (anonymous'0 = nth_error Bound (ibound idx) ->
+      nth_error Bound (ibound idx') = o -> Prop)
+ with
+ | Some a =>
+     match
+       o as anonymous'
+       return
+         (Some a = nth_error Bound (ibound idx) -> anonymous' = o -> Prop)
+     with
+     | Some a' =>
+         fun (_ : Some a = nth_error Bound (ibound idx)) (_ : Some a' = o) =>
+         a = a'
+     | None =>
+         fun (_ : Some a = nth_error Bound (ibound idx)) (_ : None = o) =>
+         True
+     end
+ | None => fun (_ : None = nth_error Bound (ibound idx)) (_ : o = o) => True
+ end eq_refl eq_refl" is not well typed.
+In pattern-matching on term "nth_error Bound (ibound idx)" the branch for
+constructor "Some" has type
+ "forall a : A, Some a = nth_error Bound (ibound idx) -> o = o -> Prop"
+which should be
+ "forall H : A,
+  Some H = nth_error Bound (ibound idx) ->
+  nth_error Bound (ibound idx') = o -> Prop".
+
+
+This is a bug affecting an already old version, and it is unlikely both that we fix it and that it would help you. Therefore I'll close it as WONTFIX.

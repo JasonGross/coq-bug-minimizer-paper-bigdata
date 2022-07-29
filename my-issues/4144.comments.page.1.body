@@ -1,0 +1,23 @@
+Comment author: @JasonGross
+
+Here is code that works in 8.4, but fails in 8.5; [try] no longer catches "Error: Ltac variable tac is bound to a tactic which cannot be coerced to an integer.":
+
+Ltac foo :=
+  let tac := idtac in
+  fail tac.
+Goal True.
+  try foo.
+
+
+Comment author: @ppedrot
+
+I'm actually quite sure that this is a good thing. I am still dreaming of a statically typed Ltac, and being able to discriminate between various types at runtime would lead people to depend too much on dynamic typing. An unrecoverable error on type mismatch would prevent this...
+
+
+Comment author: @JasonGross
+
+Static types are good because they catch errors at compile-time, and force you to fix them.  Uncatchable errors, such as this one, and anomalies, are a pain, because they mean you have to jump through hoops to use tactics.  In practice, this will just mean that poorly written tactics are guarded by pattern matches to make sure they apply (there are a number of places where I do a manual occurrence check before a setoid_rewrite to work around uncatchable anomalies is 8.4).  I would be perfectly happy for [foo] to fail to compile.  But if it compiles, wrapping it in [try] should catch it's errors.
+
+What do you think of having a flag that makes [try] catch this error?
+
+

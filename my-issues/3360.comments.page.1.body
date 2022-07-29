@@ -1,0 +1,10 @@
+Comment author: @JasonGross
+
+I like coqc -time and coqtop -time, and use them in some scripts of mine (timing scripts, as well as coq-bug-finder).  Would it be possible to backport them from trunk to 8.4?
+
+
+Comment author: @ejgallego
+
+Unless there is a taker, this won't be fixed.
+
+

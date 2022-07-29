@@ -1,0 +1,2 @@
+A simple fix is probably to replace the `str` in `stm/stm.ml` ([here](https://github.com/coq/coq/blob/a62ab4903d61b9a3c2e8725ee0e6354c0a073348/stm/stm.ml#L1159-L1160)) by `strbrk`.
+Additionally adding a `quote` around `Ppvernac.pr_vernac v` would help the reading too.

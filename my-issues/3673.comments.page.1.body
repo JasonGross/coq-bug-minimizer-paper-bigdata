@@ -1,0 +1,31 @@
+Comment author: @JasonGross
+
+It would be nice for coqtop -help to be robust against plugin loading failures, so that I don't get error messages like:
+
+$ coqtop -help
+Error: while loading
+/afs/csail.mit.edu/u/j/jgross/.local64/coq/coq-trunk/lib/coq/toploop/coqidetop.cmxs:
+implementation mismatch on Coqtop
+
+Use-case: I inspect coqtop -help to discover option support in coq-bug-finder.  If I `make install`, update coq, and then `make install-coqlight`, I'll get this error until I finish building and installing the rest of Coq.
+
+
+Comment author: @gares
+
+The commit will land soon
+
+
+Comment author: @gares
+
+For the supported options, just grep coqtop.ml .
+
+What you get is not a nice error, but you are mixing and matching different versions of Coq, things are expected not to work.  -help used to work by chance.
+
+
+Comment author: @JasonGross
+
+> For the supported options, just grep coqtop.ml .
+
+This is an automated configure script that errors if -indices-matter isn't supported (i.e., if you only have 8.4 installed).  coqtop.ml might not be available, and, even if it is, I don't know how to extract its location starting from PATH.
+
+

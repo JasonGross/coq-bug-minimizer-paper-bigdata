@@ -1,0 +1,76 @@
+Comment author: @JasonGross
+
+From Arthur Azevedo de Amorim <arthur.aa@ gmail.com> on coq-club@ 
+
+Inductive foo : Type :=
+| Foo0
+| Foo1
+| Foo2
+| Foo3
+| Foo4
+| Foo5
+| Foo6
+| Foo7
+| Foo8
+| Foo9.
+
+Inductive bar (f : foo) : Prop :=
+| Bar0 : f = Foo0 -> bar f
+| Bar1 : f = Foo1 -> bar f
+| Bar2 : f = Foo2 -> bar f
+| Bar3 : f = Foo3 -> bar f
+| Bar4 : f = Foo4 -> bar f
+| Bar5 : f = Foo5 -> bar f
+| Bar6 : f = Foo6 -> bar f
+| Bar7 : f = Foo7 -> bar f
+| Bar8 : f = Foo8 -> bar f
+| Bar9 : f = Foo9 -> bar f.
+
+Goal forall f, bar f.
+intros f.
+destruct f. once (constructor; reflexivity).
+once (constructor; reflexivity).
+once (constructor; reflexivity).
+once (constructor; reflexivity).
+once (constructor; reflexivity).
+once (constructor; reflexivity).
+once (constructor; reflexivity).
+once (constructor; reflexivity).
+Time all: once (constructor; reflexivity). (* 0.031 s - 2 goals *)
+Undo 2.
+Time all: once (constructor; reflexivity). (* 0.233 s - 3 goals *)
+Undo 5.
+Time all: once (constructor; reflexivity). (* 1.906 s - 4 goals *)
+Undo 8.
+Time all: once (constructor; reflexivity). (* 17.171 s - 5 goals *)
+
+
+Comment author: @JasonGross
+
+Black magic work-around:
+  repeat ([ > once (constructor; reflexivity) | .. ])
+
+I suspect this works because it decouples the [once] from the multiple goals via a [repeat].
+
+
+Comment author: @aspiwack
+
+Repeat has nothing to do with it: `[> once(constructor;reflexivity) ..]` works just as well (and, actually, `[>constructor;reflexivity..]` and `once [> constructor;reflexivity..]`). I think `once` should stay global, though.
+
+The behaviour here comes from the fact that `constructor` selects `Foo0` for each goal, then reflexivity fails (because it only works in the first goal), which triggers backtracking, starting with the last goal, where `Foo1` will be tried, then `Foo1` etc… But none of this choice will suffice for `reflexivity` to work. So backtracking will start in the second to last goal, selecting `Foo1` _and_ restoring `Foo0` for the last goal. Then backtracking in the last goal starts over again…
+
+The lessons are, I guess: backtracking without control is as feasible as the Prolog project form your university years lead you to believe, and when in trouble, use `[> t..]`.
+
+I'll leave this issue open for a few days in case it sparks useful discussion.
+
+
+Comment author: @maximedenes
+
+Would be worth documenting, if not done already. Anyway, closing the bug.
+
+
+Comment author: @aspiwack
+
+I now suggest [> once (construct;tac)..] in the CHANGES file.
+
+

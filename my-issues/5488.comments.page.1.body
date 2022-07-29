@@ -1,0 +1,34 @@
+Comment author: @JasonGross
+
+Here is code that behaves different in 8.4 and 8.6:
+Definition T := { x : nat | x = x }.
+Set Asymmetric Patterns.
+Goal forall t : T, match t return Prop with
+                   | exist _ _ => True
+                   end.
+Proof.
+  intro.
+  Fail set (k := sig _); clearbody k. (* In 8.4pl6 and 8.6, Error: The 
+correctness of the conclusion relies on the body of k *)
+  Fail match goal with
+       | [ |- context[{ _ | _ }] ] => idtac
+       end. (* fails (Error: No matching clauses for match goal) in 8.4, 
+succeeds (if you remove [Fail]) in 8.6 *)
+
+The following shows quite clearly that (as far as the goal is concerned), I'm 
+not picking up the type from the [in] clause:
+
+Definition T := @ eq.
+Set Asymmetric Patterns.
+Goal forall t : T nat 1 1, match t in @ eq _ _ a return Prop with
+                           | eq_refl => True
+                           end.
+Proof.
+  intro.
+  Set Printing All.
+  set (k := @ eq). (* [k] does not appear in the goal *)
+
+
+What's going on?  And was this change intentional?
+
+

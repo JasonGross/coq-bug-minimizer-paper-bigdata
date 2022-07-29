@@ -1,0 +1,42 @@
+Comment author: @JasonGross
+
+This is easy to fix, but I don't have a device to make a pull request from 
+right now.
+
+The change needed is to replace
+       | Tacexpr.LtacNotationCall s -> Names.KerName.print s
+with
+       | Tacexpr.LtacNotationCall s -> quote (Pptactic.pr_alias_key s)
+or possibly with
+       | Tacexpr.LtacNotationCall s -> Pptactic.pr_alias_key s
+(Emilio, what does "quote" do, and how does it play with "string_of_ppcmds"?)
+
+
+At some point, we should probably factor explain_ltac_call_trace in 
+ltac/tactic_debug.ml and string_of_call in ltac/profile_ltac.ml through a 
+common function, presumably with an option about whether to include argument 
+values in the call or to give the generic invocation pattern.
+
+
+Comment author: @ejgallego
+
+Hi Jason,
+
+quote adds a box plus quotes. It should not affect string_of_ppcmds.
+
+I suspect thou that either
+
+- Pptactic.pr_alias_key
+
+or
+
+- h 0 (Pptactic ...)
+
+should work.
+
+
+Comment author: @ppedrot
+
+Fixed in ce9058b.
+
+

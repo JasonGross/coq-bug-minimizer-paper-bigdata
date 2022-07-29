@@ -1,0 +1,40 @@
+Under which circumstances would it make sense to open/close a section while obligations are still open? I think both cases should be forbidden.
+Interesting, on 8.11 the following fails on End:
+~~~coq
+Section bar.
+  Program Definition foo : False  :=  _.
+End bar.
+~~~
+so obligation state is somehow tied to te section mechanism.
+and
+~~~coq
+Program Definition foo : False  :=  _.
+Section bar.
+  Context (f:False).
+  Next Obligation. Qed.
+End bar.
+Next Obligation.
+Admitted. (* Error: foo_obligation_1 already exists. *)
+~~~
+
+~~~coq
+Program Definition foo : False  :=  _.
+Module bar.
+  Next Obligation. Admitted.
+End bar.
+Check bar.foo.
+Next Obligation. (* error no obligations remaining in master *)
+Admitted.
+Check foo.
+~~~
+I guess when starting a module or section we could push the obligation state on some stack to be popped after the End.
+This would allow well-parenthesized behaviours like
+~~~coq
+Program Definition foo := ...
+Section/Module X.
+bla
+End X.
+Next Obligation. (* for foo *)
+...
+~~~
+without the strange behaviours in my previous post.

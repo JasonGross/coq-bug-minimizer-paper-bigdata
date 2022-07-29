@@ -1,0 +1,116 @@
+Comment author: @JasonGross
+
+This code works in 8.4 but fails in 8.5
+
+Goal (forall y, exists x : nat, x = S y).
+  intros; eexists.
+  apply (f_equal S).
+
+
+Comment author: @silene
+
+Could you tell what you get and with which commit/version? I don't see any change of behavior with the ones I tested.
+
+
+Comment author: @JasonGross
+
+Oops, sorry, I wasn't careful enough about testing.  Here's code that succeeds in 8.4pl6, and fails in 8.5beta{1,2,3} and 8.5rc1, as well as trunk and v8.5 branches from yesterday:
+```coq
+Global Arguments f_equal {A B} f {x y} _ .
+Goal (forall x y (H : x = y), exists z, z = S y).
+  intros; eexists.
+  apply (f_equal S), H.
+```
+
+Comment author: @silene
+
+I have always found it a bit counterintuitive that "apply foo, bar" was more powerful than "apply foo ; apply bar". So while it is indeed a regression, I don't know if it is worth fixing.
+
+
+Comment author: @JasonGross
+
+How hard would it be to fix, or to add a compatibility option for?
+
+
+Comment author: @silene
+
+I have a hard time with the new tactic API, but it is probably just a short patch to get back the 8.4 behavior. Something like moving the "tclWITHHOLES" call around in tactics.ml:apply_with_delayed_bindings_gen so that it is executed only once all the "apply" calls have been executed rather than after every call. But don't trust me on that.
+
+
+Comment author: @JasonGross
+
+If it's something simple, it would be nice to get the behavior back, for backwards compatibility, if nothing else.  (Hidden behind -compat 8.4, if the change in semantics is an improvement.)
+
+
+This is a bug affecting an already old version, and it is unlikely both that we fix it and that it would help you. Therefore I'll close it as WONTFIX.
+@ppedrot: thanks for pointing attention on it. If you don't mind, I would prefer to keep it open at least as a wish (and assigning it to me so that it does not bother you).
+What do you intend to provide here @herbelin? The bug reports an incompatibility with 8.4 but the old behavior was described as "counter-intuitive" and the wish was that the old behavior was restored with the `-compat 8.4` flag, but this flag is no longer available. Shouldn't it rather become a wish for an improvement to the unification engine? In that case, it's probably better to open a new issue: it's difficult to know what needs to be done when reading this one.
+
+In fact, I was thinking this night about a remark that several developers made:
+
+> we have a poorly specified system
+
+and to the fact that today, it is a very standard practice in the industry to do "Test-Driven Development", i.e. never write anything new without first writing a test for it. Following this practice would have helped specifying better what problems the unification engine should solve, or in a case that interests me more what behavior `auto` and `eauto` should have (and avoid these crazy inconsistencies that we have today, from lack of a common specification).
+
+So I suppose that instead of re-opening this bug, without a clear plan on what should be done, it would be better instead to make #6344 a reality and feed it also with tests of things that are failing today but we wish to make work.
+> the old behavior was described as "counter-intuitive"
+
+This is precisely my point, `apply f, g` cannot anyway be interpreted as `apply f; apply g` (at best, it could be `apply f; [ .. | apply g]` - or `apply f; last apply g` using the cool `last` from ssreflect).
+
+And, in the same way as `intros pat pat'` is not the same as `intros pat; intros pat'` (e.g. because when, using `_`, the clean is done - and can only be done - at the end), I think it is more intuitive in practice that `apply (f_equal S), H` works, on the argument that it leaves no evars afterwards, than having to do `eapply (f_equal S), H` just because of an internal evar produced by `f_equal` but an evar which is solved afterwards by `H`.
+PS: it is not a unification regression here. As @silene diagnosed it, it is I think a `tclWITHHOLES` thing which I made wrong while porting `apply` to the new proof engine.
+> In fact, I was thinking this night about a remark that several developers made:
+>
+> >   we have a poorly specified system
+
+The reason is not surprising. We experimented new semantics in various directions without necessarily thinking that the system would become as successful as it became. At some time, phases of cleaning are of course needed to make the semantics more principled. It is a normal part of a research process.
+
+> never write anything new without first writing a test for it
+
+There was a time, in the 90's, where we had no idea that tactics and type inference would be so sensitive to the consequences of apparently innocent subtleties of the unification, of the conversion strategies, of subterm selection, etc. It is only after accumulating more and more example that we started to realize that specifying these kinds of components was crucial to gain new steps of scalability.
+
+And this is certainly a challenge for a generation of developers aware of these problems to eventually solve them (and in particular, the contributions made by ssreflect developers to analyze these subtleties are very good, they should join our forces).
+Somehow I feel the eapply (f_equal S), H is better here as it makes
+explicit the fact that there is an evar created and that H is filling it
+somehow. However I’d be even happier to see the e-variant be the default
+and that a variant ndapply foo := noshelf ((e)apply foo) would be available
+when one desires to enforce no dependent subgoals / remaining evars. But
+that’s just my opinion :)
+Le sam. 23 déc. 2017 à 13:31, Hugo Herbelin <notifications@github.com> a
+écrit :
+
+> In fact, I was thinking this night about a remark that several developers
+> made:
+>
+> we have a poorly specified system
+>
+> The reason is not surprising. We experimented new semantics in various
+> directions without necessarily thinking that the system would become as
+> successful as it became. At some time, phases of cleaning are of course
+> needed to make the semantics more principled. It is a normal part of a
+> research process.
+>
+> never write anything new without first writing a test for it
+>
+> There was a time, in the 90's, where we had no idea that tactics and type
+> inference would be so sensitive to the consequences of apparently innocent
+> subtleties of the unification, of the conversion strategies, of subterm
+> selection, etc. It is only after accumulating more and more example that we
+> started to realize that specifying these kinds of components was crucial to
+> gain new steps of scalability.
+>
+> And this is certainly a challenge for a generation of developers aware of
+> these problems to eventually solve them (and in particular, the
+> contributions made by ssreflect developers to analyze these subtleties are
+> very good, they should join our forces).
+>
+> —
+> You are receiving this because you are subscribed to this thread.
+> Reply to this email directly, view it on GitHub
+> <https://github.com/coq/coq/issues/4478#issuecomment-353723766>, or mute
+> the thread
+> <https://github.com/notifications/unsubscribe-auth/AAGARVf8q9L9HJ8psQuAaeqeNxc8Hymxks5tDPKggaJpZM4RLB7p>
+> .
+>
+
+When we come to the question of what the defaults should be, we have always to come back to Hugo's view of this question: we have different kind of users: beginners, confirmed users, expert users. Each of these groups would benefit from having different base settings (of course expert users may never be satisfied by base settings because each of them would have different preferences). E.g., the other day, we had on Gitter a beginner who was confused because `simpl` did too much. What should be the default for beginners wrt evars is a difficult question.

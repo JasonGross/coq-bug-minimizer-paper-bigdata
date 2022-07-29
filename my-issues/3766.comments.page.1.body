@@ -1,0 +1,35 @@
+Comment author: @JasonGross
+
+(* File reduced by coq-bug-finder from original input, then from 7916 lines to 292 lines, then from 258 lines to 43 lines *)
+(* coqc version trunk (October 2014) compiled on Oct 24 2014 13:2:47 with OCaml 4.01.0
+   coqtop version cagnode15:/afs/csail.mit.edu/u/j/jgross/coq-trunk,trunk (9973cd2ca529076388710e90f2c46180581397cf) *)
+Notation "( x ; y )" := (existT _ x y).
+Inductive paths {A : Type} (a : A) : A -> Type := idpath : paths a a where "x = y" := (@ paths _ x y) : type_scope.
+Arguments idpath {A a} , [A] a.
+Delimit Scope path_scope with path.
+Notation "1" := idpath : path_scope.
+Axiom ap : forall {A B:Type} (f:A -> B) {x y:A} (p:x = y), f x = f y.
+Axiom dummy_funext_type : Set.
+Class Funext := { dummy_funext_value : dummy_funext_type }.
+Record Functor := { object_of :> Type -> Type ; identity_of : Type }.
+Axiom path_functor'_sig : forall `{Funext} (F G : Functor), { HO : object_of F = object_of G & Set = Set } -> F = G.
+Axiom path_functor'_sig_fst : forall `{Funext} F G HO HM, ap object_of (@ path_functor'_sig _ F G (HO; HM)) = HO.
+Goal forall (H : Funext) (objof : Type -> Type) io1 io2 k,
+       (ap object_of
+           (path_functor'_sig (Build_Functor objof io1)
+                              (Build_Functor objof io2)
+                              (1%path; 1%path))) = k.
+  intros.
+  match goal with
+    | [ |- context [path_functor'_sig ?F ?G (?x; ?y)] ]
+      => rewrite (@ path_functor'_sig_fst _ F G x y)
+  end || fail.
+  Undo.
+  rewrite path_functor'_sig_fst.
+(* Error:
+Found no subterm matching "ap object_of
+                             (path_functor'_sig ?M190 ?M191 (?M192; ?M193))" in the current goal. *)
+
+I'm told that this is because [rewrite] is failing to propagate evar instantiations from left to right.
+
+

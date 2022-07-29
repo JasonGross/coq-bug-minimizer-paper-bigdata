@@ -1,0 +1,65 @@
+FTR, this reduction does pop up a lot in profiling traces of printing functions.
+Is it worth benching `lazy` vs `cbv` vs vm followed by lazy / cbv?  (We can't do just the vm because parameters of inductive constructors must be normalized.)
+@JasonGross do you have use cases of such parsing/printing functions with large proofs? It seems that this did not happen until now, but number notations are not a widely used feature so that may just be by chance.
+On which tests do you plan to bench the change?
+
+@ppedrot thanks for your comment, on which printing functions did you observe this behavior?
+
+(to be clear, I'm not at all against the change, I just fera that lazy could be slower and like to see evidence that the change is useful or at least harmless)
+The examples with large proofs, that @JasonGross refers to, are mine.  I have a complete working implementation of parsing/printing floating point numbers in any size of Flocq's binary_float format.   I'm using Number.number as the parse/print format, and then computing the binary/decimal conversion using functional programs in Coq.  One field of a B754_finite constructor of binary_float is a proof.  If reduced naively, these will blow up (run out of memory in Coq).  I have a workaround (basically, discard and rebuild the proof...).   
+
+When I get it all cleaned up, I'll post it as a test case, and perhaps also as a contribution to the Flocq library.
+
+This is related to issue #14782 and P.R. #14525.  In #14782 I suggested that primitive floats be added to the Number notation system, which (although I didn't know that yet) is what #14525 was already in the process of doing.  However, as @proux01 pointed out in #14782,  that solution will not be accurate for single-precision floats because of double-rounding, and I really want a solution that is accurate for any size of binary_float.  In my implemention, I also discovered (and work around) bug #14806.
+> on which printing functions did you observe this behavior?
+
+IIRC just printing a sizable term with `Printer.pr_constr_env` and friends is enough.
+
+I personally doubt that the solution is to go from cbv to lazy. Lazy also has its share of sources of slowdown (notably term reconstruction). Rather we should probably try to be cleverer about when and how much we call these reduction functions.
+
+For printing, full reduction is required.  With the exception of printing functions to `list byte`, switching to the VM for printing only is an option, though, because none of the other numeral/string types have constructor parameters.  For parsing, in theory we need not fully reduce, but being able to reprint the parsed numeral/string requires at least VM reduction. Additionally the transformation through glob terms does not support all term constructors and hence will run into issues if we don't fully reduce constructor parameters.
+
+Can you explain what term reconstruction is and why it's a source of slowness in `lazy`?
+Also, is there a fastpath in `lazy`/`cbv`/`vm` for terms that are already fully reduced?  It seems like it might be worth adding such a fastpath if it's not there.
+> For printing, full reduction is required.
+
+~~Not necessarily, printing may fail if the argument is not closed. I think that's the root of the slowness issue, we eagerly normalize terms that will never get printed anyways. This is what I was hinting at, that is, we should perform head reduction only and reconstruct the numeral piecewise instead of bluntly normalizing terms that might not represent actual numbers.~~
+
+EDIT: we actually check that the argument is first-order before calling the reduction function, but I am still a bit suspicious that in some cases we might generate too much computation there.
+
+> Can you explain what term reconstruction is and why it's a source of slowness in lazy?
+
+Merely going from `fconstr` to `constr` is very costly because we're essentially reallocating the whole term, except for very specific cases. Reduction functions on terms are slightly better in this respect since they preserve a bit more of sharing.
+
+> Also, is there a fastpath in lazy/cbv/vm for terms that are already fully reduced?
+
+Some of them do, but not always and it's not recursive (e.g. it won't handle non-trivial first-order terms made of applications / constructors).
+I suggest that this issue should be closed.  Further examination of the original problem that I reported to @JasonGross, and that was the basis for this issue, reveals:
+1. It doesn't matter what reduction strategy is used, the subterm in question (which is a proof) has a huge normal form, so it will blow up no matter what.
+2. There is a straightforward workaround, which is, in my Number Notation conversion function, add an extra pass that replaces this proof with a small proof.  Easy, simple, and completely solves the problem.
+The attached file illustrates; just search for 14807 within it for explanations.
+[float_notations.txt](https://github.com/coq/coq/files/7060536/float_notations.txt)
+This file works in Coq 8.13.2.
+Actually, let me correct something:  It's not necessarily that the subterm has a huge normal form, it's that in the process of computing the (possibly small) n.f., a huge natural number is created, probably regardless of whether lazy or cbv is used.
+@JasonGross I let you close the current issue if you agree.
+Let me correct myself even more:  I am not sure about my claim that "a huge natural number is created"; I recall seeing that behavior in dealing with floats recently, but not necessarily in this parsing/printing system.  So maybe it's possible that a different reduction order could avoid a blow-up.  But I don't think that matters.   The Flocq system already has a `Binary.erase` function which does the same thing that my `rebuild_float` does, and presumably for exactly the same purpose:  to discard large proofs and replace them with small proofs.    Presumably this problem of "large proofs in binary floats" has existed even before there was Number.number notation.  
+
+This systematic method (replace large proofs with small ones) could probably be applied to other applications of Number notation, not only Flocq floating point.  Therefore, there is a (relatively) simple workaround for the user.  And on the other hand, replacing `cbv` by `lazy` won't _reliably_ solve the problem for users.
+
+Therefore, even though my diagnosis of the problem may not have been 100% accurate, I still recommend to close this issue.
+I will defer to @ppedrot on closing this issue.  It seems like there's still some performance issue here, it seems like in fact we want lazy reduction and not cbv, even if it's not the current bottleneck (asymptotics matter), and I'm also not clear on what the ideal solution performance-wise is.
+
+> > Also, is there a fastpath in lazy/cbv/vm for terms that are already fully reduced?
+>
+> Some of them do, but not always and it's not recursive (e.g. it won't handle non-trivial first-order terms made of applications / constructors).
+
+It seems like relatively low-hanging fruit to add such a recursive fast-path?  Or am I missing some complexity?
+
+I'd recommend closing, since I don't have a reproducible test-case at hand. If that were the case, I could have explored the various design choices, but in the meantime there is little point keeping this open.
+
+> It seems like relatively low-hanging fruit to add such a recursive fast-path? Or am I missing some complexity?
+
+It's going to be O(n) in some cases, which you'd pay anyways when reducing, so it's an additional cost. For now we only look at the outermost node of the term in O(1). We could bench to check.
+> It's going to be O(n) in some cases, which you'd pay anyways when reducing, so it's an additional cost.
+
+You mean there's an additional O(n) cost to having the fast-path, either in time or in space?  (I guess you get an extra branch at every recursive call?)

@@ -1,0 +1,40 @@
+This bug will be fixed when the pretyper is in the tactic monad.
+I just hit this in another development. Automated test case that also imho more closely represents how this actually comes up:
+
+~~~~~
+Definition x : True.
+  transparent_abstract (exact I).
+Defined.
+
+Definition y : True := ltac:(
+  transparent_abstract (exact I)).
+
+Goal False.
+  let y := eval unfold y in y in
+  assert_fails (constr_eq y I); (* fails due to unexpected success of [constr_eq] *)
+  let x := eval unfold x in x in
+  constr_eq x y.                (* fails *)
+Abort.
+~~~~~
+Just adding another example. Something that has been plaguing me since ltac:() was introduced, just like interpretation scopes.
+
+```
+Definition y := ((ltac:(abstract (exact (1: nat)))): nat).
+Print y.
+
+(* y = (fun Top_anonymous_subproof : nat => Top_anonymous_subproof) (1 : nat)
+     : nat *)
+
+Definition x: nat.
+  abstract (exact (1: nat)).
+Defined.
+Print x.
+
+(* x = x_subproof
+     : nat *)
+
+```
+@ppedrot  should we make it clear that, until the pretyper is in the monad, `ltac:` has to be considered not ready for production?
+@gares Rather `ltac:(...)` + `abstract`. Otherwise you're fine.
+To be fair, even in all of its generality `abstract` doesn't play well with several other parts of the code, so I'd (completely unbiasedly) tend to shift the blame on it...
+I could not agree more.

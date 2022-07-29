@@ -1,0 +1,19 @@
+Comment author: @JasonGross
+
+(* -*- mode: coq; coq-prog-args: ("-emacs" "-type-in-type") -*- *)
+Record prod A B := pair { fst : A ; snd : B }.
+(* Toplevel input, characters 0-46:
+Anomaly: Incorrect universe Top.7 declared for inductive type, inferred level is max(
+Top.8, Top.9). Please report. *)
+
+
+Comment author: @JasonGross
+
+I ran into this while trying to figure out if a particular speed issue was due to universes.
+
+
+Comment author: @mattam82
+
+This has been fixed in trunk by Hugo.
+
+

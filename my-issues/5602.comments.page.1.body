@@ -1,0 +1,10 @@
+Comment author: @JasonGross
+
+*No description provided.*
+
+
+@maximedenes Same question here, do you see this as a blocker for 8.8 or for 8.7.1? Please set the corresponding milestone.
+Note that circle and gitlab use installation.
+So not a blocker for 8.8 then.
+The goal here is to remove the `-local` flag altogether, done in #6857 ; we will see if we arrive to do that and when.
+I think we can close this; however it is important that Travis is still testing the `-local` build until we can deprecate such flag.

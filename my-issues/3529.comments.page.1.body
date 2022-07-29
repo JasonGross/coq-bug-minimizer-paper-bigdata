@@ -1,0 +1,64 @@
+Comment author: @JasonGross
+
+Here is some code that succeeds in Coq 8.4, but fails in Coq trunk:
+```coq
+(* File reduced by coq-bug-finder from original input, then from 5752 lines to 3828 lines, then from 2707 lines to 558 lines, then from 472 lines to 168 lines, then from 110 lines to 101 lines, then from 96 lines to 13 lines *)
+Require Coq.Setoids.Setoid.
+Import Coq.Setoids.Setoid.
+Class ILogicOps Frm := { lentails: relation Frm }.
+Instance ILogicOps_Prop : ILogicOps Prop | 2 := {| lentails P Q := P -> Q |}.
+(* Toplevel input, characters 82-88:
+Error:
+In environment
+P : Type
+Q : Type
+The term "P -> Q" has type "Type" while it is expected to have type "Prop". *)
+```
+
+Comment author: @silene
+
+An ever smaller testcase:
+```coq
+Class R T := { f: T -> Prop }.
+Instance r : R Prop := {| f P := P -> P |}.
+```
+If you replace Instance by Definition, it fails even for 8.4. If you replace it by Program Instance or Program Definition, it works for both 8.4 and 8.5. So it seems to be just the usual deficiency of the non-Program vernacular commands rather than a specific regression.
+
+
+Comment author: @silene
+
+And the winner is
+
+commit 99cdbc25a3a92545544a087ed55240c488b42fc9
+Author: Matthieu Sozeau <mattam@ mattam.org>
+Date:   Wed Jun 11 16:55:29 2014 +0200
+
+    Fix bug [BZ#3289](https://github.com/coq/coq/issues?q=is%3Aissue%20%22Original%20bug%20ID%3A%20BZ%233289%22)
+
+
+Comment author: @mattam82
+
+Yes, this is a proper regression due to the lack of bidirectionality of typechecking for the non-Program variant. Fixing this would trigger more incompatibilities. Removing the fix for 3289 would be worse. It used to work in 8.4 because it was interpreting the definition as { f P := P -> P } (note the lack of enclosing "|") which is treated differently for Instance declarations, properly propagating the type information (here the parameter Prop) when typechecking each method (here f). In 8.4, this comes up just the same if you try:
+```
+ Definition foo : R Prop := Build_R _ (fun P => P -> P). 
+```
+Program does bidirectional type-checking and works in all cases (in 8.4 or 8.5).
+
+So that's a wontfix.
+
+
+Comment author: @mattam82
+
+*** Bug [BZ#3965](https://github.com/coq/coq/issues?q=is%3Aissue%20%22Original%20bug%20ID%3A%20BZ%233965%22) has been marked as a duplicate of this bug. ***
+
+
+Comment author: @silene
+
+*** Bug [BZ#3749](https://github.com/coq/coq/issues?q=is%3Aissue%20%22Original%20bug%20ID%3A%20BZ%233749%22) has been marked as a duplicate of this bug. ***
+
+
+Comment author: @silene
+
+*** Bug [BZ#3741](https://github.com/coq/coq/issues?q=is%3Aissue%20%22Original%20bug%20ID%3A%20BZ%233741%22) has been marked as a duplicate of this bug. ***
+
+

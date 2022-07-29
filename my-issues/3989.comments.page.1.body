@@ -1,0 +1,58 @@
+Comment author: @JasonGross
+```coq
+(* 9e6b28c04ad98369a012faf3bd4d630cf123a473 *)
+Record foo := { bar : Type }.
+Arguments bar _ / .
+Definition baz (x : Type) := x.
+Arguments baz / : simpl nomatch.
+Goal forall x, baz (bar x) = baz (bar x).
+Proof.
+  repeat simpl; match goal with
+                  | [ |- forall x : foo, (let (bar) := x in bar) = (let (bar) := x in bar) ] => idtac
+                  | [ |- ?G ] => fail 1 G
+                end. (* success *)
+  Undo.
+  repeat cbn; match goal with
+                | [ |- forall x : foo, (let (bar) := x in bar) = (let (bar) := x in bar) ] => idtac
+                | [ |- ?G ] => fail 1 G
+              end. (* Tactic failure: (forall x : foo, baz (let (bar) := x in bar) = baz (let (bar) := x in bar)). *)
+```
+
+Comment author: @pirbo
+
+Indeed, the is a differences between the semantic of nomatch in simpl and in cbn.
+
+In cbn, the semantic is:
+- takes the applicative context (remove the surrounding case and fix)
+- try to do the delta
+- computes
+- if there is a case or a fix in the computation context backtrack and stop
+- else put back the surrounding context between the obtained value and continue to compute
+
+Here as computation after the attempt of unfolding of baz ends in the state
+<x | Zmatch return Type with Build_foo bar0 => bar0 end>
+it backtracks. Never mind that before the attempt of unfolding baz you were already in the state :
+<baz| Zapp (match x return Type with Build_foo bar0 => bar0 end)>
+
+I don't know how to implement the simpl semantic in my abstract machine. Well, the more accurate answer is Here is an other instance of what we've already discover with Hugo: "cbn would be much better if it were call by value and not call by name" (well, of course, the name won't fit anymore :-))
+
+For the record, we reach this conclusion on the opposite situation :
+- keep Definition baz (x : Type) := x.
+- do Goal baz (match tt with tt => True end).
+- remind that the semantic of cbn is "delta expand if it allows a iota" then you would like that cbn this goal answers "baz True" but the abstract machine trace is
+"baz (match tt with tt => True end)" -> "(fun x => x) (match tt with tt => True end)" -> "match tt with tt => True end" -> (* A IOTA, let's baz unfolded !!!*) "True"
+(The real problem in the real life occurs in theories/Sets/Ensembles.v with In *)
+
+
+OK at the end of this message I get completely lost and I change my mind to SIMPL MUST NOT UNFOLD Baz, CBN IS RIGHT. Because unfolding base does not allows a iota reduction.
+Goal Baz True. simpl. answers base True good
+BUT
+goal baz match x with Build_foo bar0 => bar0 end. simpl. answers
+(fun x0 => x0) match x with Build_foo bar0 => bar0 end which is bad, doesn't it ?
+
+
+Comment author: @gares
+
+Your last observation is a bug in simpl, there is another open bug for it with myself and maxime in Cc.  I don't think it is related to nomatch. It seems due to the fact that simpl is implemented using the "strong" iterator (and using a more correct one breaks things here and there).
+
+

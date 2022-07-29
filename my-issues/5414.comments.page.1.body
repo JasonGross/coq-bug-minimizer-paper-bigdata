@@ -1,0 +1,21 @@
+Comment author: @JasonGross
+
+Note how the identifier [a] exists in both tactic scripts, but somehow [x] is 
+used in the second tactic script.  What's going on?
+
+Definition foo1 : Type.
+Proof.
+  let x := fresh "a" in
+  refine (forall k : nat * nat, let (x, _) := k in (_ : Type)).
+  exact (a = a).
+Defined.
+Definition foo2 : Type.
+Proof.
+  let x := fresh "a" in
+  refine (forall k : nat * nat, let '(x, _) := k in (_ : Type)).
+  exact (a = a).
+Defined.
+Print foo1. (* foo1 = forall k : nat * nat, let (a, _) := k in a = a : Type *)
+Print foo2. (* foo2 = forall '(x, _), x = x : Type *)
+
+

@@ -1,0 +1,28 @@
+Comment author: @JasonGross
+
+In particular, [vm_compute in V] will reduce the type, but [eval vm_compute in] 
+will not.  This matters in, e.g., this example:
+
+Record HOLD T := hold { v : T }.
+Unset Printing Records.
+Definition nat' := nat.
+Goal True.
+  let v := constr:(@ hold nat' 5) in
+  let v' := (eval vm_compute in v) in
+  pose v' as V.
+  progress vm_compute in V.
+
+It's not entirely clear to me whether or not this is a bug, per se, but I think 
+it should be warned about in the user manual / documentation of [eval 
+vm_compute] and [eval native_compute], at least.
+
+
+Comment author: @herbelin
+
+This is common to all reduction strategy. When applied to a declaration, it reduces both the body and type (unless there is a "in type of" or "in value of" modifier).
+
+In "eval myreduction in t", only "t" as a term is considered and in "pose t", the type is reconstructed from "t".
+
+So, I don't see this as a bug, but maybe the documentation of "eval" could indeed add something about that.
+
+

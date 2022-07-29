@@ -1,0 +1,21 @@
+Comment author: @JasonGross
+
+As mentioned in bug [BZ#4137](https://github.com/coq/coq/issues?q=is%3Aissue%20%22Original%20bug%20ID%3A%20BZ%234137%22), it should be caught at declaration time (but, okay, that's hard), but if it's going to be raised late, it should not be caught by [try].
+
+
+Comment author: @ppedrot
+
+I agree that typing errors should be non-recoverable, to prevent Ltac scripts to take advantage of dynamic typing, waiting for the desirable advent of a static typing system. Yet, some time ago you've asked for the converse position in a bug report I can't encounter anymore. Do we agree that the former behaviour is the good one?
+
+If so, I think I can make typing errors uncatchable, even though I'm pretty sure that there are scripts out there that rely on the contrary (most probably including some of yours).
+
+
+Comment author: @JasonGross
+
+Hrm, I guess you're referring to bug [BZ#4144](https://github.com/coq/coq/issues?q=is%3Aissue%20%22Original%20bug%20ID%3A%20BZ%234144%22)?
+
+I am of two minds: when writing tactics, I sometimes use failures like this as signals to backtrack (though I've since learned better ways to fail in constr-land, like [constr:(I : I)]); when debugging things that broke when porting code to 8.5, I want to know when these errors occur.
+
+After being reminded of this, I think my position is now that [try] should catch these errors (until we can make them break at compile-time), but we should always emit warnings when such things occur (that is, don't silently drop typing errors, but emit warnings).  I think this would satisfy me both when I'm writing tactics, and when I'm debugging them.
+
+

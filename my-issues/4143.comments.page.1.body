@@ -1,0 +1,33 @@
+Comment author: @JasonGross
+
+Here is code that worked in 8.4, but not in 8.5.
+
+Require Import Coq.Classes.RelationClasses Coq.Relations.Relation_Definitions.
+
+Axiom T : Type.
+Axiom R : relation T.
+Axiom r : Reflexive R.
+Axiom s : Symmetric R.
+Axiom t : Transitive R.
+Goal Equivalence R.
+  split; solve [ intuition ].
+  Undo.
+  solve [ intuition ].
+
+
+Comment author: @herbelin
+
+This one is due to "intuition"'s changes in 8.5. Use "dintuition" for compatibility.
+
+From the CHANGES:
+
+- Tactic "tauto" was exceptionally able to destruct other connectives
+  than the binary connectives "and", "or", "prod", "sum", "iff". This
+  non-uniform behavior has been fixed (bug [BZ#2680](https://github.com/coq/coq/issues?q=is%3Aissue%20%22Original%20bug%20ID%3A%20BZ%232680%22)) and tauto is
+  slightly weaker (possible source of incompatibilities). On the
+  opposite side, new tactic "dtauto" is able to destruct any
+  record-like inductive types, superseding the old version of "tauto".
+- Similarly, "intuition" has been made more uniform and, where it now
+  fails, "dintuition" can be used (possible source of incompatibilities).
+
+

@@ -1,0 +1,35 @@
+Comment author: @JasonGross
+
+It would be nice, especially in computationally-intensive files being coqc'd on the command line, if "Error: To rename arguments the "rename" flag must be specified." informed me what arguments I tried to rename, so that I could fix the file if I wanted to without having to compile it up to there.  I'd be happy with a printing of the list of old argument names and the list of new argument names.
+
+
+Comment author: @letouzey
+
+
+NB: this concerns the Arguments command.
+
+Enrico, would this be difficult to do ?
+
+
+Comment author: @gares
+
+fixed in trunk and 8.4
+
+
+Hi,
+
+Playing with arguments names, I arrived to the current situation:
+```coq
+Arguments None a.
+(*
+To rename arguments the "rename" flag must be
+specified. Argument A renamed to a.
+*)
+```
+The positive formulation of the sentence `"Argument A renamed to a"` disturbed me, as if, despite of the error,  the renaming had yet been done.
+
+After some investigations, I realized that the part `Argument A renamed to a` was introduced to address the present issue. I would like to propose an alternative formulation, something like `To rename arguments the "rename" flag must be specified (tried to rename A into a).`., or, maybe,
+`To rename arguments, namely A into a, the "rename" flag must be specified.`, or
+`To rename argument "A" into "a", the "rename" flag must be specified.`.
+
+@gares, would that be ok for you?

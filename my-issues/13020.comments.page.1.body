@@ -1,0 +1,9 @@
+> claims that there are extra spaces around `|`.
+
+It seems that the spaces disappeared during the translation of the reference manual to sphinx. Maybe because the person who translated did not see a use of them, since, indeed, one space is inserted anyway on both sides of the bar.
+
+> There are not. Despite this, the display on the subsequent line is still [with one space]
+
+There is a heuristic starting at line 330 of [`metasyntax.ml`](https://github.com/coq/coq/blob/282bf5806ca861ca7649bdd8555cba2b2130a3d7/vernac/metasyntax.ml#L330) which would be tedious to document.
+
+I'm making a fix for the refman (#13022).

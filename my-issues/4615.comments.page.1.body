@@ -1,0 +1,38 @@
+Comment author: @JasonGross
+
+It would be nice to be able to expose only some names in a module at top level, a la [Import]/[Export].  Alternative syntaxes include some sort of [Import Module Using ...] and [Import Module Hiding ...].  I suspect this is straightforward, but correct me if I'm wrong about this.
+
+
+Comment author: @ppedrot
+
+You can already use the Local parameter for definitions and axioms. If you want this on other objects, then you need to have a way to reliably name them.
+
+
+Comment author: @JasonGross
+
+I want to be able to specify things at [Import] time, not at module definition time, and preferably in a list; I don't really want to do something like
+
+Local Notation a := Foo.a.
+Local Notation b := Foo.b.
+...
+Local Notation z := Foo.z.
+
+But instead want to say
+  From Foo Import a b c ... z.
+
+Having this only for identifiers (definitions, inductives, axioms, etc.) is fine.  Having it also for tactics would be nice.
+
+
+Comment author: @ppedrot
+
+See CEP 004: https://github.com/coq/ceps/blob/master/text/004-import-name-modifiers.md
+
+
+@ppedrot https://github.com/coq/ceps/blob/master/text/004-import-name-modifiers.md is dead; where does the CEP live now?
+
+Also, cc @andres-erbsen, who is also interested in this.
+Here https://github.com/coq/ceps/pull/21/files
+Import categories have now been implemented. https://coq.github.io/doc/master/refman/language/core/modules.html?highlight=import%20categories#coq:cmd.Import
+
+Closing this issue. cc @SkySkimmer 
+NB this is more about the filters than the categories.

@@ -1,0 +1,37 @@
+Comment author: @JasonGross
+
+$ cat foo.v
+Ltac slow n := let x := constr:(n) in
+               match n with
+                 | 0 => idtac
+                 | S ?n' => slow n'
+               end.
+
+
+Goal True.
+Time slow 1500.
+exact I.
+Defined.
+
+Jason@ JasonG-x230t ~/Documents/GitHub/coq-trunk
+$ rm foo.vo; ./bin/coq_makefile.exe foo.v > foom; make -f foom TIMED=1
+Warning: install target will copy files at the first level of the coq contributions installation directory; option -R is recommended
+/usr/bin/time -f "foo (user: %U mem: %M ko)" "coqc"  -q  -I .    foo
+Finished transaction in 2. secs (2.09u,0.s)
+foo (user: 0.00 mem: 210944 ko)
+
+
+It works fine if I use the Coq I compiled locally in cygwin
+
+
+Comment author: @JasonGross
+
+On Windows cygwin, it seems that %e (or %E) is the only working format specifier.  On Linux, %U makes far more sense.  It would be nice if Windows Coq could be distributed with its own working `time` command that it used in the makefile, and/or were compiled so that cygwin's `time` command worked.
+
+
+Comment author: @gares
+
+Marking as enhancement since the bug is not really in Coq, but rather in cygwin and/or the hostile OS.
+
+
+Is this still an issue? I'd dare to say that after 7 years this issue can be closed for now.

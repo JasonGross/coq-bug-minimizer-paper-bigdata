@@ -1,0 +1,12 @@
+It's in category `fragile` not `deprecated` since 0a5dc056fe36bbc4080dec7858e3b4392c5f0d4f, there are no plans to remove it.
+
+I'm not sure if there's a real issue, however the implementation doesn't feel very nice, that may be why there's a warning.
+Indeed it would be nice to fix this problem, but it requires a lot of changes, in particular for the ML plugin API, so a lot of work.
+
+It'd be easier to fix `Require`s that don't import ML modules, so maybe we could only emit the warning on that ones.
+>Indeed it would be nice to fix this problem
+
+Which problem?
+> Which problem?
+
+To remove the warning, that is to say, ensure that the implementation of require inside module is correct, a "potential problem" as you mention; tho for requires with ML code for sure there is a problem I think.

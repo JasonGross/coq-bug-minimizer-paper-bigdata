@@ -1,0 +1,18 @@
+The thing that's funny is that Coq 8.8 fails on this file when run with option `-compat 8.8` but not when run with option `-compat 8.7`.
+This is inconsistent with Coq 8.7 that would fail on `Import Coq.Compat.Coq87` both when passed `-compat 8.7` and `-compat 8.6`.
+Anyways, if it's so important how come this wasn't a problem before? Sorry for asking but I don't have a deep understanding of the use cases of these compatibility mechanisms.
+Yep, that's an amusing quirk.
+The behavior of Coq 8.7 is wrong; https://github.com/coq/coq/commit/6466868d858c4a9a80e444463009fae869eeb950#diff-882f1d3b62fa1c0efecaeee08eb5ac85R10 changed `theories/Compat/Coq86.v`, but only landed on the v8.8 branch, whereas that change to that file should have also been on the v8.7 branch.
+
+The branching process should involve the following steps:
+1. branch v8.(N+1)
+2. add an empty file `theories/Compat/Coq8(N+1).v`
+3. add the line `Require Export Coq.Compat.Coq8(N+1).` at the top of `theories/Compat/Coq8N.v`
+4. update the flags file to support `-compat 8.(N+1)`, which involves adding `V8_N` and changing the meaning of `Current`
+5. make `V8_N` import `Coq.Compat.Coq8N` and update `Current` to import `Coq.Compat.Coq8(N+1)`
+6. whatever else needs to happen
+
+It hasn't been a problem in the past because the set of projects that use `-compat` options and are tested on Coq's CI, as far as I can tell, used to be only fiat-parsers, and has been empty since support for `-compat 8.4` has been dropped.  The main use-case that I see, these days, for the `-compat` options, is allowing users to be compatible with both master and the latest released version, even when there are no easy backwards compatible fixes (because, e.g., files have been renamed).  The last time this happened was in the 8.6 -> 8.6.1/8.7 transition, where you are required to `Require Import Coq.extraction.Extraction.` to use extraction in 8.7, and it is an error to `Require Import Coq.extraction.Extraction.` in 8.6.0.  The solution is to pass `-compat 8.6` to projects needing to compile with Coq 8.6 and master and use extraction.  This solution only works on the CI if `-compat 8.6` actually loads `Coq.Compat.Coq86` even before v8.7 is branched.  (It is possible that this would be a better way to do compatibility in software foundations than using `sed` to insert lines at the beginning of a couple of files: if we build software foundations with the additional flag `-compat 8.6`, I believe we'll no longer need to edit the files with `sed` (and the numeral notations PR would not need to add yet more `sed` lines to the build).
+Thanks for the summary. Would you mind opening a PR updating `dev/doc/release-process.md` to include these instructions? (BTW, I suppose in 1. you meant "branch v8.N").
+@JasonGross Would you mind opening a PR fixing this, since you are the one who understands this stuff the best and I would like to tag 8.8.2 soon? Then it would be good to document this in the release-process doc but it can wait a bit longer. Longer term, it would be even better if we could script this.
+@Zimmi48 Opened #8374.  It's mostly scripted.

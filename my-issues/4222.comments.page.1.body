@@ -1,0 +1,126 @@
+Comment author: @JasonGross
+
+In 8.4, this code works.  In ff58f3d68369e0e535a98326e53de782ff460096, it does not (gives me 2 = 3).
+
+Goal forall x : nat, x = 1 -> x = 2 -> x = 3.
+  intros.
+  subst.
+  match goal with
+    | [ |- 1 = 3 ] => idtac
+  end.
+
+
+Comment author: @silene
+
+Somehow related (since presumably caused by the same commit), the following script works in 8.4 but not in 8.5.
+
+Goal let a := 1 in 0 = a -> False.
+  intros a H.
+  subst.
+  discriminate.
+
+
+Comment author: @herbelin
+
+Hi,
+
+In 8.4, subst was implemented as follows:
+
+- collect within all hyps, from the oldest to the most recent, all variables x appearing in equations of the form "x=t" with t not x or "u=x" with u not a variable
+- apply "subst x" for all of these variables in the collected order
+
+The drawback was that in a configuration like "x=y, x=u", y was not collected and x=u, after being turned to y=u, not used, as shown in [BZ#4214](https://github.com/coq/coq/issues?q=is%3Aissue%20%22Original%20bug%20ID%3A%20BZ%234214%22).
+
+Another peculiar behavior is the one shown by Guillaume. In a configuration like "x:=t, x=u", x was unfolded everywhere to t (because this is the effect of "subst x"), but in a configuration like "x:=t, phi(x)=u" it was not (because x not detected as substitutable in the first phase).
+
+What to do in Guillaume's example, I don't know. Morally, we should substitute x by u, but this is impossible, so, indeed, we should instead substitute x by t, at least in x=u. I guess conservativity would force us to support Guillaume's example, even if subst is doing nothing on e.g. x:=t |- x=u.
+
+About the order. Jason shows a bug in what I did, but that's just a List.rev.
+
+
+Comment author: @aspiwack
+
+I think binders of the form `x:=a` should be collected by subst, since `subst x` works on them. Absence of this behaviour has always been puzzling to me.
+
+
+Comment author: @silene
+
+Perhaps I am mistaken, but I don't think subst could make a goal unprovable before. As shown on my example, it can now happen. I believe it is important to restore the old property.
+
+I don't know what it means for my testcase. (By the way, it is a reduced testcase from the failure of FingerTree in the bench.) But I am pretty sure removing "x = foo" from the context while x is not universally quantified is always wrong.
+
+
+Comment author: @herbelin
+
+Guillaume, it is clear that we don't want your example to remove information (this is a bug of my new implementation).
+
+Treatment of let-in is however not very regular yet. Consider e.g. in 8.4:
+
+Goal forall x, let y:=1 in x=y -> x=y.
+intros.
+subst.
+(*
+  y := 1 : nat
+  ============================
+   y = y
+*)
+
+Goal forall x, let y:=1 in y=x -> x=y.
+intros.
+subst.
+(*
+  x : nat
+  H : 1 = x
+  ============================
+   x = 1
+*)
+
+In 8.4, an x:=t is unfolded iff it appears on the lhs of an equation x=t (t not x) or t=x (t not a variable), which is even not stable by symmetry. So, between the following criteria:
+
+1. unfold all let-ins
+2. unfold no let-ins
+3. the above 8.4 criterion
+4. unfolds x:=t iff either x=u or u=x with u not x occurs in hyps (i.e. improved 8.4 criterion)
+
+what to choose?
+
+
+Comment author: @silene
+
+If we don't care about backward-compatibility (and given how irregular subst is, I don't think we care much here), my preference goes to "unfold all let-ins". Indeed, subst should behave identically for "forall x, x = foo -> ..." and "let x := foo in ...".
+
+
+Comment author: @JasonGross
+
+I'd like to weigh in on the side of mostly preserving backwards compatibility, or perhaps having a [Set]ting that lets you switch from option 1 to option 2 (since option 2 is closer to the 8.4 behavior).  It's not too big an issue, though, since I think I can replicate the old behavior with something like
+
+Ltac subst' :=
+  repeat match goal with
+           | [ H : ?x = ?y |- _ ] => is_var x; subst x
+           | [ H : ?x = ?y |- _ ] => is_var y; subst y
+         end.
+
+(or possibly [match reverse goal with ...])
+
+
+Comment author: @herbelin
+
+Actually, and naively, I would say that let-in are deliberately used for the purpose of abbreviating big expressions, so applying subst would revert their role as abbreviations. So, I'd like to see examples of situations where when one wants subst to unfolds local definitions.
+
+By the way, I discovered another strange behavior which I propose to fix:
+
+Goal forall x y, x = S y -> y = S x -> x = y.
+intros.
+subst.
+(* fail with "Cannot find any non-recursive equality over x" while it could at least substitute x (or y) once *)
+
+I just pushed a fix which hopefully will fix [BZ#4214](https://github.com/coq/coq/issues?q=is%3Aissue%20%22Original%20bug%20ID%3A%20BZ%234214%22) and which behaves in the contribs as expected (i.e. avoiding an extra subst or rewrite after a subst).
+
+Another question is what to do with equations x=x? Should it be part of the specification of subst to remove them? Maybe, but I'm afraid again of the possible consequences on generated names of hypotheses.
+
+
+Comment author: @herbelin
+
+There is an option "Set Regular Subst Tactic" to recover old behavior of subst. Moreover it is unset by default in 8.5. I guess I can consider this bug closed.
+
+

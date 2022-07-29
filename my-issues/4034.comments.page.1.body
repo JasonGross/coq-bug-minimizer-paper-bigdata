@@ -1,0 +1,129 @@
+Comment author: @JasonGross
+
+Record Foo := {}.
+Record Bar := {}.
+
+Bind Scope foo_scope with Foo.
+Bind Scope bar_scope with Bar.
+Delimit Scope foo_scope with foo.
+Delimit Scope bar_scope with bar.
+
+Notation "!" := Build_Foo : foo_scope.
+Notation "!" := Build_Bar : bar_scope.
+Notation "!" := 1 : core_scope.
+Open Scope foo_scope.
+Open Scope bar_scope.
+Open Scope core_scope.
+
+Goal Foo.
+  exact !.
+Defined.
+
+Goal Bar.
+  exact !.
+Defined.
+
+Goal Foo.
+  refine !. (* Error: The term "1" has type "nat" while it is expected to have type "Foo". *)
+Defined.
+
+Goal Bar.
+  refine !. (* Error: The term "1" has type "nat" while it is expected to have type "Bar". *)
+Defined.
+
+(Note: This will have to be mentioned as a potential source of incompatibilities, but I believe it is worth it.)
+
+
+Comment author: @maximedenes
+
+Why do exact and refine interpret notations differently, in the first place?
+
+
+Comment author: @aspiwack
+
+I honestly don't know. It's probably because there is something I missed. I doubt it can be considered a feature…
+
+
+Comment author: @silene
+
+I looked at this issue and I am quite confused.
+
+"refine" internalizes the term using Constrintern.intern_gen WithoutTypeConstraint, so it is not surprising that the notation is being interpreted in the last opened scope. It should have been internalized using Constrintern.intern_gen (OfType FooBar) for the correct scope to be temporarily open.
+
+What troubles me is that "exact" also ends up calling Constrintern.intern_gen WithoutTypeConstraint. So I do not understand how "exact" magically succeeds.
+
+
+Comment author: @silene
+
+I understand the code a bit better now.
+
+"exact" receives a "glob_constr_and_expr" value, with the "glob_constr" part having been computed by "intern_gen WithoutTypeConstraint". But the tactic calls "interp_gen", which discards this "glob_constr" part and internalizes the "constr_expr" part again, this time using "intern_gen (OfType FooBar)", so that the scopes are correctly computed.
+
+"refine", however, receives just a "glob_constr". So it cannot discard it, obviously; it has to use it, even if the scopes were incorrectly computed.
+
+But the situation is a bit more subtile than that. "refine" receives a "glob_constr" produced by "interp_uconstr", which behaves similarly to "exact". It takes a "glob_constr_and_expr" value, discards the "glob_constr" part, and internalizes the "constr_expr" part again, but using "intern_gen WithoutTypeConstraint" anew (because it does not know better).
+
+Short version: As long as "refine" is an extension, it will never support bound scopes. Worse, if we ever were to unhardcode "exact", it would lose this feature. So I am closing this report, because it seems like the bug is impossible to fix without hardcoding "refine" (or without rewriting large chunks of Coq).
+
+
+Comment author: @aspiwack
+
+Unless, maybe, a "casted_uconstr" entry is made to do globalisation in the scope of the goal's conclusion. I don't know whether that is possible, though.
+
+
+Comment author: @silene
+
+Yes, that is possible, and the code would be quite simple to write. But it is not much different from hardcoding refine, since it amounts to defining a new type of tactic argument just for the sake of refine.
+
+
+Comment author: @herbelin
+
+This behavior of exact is actually new from 8.5 (so it is regression only from 8.5beta). Moreover, it is not preserved by Ltac definitions (as hinted by Guillaume when he says that the first intern_constr is discarded, since in ltac code, intern_constr is done only once due to flag strict_check). Indeed
+
+Ltac myexact e := exact e.
+
+Goal Foo.
+  myexact !.
+Defined.
+
+does not work.
+
+So, the most reasonable would probably be to withdraw this half-implemented feature of mine, until a more robust mechanism for propagation of contextual interpretation information is possibly implemented.
+
+Not that 8.4 was however able to apply an ad hoc interpretation in scope type_scope for tactics expecting a type. So the following could be observed in 8.4 and it is still observable in 8.5:
+
+Notation "!" := True : type_scope.
+Notation "!" := 1 : core_scope.
+Open Scope core_scope.
+Goal False.
+assert !. (* success *)
+Abort.
+Ltac myassert x := assert x.
+Goal False.
+myassert !. (* failure *)
+
+This is maybe not so nice... and eventually we would like to tag ltac variables with a scope so that the last line works, but this would be tricky, with the question of what to do when a variable occurs more than once, etc. (though this kind of business is already what is done in notations).
+
+
+Comment author: @herbelin
+
+That may actually be a pretty interesting challenge to develop a system of types (and in particular of interpretation scopes) for ltac (or a cleaner version of it), propagating constraints coming from how variables are used upwards...
+
+
+Comment author: @silene
+
+I am not sure it would be a good idea to automatically infer scopes depending on how some tactic argument is later used. It might require the user to dwell in the implementation to find out which is the actual scope of the argument. I prefer that the scopes be made explicit at the tactic definition/notation level, as suggested by Jason in bug [BZ#4381](https://github.com/coq/coq/issues?q=is%3Aissue%20%22Original%20bug%20ID%3A%20BZ%234381%22).
+
+
+Comment author: @herbelin
+
+
+> I am not sure it would be a good idea to automatically infer scopes
+> depending on how some tactic argument is later used. It might require the
+> user to dwell in the implementation to find out which is the actual scope of
+> the argument. I prefer that the scopes be made explicit at the tactic
+> definition/notation level, as suggested by Jason in bug [BZ#4381](https://github.com/coq/coq/issues?q=is%3Aissue%20%22Original%20bug%20ID%3A%20BZ%234381%22).
+
+Looks indeed like an intuitive and simple approach.
+
+

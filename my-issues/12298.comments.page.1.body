@@ -1,0 +1,21 @@
+Note that adding `let v := (eval cbv beta in v) in` right before `cache_term Build_T_ty v Build_T` fixes the issue, presumably by evar-normalizing the term.
+Here's a smaller example:
+```coq
+Goal True -> True.
+  simple refine (let H : True -> True := _ in
+                 _);
+    [ intro x; exact x | ];
+    lazymatch goal with
+    | [ H := ?v |- _ ]
+      => clear H;
+           abstract exact v
+    end.
+  (* Error: Anomaly "Evar ?X2 was not declared."
+Please report at http://coq.inria.fr/bugs/.
+*)
+```
+Tactical `abstract` does not support existential variables. But there is an instantiated evar hidden in the `EConstr` bound to `v` which is not normalized.
+
+A compromise would be to normalize all `constr` Ltac bindings, but probably something more principled should be done (keeping a `sigma` with each Ltac value`? having `abstract` starting with a non initial `sigma`? ...). See #14671 for the ad hoc fix.
+
+Note: the `clear H` is not needed in the example above.

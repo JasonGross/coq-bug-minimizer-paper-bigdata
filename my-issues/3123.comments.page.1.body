@@ -1,0 +1,34 @@
+Comment author: @JasonGross
+
+It would be useful to be able to bind interpretation scopes with a constant just defined, so that I could do, e.g.,
+
+Record Foo :=
+  {
+    A : Type;
+    B : Type
+  }
+binding Scope foo_scope with Foo.
+
+and have it be equivalent to
+
+Record Foo :=
+  {
+    A : Type;
+    B : Type
+  }.
+
+Bind Scope foo_scope with Foo.
+Arguments A _%foo_scope _.
+Arguments B _%foo_scope _.
+
+
+Comment author: @ppedrot
+
+I am personally rather against syntax inflation. Why do you need so badly this syntactic sugar?
+
+
+Comment author: @JasonGross
+
+It's not necessary, just convenient.  If I have a record with 10 fields, it's convenient to not need to add 10 lines of [Arguments] after the definition of the record.
+
+

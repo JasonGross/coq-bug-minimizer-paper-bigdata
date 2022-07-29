@@ -1,0 +1,21 @@
+Which message would you like?
+
+Would `This clause is redundant (pattern "bb").` be ok?
+
+It is trivial to implement (a few characters in `vernac/himsg.ml`) but if one wants it to be printed only when it is one among more than one pattern, this would require a bit more of work to propagate the information that there are several patterns until the error printer.
+
+How about `The pattern "bb" is redundant.` (or `clause` or `clause-pattern` or `pattern-clause` if that's more accurate).  The location information could still be about the entire clause and not just the single pattern, if it's hard to get the information localized to the pattern.
+I think this way would also make more semantic sense, because, really, the redundancy is about the pattern and not about the entire branch, right?
+In the general case, a clause is a line "pat11, ..., pat1p | ... | patn1, ..., patnp => right-hand-side".
+
+Here is a new proposal which, in the following case,
+```coq
+Check fun n m => match n, m with 0, 0 | _, S _ | S 0, _ | S (S _ | _), _ => false end.
+                                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+```
+would highlight the clause with message `Multiple pattern "S _, _" is redundant in this clause`. Would that be ok? Or using "are" would be better?. In your case, it would give`Pattern "bb" is redundant in this clause`.
+
+Yes, that seems fine.
+> Fixes / closes #????
+
+OK, patch proposed as PR #7786.

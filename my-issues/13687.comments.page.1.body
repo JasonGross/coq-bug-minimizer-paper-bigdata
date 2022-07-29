@@ -1,0 +1,13 @@
+Unfortunately, it's fairly typical of Ltac1 runtime distinction of tactics vs everything else. The match goal trick is standard to force the evaluation of its arguments.
+
+We may make it the default behaviour but I am not sure that doing that is as expressive as the current situation. In that case you'd have to wrap the Ltac2 closure in an `idtac; ...` block, but then the interpreter might start doing weird things when you want to force it further. The documentation states that you shouldn't use the return value of the thunk, so with the right point of view, the current semantics forces you to rely on undefined behaviour *somehow*...
+
+Hm, I guess we already see the same problem with `Tactic Notation` in just Ltac1:
+```coq
+Tactic Notation "tac3" constr(x) := idtac "run 3".
+Goal True.
+  let _ := tac3 I in idtac.
+```
+emits no output.
+
+I don't *think* evaluating things early is any less expressive, since I think you can always add an `idtac; ` in front as you say.  What weird things are you imagining the interpreter might do?

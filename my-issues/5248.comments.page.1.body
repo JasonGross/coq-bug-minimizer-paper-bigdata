@@ -1,0 +1,28 @@
+Comment author: @JasonGross
+
+I don't currently have access to a 32 bit machine to get the output from, but 
+see, e.g., 
+https://launchpadlibrarian.net/296579889/buildlog_ubuntu-trusty-i386.coq-8.6beta1_8.6~beta1-1~trusty~ppa38_BUILDING.txt.gz
+
+make[5]: Entering directory `/<<PKGBUILDDIR>>/test-suite'
+FAILURES
+    output/NumbersSyntax.v...Error! (unexpected output)
+
+
+Comment author: @maximedenes
+
+This was a critical bug on 32-bit architectures. Thanks *a lot* for reporting, just in time to fix it in the final 8.6 release :)
+
+
+Comment author: @JasonGross
+
+Huh.  I'm glad I tried to package 8.6beta1, then. ^.^
+
+Does this give you a proof of False on 32-bit machines in 8.6beta1, then?
+
+
+Comment author: @maximedenes
+
+Yes, because only the VM arithmetic was impacted, so it is very easy to show that the result is inconsistent w.r.t. other evaluations.
+
+

@@ -1,0 +1,14 @@
+Isn"t it just that there are a bunch of boxes before you get any strings?
+This is not a bug, printing depth is not a precise parameter and indeed depending on the concrete way to print a term may get wrapped in less or more boxes. Your example is not fixable for example without breaking quite a bit of other stuff.
+
+I know that is weird but it is the way the formatter works, from a UI point of view what makes sense is to have an increase / decrease current printing depth.
+What I'm confused about is the fact that printing depths 0, 1, 2, and 3 all print
+```
+1 subgoal (ID 10)
+
+  ============================
+  id id id id id id 0 = 0
+```
+which is more than is printed by higher printing depths.  Neither explanation really makes sense to me to explain this behavior.
+Oh, I see what's going on here.  `Show` for printing depths 0 and 1 prints nothing (so PG does not update the goal), and it is not until depth 4 that "1 subgoal" is printed, and so PG doesn't recognize a goal update until then.  Agreed, this is not a bug.
+0 and 1 should have no effect as ocaml does `let pp_set_max_boxes state n = if n > 1 then state.pp_max_boxes <- n` (the option just forwards to the ocaml stdlib setting)

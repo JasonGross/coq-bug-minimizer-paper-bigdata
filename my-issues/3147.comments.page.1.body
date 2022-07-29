@@ -1,0 +1,53 @@
+Comment author: @JasonGross
+
+I would like to be able to do
+```coq
+Parameter f : nat -> nat -> nat -> nat -> nat.
+Parameter x : nat -> nat.
+
+Goal True.
+  lazymatch constr:(fun x => f 0 (x 1) 2 (x 3)) with
+    | (fun x => (@ ?F x) (@ ?k x)) => pose F; pose k
+  end.
+```
+
+And have [(fun x => f 0 (x 1) 2)] and [(fun x => x 3)] be [pose]d.  I am fine if the syntax requires extra parentheses (like what I used), or if the first argument which is not a bound index/parameter, and all arguments after it, get treated as literal arguments.  Here is some tactic code which (I believe) achieves the effect desired in the above code, though it clutters up the proof tree:
+```coq
+  let G := constr:(fun x => f 0 (x 1) 2 (x 3)) in
+  let H := fresh in
+  let FT := fresh in
+  let kT := fresh in
+  let F := fresh in
+  let k := fresh in
+  evar (FT : Type); evar (F : FT); subst FT;
+  evar (kT : Type); evar (k : kT); subst kT; 
+  assert (H : forall x, G x = G x);
+  [ let x := fresh in
+    intro x;
+    cbv beta;
+    let Fx := match goal with |- ?Fx ?kx = _ => constr:(Fx) end in
+    let kx := match goal with |- ?Fx ?kx = _ => constr:(kx) end in
+    let Fx' := fresh in
+    let kx' := fresh in
+    pose Fx as Fx';
+    pose kx as kx';
+    pattern x in Fx';
+    pattern x in kx';
+    match goal with
+      | [ H := ?f x |- _ ] => constr_eq H Fx';
+                              let F' := (eval unfold F in F) in
+                              unify f F'
+    end; 
+    match goal with
+      | [ H := ?f x |- _ ] => constr_eq H kx';
+                              let k' := (eval unfold k in k) in
+                              unify f k'
+    end;
+    reflexivity
+  | clear H ];
+  pose F; pose k; subst F k.
+```
+
+As you can see, this is a lot of work just to strip off the last argument to a function expression, and as I use this pattern many times, it would be nice to be able to do it simply.
+
+

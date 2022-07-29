@@ -1,0 +1,5 @@
+No, `set` doesn't need to retypecheck the term, which is why it's fast on your example. If the original term is well-typed, let-abstraction is always valid (modulo a few gotchas like template polymorphism).
+
+I think I can close this bug as invalid thus.
+Are you saying that `type of` retypechecks the term?  Can there be a variant that doesn't do this?
+@JasonGross: yes, Ltac's "type" retypechecks. Coq internally uses another typing function when a term is already known to be well-typed, and this function is as quick as it could (no conversion is done). We could make it available user-side (maybe it is already available from Ltac2 actually).

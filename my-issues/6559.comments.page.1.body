@@ -1,0 +1,89 @@
+It seems that `fresh` is binding the ltac environment at the location where the function is bound or something?  At least, this works as expected:
+```coq
+Ltac no_unify x y :=
+  try (unify x y; fail 1 "Error: should not unify:" x "," y).
+Goal True.
+  let myfresh := (fun n fresh' => let v := fresh' n in fresh' v) in
+  let x := fresh "x" in
+  let y := let n := x in myfresh n ltac:(fun n => fresh n) in
+  let z := let n := y in myfresh n ltac:(fun n => fresh n) in
+  let w := let n := z in myfresh n ltac:(fun n => fresh n) in
+  let xc := constr:(fun x y z w : Set => ltac:(exact x)) in
+  let yc := constr:(fun x y z w : Set => ltac:(exact y)) in
+  let zc := constr:(fun x y z w : Set => ltac:(exact z)) in
+  let wc := constr:(fun x y z w : Set => ltac:(exact w)) in
+  idtac x y z w xc yc zc wc;
+    (no_unify xc yc; no_unify xc zc; no_unify xc wc; no_unify yc zc; no_unify yc wc; no_unify zc wc).
+```
+This is truly terrible.  This works as expected:
+```coq
+Ltac myfresh := fresh.
+Goal True.
+  let v := myfresh in
+  let w := myfresh in
+  idtac v w.
+```
+but this does not:
+```coq
+Ltac myfresh _ := fresh.
+Goal True.
+  let v := myfresh () in
+  let w := myfresh () in
+  idtac v w.
+```
+I just ran into this in a real use case, and I can only concur that it is truly terrible.
+
+Would anyone who knows how these things work be willing to take a look and see whether something can be done here?
+If you have a problem with ltac semantics why not use ltac2? That's literally why it exists.
+because it is not a part of coq. this is important in two ways
+
+- an external plugin dependency complicates the build and dev setup. I guess this could be mitigated, for example offering portable binary packages of matching sets of ocamlc+coq+ltac2, but I am not holding my breadth for these. ltac1 and ssrtactics on the other hand are a part of the coq packages of several downstream distributions, so I'm able to rely on the corresponding distribution package maintainers to make sure that these are available. having this not be my problem is already very valuable, and it is even more important for people just trying out a library that just happens to depend on coq (and currently no external coq plugins).
+- as an external plugin, the support I would expect to receive for issues with ltac2 is significantly less than what I'd expect for coq itself. both simple statistics (such as community size and developer count) and an informal assessment of the general state of the relevant issue trackers confirm this concern. the support you all provide is the main reason I keep coming back to coq despite its current state of technical debt, and apparently I've been making the call that is worth it. if I was willing to go with fringe tools, I wouldn't be here complaining about tactic language details -- https://github.com/coq/coq/issues/8307 and https://github.com/coq/coq/issues?utf8=✓&q=is%3Aopen+label%3A"kind%3A+performance"+author%3Aandres-erbsen make a very good technical case for switching to lean, but l haven't done it because I do not understand the priorities of lean developers and thus lack confidence that my efforts fare well over the next several years.
+- in the very immediate term, I wish that ltac2 included alternatives to ltac1 idtac, lazymatch, and using pattern matching to extract open terms. It looks like these features would be some amount of work, but totally tractable given appropriate attention and confidence that this is the right way to go.
+
+So, in short, I would love to be using ltac2 instead, but unless we are ready to be talking about merging ltac2 into coq, I think it's really not a trivial matter of "just use ltac2".
+@andres-erbsen Coq-shipped LTAC is likely to see very little updates, just in the name of compatibility, so indeed fixes will happen in new developments such as LTAC2 or whatever else people like to come up with.
+
+Note that the notion "part of Coq" is not so well defined as people tend to think. For example, there are "parts of Coq" that are barely maintained [definitively much less than LTAC2]; as you know our CI system helps to avoid bitrot which would be the main problem something living out of the main repos could have.
+
+In fact, we have been discussing for quite a while how "plugins" and the core libraries should relate, and it is looking more and more likely, given that our toolchain will soon support a compositional build, that we follow a "Linux drivers" model and we include most ML plugins in the main repos, while allowing them to be released on their own scheduled cycle.
+
+Indeed the status of "technical debt" is bad, and it is very hard to fix as it requires highly specialized people. Even if we have now 2 engineers helping, they basically work at almost a pro-bono rate [thanks to their love of Coq] as their free-market value would be without any doubt much higher. So indeed, it is very appreciated all the contributions by skilled volunteers.
+
+A large problem in attracting more contributors is indeed communication. We do our best to expose plans and TTBOMK all dev processes are open to anybody today; however significant developer communication still happens "in person" in particular with regards to discussion of plans.
+
+But in this sense I am much afraid that one cannot have their cake and eat it; some high profile users like to complain about Coq relying on stale or just plainly made up information, and pretend to influence the development of the tool when nobody of their group is present for example in the Coq Implementors Workshop. 
+>@andres-erbsen Coq-shipped LTAC is likely to see very little updates, just in the name of compatibility, so indeed fixes will happen in new developments such as LTAC2 or whatever else people like to come up with.
+
+I think fixes for ltac are still happening, and even new stuff (eg intropattern PRs). However this PR is more about changing the design of the ltac language and there I'm not so hopeful.
+> I think fixes for ltac are still happening, and even new stuff (eg intropattern PRs). However this PR is more about changing the design of the ltac language and there I'm not so hopeful.
+
+Yeah I mean like design updates, obviously things that can make LTAC better and don't create compatibility problems are always welcome, but there are not so many things like that I'm afraid.
+I am generally a big fan of compatibility, but I would not mind seeing compatibility broken to fix this issue.  (In particular, I don't care much about compatibility of autogenerated names.  Especially not ones that were autogenerated by `fresh`.  Especially especially not ones that were autogenerated by `fresh` but were not, in fact, fresh.)
+I guess if you can fix without creating massive havoc the patch would be welcome.
+This is truly curious. I have no idea why this is happening. The semantic of Ltac function is a bit clumsy, if I remember correctly, but I didn't think that could happen.
+
+It probably shouldn't be assigned to me though. I can assist a little, but I don't nearly have the bandwidth to fix this myself. (it's probably not easy, either).
+Calling fresh through a function seems to even ignore names allocated through `fresh`, not just that function. So I am guessing that some "names allocated during Ltac expression evaluation so far" data structure is being threaded through the implementation, and an empty copy is passed in when evaluating an ltac function application. This might mean that this issue is fixable without drastically changing semantics (although all this is pure little-informed speculation...).
+
+```coq
+  Ltac myfresh x := let __ := match constr:(Set) with _ => idtac "FRESH" x end in fresh.
+  Goal True.
+    let z := fresh in
+    (* pose I as z; *)
+    let v := myfresh 1 in (* FRESH 1 *)
+    let w := myfresh 2 in (* FRESH 2 *)
+    idtac z w v. (* H H H *)
+  Abort.
+
+  Goal True.
+    let z := fresh in
+    pose I as z;
+    let v := myfresh 1 in (* FRESH 1 *)
+    let w := myfresh 2 in (* FRESH 2 *)
+    idtac z w v. (* H H0 H0 *)
+  Abort.
+```
+In any case this fix is not going in 8.10, and 8.11 will include ltac2, so the question is: does this bug also affect ltac2?
+@gares Thankfully no, for a good notion of no. "Fresh" doesn't mean much, it's always fresh w.r.t. some set of variables, so Ltac2 provides an API that lets you define that set explicitly. Atop of that you can define your own gensym using a mutable reference defined at the beginning of your tactic.
+Ok, so to me this is a candidate for a won't fix label. We planned to freeze ltac1 for a long time, maybe 8.11 can be that time given that an alternative will be provided.

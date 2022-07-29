@@ -1,0 +1,50 @@
+Comment author: @JasonGross
+
+```coq
+(* File reduced by coq-bug-finder from original input, then from 7372 lines to 539 lines, then from 529 lines to 94 lines, then from 78 lines to 10 lines *)
+Class IsEquiv {A B : Type} (f : A -> B) := { equiv_inv : B -> A }.
+Notation "f ^-1" := (@ equiv_inv _ _ f _) (at level 3).
+Definition path_sigma_hprop {A : Type} {P : A -> Type} (u v : sigT P) `{IsEquiv _ _ (@ projT1 A P)}
+  := projT1^-1.
+(* Toplevel input, characters 123-129:
+Error:
+In environment
+A : Type
+P : A -> Type
+u : {x : A & P x}
+v : {x : A & P x}
+H : IsEquiv (projT1 (P:=P))
+The term "projT1" has type
+ "forall (A : Type) (P : A -> Type), {x : A & P x} -> A"
+while it is expected to have type "Type -> ?10" (cannot instantiate
+"?10" because "H" is not in its scope: available arguments are
+"H" "A" "P" "u" "v").
+ *)
+```
+Comment author: @silene
+
+As far as I can tell, the reason is bogus only because of the lack of alpha-renaming. If you rename a few arguments manually, the message starts making sense:
+
+```coq
+Record IsEquiv {A B : Type} (f : A -> B) := { equiv_inv : B -> A }.
+Definition path_sigma_hprop {C : Type} {P : C -> Type} (u v : sigT P)
+  (K : IsEquiv (@ projT1 C P)) := equiv_inv projT1 _.
+(* cannot instantiate "?B" because "A" is not in its scope: available arguments are "C" "P" "u" "v" "K" *)
+```
+
+I let this bug open though, just in case someone knows of a simple way to ensure that the error message is displayed with fresh names for bound variables.
+
+
+Renaming has changed but still seems to be a problem:
+```coq
+The term "projT1" has type
+ "forall (A : Type) (P : A -> Type), {x : A & P x} -> A"
+while it is expected to have type "Type -> ?B" (cannot instantiate 
+"?B" because "A0" is not in its scope: available arguments are 
+"A" "P" "u" "v" "H").
+```
+Hm, I think this new error message is confusing because the renaming has been done in the wrong place.  I think there are two changes that should be made:
+1. the available arguments should be avoided as binder names in the type that is found
+2. and not-in-scope variables in the evar should ideally be shown as non-anonymous binders in the expected type
+
+Note, though, @ejgallego , that this example is supposed to error.  This bug report is merely about the ways in which the error message in this case are confusing.

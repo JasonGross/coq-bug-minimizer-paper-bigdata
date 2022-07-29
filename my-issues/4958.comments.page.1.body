@@ -1,0 +1,12 @@
+Comment author: @JasonGross
+
+It's painful to make use of [debug auto with *]; it would be much easier to do 
+if each line printed hint databases.  (Also [info_auto with *] is utterly 
+useless, as it prints only "Debug: (* info auto : *)")
+
+
+Comment author: @ppedrot
+
+Fixed by 55699e2.
+
+

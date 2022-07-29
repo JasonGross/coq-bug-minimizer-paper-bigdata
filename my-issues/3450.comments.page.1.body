@@ -1,0 +1,133 @@
+Comment author: @JasonGross
+
+Created attachment 494
+Long example of a slow [End lemmas.]
+
+The [End lemmas.] near the end of the attached file (currently annotated with a [Timeout]) takes 4-5 s in interactive mode ("coqtop -indices-matter -time < psedo_rewrite_laws_01.v") and 7-8 s in batch mode (either of "coqtop -indices-matter -time -compile psedo_rewrite_laws_01" and "coqc -indices-matter -time psedo_rewrite_laws_01.v").  This is in trunk (c4ecec191130a51975bf97d067472e0e5bd744f5).  In HoTT/coq, it took 0.3 s.
+
+> Attached file: [psedo_rewrite_laws_01.v](https://coq.inria.fr/bugfiles/attachment.cgi?id=494) (text/plain, 347867 bytes)
+> Description:   Long example of a slow [End lemmas.]
+
+
+Comment author: @ppedrot
+
+For the record, about half of the time is taken by the hashconsing of universes.
+
+
+Comment author: @mattam82
+
+I consistently get 3s in interactive and batch mode now. Which part of hashconsing is concerned here, Instance.hcons or Universe/Level?
+
+
+Comment author: @ppedrot
+
+Actually both, as the former triggers the latter (hence this is Instance, if you will). Ultimately, term hashconsing is the one responsible. If I am not mistaken, we re-hashcons everything when leaving a section.
+
+
+Comment author: @ppedrot
+
+In current trunk (8bc0159095), hashconsing is not the most costly operation anymore, but universe substitutions are. On the [End lemmas] command, coqtop passes a fourth of its time in finding universes because of substitution.
+
+Anyway, does the required time seem more acceptable now?
+
+
+Comment author: @ppedrot
+
+The proposed example does not compile anymore...
+
+
+Comment author: @JasonGross
+
+Created attachment 718
+Updated long example that compiles extremely slowly
+
+The fact that the example no longer compiles is a bug. (Bug [BZ#4780](https://github.com/coq/coq/issues?q=is%3Aissue%20%22Original%20bug%20ID%3A%20BZ%234780%22))  I've attached a version that should compile in 8.5pl1, but we seem to have regressed in performance significantly.  Earlier end sections are already slow, and [Time Record Pseudofunctor := ...] is insanely slow (it takes minutes, at least); I see
+  Pseudofunctor is defined
+  p_object_of is defined
+and then I have to wait a number of seconds before I see
+  p_morphism_of is defined
+and then I have to wait even more time for the rest, and I haven't seen it finish yet.  What's going on?
+
+> Attached file: [foo.v](https://coq.inria.fr/bugfiles/attachment.cgi?id=718) (text/x-verilog, 348062 bytes)
+> Description:   Updated long example that compiles extremely slowly
+
+
+Comment author: @JasonGross
+
+The definition of Pseudofunctor finished
+  Finished transaction in 999.206 secs (998.952u,0.184s) (successful)
+I'm pretty sure it used to be much faster...
+
+
+Comment author: @JasonGross
+
+And the corresponding `End pseudofunctor.`:
+  Finished transaction in 981.981 secs (981.08u,0.488s) (successful)
+
+
+Comment author: @mattam82
+
+Will investigate after the fix to [BZ#4780](https://github.com/coq/coq/issues?q=is%3Aissue%20%22Original%20bug%20ID%3A%20BZ%234780%22) is committed
+
+
+Comment author: @mattam82
+
+With your last example, and on trunk, I see Time Record taking half a second (however sometimes my PG hangs for some reason). The End Lemmas is around 3secs, depending if you turn Lets into Definitions this can be made faster. There is something very fishy with the constraints though. The last definition takes hundreds of universes but only has constraints on a few of them. Pseudofunctor is the same. So it's already that definition which takes too many unnecessary universes.
+
+
+Comment author: @JasonGross
+
+Hmmmmm, I'll have to check what's going on; on linux, 8.5pl1 seems to be reasonably fast.
+
+In any case, the second example no longer compiles in 8.6 / trunk; there seems to be a bug in unification.
+
+
+Comment author: @mattam82
+
+Ok I found the culprit: the automatic generation of rewrite lemmas, when done in sections, needlessly generalizes the rewriting lemmas over the section universes, even if they are unused in the rewriting lemma itself. To fix this properly would require a way to declare that a section constant uses no universes from the section, which would require a major redesign I think. The quick workaround (which might also greatly benefit HoTT in general) is to add the following two lemmas after the definition of paths:
+
+
+Lemma paths_rew@ {i j} : forall (A : Type@ {i}) (a : A) (P : A -> Type@ {j}) 
+                          (f : P a) (y : A) (p : a = y), P y.
+Proof.
+  intros. rewrite <- p. exact f.
+Defined.
+
+Lemma paths_rew_r@ {i j} : forall (A : Type@ {i}) (y : A) (P : A -> Type@ {j}) 
+                            (f : P y) (a : A) (p : a = y), P a.
+Proof.
+  intros. rewrite p. exact f.
+Defined.
+
+That way, End Lemmas takes 0.1s and has much less universes and constraints. Another thing which appeared is that compose_composition_of is defined in a section with Variable B : PreCategory. is declared but not used, again generating a useless quantification on universes. Same goes for quantifications of Funext on definitions which don't need it (why make Funext polymorphic actually??), like left_identity_natural_transformation_1. 
+
+The whole files takes 7.5s to compile on 8.5 or 8.6 here. There might still be things that could be improved, i.e. it seems NaturalTransformation.Identity.identity takes two universes which are just upper bounds and should be algebraic and hence substituted by a max expression but I suppose they're due to the generic construction you are using and that their appearance in a constant instance which prevents that disappears after the simpl.
+
+
+Comment author: @mattam82
+
+Created attachment 742
+Fixed script.
+
+Fixes the unification issue (not sure it's a bug, it looks like an arbitrary choice was made before) and adds declarations of internal_paths_rew(_r)
+
+> Attached file: [3450.v](https://coq.inria.fr/bugfiles/attachment.cgi?id=742) (text/plain, 342004 bytes)
+> Description:   Fixed script.
+
+
+Comment author: @ppedrot
+
+I have identified the source source of the huge slowdown of the record definition. It is due to the use of a naive data structure in the VM compilation phase. Indeed, we pass most of our time browsing a list in O(n) while this can be done in O(log n) thanks to a binary map. With a simple patch, the definition time of the record cuts down from more than 10mn (I got bored of waiting) to 39s!
+
+This touches the kernel, so I want people to double check I didn't do anything wrong. Here is the PR.
+
+https://github.com/coq/coq/pull/261
+
+What do you think about it?
+
+
+Comment author: @ppedrot
+
+Fixed by 5ede69.
+
+

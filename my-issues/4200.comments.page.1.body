@@ -1,0 +1,16 @@
+Comment author: @JasonGross
+
+I requested in bug [BZ#4199](https://github.com/coq/coq/issues?q=is%3Aissue%20%22Original%20bug%20ID%3A%20BZ%234199%22) a mode that could be set to forbid [dependent destruction] from using axioms.  More generally, it should be possible to develop tactics in user-land with such modes.  (Justification: The excellent talk "Growing a Language", by Guy Steele, https://www.youtube.com/watch?v=_ahvzDzKdB0; primitives should not be special.)
+
+I propose that there be a syntax [Declare Option "Foo Bar Baz".] (maybe without quotes) which permits one to later [Set Foo Bar Baz.] and [Unset Foo Bar Baz.], and an ltac primitive [ensure_option "Foo Bar Baz"] (again, maybe without quotes, maybe with a space instead of underscore, etc.) which fails if the option is unset, and succeeds if it is set, so that code like [tryif ensure_option "Foo Bar Baz" then ... else ...] behaves nicely.
+
+
+Comment author: @jonleivent
+
+I think Ltac should have something like Lisp special variables - some way to bind and access dynamically scoped variables.  Then, Jason's suggested enhancement can be based on this mechanism.  The additional capabilities of special variables would be that they can have values like normal Ltac variables, not just booleans, and that they can be set from within Ltac, not just accessed.
+
+Jason's [Declare Option "Foo Bar Baz"] would then declare a special variable, while [Set Foo Bar Baz] and [Unset Foo Bar Baz] would set it globally to boolean true/false respectively.   One could then have [Set Foo Bar Baz := Bleep] to give the special variable a value other than just a boolean.
+
+One specific use case for special variables would be extern hints that operate differently by conditionalizing on one or more special variables - so that tactics that call (e)auto can control these hints.  Currently, this is possible by posing and testing for the presence of dummy hypotheses, but using hypotheses for such controls is certainly a hack.
+
+

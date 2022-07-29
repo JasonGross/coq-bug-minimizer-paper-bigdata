@@ -1,0 +1,37 @@
+Comment author: @JasonGross
+
+I don't want to see a dozen instances of
+
+Warning: appcontext is deprecated and will be removed in a future
+version [deprecated-appcontext,deprecated]
+
+Especially not when building in -compat 8.4 mode.  coqc -help doesn't seem to 
+say how to silence these warnings.
+
+
+Comment author: @maximedenes
+
+Yes, I haven't written the doc yet, but I will do. My commit message explains how it works:
+
+On the user side, coqtop and coqc take a list of warning names or categories after -w. No prefix means activate the warning, a "-" prefix means deactivate it, and "+" means turn the warning into an error. Special categories include "all", and "default" which contains the warnings enabled by default.
+    
+We also provide a vernacular Set Warnings which takes the same flags as argument.
+
+
+Comment author: @JasonGross
+
+It took me a while to figure out that [Set Warnings] takes a string.
+
+Would it make sense to provide a variant of [Set Warnings] that gave different behavior in interactive vs non-interactive mode?  (i.e., displays the warning in PG / coqtop -emacs, but not on the command line?)
+
+
+Comment author: @JasonGross
+
+Ugh, why is it that [Global Set Warnings.] gives "Warning: There is no option Warnings." in 8.5, but [Global Set Warnings "-all".] gives "Error: There is no option Warnings."?  This seems like a major design flaw in terms of backwards compatibility of options that take strings.
+
+
+Comment author: @maximedenes
+
+Documented!
+
+

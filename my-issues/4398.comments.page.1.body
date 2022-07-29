@@ -1,0 +1,83 @@
+Comment author: @JasonGross
+
+The logic that says that we know that the hypotheses are of type [Type] doesn't apply when we're looking inside context.
+
+
+Comment author: @silene
+
+It looks trivial to change (Tacintern.intern_pattern), but it seems a bit gratuitous. Sure, the rationale for not having type_scope open is strong, but not to the point that changing the behavior is worth it, at least not for 8.5.
+
+
+Comment author: @JasonGross
+
+The behavior of opening type_scope at all in this location is new to 8.5.  Can there at least be a flag (to be enabled in Coq84.v) that disables this behavior (opening type_scope in the types of hypotheses in Ltac patterns) all-together?
+
+
+Comment author: @silene
+
+Come on. You were the one who asked that hypotheses be interpreted in type_scope (bug [BZ#3050](https://github.com/coq/coq/issues?q=is%3Aissue%20%22Original%20bug%20ID%3A%20BZ%233050%22)).
+
+
+Comment author: @JasonGross
+
+Yes, I was.  I still think it's a good idea, but now that I've been bitten by it a few times when porting things to 8.5, I think there should be a compatibility flag that disables it.
+
+
+Comment author: @herbelin
+
+Thinking again about this report, the situation is the following:
+```coq
+Goal nat*(0*0=0) -> nat*(0*0=0). intro.
+match goal with H: ?x*?y |- _ => idtac x end.           (* 8.4: fail 8.5: nat *)
+match goal with |- ?x*?y => idtac x end.                (* 8.4: fail 8.5: fail *)
+match goal with H: context [?x*?y] |- _ => idtac x end. (* 8.4: 0  8.5: nat *)
+match goal with |- context [?x*?y] => idtac x end.      (* 8.4: 0  8.5: 0 *)
+```
+while I would naively better expect:
+
+nat
+nat
+0
+0
+
+(assuming in the last two cases that if we use "context" we don't expect to get the top occurrence, and that we can still add explicitly a %type_scope).
+
+I have a two lines patch for that. Any comments on applying it for 8.5pl2?
+
+
+Comment author: @JasonGross
+
+I am a fan of applying the patch.  I don't yet have any strong opinion on whether it should be applied in a pl, or on trunk.  (I think the truly ideal solution would be to put the decision in user-space, allow commands like [Bind Scope type_scope to MatchHypothesisClass] (and MatchHypothesisContextClass, MatchGoalClass, MatchGoalContextClass), and also add [Unbind Scopes from ...], and then put the relevant directives in [Coq/Init/Notations.v], and drop the relevant compatibility overrides in the Compat/Coq84.v file.)
+
+
+Comment author: @mattam82
+
+I'm a fan too, I was bitten more than once by this. I think it's ok in pl2 but it deserves to be mentioned in CHANGES, as it breaks compatibility but scripts can be made forward compatible by disambiguating.
+
+
+Comment author: @maximedenes
+
+I have nothing against this change, but I very much doubt it is pl material. Pl changes should not break compatibility of scripts that are not obviously relying on a bug. This is an unfortunate design choice, not a proper bug. If we make a pl release every month or two with non-trivial porting (like "it just works"), we are making the life of our users very difficult.
+
+The point of having short cycles for major releases is precisely not to be tempted to change these behaviors in patch level releases.
+
+
+Comment author: @mattam82
+
+I'd be happier if pl2 didn't break as well.
+
+
+Comment author: @herbelin
+
+For users porting from 8.4 to 8.5pl2, it is certainly an improvement. For users already in 8.5, it might be a source of problems. So, tipping the balance more in favor of 8.6?
+
+
+Let's mark that for 8.9, then...
+@ppedrot do you have plans to work on it? If not, please don't put random milestones. If yes, please assign yourself :)
+Oh, and the milestone you want for this particular issue is probably `8.9+alpha1`.
+What's the difference?
+I don't know the precise semantics (you should ask @ejgallego or @Zimmi48), but my understanding is that 8.9 is for stuff that is not subject to the freeze (I'm really not sure).
+So now milestones have a bit of different meaning, the old meaning was to signal the RM "this is ready" but I dunno that is useful anymore given that the RM is not supposed to merge so much. I guess the RM for 8.9 should control the milestones then.
+The existence of the two milestones is confusing and I want to have a discussion on this but did not get to opening the issue yet. In the meantime, do as you wish: 8.9 or 8.9+alpha1. We'll fix what needs to be when the confusion is solved.
+@ppedrot ping
+This was fixed by da99355b4d6de31aec5a660f7afe100190a8e683 AFAICT.

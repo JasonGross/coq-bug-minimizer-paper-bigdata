@@ -1,0 +1,11 @@
+Comment author: @JasonGross
+
+```
+Goal exists x : nat, x = x.
+eexists. (* ?x = ?x *)
+set (v := ?x).
+(* Error: Unknown existential variable. *)
+```
+I fully support the decision to not allow reference to non-user-named evars.  I think a better error message would be either "Error: Unknown existential variable.  Only user-given names for existential variables can be referenced.  To give a name to an existential, introduce it with the ?[name] syntax." or, if you want something shorter, "Error: Existential variable unknown or not user-named."
+
+

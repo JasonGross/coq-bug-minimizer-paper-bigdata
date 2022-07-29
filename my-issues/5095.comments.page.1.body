@@ -1,0 +1,22 @@
+Comment author: @JasonGross
+
+Goal let x := Set in let y := x in True.
+  intros x y.
+  revert y; set (s := Set) in (value of x); intro y. (* success *)
+  Undo.
+  set (s := Set) in (value of x). (* Error: Cannot abstract over x without also 
+abstracting or erasing y. *)
+
+[set] should not be doing any abstracting.
+
+
+Comment author: @herbelin
+
+Fixed.
+
+
+Comment author: @ppedrot
+
+Fixed in 464c680b.
+
+

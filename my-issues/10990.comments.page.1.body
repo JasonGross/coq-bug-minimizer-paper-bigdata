@@ -1,0 +1,13 @@
+There's a similar issue with
+```
+Warning: Collision between bound variable x and a metavariable of same name.
+[meta-collision,ltac]
+```
+from
+```coq
+Set Warnings Append "+meta-collision".
+Goal forall x : nat, (fun y => y) = (fun y : nat => y).
+  match goal with
+  | [ |- forall x, (fun y => @?f y) = ?y ] => idtac
+  end.
+```

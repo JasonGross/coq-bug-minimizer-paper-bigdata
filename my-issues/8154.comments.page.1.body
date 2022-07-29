@@ -1,0 +1,16 @@
+9ea8867a0fa8f2a52df102732fdc1a931c659826
+>- Section variables with a body (let-in) are pulled in automatically
+  since they are safe to be used (add no extra quantification)
+
+When using `Proof using` this also adds them to the variables considered to be used by the definition.
+
+This makes #8153 a duplicate of this.
+Note that #8153 is significantly worse behavior. While permitting the use of let-bound identifiers not directly mentioned in `Proof using` is a design decision (one that I disagree with), raising an error claiming that I cannot use a theorem because I have cleared a let-bound identifier that it doesn't actually use is obviously wrong, breaks tactic automaton that should be perfectly fine, and can be quite painful.
+
+cc @gares
+
+I'm not so sure I understand this bug report. The behavior follows the doc. The behavior does not fit your needs. Is this is a sort of feature wish?
+Sure, you can consider this a feature wish.  But I think it is mandated by #8153.
+I guess it is not quite mandated by #8153.  In principle, the dependency analysis could be different for "must not use" (things that should be cleared here) vs "must be available for use" (things that, if cleared, should make `rewrite` and similar tactics error).
+Has this option gone away? On 8.13.12 I get `There is no flag or option with this name: "Proof Using Clear Unused".`.
+yes 2e78edb4b8212cc5ab394fde168fc5241ad01660

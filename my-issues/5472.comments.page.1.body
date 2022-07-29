@@ -1,0 +1,17 @@
+Comment author: @JasonGross
+
+Axiom Q : Prop.
+Hint Extern 0 => clear; exfalso.
+Goal 1 = 2 -> 1 <> 2 -> Q.
+  intros H H'.
+  auto. (* Anomaly: variable H' unbound. Please report at 
+http://coq.inria.fr/bugs/. *)
+
+Pierre-Marie, is this your domain?
+
+
+Comment author: @ppedrot
+
+Shouldn't be hard to fix, but I'm suspicious of the potential performance hit.
+
+

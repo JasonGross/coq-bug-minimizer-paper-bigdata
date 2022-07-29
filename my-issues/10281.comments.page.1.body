@@ -1,0 +1,53 @@
+Note that this would be tested by the fiat-crypto CI if the CI had more memory and we didn't constrain the targets built by the CI
+It seems the issue is that my `coqtacticworker.opt` binary was not in `PATH` (nor was it in the same directory as the `coqc` symlink that was in my path, though it was in the same directory as the absolute real path of the coqc binary).  Adding the relevant symlink to `coqtacticworker.opt` to the `bin` folder in my `PATH` fixed the issue.  Alternatively, invoking `coqc` as `$(readlink -f $(which coqc)) -q foo.v; echo $?` succeeds (`$(which coqc) -q foo.v; echo $?` fails before I add the relevant symlink).
+
+I will leave this issue open for two reasons:
+1. I think the failure for a missing `coqtacticworker.opt` should be more graceful; it should not crash coqc / coqtop.
+2. I think `coqc` should use it's own realpath to find the version of `coqtacticworker.opt`, that is, it should see through symlinks before finding the directory.
+>I think the failure for a missing coqtacticworker.opt should be more graceful; it should not crash coqc / coqtop.
+
+coqtop not crashing I understand, but what's coqc supposed to do?
+> but what's coqc supposed to do?
+
+Emit a proper error message with a filename and line number.
+Possibly one that mentions `coqtacticworker.opt`.
+Can you tell us how you built Coq? The bug is surely in the build/install system
+It is not a bug in the build/install system.  I use `./configure -prefix "$HOME/.local/coq/coq-${VERSION}/"`.  Then in `$HOME/.local/bin` I have:
+```bash
+$ ls -la coq*
+lrwxrwxrwx 1 jgross jgross 19 Jan  4  2016 coqc -> ../coq/coq/bin/coqc
+lrwxrwxrwx 1 jgross jgross 21 Jan  4  2016 coqchk -> ../coq/coq/bin/coqchk
+lrwxrwxrwx 1 jgross jgross 25 Jan  4  2016 coqchk.opt -> ../coq/coq/bin/coqchk.opt
+lrwxrwxrwx 1 jgross jgross 21 Jan  4  2016 coqdep -> ../coq/coq/bin/coqdep
+lrwxrwxrwx 1 jgross jgross 21 Jan  4  2016 coqdoc -> ../coq/coq/bin/coqdoc
+lrwxrwxrwx 1 jgross jgross 21 Jan  4  2016 coqide -> ../coq/coq/bin/coqide
+lrwxrwxrwx 1 jgross jgross 25 Jan  4  2016 coqide.opt -> ../coq/coq/bin/coqide.opt
+lrwxrwxrwx 1 jgross jgross 27 Jan  4  2016 coq_makefile -> ../coq/coq/bin/coq_makefile
+lrwxrwxrwx 1 jgross jgross 23 Jan  4  2016 coqmktop -> ../coq/coq/bin/coqmktop
+lrwxrwxrwx 1 jgross jgross 20 Jan 28 18:08 coqpp -> ../coq/coq/bin/coqpp
+lrwxrwxrwx 1 jgross jgross 34 Jun  2 18:20 coqtacticworker.opt -> ../coq/coq/bin/coqtacticworker.opt
+lrwxrwxrwx 1 jgross jgross 22 Jan  4  2016 coq-tex -> ../coq/coq/bin/coq-tex
+lrwxrwxrwx 1 jgross jgross 21 Jan  4  2016 coqtop -> ../coq/coq/bin/coqtop
+lrwxrwxrwx 1 jgross jgross 26 Jan  4  2016 coqtop.byte -> ../coq/coq/bin/coqtop.byte
+lrwxrwxrwx 1 jgross jgross 25 Jan  4  2016 coqtop.opt -> ../coq/coq/bin/coqtop.opt
+lrwxrwxrwx 1 jgross jgross 20 Jan  4  2016 coqwc -> ../coq/coq/bin/coqwc
+```
+(`coqtacticworker.opt` is new.)  Then whenever I want to switch versions of Coq, I `cd` to `~/.local/coq`, do `rm coq`, and then do `ln -s coq-$VERSION coq`.  It's okay if this is not a supported setup (though I think it's not too bad), but my point about error messages, at least, stands.
+cf 340088bbc08d5a3f55110dc2d287a83866ad2740 https://github.com/coq/coq/pull/8415
+What's your `$PATH` @JasonGross , it seems that you don't have the worker in `PATH`.
+Based on this [comment](https://gitter.im/coq/coq?at=5cf449d3e41fe15e75003d71):
+```
+I do have coqtacticworker.opt, though it's not currently in PATH due to my setup with symlinks
+But if I add coqtacticworker.opt to path, then it starts working again
+```
+this is not a bug; Coq binaries should be accessible in the same way the main Coq binaries are, if you use `coqtop` to start Coq, `coqworkertop.opt` should be also be in `PATH`.
+
+
+From reading #8415, I shall agree with you and will retract my request (2) for resolving symlinks and using absolute paths.  I maintain that this should be a proper error message with a line number which does not crash coqtop (and that if the worker binary does not exist then the error message should mention the binary it tried to execute).  Given that even `assert false` branches only lead to anomalies and not crashes, I think this is not too much to ask.
+I do agree with your comments w.r.t. error handling @JasonGross , I just pointed out the above due to the title of the issue, maybe you would like to change it?
+The title was due to @gares, who I think objected to me leaving the entire error message in the title and so shortened it.  @gares, am I correct in your motivation for the title changes?
+I think the issue has little to do with `par:`, I guess you get a similar failure with `coqc -asyn-proofs on`. And what morally is the STM does not include the low level code to start/stop processes even if one of the spawn* modules in the stm/ directory (so I removed the part:stm label).
+
+The code which should be made more resilient to this error is the one spawning new processes, that is used for par:, async-proos, but also CoqIDE to spawn coqidetop. I agree the error message should be improved.
+
+We can address this as part of #14059

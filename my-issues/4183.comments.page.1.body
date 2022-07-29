@@ -1,0 +1,276 @@
+Comment author: @JasonGross
+
+I asked on coq-club:
+
+Hi,
+What instances to I need to add to the environment to make this example work?
+Require Import Coq.Setoids.Setoid Coq.Lists.List Coq.Program.Basics Coq.Classes.Morphisms.
+Global Instance fold_right_flip_impl {A}
+: Proper 
+    (pointwise_relation A (flip impl ==> flip impl) ==> flip impl ==> eq ==> flip impl)
+    (@ fold_right _ A).
+Proof.
+  intros ??????? ls ?; subst.
+  induction ls; simpl; trivial.
+  unfold flip, impl, pointwise_relation, respectful in *.
+  eauto.
+Qed.
+
+Goal forall A f g ls, (forall x : A, f x <-> g x) -> fold_right (fun x H => f x /\ H) True ls.
+Proof.
+  intros A f g ls H.
+  Typeclasses eauto := debug.
+  try timeout 2 setoid_rewrite H.
+
+It seems that it gets stuck on trying to find an instance for
+
+  (Proper
+   (pointwise_relation A (pointwise_relation Prop iff) ==>
+    ?92 ==> ?91 ==> flip impl) (fold_right (B:=A)))
+
+and rightly fails.  But this transformation is possible, as the following tactic shows:
+
+  cut (fold_right (fun x H => g x /\ H) True ls);
+    [ induction ls; simpl in *; trivial; [];
+      intros [H0' H1']; split; try apply H; eauto
+    | ].
+
+Show how to I get [setoid_rewrite] to consider [pointwise_relation A (R ==> iff)] for an arbitrary [Reflexive] [R], rather than just for [R] being [eq]?
+
+Thanks,
+Jason
+
+
+
+
+One solution to this would be to have [setoid_rewrite] not start out with [pointwise_relation].  This is essential for things like [Fix] without functional extensionality.  Here is another example of something I want to work:
+
+Require Import Coq.Init.Wf Coq.Setoids.Setoid Coq.Classes.Morphisms.
+Global Instance Fix_Proper_eq {A R wf P}
+: Proper
+    ((forall_relation (fun x => 
+                         (forall_relation (fun y => pointwise_relation _ eq))
+                           ==> eq))
+       ==> (forall_relation (fun a => eq)))
+    (@ Fix A R wf P).
+Proof.
+  unfold forall_relation, pointwise_relation, respectful.
+  intros ?? H; repeat intro.
+  induction (wf a).
+  rewrite !Fix_eq; [ erewrite H; [ reflexivity | .. ] | .. ]; eauto; intros.
+  etransitivity; [ symmetry; apply H; reflexivity | apply H; eassumption ]; reflexivity.
+  etransitivity; [ apply H; eassumption | symmetry; apply H; reflexivity ]; reflexivity.
+Qed.
+Goal forall A R wf P f g a, (forall x, f x = g x) -> @ Fix A R wf P (fun x => f x) a = @ Fix A R wf P (fun x => g x) a.
+Proof.
+  intros A R wf P f g a H.
+  Typeclasses eauto := debug.
+  setoid_rewrite H.
+(* : no match for (Params H0 ?129)
+0 possibilities
+1.1: (*external*) proper_subrelation on
+(Proper
+   (forall_relation (fun x : A => eq) ==> forall_relation (fun x : A => ?120))
+   (Fix wf P))
+1.1.1.1: apply Fix_Proper_eq on
+(Proper ?137 (Fix wf P))
+1.1.2.1: (*external*) unconvertible on
+(Unconvertible
+   (relation
+      ((forall x : A, (forall y : A, R y x -> P y) -> P x) ->
+       forall x : A, P x))
+   (forall_relation
+      (fun x : A =>
+       forall_relation (fun y : A => pointwise_relation (R y x) eq) ==> eq) ==>
+    forall_relation (fun a : A => eq))%signature
+   (forall_relation (fun x : A => eq) ==> forall_relation (fun x : A => ?120))%signature)
+1.1.3.1: (*external*) subrelation_tac T U on
+(subrelation
+   (forall_relation
+      (fun x : A =>
+       forall_relation (fun y : A => pointwise_relation (R y x) eq) ==> eq) ==>
+    forall_relation (fun a : A => eq))%signature
+   (forall_relation (fun x : A => eq) ==> forall_relation (fun x : A => ?120))%signature)
+1.1.3.1.1.1: (*external*) apply (forall_subrelation A B R S); intro on
+(subrelation (forall_relation (fun x : A => eq))
+   (forall_relation
+      (fun x : A =>
+       (forall_relation (fun y : A => pointwise_relation (R y x) eq) ==> eq)%signature)))
+1.1.3.1.1.1.1: no match for (subrelation eq
+                               (forall_relation
+                                  (fun y : A =>
+                                   pointwise_relation (R y a0) eq) ==> eq)%signature)
+1 possibilities
+backtracked after (*external*) 
+backtracked after (*external*) 
+backtracked after (*external*) unconvertible
+backtracked after apply Fix_Proper_eq
+: no match for (Params H0 ?147)
+0 possibilities
+1.1.1.2: (*external*) proper_reflexive on
+(Proper ?137 (Fix wf P))
+1.1.2.1: (*external*) unconvertible on
+(Unconvertible
+   (relation
+      ((forall x : A, (forall y : A, R y x -> P y) -> P x) ->
+       forall x : A, P x)) eq
+   (forall_relation (fun x : A => eq) ==> forall_relation (fun x : A => ?120))%signature)
+1.1.3: no match for (subrelation eq
+                       (forall_relation (fun x : A => eq) ==>
+                        forall_relation (fun x : A => ?120))%signature)
+1 possibilities
+backtracked after (*external*) unconvertible
+backtracked after (*external*) proper_reflexive
+backtracked after (*external*) proper_subrelation
+1.2: (*external*) proper_normalization on
+(Proper
+   (forall_relation (fun x : A => eq) ==> forall_relation (fun x : A => ?120))
+   (Fix wf P))
+1.2.1.1: (*external*) inverse on
+(Normalizes
+   ((forall x : A, (forall y : A, R y x -> P y) -> P x) -> forall x : A, P x)
+   (forall_relation (fun x : A => eq) ==> forall_relation (fun x : A => ?120))%signature
+   ?156)
+1.2.1.1.1.1: (*external*) inverse on
+(Normalizes (forall x : A, (forall y : A, R y x -> P y) -> P x)
+   (forall_relation (fun x : A => eq)) (Basics.flip ?165))
+1.2.1.1.2.1: (*external*) inverse on
+(Normalizes (forall x : A, P x) (forall_relation (fun x : A => ?120))
+   (Basics.flip ?166))
+1.2.2.1: (*external*) class_apply proper_inverse_proper on
+(Proper
+   (Basics.flip
+      (Basics.flip (forall_relation (fun x : A => eq)) ==>
+       Basics.flip (forall_relation (fun x : A => ?120)))%signature)
+   (Fix wf P))
+1.2.2.1.1.1: (*external*) proper_subrelation on
+(Proper
+   (Basics.flip (forall_relation (fun x : A => eq)) ==>
+    Basics.flip (forall_relation (fun x : A => ?120))) 
+   (Fix wf P))
+1.2.2.1.1.1.1.1: apply Fix_Proper_eq on
+(Proper ?171 (Fix wf P))
+1.2.2.1.1.1.2.1: (*external*) unconvertible on
+(Unconvertible
+   (relation
+      ((forall x : A, (forall y : A, R y x -> P y) -> P x) ->
+       forall x : A, P x))
+   (forall_relation
+      (fun x : A =>
+       forall_relation (fun y : A => pointwise_relation (R y x) eq) ==> eq) ==>
+    forall_relation (fun a : A => eq))%signature
+   (Basics.flip (forall_relation (fun x : A => eq)) ==>
+    Basics.flip (forall_relation (fun x : A => ?120)))%signature)
+1.2.2.1.1.1.3.1: (*external*) subrelation_tac T U on
+(subrelation
+   (forall_relation
+      (fun x : A =>
+       forall_relation (fun y : A => pointwise_relation (R y x) eq) ==> eq) ==>
+    forall_relation (fun a : A => eq))%signature
+   (Basics.flip (forall_relation (fun x : A => eq)) ==>
+    Basics.flip (forall_relation (fun x : A => ?120)))%signature)
+1.2.2.1.1.1.3.1.1: no match for (subrelation
+                                   (Basics.flip
+                                      (forall_relation (fun x : A => eq)))
+                                   (forall_relation
+                                      (fun x : A =>
+                                       (forall_relation
+                                          (fun y : A =>
+                                           pointwise_relation (R y x) eq) ==>
+                                        eq)%signature)))
+3 possibilities
+backtracked after (*external*) 
+backtracked after (*external*) unconvertible
+backtracked after apply Fix_Proper_eq
+backtracked after (*external*) proper_subrelation
+backtracked after (*external*) 
+1.2.2.2: (*external*) proper_subrelation on
+(Proper
+   (Basics.flip
+      (Basics.flip (forall_relation (fun x : A => eq)) ==>
+       Basics.flip (forall_relation (fun x : A => ?120)))%signature)
+   (Fix wf P))
+1.2.2.2.1.1: apply Fix_Proper_eq on
+(Proper ?178 (Fix wf P))
+1.2.2.2.2.1: (*external*) unconvertible on
+(Unconvertible
+   (relation
+      ((forall x : A, (forall y : A, R y x -> P y) -> P x) ->
+       forall x : A, P x))
+   (forall_relation
+      (fun x : A =>
+       forall_relation (fun y : A => pointwise_relation (R y x) eq) ==> eq) ==>
+    forall_relation (fun a : A => eq))%signature
+   (Basics.flip
+      (Basics.flip (forall_relation (fun x : A => eq)) ==>
+       Basics.flip (forall_relation (fun x : A => ?120)))%signature))
+1.2.2.2.3: no match for (subrelation
+                           (forall_relation
+                              (fun x : A =>
+                               forall_relation
+                                 (fun y : A => pointwise_relation (R y x) eq) ==>
+                               eq) ==> forall_relation (fun a : A => eq))%signature
+                           (Basics.flip
+                              (Basics.flip
+                                 (forall_relation (fun x : A => eq)) ==>
+                               Basics.flip
+                                 (forall_relation (fun x : A => ?120)))%signature))
+2 possibilities
+backtracked after (*external*) unconvertible
+backtracked after apply Fix_Proper_eq
+backtracked after (*external*) proper_subrelation
+backtracked after (*external*) inverse
+backtracked after (*external*) inverse
+backtracked after (*external*) inverse
+backtracked after (*external*) proper_normalization
+1.3: (*external*) proper_reflexive on
+(Proper
+   (forall_relation (fun x : A => eq) ==> forall_relation (fun x : A => ?120))
+   (Fix wf P))
+1.3.1.1: apply Equivalence_Reflexive on
+(Reflexive
+   (forall_relation (fun x : A => eq) ==> forall_relation (fun x : A => ?120))%signature)
+1.3.1.1.1: no match for (Equivalence
+                           (forall_relation (fun x : A => eq) ==>
+                            forall_relation (fun x : A => ?120))%signature)
+0 possibilities
+backtracked after apply Equivalence_Reflexive
+1.3.1.2: apply PreOrder_Reflexive on
+(Reflexive
+   (forall_relation (fun x : A => eq) ==> forall_relation (fun x : A => ?120))%signature)
+1.3.1.2.1: no match for (PreOrder
+                           (forall_relation (fun x : A => eq) ==>
+                            forall_relation (fun x : A => ?120))%signature)
+1 possibilities
+backtracked after apply PreOrder_Reflexive
+backtracked after (*external*) proper_reflexive
+ *)
+ (* Toplevel input, characters 20-36:
+Error:
+Tactic failure:setoid rewrite failed: Unable to satisfy the rewriting constraints.
+Unable to satisfy the following constraints:
+EVARS:
+ ?126==[A R wf P f g a H |- ProperProxy ?124 (Fix wf P (fun x : A => g x) a)]
+         (internal placeholder)
+ ?125==[A R wf P f g a H (do_subrelation:=do_subrelation)
+         |- Proper (?120 ==> ?124 ==> Basics.flip Basics.impl) eq]
+         (internal placeholder)
+ ?124==[A R wf P f g a H |- relation (P a)] (internal placeholder)
+ ?121==[A R wf P f g a H (do_subrelation:=do_subrelation)
+         |- Proper
+              (forall_relation (fun x : A => eq) ==>
+               forall_relation (fun x : A => ?120)) 
+              (Fix wf P)] (internal placeholder)
+ ?120==[A R wf P f g a H x |- relation (P x)] (internal placeholder)
+
+METAS:
+ 660[x] := _UNBOUND_REL_1 : A  [type is checked]
+ .
+ *)
+
+
+Comment author: @mattam82
+
+This is not so easy to formulate, but definitely a useful enhancement, and I'm working on it.
+
+

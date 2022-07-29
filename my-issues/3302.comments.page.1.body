@@ -1,0 +1,238 @@
+Comment author: @JasonGross
+
+Some of this is universes, but some of it is not.  Here are the slow-downs of some tactics involving universes (nothing larger than Set+1):
+
+$ cat test_size_dep_slow.v
+Require Import String.
+Open Scope string_scope.
+Fixpoint twos (n : nat) (A : Type) :=
+  match n with
+    | 0 => A
+    | S n' => twos n' (prod A A)
+  end.
+Ltac display label := match goal with |- let n := ?k in _ => idtac k label end; hnf; unfold twos; cbv beta.
+
+Notation hide := (_ = _).
+
+Goal forall p : Set * Set, let n := 14 in twos n (prod (fst p) (snd p)) = twos n (prod (fst p) (snd p)). intro p. display "revert dep". Time revert p. Admitted.
+Goal forall p : Set * Set, let n := 14 in twos n (prod (fst p) (snd p)) = twos n (prod (fst p) (snd p)). intro p. display "destruct dep". Time destruct p. Admitted.
+Goal forall p : Set * Set, let n := 14 in twos n (prod (fst p) (snd p)) = twos n (prod (fst p) (snd p)). intro p. display "case dep". Time case p. Admitted.
+
+Goal let n := 10 in twos n Set = twos n Set. display "apply f_equal". Time apply f_equal. Admitted.
+Goal let n := 11 in twos n Set = twos n Set. display "apply f_equal". Time apply f_equal. Admitted.
+Goal let n := 12 in twos n Set = twos n Set. display "apply f_equal". Time apply f_equal. Admitted.
+Goal let n := 13 in twos n Set = twos n Set. display "apply f_equal". Time apply f_equal. Admitted.
+Goal let n := 14 in twos n Set = twos n Set. display "apply f_equal". Time apply f_equal. Admitted.
+Goal let n := 15 in twos n Set = twos n Set. display "apply f_equal". Time apply f_equal. Admitted.
+Goal let n := 16 in twos n Set = twos n Set. display "apply f_equal". Time apply f_equal. Admitted.
+Goal let n := 17 in twos n Set = twos n Set. display "apply f_equal". Time apply f_equal. Admitted.
+Goal let n := 18 in twos n Set = twos n Set. display "apply f_equal". Time apply f_equal. Admitted.
+Goal let n := 19 in twos n Set = twos n Set. display "apply f_equal". Time apply f_equal. Admitted.
+
+
+$ echo | ~/.local64/coq/coq-8.4pl3/bin/coqtop; ~/.local64/coq/coq-8.4pl3/bin/coqc test_size_dep_slow.v 2>&1 | tee test_size_dep_slow-8.4pl3.timings | tr '\n' '%' | sed s'/%Finished transaction in//g' | tr '%' '\n'; echo
+Welcome to Coq 8.4pl3 (February 2014)
+
+Coq < Coq <
+14 "revert dep" 3. secs (2.276142u,0.052003s)
+14 "destruct dep" 6. secs (6.004375u,0.012s)
+14 "case dep" 5. secs (4.888306u,0.004s)
+10 "apply f_equal" 0. secs (0.024002u,0.s)
+11 "apply f_equal" 0. secs (0.060003u,0.s)
+12 "apply f_equal" 0. secs (0.116007u,0.s)
+13 "apply f_equal" 0. secs (0.280017u,0.s)
+14 "apply f_equal" 0. secs (0.440027u,0.s)
+15 "apply f_equal" 1. secs (1.012064u,0.016001s)
+16 "apply f_equal" 3. secs (2.944184u,0.004s)
+17 "apply f_equal" 3. secs (3.404213u,0.016001s)
+18 "apply f_equal" 7. secs (6.736421u,0.052003s)
+19 "apply f_equal" 14. secs (13.352835u,0.060004s)
+
+
+$ echo | ~/.local64/coq/coq-trunk/bin/coqtop; ~/.local64/coq/coq-trunk/bin/coqc test_size_dep_slow.v 2>&1 | tee test_size_dep_slow-trunk.timings | tr '\n' '%' | sed s'/%Finished transaction in//g' | tr '%' '\n'; echo
+Welcome to Coq cagnode17:/afs/csail.mit.edu/u/j/jgross/coq-trunk,trunk (d40091c015b68cc1a8403ca5dcc74323bf939f37)
+
+Coq < Coq <
+
+14 "revert dep" 51.127 secs (51.043u,0.08s)
+14 "destruct dep" 50.4 secs (50.343u,0.056s)
+14 "case dep" 53.787 secs (53.755u,0.032s)
+10 "apply f_equal" 1.297 secs (1.296u,0.s)
+11 "apply f_equal" 2.943 secs (2.944u,0.s)
+12 "apply f_equal" 5.677 secs (5.68u,0.s)
+13 "apply f_equal" 11.598 secs (11.596u,0.s)
+14 "apply f_equal" 23.229 secs (23.229u,0.s)
+15 "apply f_equal" 50.357 secs (50.355u,0.s)
+16 "apply f_equal" 93.098 secs (93.093u,0.s)
+17 "apply f_equal" ...
+
+
+
+
+
+
+
+
+
+And the tactics involving no universes (there is some speed-up since 8.4, but the ones I labeled "dep" seem to be slower):
+
+
+$ cat test_size_dep.v
+Require Import String.
+Open Scope string_scope.
+Axiom nat_prod : nat -> nat -> nat.
+Fixpoint twos (n : nat) (A : nat) :=
+  match n with
+    | 0 => A
+    | S n' => twos n' (nat_prod A A)
+  end.
+Ltac display label := match goal with |- let n := ?k in _ => idtac k label end; hnf; unfold twos; cbv beta.
+Axiom k : nat.
+
+Notation hide := (_ = _).
+
+Goal forall p : nat * nat, let n := 16 in twos n k = twos n k. intro p. display "revert". Time revert p.  Admitted.
+Goal forall p : nat * nat, let n := 16 in twos n k = twos n k. intro p. display "apply f_equal". Time apply f_equal. Admitted.
+Goal forall p : nat * nat, let n := 16 in twos n k = twos n k. intro p. display "generalize goal; intro; revert". Time match goal with |- ?G => generalize G end. Time intro. Time revert p. Admitted.
+Goal forall p : nat * nat, let n := 11 in twos n k = twos n k. intro p. display "set goal; revert". Time match goal with |- ?G => set (x := G) end. (* notice the 11, not 16 *) Time revert p. Admitted.
+Goal forall p : nat * nat, let n := 16 in twos n k = twos n k. intro p. display "destruct". Time destruct p. Admitted.
+Goal forall p : nat * nat, let n := 16 in twos n k = twos n k. intro p. display "case". Time case p. Admitted.
+Goal forall p : nat * nat, let n := 14 in twos n (nat_prod (fst p) (snd p)) = twos n (nat_prod (fst p) (snd p)). intro p. display "revert dep". Time revert p. Admitted.
+Goal forall p : nat * nat, let n := 14 in twos n (nat_prod (fst p) (snd p)) = twos n (nat_prod (fst p) (snd p)). intro p. display "destruct dep". Time destruct p. Admitted.
+Goal forall p : nat * nat, let n := 14 in twos n (nat_prod (fst p) (snd p)) = twos n (nat_prod (fst p) (snd p)). intro p. display "case dep". Time case p. Admitted.
+
+
+
+Goal let n := 10 in twos n k = twos n k. display "apply f_equal". Time apply f_equal. Admitted.
+Goal let n := 11 in twos n k = twos n k. display "apply f_equal". Time apply f_equal. Admitted.
+Goal let n := 12 in twos n k = twos n k. display "apply f_equal". Time apply f_equal. Admitted.
+Goal let n := 13 in twos n k = twos n k. display "apply f_equal". Time apply f_equal. Admitted.
+Goal let n := 14 in twos n k = twos n k. display "apply f_equal". Time apply f_equal. Admitted.
+Goal let n := 15 in twos n k = twos n k. display "apply f_equal". Time apply f_equal. Admitted.
+Goal let n := 16 in twos n k = twos n k. display "apply f_equal". Time apply f_equal. Admitted.
+Goal let n := 17 in twos n k = twos n k. display "apply f_equal". Time apply f_equal. Admitted.
+Goal let n := 18 in twos n k = twos n k. display "apply f_equal". Time apply f_equal. Admitted.
+Goal let n := 19 in twos n k = twos n k. display "apply f_equal". Time apply f_equal. Admitted.
+Goal let n := 20 in twos n k = twos n k. display "apply f_equal". Time apply f_equal. Admitted.
+
+
+$ ~/.local64/coq/coq-8.4pl3/bin/coqc test_size_dep.v 2>&1 | tee test_size_dep-8.4pl3.timings | tr '\n' '%' | sed s'/%Finished transaction in//g' | tr '%' '\n'; echo
+16 "revert" 2. secs (1.944122u,0.048003s)
+16 "apply f_equal" 2. secs (2.148134u,0.008s)
+16 "generalize goal; intro; revert" 3. secs (2.612164u,0.020002s) 0. secs (0.u,0.s) 0. secs (0.u,0.s)
+11 "set goal; revert" 2. secs (2.380148u,0.008s) 0. secs (0.008001u,0.s)
+16 "destruct" 4. secs (4.572286u,0.s)
+16 "case" 4. secs (4.040252u,0.004001s)
+14 "revert dep" 2. secs (2.004125u,0.s)
+14 "destruct dep" 5. secs (5.476342u,0.s)
+14 "case dep" 5. secs (5.60835u,0.012s)
+10 "apply f_equal" 0. secs (0.024002u,0.004s)
+11 "apply f_equal" 0. secs (0.052004u,0.s)
+12 "apply f_equal" 0. secs (0.116007u,0.s)
+13 "apply f_equal" 1. secs (0.296018u,0.s)
+14 "apply f_equal" 0. secs (0.468029u,0.012001s)
+15 "apply f_equal" 1. secs (1.100069u,0.004s)
+16 "apply f_equal" 2. secs (2.092131u,0.016001s)
+17 "apply f_equal" 5. secs (4.352272u,0.044003s)
+18 "apply f_equal" 10. secs (10.108632u,0.088005s)
+19 "apply f_equal" 19. secs (18.87318u,0.144009s)
+20 "apply f_equal" 44. secs (43.242702u,0.428027s)
+
+
+$ echo | ~/.local64/coq/coq-trunk/bin/coqtop; ~/.local64/coq/coq-trunk/bin/coqc test_size_dep.v 2>&1 | tee test_size_dep-trunk.timings | tr '\n' '%' | sed s'/%Finished transaction in//g' | tr '%' '\n'; echo
+Welcome to Coq cagnode17:/afs/csail.mit.edu/u/j/jgross/coq-trunk,trunk (d40091c015b68cc1a8403ca5dcc74323bf939f37)
+
+Coq < Coq <
+16 "revert" 1.006 secs (0.956u,0.048s)
+16 "apply f_equal" 0.96 secs (0.912u,0.048s)
+16 "generalize goal; intro; revert" 1.138 secs (1.128u,0.012s) 0. secs (0.u,0.s) 0. secs (0.u,0.s)
+11 "set goal; revert" 3.266 secs (3.268u,0.s) 0.001 secs (0.u,0.s)
+16 "destruct" 2.505 secs (2.46u,0.044s)
+16 "case" 1.854 secs (1.816u,0.04s)
+14 "revert dep" 21.588 secs (21.589u,0.s)
+14 "destruct dep" 24.559 secs (24.561u,0.s)
+14 "case dep" 22.244 secs (22.245u,0.s)
+10 "apply f_equal" 0.007 secs (0.004u,0.s)
+11 "apply f_equal" 0.016 secs (0.008u,0.008s)
+12 "apply f_equal" 0.039 secs (0.032u,0.008s)
+13 "apply f_equal" 0.097 secs (0.08u,0.016s)
+14 "apply f_equal" 0.227 secs (0.212u,0.016s)
+15 "apply f_equal" 0.568 secs (0.56u,0.008s)
+16 "apply f_equal" 0.901 secs (0.868u,0.036s)
+17 "apply f_equal" 1.553 secs (1.54u,0.012s)
+18 "apply f_equal" 3.587 secs (3.464u,0.124s)
+19 "apply f_equal" 7.961 secs (7.884u,0.076s)
+20 "apply f_equal" 13.166 secs (12.992u,0.172s)
+20 "apply f_equal" 15.945 secs (15.888u,0.06s)
+19 "apply f_equal" 6.078 secs (6.08u,0.s)
+18 "apply f_equal" 3.528 secs (3.528u,0.s)
+17 "apply f_equal" 1.87 secs (1.848u,0.02s)
+16 "apply f_equal" 1.878 secs (1.864u,0.012s)
+15 "apply f_equal" 0.405 secs (0.404u,0.s)
+14 "apply f_equal" 0.239 secs (0.24u,0.s)
+13 "apply f_equal" 0.08 secs (0.08u,0.s)
+12 "apply f_equal" 0.029 secs (0.028u,0.s)
+11 "apply f_equal" 0.011 secs (0.008u,0.s)
+10 "apply f_equal" 0.004 secs (0.003u,0.s)
+14 "case dep" 23.084 secs (23.085u,0.s)
+14 "destruct dep" 23.771 secs (23.741u,0.032s)
+14 "revert dep" 20.993 secs (20.989u,0.008s)
+16 "case" 1.806 secs (1.808u,0.s)
+16 "destruct" 2.482 secs (2.484u,0.s)
+11 "set goal; revert" 3.272 secs (3.272u,0.s) 0.001 secs (0.003u,0.s)
+16 "generalize goal; intro; revert" 1.118 secs (1.116u,0.s) 0. secs (0.u,0.s) 0. secs (0.u,0.s)
+16 "apply f_equal" 0.835 secs (0.836u,0.s)
+16 "revert" 0.902 secs (0.904u,0.s)
+
+
+In particular, notice that the cases I called "case dep", "destruct dep", "revert dep"
+
+
+Comment author: @JasonGross
+
+Actually, this seems to be entirely universes (even though there is not much other than [Set]); replacing [nat * nat] with [nat_prod0] defined as:
+Record nat_prod0 : Set := { fst : nat; snd : nat }.
+
+fixes the speed problems.  So maybe this issue should actually be "universe constraints can massively slow down unification", which maybe isn't easy to fix).
+
+
+Comment author: @mattam82
+
+This is a combination of multiple factors:
+
+- First and foremost, I was disallowing conversion on terms mentioning "Type _" during unification of apply, as a way to ensure that the proper universe constraints were registered. While this is necessary in presence of universe polymorphic constants (f (* i *)), the case were the term mentions only Type i's can be handled by a variant of conversion with inference I already used in evar_conv_x (refine's unification algorithm). Reallowing it speeds things up significantly.
+
+- Some tactics were redoing nf_evars when the shouldn't, resulting in additional slowdowns.
+
+- For revert p/generalize p or dep, this seems to be due to the fact that the tactic is coded in old-style with the refiner, letting it do a check that the clear tactic does after it and this means retypechecking the entire goal. This takes quite some time indeed (a "match goal with |= ?G => let U := type of G in itdac end" takes about the same time), mainly due to old-style universe polymorphism I guess. As an exercise, I recoded both tactics in the new engine, and they're much faster than 8.4. In general, I think we will see many improvements by recoding the existing tactics with clever checks for correctness that don't rely on retypechecking the whole goal. For revert id, we just need to ensure that no hypothesis in the remaining context depends on id. For generalize c, it's a bit more complicated, we need to check that the transitive closure of hypotheses depending on c does not appear in the goal. Once this is checked, the tactics can actually be trusted and use a fast path that does not recheck the whole goal during refinement.
+
+
+Comment author: @JasonGross
+
+> For revert id, we just need to ensure that no hypothesis in the remaining context depends on id.
+
+You need a bit more than this, no?  For example,
+
+Section bar.
+  Variable x : Set.
+  Definition y := x.
+
+  Goal y = y.
+    revert x. (* Toplevel input, characters 0-8:
+Error: x is used in conclusion. *)
+
+Unless you consider [y] to be a hypothesis in the context?
+
+
+Comment author: @mattam82
+
+Indeed, the section context matters.
+
+I'm still investigating the slowdown but had no luck understanding where the problem is yet.
+
+
+Comment author: @mattam82
+
+The slowdown was due to hashconsing repeateadly for nothing. It is fixed in the trunk now.
+
+

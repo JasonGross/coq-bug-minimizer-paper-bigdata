@@ -1,0 +1,14 @@
+Comment author: @JasonGross
+
+The fact that coq_makefile generates makefiles that use $* rather than $< means that I get a warning like the following on every file:
+
+<unknown>Warning: File "./src/ADTRefinement/Refinements" has been implicitly
+expanded to
+"./src/ADTRefinement/Refinements.v" [file-no-extension,filesystem]
+
+
+Comment author: @silene
+
+Fixed by commit 37293bd. Thanks for the report.
+
+

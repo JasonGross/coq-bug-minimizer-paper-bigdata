@@ -1,0 +1,544 @@
+Comment author: @JasonGross
+
+Created attachment 572
+File with a slow [abstract admit], works in both 8.4 and 8.5
+
+In both 8.4 and 8.5, [assert (pf' : G' -> Prop) by abstract admit] is slow, while [assert (pf' : G') by abstract admit].  It seems to have something to do with having a G' to the left of an arrow in the type that results from [abstract].  This should not be the case!  Adding this type to the environment should not be expensive.  The attached file demonstrates this issue.
+
+Note that this is not a bug in [abstract]; the [Defined] in the following is also slow:
+
+  Goal forall str : @ String Char splitter,
+         let G' :=
+             @ BooleanRecognizer.parse_nonterminal Char splitter splitter G parser_data str G = true in
+         G' -> Prop.
+    admit.
+  Defined.
+
+while if I remove the [-> Prop], it is instantaneous.
+
+Here is the debug trace on [abstract admit]:
+File "./bug_opt_parser_slow_admit_03.v", line 711, characters 4-58:
+Timeout!
+frame @  file "toplevel/coqtop.ml", line 588, characters 6-22
+frame @  file "toplevel/vernac.ml", line 350, characters 2-13
+frame @  file "toplevel/vernac.ml", line 320, characters 14-48
+raise @  file "lib/exninfo.ml", line 63, characters 8-15
+frame @  file "toplevel/vernac.ml", line 299, characters 4-30
+raise @  file "lib/exninfo.ml", line 63, characters 8-15
+frame @  file "toplevel/vernac.ml", line 268, characters 6-43
+raise @  file "lib/exninfo.ml", line 63, characters 8-15
+frame @  file "toplevel/vernac.ml", line 247, characters 6-16
+raise @  file "lib/exninfo.ml", line 63, characters 8-15
+frame @  file "stm/stm.ml", line 2395, characters 8-30
+frame @  file "stm/stm.ml", line 1919, characters 2-35
+raise @  file "lib/exninfo.ml", line 63, characters 8-15
+frame @  file "stm/stm.ml", line 1909, characters 4-48
+frame @  file "stm/stm.ml", line 1876, characters 4-91
+raise @  file "lib/exninfo.ml", line 63, characters 8-15
+frame @  file "toplevel/vernac.ml", line 299, characters 4-30
+raise @  file "lib/exninfo.ml", line 63, characters 8-15
+frame @  file "toplevel/vernac.ml", line 268, characters 6-43
+raise @  file "lib/exninfo.ml", line 63, characters 8-15
+frame @  file "toplevel/vernac.ml", line 247, characters 6-16
+raise @  file "lib/exninfo.ml", line 63, characters 8-15
+frame @  file "stm/stm.ml", line 2395, characters 8-30
+frame @  file "stm/stm.ml", line 1919, characters 2-35
+raise @  file "lib/exninfo.ml", line 63, characters 8-15
+frame @  file "stm/stm.ml", line 1909, characters 4-48
+frame @  file "stm/stm.ml", line 1876, characters 4-91
+raise @  file "lib/exninfo.ml", line 63, characters 8-15
+frame @  file "toplevel/vernac.ml", line 268, characters 6-43
+raise @  file "lib/exninfo.ml", line 63, characters 8-15
+frame @  file "toplevel/vernac.ml", line 247, characters 6-16
+raise @  file "lib/exninfo.ml", line 63, characters 8-15
+frame @  file "stm/stm.ml", line 2395, characters 8-30
+frame @  file "stm/stm.ml", line 1919, characters 2-35
+raise @  file "lib/exninfo.ml", line 63, characters 8-15
+frame @  file "stm/stm.ml", line 1909, characters 4-48
+frame @  file "stm/stm.ml", line 1876, characters 4-91
+raise @  file "lib/exninfo.ml", line 63, characters 8-15
+frame @  file "toplevel/vernac.ml", line 247, characters 6-16
+raise @  file "lib/exninfo.ml", line 63, characters 8-15
+frame @  file "stm/stm.ml", line 2395, characters 8-30
+frame @  file "stm/stm.ml", line 1919, characters 2-35
+raise @  file "lib/exninfo.ml", line 63, characters 8-15
+frame @  file "stm/stm.ml", line 1909, characters 4-48
+frame @  file "stm/stm.ml", line 1876, characters 4-91
+raise @  file "lib/exninfo.ml", line 63, characters 8-15
+frame @  file "stm/stm.ml", line 2395, characters 8-30
+frame @  file "stm/stm.ml", line 1919, characters 2-35
+raise @  file "lib/exninfo.ml", line 63, characters 8-15
+frame @  file "stm/stm.ml", line 1909, characters 4-48
+frame @  file "stm/stm.ml", line 1876, characters 4-91
+raise @  file "lib/exninfo.ml", line 63, characters 8-15
+frame @  file "stm/stm.ml", line 1909, characters 4-48
+frame @  file "stm/stm.ml", line 1876, characters 4-91
+raise @  file "lib/exninfo.ml", line 63, characters 8-15
+frame @  file "stm/stm.ml", line 712, characters 6-10
+raise @  file "lib/exninfo.ml", line 63, characters 8-15
+frame @  file "stm/stm.ml", line 97, characters 15-71
+raise @  file "lib/exninfo.ml", line 63, characters 8-15
+frame @  file "toplevel/vernacentries.ml", line 2141, characters 10-335
+raise @  file "lib/exninfo.ml", line 63, characters 8-15
+frame @  file "lib/control.ml", line 38, characters 14-18
+frame @  file "toplevel/vernacentries.ml", line 2071, characters 17-21
+frame @  file "lib/flags.ml", line 135, characters 19-41
+raise @  file "lib/exninfo.ml", line 63, characters 8-15
+frame @  file "lib/flags.ml", line 11, characters 15-18
+frame @  file "toplevel/vernacentries.ml", line 833, characters 15-500
+frame @  file "proofs/proof_global.ml", line 152, characters 24-36
+frame @  file "toplevel/vernacentries.ml", line 838, characters 6-75
+raise @  unknown
+frame @  file "proofs/pfedit.ml", line 107, characters 28-67
+frame @  file "proofs/proof.ml", line 326, characters 4-30
+frame @  file "proofs/proofview.ml", line 231, characters 12-42
+raise @  unknown
+frame @  file "proofs/logic_monad.ml", line 111, characters 8-12
+frame @  file "proofs/logic_monad.ml", line 64, characters 36-42
+frame @  file "proofs/logic_monad.ml", line 64, characters 36-42
+raise @  unknown
+frame @  file "proofs/logic_monad.ml", line 307, characters 6-25
+frame @  file "proofs/logic_monad.ml", line 307, characters 6-25
+frame @  file "proofs/logic_monad.ml", line 307, characters 6-25
+frame @  file "proofs/logic_monad.ml", line 224, characters 41-48
+raise @  unknown
+raise @  unknown
+frame @  file "proofs/proofview.ml", line 964, characters 66-72
+frame @  file "tactics/tactics.ml", line 4380, characters 12-87
+frame @  file "library/declare.ml", line 283, characters 11-41
+frame @  file "library/declare.ml", line 182, characters 2-30
+frame @  file "library/impargs.ml", line 624, characters 13-50
+frame @  file "library/impargs.ml", line 411, characters 14-61
+frame @  file "library/impargs.ml", line 399, characters 21-58
+frame @  file "library/impargs.ml", line 254, characters 9-56
+frame @  file "library/impargs.ml", line 212, characters 55-74
+frame @  file "array.ml", line 72, characters 31-48
+frame @  file "library/impargs.ml", line 190, characters 28-51
+raise @  file "camlinternalLazy.ml", line 32, characters 10-11
+frame @  file "camlinternalLazy.ml", line 25, characters 17-27
+frame @  file "kernel/closure.ml", line 578, characters 16-33
+frame @  file "kernel/closure.ml", line 579, characters 2-57
+frame @  file "array.ml", line 77, characters 21-40
+frame @  file "kernel/closure.ml", line 602, characters 15-33
+frame @  file "kernel/closure.ml", line 596, characters 8-42
+frame @  file "lib/cArray.ml", line 489, characters 29-39
+frame @  file "kernel/closure.ml", line 596, characters 8-42
+frame @  file "lib/cArray.ml", line 489, characters 29-39
+frame @  file "kernel/closure.ml", line 596, characters 8-42
+frame @  file "lib/cArray.ml", line 492, characters 29-38
+frame @  file "kernel/closure.ml", line 596, characters 8-42
+frame @  file "lib/cArray.ml", line 492, characters 29-38
+frame @  file "kernel/closure.ml", line 603, characters 15-43
+frame @  file "kernel/closure.ml", line 596, characters 8-42
+frame @  file "lib/cArray.ml", line 492, characters 29-38
+frame @  file "kernel/closure.ml", line 602, characters 15-33
+frame @  file "kernel/closure.ml", line 596, characters 8-42
+frame @  file "lib/cArray.ml", line 489, characters 29-39
+frame @  file "kernel/closure.ml", line 596, characters 8-42
+frame @  file "lib/cArray.ml", line 492, characters 29-38
+frame @  file "kernel/closure.ml", line 596, characters 8-42
+frame @  file "lib/cArray.ml", line 492, characters 29-38
+frame @  file "kernel/closure.ml", line 596, characters 8-42
+frame @  file "lib/cArray.ml", line 492, characters 29-38
+frame @  file "kernel/closure.ml", line 603, characters 15-43
+frame @  file "kernel/closure.ml", line 596, characters 8-42
+frame @  file "lib/cArray.ml", line 492, characters 29-38
+frame @  file "kernel/closure.ml", line 603, characters 15-43
+frame @  file "kernel/closure.ml", line 595, characters 8-25
+frame @  file "kernel/closure.ml", line 602, characters 15-33
+frame @  file "kernel/closure.ml", line 596, characters 8-42
+frame @  file "lib/cArray.ml", line 489, characters 29-39
+frame @  file "kernel/closure.ml", line 596, characters 8-42
+frame @  file "lib/cArray.ml", line 492, characters 29-38
+frame @  file "kernel/closure.ml", line 579, characters 2-57
+frame @  file "array.ml", line 77, characters 21-40
+frame @  file "kernel/closure.ml", line 603, characters 15-43
+frame @  file "kernel/closure.ml", line 603, characters 15-43
+frame @  file "kernel/closure.ml", line 603, characters 15-43
+frame @  file "kernel/closure.ml", line 602, characters 15-33
+frame @  file "kernel/closure.ml", line 605, characters 12-29
+frame @  file "kernel/closure.ml", line 595, characters 8-25
+raise @  unknown
+raise @  unknown
+raise @  unknown
+raise @  unknown
+raise @  file "lib/control.ml", line 30, characters 32-33
+frame @  file "stm/stm.ml", line 97, characters 15-71
+raise @  file "lib/exninfo.ml", line 63, characters 8-15
+frame @  file "toplevel/vernacentries.ml", line 2141, characters 10-335
+raise @  file "lib/exninfo.ml", line 63, characters 8-15
+frame @  file "lib/control.ml", line 38, characters 14-18
+frame @  file "toplevel/vernacentries.ml", line 2071, characters 17-21
+frame @  file "lib/flags.ml", line 135, characters 19-41
+raise @  file "lib/exninfo.ml", line 63, characters 8-15
+frame @  file "lib/flags.ml", line 11, characters 15-18
+frame @  file "toplevel/vernacentries.ml", line 833, characters 15-500
+frame @  file "proofs/proof_global.ml", line 152, characters 24-36
+frame @  file "toplevel/vernacentries.ml", line 838, characters 6-75
+raise @  unknown
+frame @  file "proofs/pfedit.ml", line 107, characters 28-67
+frame @  file "proofs/proof.ml", line 326, characters 4-30
+frame @  file "proofs/proofview.ml", line 231, characters 12-42
+raise @  unknown
+frame @  file "proofs/logic_monad.ml", line 111, characters 8-12
+frame @  file "proofs/logic_monad.ml", line 64, characters 36-42
+frame @  file "proofs/logic_monad.ml", line 64, characters 36-42
+raise @  unknown
+frame @  file "proofs/logic_monad.ml", line 307, characters 6-25
+frame @  file "proofs/logic_monad.ml", line 307, characters 6-25
+frame @  file "proofs/logic_monad.ml", line 307, characters 6-25
+frame @  file "proofs/logic_monad.ml", line 224, characters 41-48
+raise @  unknown
+raise @  unknown
+frame @  file "proofs/proofview.ml", line 964, characters 66-72
+frame @  file "tactics/tactics.ml", line 4380, characters 12-87
+frame @  file "library/declare.ml", line 283, characters 11-41
+frame @  file "library/declare.ml", line 182, characters 2-30
+frame @  file "library/impargs.ml", line 624, characters 13-50
+frame @  file "library/impargs.ml", line 411, characters 14-61
+frame @  file "library/impargs.ml", line 399, characters 21-58
+frame @  file "library/impargs.ml", line 254, characters 9-56
+frame @  file "library/impargs.ml", line 212, characters 55-74
+frame @  file "array.ml", line 72, characters 31-48
+frame @  file "library/impargs.ml", line 190, characters 28-51
+raise @  file "camlinternalLazy.ml", line 32, characters 10-11
+frame @  file "camlinternalLazy.ml", line 25, characters 17-27
+frame @  file "kernel/closure.ml", line 578, characters 16-33
+frame @  file "kernel/closure.ml", line 579, characters 2-57
+frame @  file "array.ml", line 77, characters 21-40
+frame @  file "kernel/closure.ml", line 602, characters 15-33
+frame @  file "kernel/closure.ml", line 596, characters 8-42
+frame @  file "lib/cArray.ml", line 489, characters 29-39
+frame @  file "kernel/closure.ml", line 596, characters 8-42
+frame @  file "lib/cArray.ml", line 489, characters 29-39
+frame @  file "kernel/closure.ml", line 596, characters 8-42
+frame @  file "lib/cArray.ml", line 492, characters 29-38
+frame @  file "kernel/closure.ml", line 596, characters 8-42
+frame @  file "lib/cArray.ml", line 492, characters 29-38
+frame @  file "kernel/closure.ml", line 603, characters 15-43
+frame @  file "kernel/closure.ml", line 596, characters 8-42
+frame @  file "lib/cArray.ml", line 492, characters 29-38
+frame @  file "kernel/closure.ml", line 602, characters 15-33
+frame @  file "kernel/closure.ml", line 596, characters 8-42
+frame @  file "lib/cArray.ml", line 489, characters 29-39
+frame @  file "kernel/closure.ml", line 596, characters 8-42
+frame @  file "lib/cArray.ml", line 492, characters 29-38
+frame @  file "kernel/closure.ml", line 596, characters 8-42
+frame @  file "lib/cArray.ml", line 492, characters 29-38
+frame @  file "kernel/closure.ml", line 596, characters 8-42
+frame @  file "lib/cArray.ml", line 492, characters 29-38
+frame @  file "kernel/closure.ml", line 603, characters 15-43
+frame @  file "kernel/closure.ml", line 596, characters 8-42
+frame @  file "lib/cArray.ml", line 492, characters 29-38
+frame @  file "kernel/closure.ml", line 603, characters 15-43
+frame @  file "kernel/closure.ml", line 595, characters 8-25
+frame @  file "kernel/closure.ml", line 602, characters 15-33
+frame @  file "kernel/closure.ml", line 596, characters 8-42
+frame @  file "lib/cArray.ml", line 489, characters 29-39
+frame @  file "kernel/closure.ml", line 596, characters 8-42
+frame @  file "lib/cArray.ml", line 492, characters 29-38
+frame @  file "kernel/closure.ml", line 579, characters 2-57
+frame @  file "array.ml", line 77, characters 21-40
+frame @  file "kernel/closure.ml", line 603, characters 15-43
+frame @  file "kernel/closure.ml", line 603, characters 15-43
+frame @  file "kernel/closure.ml", line 603, characters 15-43
+frame @  file "kernel/closure.ml", line 602, characters 15-33
+frame @  file "kernel/closure.ml", line 605, characters 12-29
+frame @  file "kernel/closure.ml", line 595, characters 8-25
+raise @  unknown
+raise @  unknown
+raise @  unknown
+raise @  unknown
+raise @  file "lib/control.ml", line 30, characters 32-33
+frame @  file "toplevel/vernacentries.ml", line 2141, characters 10-335
+raise @  file "lib/exninfo.ml", line 63, characters 8-15
+frame @  file "lib/control.ml", line 38, characters 14-18
+frame @  file "toplevel/vernacentries.ml", line 2071, characters 17-21
+frame @  file "lib/flags.ml", line 135, characters 19-41
+raise @  file "lib/exninfo.ml", line 63, characters 8-15
+frame @  file "lib/flags.ml", line 11, characters 15-18
+frame @  file "toplevel/vernacentries.ml", line 833, characters 15-500
+frame @  file "proofs/proof_global.ml", line 152, characters 24-36
+frame @  file "toplevel/vernacentries.ml", line 838, characters 6-75
+raise @  unknown
+frame @  file "proofs/pfedit.ml", line 107, characters 28-67
+frame @  file "proofs/proof.ml", line 326, characters 4-30
+frame @  file "proofs/proofview.ml", line 231, characters 12-42
+raise @  unknown
+frame @  file "proofs/logic_monad.ml", line 111, characters 8-12
+frame @  file "proofs/logic_monad.ml", line 64, characters 36-42
+frame @  file "proofs/logic_monad.ml", line 64, characters 36-42
+raise @  unknown
+frame @  file "proofs/logic_monad.ml", line 307, characters 6-25
+frame @  file "proofs/logic_monad.ml", line 307, characters 6-25
+frame @  file "proofs/logic_monad.ml", line 307, characters 6-25
+frame @  file "proofs/logic_monad.ml", line 224, characters 41-48
+raise @  unknown
+raise @  unknown
+frame @  file "proofs/proofview.ml", line 964, characters 66-72
+frame @  file "tactics/tactics.ml", line 4380, characters 12-87
+frame @  file "library/declare.ml", line 283, characters 11-41
+frame @  file "library/declare.ml", line 182, characters 2-30
+frame @  file "library/impargs.ml", line 624, characters 13-50
+frame @  file "library/impargs.ml", line 411, characters 14-61
+frame @  file "library/impargs.ml", line 399, characters 21-58
+frame @  file "library/impargs.ml", line 254, characters 9-56
+frame @  file "library/impargs.ml", line 212, characters 55-74
+frame @  file "array.ml", line 72, characters 31-48
+frame @  file "library/impargs.ml", line 190, characters 28-51
+raise @  file "camlinternalLazy.ml", line 32, characters 10-11
+frame @  file "camlinternalLazy.ml", line 25, characters 17-27
+frame @  file "kernel/closure.ml", line 578, characters 16-33
+frame @  file "kernel/closure.ml", line 579, characters 2-57
+frame @  file "array.ml", line 77, characters 21-40
+frame @  file "kernel/closure.ml", line 602, characters 15-33
+frame @  file "kernel/closure.ml", line 596, characters 8-42
+frame @  file "lib/cArray.ml", line 489, characters 29-39
+frame @  file "kernel/closure.ml", line 596, characters 8-42
+frame @  file "lib/cArray.ml", line 489, characters 29-39
+frame @  file "kernel/closure.ml", line 596, characters 8-42
+frame @  file "lib/cArray.ml", line 492, characters 29-38
+frame @  file "kernel/closure.ml", line 596, characters 8-42
+frame @  file "lib/cArray.ml", line 492, characters 29-38
+frame @  file "kernel/closure.ml", line 603, characters 15-43
+frame @  file "kernel/closure.ml", line 596, characters 8-42
+frame @  file "lib/cArray.ml", line 492, characters 29-38
+frame @  file "kernel/closure.ml", line 602, characters 15-33
+frame @  file "kernel/closure.ml", line 596, characters 8-42
+frame @  file "lib/cArray.ml", line 489, characters 29-39
+frame @  file "kernel/closure.ml", line 596, characters 8-42
+frame @  file "lib/cArray.ml", line 492, characters 29-38
+frame @  file "kernel/closure.ml", line 596, characters 8-42
+frame @  file "lib/cArray.ml", line 492, characters 29-38
+frame @  file "kernel/closure.ml", line 596, characters 8-42
+frame @  file "lib/cArray.ml", line 492, characters 29-38
+frame @  file "kernel/closure.ml", line 603, characters 15-43
+frame @  file "kernel/closure.ml", line 596, characters 8-42
+frame @  file "lib/cArray.ml", line 492, characters 29-38
+frame @  file "kernel/closure.ml", line 603, characters 15-43
+frame @  file "kernel/closure.ml", line 595, characters 8-25
+frame @  file "kernel/closure.ml", line 602, characters 15-33
+frame @  file "kernel/closure.ml", line 596, characters 8-42
+frame @  file "lib/cArray.ml", line 489, characters 29-39
+frame @  file "kernel/closure.ml", line 596, characters 8-42
+frame @  file "lib/cArray.ml", line 492, characters 29-38
+frame @  file "kernel/closure.ml", line 579, characters 2-57
+frame @  file "array.ml", line 77, characters 21-40
+frame @  file "kernel/closure.ml", line 603, characters 15-43
+frame @  file "kernel/closure.ml", line 603, characters 15-43
+frame @  file "kernel/closure.ml", line 603, characters 15-43
+frame @  file "kernel/closure.ml", line 602, characters 15-33
+frame @  file "kernel/closure.ml", line 605, characters 12-29
+frame @  file "kernel/closure.ml", line 595, characters 8-25
+raise @  unknown
+raise @  unknown
+raise @  unknown
+raise @  unknown
+raise @  file "lib/control.ml", line 30, characters 32-33
+frame @  file "lib/control.ml", line 38, characters 14-18
+frame @  file "toplevel/vernacentries.ml", line 2071, characters 17-21
+frame @  file "lib/flags.ml", line 135, characters 19-41
+raise @  file "lib/exninfo.ml", line 63, characters 8-15
+frame @  file "lib/flags.ml", line 11, characters 15-18
+frame @  file "toplevel/vernacentries.ml", line 833, characters 15-500
+frame @  file "proofs/proof_global.ml", line 152, characters 24-36
+frame @  file "toplevel/vernacentries.ml", line 838, characters 6-75
+raise @  unknown
+frame @  file "proofs/pfedit.ml", line 107, characters 28-67
+frame @  file "proofs/proof.ml", line 326, characters 4-30
+frame @  file "proofs/proofview.ml", line 231, characters 12-42
+raise @  unknown
+frame @  file "proofs/logic_monad.ml", line 111, characters 8-12
+frame @  file "proofs/logic_monad.ml", line 64, characters 36-42
+frame @  file "proofs/logic_monad.ml", line 64, characters 36-42
+raise @  unknown
+frame @  file "proofs/logic_monad.ml", line 307, characters 6-25
+frame @  file "proofs/logic_monad.ml", line 307, characters 6-25
+frame @  file "proofs/logic_monad.ml", line 307, characters 6-25
+frame @  file "proofs/logic_monad.ml", line 224, characters 41-48
+raise @  unknown
+raise @  unknown
+frame @  file "proofs/proofview.ml", line 964, characters 66-72
+frame @  file "tactics/tactics.ml", line 4380, characters 12-87
+frame @  file "library/declare.ml", line 283, characters 11-41
+frame @  file "library/declare.ml", line 182, characters 2-30
+frame @  file "library/impargs.ml", line 624, characters 13-50
+frame @  file "library/impargs.ml", line 411, characters 14-61
+frame @  file "library/impargs.ml", line 399, characters 21-58
+frame @  file "library/impargs.ml", line 254, characters 9-56
+frame @  file "library/impargs.ml", line 212, characters 55-74
+frame @  file "array.ml", line 72, characters 31-48
+frame @  file "library/impargs.ml", line 190, characters 28-51
+raise @  file "camlinternalLazy.ml", line 32, characters 10-11
+frame @  file "camlinternalLazy.ml", line 25, characters 17-27
+frame @  file "kernel/closure.ml", line 578, characters 16-33
+frame @  file "kernel/closure.ml", line 579, characters 2-57
+frame @  file "array.ml", line 77, characters 21-40
+frame @  file "kernel/closure.ml", line 602, characters 15-33
+frame @  file "kernel/closure.ml", line 596, characters 8-42
+frame @  file "lib/cArray.ml", line 489, characters 29-39
+frame @  file "kernel/closure.ml", line 596, characters 8-42
+frame @  file "lib/cArray.ml", line 489, characters 29-39
+frame @  file "kernel/closure.ml", line 596, characters 8-42
+frame @  file "lib/cArray.ml", line 492, characters 29-38
+frame @  file "kernel/closure.ml", line 596, characters 8-42
+frame @  file "lib/cArray.ml", line 492, characters 29-38
+frame @  file "kernel/closure.ml", line 603, characters 15-43
+frame @  file "kernel/closure.ml", line 596, characters 8-42
+frame @  file "lib/cArray.ml", line 492, characters 29-38
+frame @  file "kernel/closure.ml", line 602, characters 15-33
+frame @  file "kernel/closure.ml", line 596, characters 8-42
+frame @  file "lib/cArray.ml", line 489, characters 29-39
+frame @  file "kernel/closure.ml", line 596, characters 8-42
+frame @  file "lib/cArray.ml", line 492, characters 29-38
+frame @  file "kernel/closure.ml", line 596, characters 8-42
+frame @  file "lib/cArray.ml", line 492, characters 29-38
+frame @  file "kernel/closure.ml", line 596, characters 8-42
+frame @  file "lib/cArray.ml", line 492, characters 29-38
+frame @  file "kernel/closure.ml", line 603, characters 15-43
+frame @  file "kernel/closure.ml", line 596, characters 8-42
+frame @  file "lib/cArray.ml", line 492, characters 29-38
+frame @  file "kernel/closure.ml", line 603, characters 15-43
+frame @  file "kernel/closure.ml", line 595, characters 8-25
+frame @  file "kernel/closure.ml", line 602, characters 15-33
+frame @  file "kernel/closure.ml", line 596, characters 8-42
+frame @  file "lib/cArray.ml", line 489, characters 29-39
+frame @  file "kernel/closure.ml", line 596, characters 8-42
+frame @  file "lib/cArray.ml", line 492, characters 29-38
+frame @  file "kernel/closure.ml", line 579, characters 2-57
+frame @  file "array.ml", line 77, characters 21-40
+frame @  file "kernel/closure.ml", line 603, characters 15-43
+frame @  file "kernel/closure.ml", line 603, characters 15-43
+frame @  file "kernel/closure.ml", line 603, characters 15-43
+frame @  file "kernel/closure.ml", line 602, characters 15-33
+frame @  file "kernel/closure.ml", line 605, characters 12-29
+frame @  file "kernel/closure.ml", line 595, characters 8-25
+raise @  unknown
+raise @  unknown
+raise @  unknown
+raise @  unknown
+raise @  file "lib/control.ml", line 30, characters 32-33
+frame @  file "lib/flags.ml", line 11, characters 15-18
+frame @  file "toplevel/vernacentries.ml", line 833, characters 15-500
+frame @  file "proofs/proof_global.ml", line 152, characters 24-36
+frame @  file "toplevel/vernacentries.ml", line 838, characters 6-75
+raise @  unknown
+frame @  file "proofs/pfedit.ml", line 107, characters 28-67
+frame @  file "proofs/proof.ml", line 326, characters 4-30
+frame @  file "proofs/proofview.ml", line 231, characters 12-42
+raise @  unknown
+frame @  file "proofs/logic_monad.ml", line 111, characters 8-12
+frame @  file "proofs/logic_monad.ml", line 64, characters 36-42
+frame @  file "proofs/logic_monad.ml", line 64, characters 36-42
+raise @  unknown
+frame @  file "proofs/logic_monad.ml", line 307, characters 6-25
+frame @  file "proofs/logic_monad.ml", line 307, characters 6-25
+frame @  file "proofs/logic_monad.ml", line 307, characters 6-25
+frame @  file "proofs/logic_monad.ml", line 224, characters 41-48
+raise @  unknown
+raise @  unknown
+frame @  file "proofs/proofview.ml", line 964, characters 66-72
+frame @  file "tactics/tactics.ml", line 4380, characters 12-87
+frame @  file "library/declare.ml", line 283, characters 11-41
+frame @  file "library/declare.ml", line 182, characters 2-30
+frame @  file "library/impargs.ml", line 624, characters 13-50
+frame @  file "library/impargs.ml", line 411, characters 14-61
+frame @  file "library/impargs.ml", line 399, characters 21-58
+frame @  file "library/impargs.ml", line 254, characters 9-56
+frame @  file "library/impargs.ml", line 212, characters 55-74
+frame @  file "array.ml", line 72, characters 31-48
+frame @  file "library/impargs.ml", line 190, characters 28-51
+raise @  file "camlinternalLazy.ml", line 32, characters 10-11
+frame @  file "camlinternalLazy.ml", line 25, characters 17-27
+frame @  file "kernel/closure.ml", line 578, characters 16-33
+frame @  file "kernel/closure.ml", line 579, characters 2-57
+frame @  file "array.ml", line 77, characters 21-40
+frame @  file "kernel/closure.ml", line 602, characters 15-33
+frame @  file "kernel/closure.ml", line 596, characters 8-42
+frame @  file "lib/cArray.ml", line 489, characters 29-39
+frame @  file "kernel/closure.ml", line 596, characters 8-42
+frame @  file "lib/cArray.ml", line 489, characters 29-39
+frame @  file "kernel/closure.ml", line 596, characters 8-42
+frame @  file "lib/cArray.ml", line 492, characters 29-38
+frame @  file "kernel/closure.ml", line 596, characters 8-42
+frame @  file "lib/cArray.ml", line 492, characters 29-38
+frame @  file "kernel/closure.ml", line 603, characters 15-43
+frame @  file "kernel/closure.ml", line 596, characters 8-42
+frame @  file "lib/cArray.ml", line 492, characters 29-38
+frame @  file "kernel/closure.ml", line 602, characters 15-33
+frame @  file "kernel/closure.ml", line 596, characters 8-42
+frame @  file "lib/cArray.ml", line 489, characters 29-39
+frame @  file "kernel/closure.ml", line 596, characters 8-42
+frame @  file "lib/cArray.ml", line 492, characters 29-38
+frame @  file "kernel/closure.ml", line 596, characters 8-42
+frame @  file "lib/cArray.ml", line 492, characters 29-38
+frame @  file "kernel/closure.ml", line 596, characters 8-42
+frame @  file "lib/cArray.ml", line 492, characters 29-38
+frame @  file "kernel/closure.ml", line 603, characters 15-43
+frame @  file "kernel/closure.ml", line 596, characters 8-42
+frame @  file "lib/cArray.ml", line 492, characters 29-38
+frame @  file "kernel/closure.ml", line 603, characters 15-43
+frame @  file "kernel/closure.ml", line 595, characters 8-25
+frame @  file "kernel/closure.ml", line 602, characters 15-33
+frame @  file "kernel/closure.ml", line 596, characters 8-42
+frame @  file "lib/cArray.ml", line 489, characters 29-39
+frame @  file "kernel/closure.ml", line 596, characters 8-42
+frame @  file "lib/cArray.ml", line 492, characters 29-38
+frame @  file "kernel/closure.ml", line 579, characters 2-57
+frame @  file "array.ml", line 77, characters 21-40
+frame @  file "kernel/closure.ml", line 603, characters 15-43
+frame @  file "kernel/closure.ml", line 603, characters 15-43
+frame @  file "kernel/closure.ml", line 603, characters 15-43
+frame @  file "kernel/closure.ml", line 602, characters 15-33
+frame @  file "kernel/closure.ml", line 605, characters 12-29
+frame @  file "kernel/closure.ml", line 595, characters 8-25
+raise @  unknown
+raise @  unknown
+raise @  unknown
+raise @  unknown
+raise @  file "lib/control.ml", line 30, characters 32-33
+
+> Attached file: [bug_opt_parser_slow_admit_03.v](https://coq.inria.fr/bugfiles/attachment.cgi?id=572) (text/plain, 26686 bytes)
+> Description:   File with a slow [abstract admit], works in both 8.4 and 8.5
+
+
+Comment author: @JasonGross
+
+I am currently tracking down this bug in another file where it takes well over 10 s to execute the [Defined]
+
+
+Comment author: @ppedrot
+
+Probably another kernel reduction inefficiency, as witnessed by your trace...
+
+
+Comment author: @JasonGross
+
+Created attachment 573
+Even slower admit, works only with 8.4
+
+> Attached file: [bug_parser_from_parser_adt_loop_admit_05.v](https://coq.inria.fr/bugfiles/attachment.cgi?id=573) (text/plain, 52322 bytes)
+> Description:   Even slower admit, works only with 8.4
+
+
+Comment author: @JasonGross
+
+Created attachment 574
+File with a slow [abstract admit], works in both 8.4 and 8.5
+
+(Updated test case has a fix for [admit] being reserved in 8.4)
+
+> Attached file: [bug_opt_parser_slow_admit_03 (1).v](https://coq.inria.fr/bugfiles/attachment.cgi?id=574) (text/plain, 26699 bytes)
+> Description:   File with a slow [abstract admit], works in both 8.4 and 8.5
+
+
+Comment author: @JasonGross
+
+In the 8.4-only even slower abstract admit, the [Set Printing All] goal is just [soundness_type'].   Why does [abstract] tell the kernel to do any reduction at all when the type of the lemma is a single already type-checked identifier?
+
+
+Comment author: @ppedrot
+
+Fixed by 553f9246.
+
+

@@ -1,0 +1,66 @@
+Thanks for reporting @JasonGross , bisect done with:
+```
+dune build theories/Program/{Basics,Tactics}.vo checker/coqchk.exe && dune exec -- dev/shim/coqc-prelude k.v && _build/default/checker/coqchk.exe -silent -o k.vo
+```
+faulty commit:
+```
+427e8cac2c267a7302b71979c0f1019598176e31 is the first bad commit
+commit 427e8cac2c267a7302b71979c0f1019598176e31
+Author: Pierre-Marie Pédrot <pierre-marie.pedrot@inria.fr>
+Date:   Fri Aug 28 17:37:24 2020 +0200
+
+    Drop opaque bodies of abstracted definitions.
+    
+    This should save us a lot of useless hashconsing. This change should not be
+    observable because outside of the proof, the abstracted definition will be
+    either inlined or redefined with the body coming from the side-effect.
+
+ kernel/safe_typing.ml | 14 ++++++++------
+ 1 file changed, 8 insertions(+), 6 deletions(-)
+```
+introduced in #12935 , cc @ppedrot @SkySkimmer 
+Smaller example:
+~~~coq
+Definition foo : True := ltac:(abstract exact I).
+~~~
+Indeed the vo file does not contain the body of the abstracted proof...
+We're also seeing this in std++. Would be nice to get this resolved so that we can again reliably check for axioms. :)
+This shows up in a bunch of zify instances (not a complete list):
+```
+      Coq.micromega.ZifyInst.ltac_gen_subproof22
+      Coq.micromega.ZifyInst.ltac_gen_subproof21
+      Coq.micromega.ZifyInst.ltac_gen_subproof20
+      Coq.micromega.ZifyInst.ltac_gen_subproof19
+      Coq.micromega.ZifyInst.ltac_gen_subproof18
+      Coq.micromega.ZifyInst.ltac_gen_subproof17
+      Coq.micromega.ZifyInst.ltac_gen_subproof16
+      Coq.micromega.ZifyInst.ltac_gen_subproof15
+      Coq.micromega.ZifyInst.ltac_gen_subproof14
+      Coq.micromega.ZifyInst.ltac_gen_subproof13
+      Coq.micromega.ZifyInst.ltac_gen_subproof12
+      Coq.micromega.ZifyInst.ltac_gen_subproof11
+      Coq.micromega.ZifyInst.ltac_gen_subproof10
+      Coq.micromega.ZifyInst.ltac_gen_subproof
+```
+I had another look at this issue and I don't think that 427e8cac2c267a7302b71979c0f1019598176e31 is the real cause of the problem, rather it exposes an issue with abstracted subproofs.
+
+Actually, if you look at it the body of the proof is axiom-free, so this part is fine.
+```coq
+Definition foo : True := ltac:(abstract exact I).
+
+Print foo.
+(* foo = (fun ltac_gen_subproof : True => ltac_gen_subproof) I
+     : True *)
+```
+
+The problem is that the global environment is incorrectly extended with a side-effect that lingers around although it should have disappeared right after the tactic-in-term returns.
+```coq
+Print ltac_gen_subproof.
+(* *** [ ltac_gen_subproof : True ] *)
+```
+Before the above commit, it was less visible because the proof was axiom free, but in practice it did mean that we had a useless term in the vo file taking space for no good reason.
+
+I suspect that wrapping the tactic-in-term mechanism in a purifying handler is probably enough to solve this but I am vaguely afraid that some eldritch parts of fiat-crypto-like developments rely on this *feature*.
+I don't think we rely on abstracted subproofs from tactics in terms sticking around in fiat-crypto.  Instead we do something like `simple refine (let v : T := _ in _); [ abstract tac | ]; let val := (eval cbv delta [v] in v) in clear v; ...` to get access to abstracted names in a way that will have them stick around.
+I distinctly remember seeing some calls to `abstract tac as foo` in fiat-crypto, or maybe at least fiat-crypto-legacy. This is a notorious issue with abstract because it ultimately prevents to have a fully purely functional implementation (name resolution depends on the global nametab). If it's actually not needed, then it's a good thing because it simplifies a lot one of the PRs I started writing some time ago.
+Note that this is not just an issue with `coqchk`, but `Print Assumptions` and `Print` and `Extraction` all also believe that the subproof has no body.

@@ -1,0 +1,191 @@
+I was told this was done on purpose, but I am not sure I remember correctly.
+As far as I can find with GitHub search (for "profiling"), it is not mentioned in CHANGES, nor in any commit message, issue message, PR comment, etc.  This seems ... poor, at the very least, if the change was intentional.
+Umm, getting a bisect would help here.
+It sounds related to #481 and #5229 but I don't see how those would result in a desynch when they're going for the opposite.
+@SkySkimmer indeed I am not sure these are related, in particular because the data is (was?) store in the `Summary`. I remember discussing this with someone, but can't get the details, I hope the bisect will give more.
+I ran bisect with
+```coq
+(* -*- coq-prog-args: ("-q" "-emacs") -*- *)
+Ltac foo := idtac; idtac; exact I.
+
+Goal True.
+  Set Ltac Profiling.
+  foo.
+  Show Ltac Profile CutOff 0.
+  Backtrack 5 0 0 .
+  foo.
+  Show Ltac Profile CutOff 0.
+Defined.
+```
+and got:
+
+> 6b041a242607ec906fbab451e53c15af6339e4ef is the first bad commit
+commit 6b041a242607ec906fbab451e53c15af6339e4ef
+Author: Emilio Jesus Gallego Arias <e+git@x80.org>
+Date:   Thu May 18 07:31:36 2017 +0200
+>
+>    [emacs] [toplevel] Make emacs flag local to the toplevel.
+>
+>    We remove the emacs-specific printing code from the core of Coq, now
+>    `-emacs` is a printing flag controlled by the toplevel.
+>
+>     :040000 040000 8578f7c4c574a291cd1fbd5cc7136e70efbd9329 06d7a5919860ed31803c06bdc6b3aef239c3e7ff M      lib
+>     :040000 040000 3bb47c8ba7028417b00c46ccc97ea4da93a4aa66 0f9f0302dd11bcf5c53b7cb3d88ee581e3589f2f M      printing
+>     :040000 040000 554f2c2d08ec605fa81de96069b427650ac22180 0adc7907e3963979299ace8b91e490c307ab5445 M      proofs
+>     :040000 040000 056eab8518df85b06652d1b54ede60fafb199963 587b5a60f27a16892891819e3e79f24c8d14d7bd M      stm
+>     :040000 040000 75989dbf2b2af8b69fc79e8fe3e3d4ad1cd4fd9c e4998ea44fbc6394244498e1b678bc5c2bc37d0d M      test-suite
+>     :040000 040000 d5557c4fd570ef1f38a80a757118c99f5b6a2689 fd6b46e193138b5ccfe80072c4a2293162b4f8ce M      toplevel
+
+That's certainly bogus, did you have to skip a lot in the bisect?
+The bisect skipped nothing.  It is the commit to blame, even when I test manually.  When I run `cat <.vfile> | coqtop -emacs -q`, I get these different logs:
+With f3a388baf9cf2a14a658cab77554a0802b999486 (right before your commit):
+```
+Welcome to Coq trunk (December 2017)
+<infomsg>Skipping rcfile loading.</infomsg>
+
+<prompt>Coq < 1 || 0 < </prompt><infomsg>foo is defined</infomsg>
+
+<prompt>Coq < 2 || 0 < </prompt>1 subgoal (ID 1)
+
+  ============================
+  True
+
+(dependent evars: (printing disabled) )
+
+<prompt>Unnamed_thm < 3 |branch| 0 < </prompt>
+<prompt>Unnamed_thm < 5 |branch| 0 < </prompt>No more subgoals.(dependent evars: (printing disabled) )
+
+<prompt>Unnamed_thm < 6 |branch| 0 < </prompt>total time:      0.000s
+
+ tactic                                   local  total   calls       max
+────────────────────────────────────────┴──────┴──────┴───────┴─────────┘
+─foo -----------------------------------  -nan%  -nan%       1    0.000s
+─exact (casted_constr) -----------------  -nan%  -nan%       1    0.000s
+
+ tactic                                   local  total   calls       max
+────────────────────────────────────────┴──────┴──────┴───────┴─────────┘
+─foo -----------------------------------  -nan%  -nan%       1    0.000s
+└exact (casted_constr) -----------------  -nan%  -nan%       1    0.000s
+
+
+<prompt>Unnamed_thm < 7 |branch| 0 < </prompt>1 subgoal (ID 1)
+
+  ============================
+  True
+
+(dependent evars: (printing disabled) )
+
+<prompt>Unnamed_thm < 5 |branch| 0 < </prompt>No more subgoals.(dependent evars: (printing disabled) )
+
+<prompt>Unnamed_thm < 9 |branch| 0 < </prompt>total time:      0.000s
+
+ tactic                                   local  total   calls       max
+────────────────────────────────────────┴──────┴──────┴───────┴─────────┘
+─foo -----------------------------------  -nan%  -nan%       1    0.000s
+─exact (casted_constr) -----------------  -nan%  -nan%       1    0.000s
+
+ tactic                                   local  total   calls       max
+────────────────────────────────────────┴──────┴──────┴───────┴─────────┘
+─foo -----------------------------------  -nan%  -nan%       1    0.000s
+└exact (casted_constr) -----------------  -nan%  -nan%       1    0.000s
+
+
+<prompt>Unnamed_thm < 10 |branch| 0 < </prompt><infomsg>Unnamed_thm is defined</infomsg>
+
+<prompt>Coq < 11 || 0 < </prompt>
+```
+With 6b041a242607ec906fbab451e53c15af6339e4ef (your commit), I get:
+```
+Welcome to Coq trunk (December 2017)
+<infomsg>Skipping rcfile loading.</infomsg>
+
+<prompt>Coq < 1 || 0 < </prompt><infomsg>foo is defined</infomsg>
+
+<prompt>Coq < 2 || 0 < </prompt>1 subgoal (ID 1)
+
+  ============================
+  True
+
+<prompt>Unnamed_thm < 3 |branch| 0 < </prompt>
+<prompt>Unnamed_thm < 5 |branch| 0 < </prompt>No more subgoals.
+
+<prompt>Unnamed_thm < 6 |branch| 0 < </prompt>total time:      0.000s
+
+ tactic                                   local  total   calls       max
+────────────────────────────────────────┴──────┴──────┴───────┴─────────┘
+─foo -----------------------------------  -nan%  -nan%       1    0.000s
+─exact (casted_constr) -----------------  -nan%  -nan%       1    0.000s
+
+ tactic                                   local  total   calls       max
+────────────────────────────────────────┴──────┴──────┴───────┴─────────┘
+─foo -----------------------------------  -nan%  -nan%       1    0.000s
+└exact (casted_constr) -----------------  -nan%  -nan%       1    0.000s
+
+
+<prompt>Unnamed_thm < 7 |branch| 0 < </prompt>1 subgoal (ID 1)
+
+  ============================
+  True
+
+<prompt>Unnamed_thm < 8 |branch| 0 < </prompt>No more subgoals.
+
+<prompt>Unnamed_thm < 10 |branch| 0 < </prompt>total time:      0.000s
+
+ tactic                                   local  total   calls       max
+────────────────────────────────────────┴──────┴──────┴───────┴─────────┘
+─foo -----------------------------------  -nan%  -nan%       2    0.000s
+─exact (casted_constr) -----------------  -nan%  -nan%       2    0.000s
+
+ tactic                                   local  total   calls       max
+────────────────────────────────────────┴──────┴──────┴───────┴─────────┘
+─foo -----------------------------------  -nan%  -nan%       2    0.000s
+└exact (casted_constr) -----------------  -nan%  -nan%       2    0.000s
+
+
+<prompt>Unnamed_thm < 11 |branch| 0 < </prompt><infomsg>Unnamed_thm is defined</infomsg>
+
+<prompt>Coq < 12 || 0 < </prompt>
+```
+
+I don't know why the old states go 7, 5, 9, and the new ones go 7, 8, 10, and after staring at the commit for 5-10 minutes, I don't see how it could have changed anything, but it somehow does.  Can you check and see if you can reproduce?
+@ejgallego The issue is this line:
+```diff
+-          VtStm (VtBack (Stateid.of_int id), not !Flags.print_emacs), VtNow
++          VtStm (VtBack (Stateid.of_int id), not !Flags.batch_mode), VtNow
+```
+You should have changed it to `!Flags.batch_mode` rather than `not !Flags.batch_mode`, I think.
+Umm, that's strange to say the least as this was the "part of script" stuff. Also, it that was the problem then 675a1dc401eb9a5540ba5bc9a522c1f84d4c3d54 should be fine [as this part_of_script logic doesn't even exist anymore]
+
+I'll have a look soon, do you confirm that the problem goes away if the logic there is inverted?
+Yes, the problem goes away if the logic is inverted.  I think the thing that's happening is that the old states are not being marked as invalid, so when the profiler filters its list of states it's seen for only the valid ones, the ones backtracked across are not getting dropped.  If this boolean previously invalidated states when `false` (when emacs-mode was true), and it stopped invalidating states on non-batch-mode (which is what corresponds roughly to emacs-like), this would account for the problem.  If the stateid invalidation on backtrack was not reintroduced when the "part of script" stuff was removed, that would explain why the problem persists.
+In 675a1dc401eb9a5540ba5bc9a522c1f84d4c3d54, the issue is present, and goes away if I make the change in `stm/stm.ml`:
+```diff
+-          VtBack (VCS.is_interactive () = `Yes, Stateid.of_int id), VtNow
++          VtBack (VCS.is_interactive () = `No, Stateid.of_int id), VtNow
+```
+Yup we'll have to look more carefully into that as current `master` doesn't even have that logic anymore. Anyways that "undo classifier logic" is highly problematic in general and we are tying to fully clean it up for 8.8.
+
+So based on what you say, no matter what you do with the logic, either the interactive or the batch case are always broken then?
+Was `coqc` broken in batch mode before the problematic commit 6b041a2 ?
+What do you mean by "broken"?  Both 8.6.1 and 8.7.0 give "Error: Navigation commands forbidden in files." if I try to run the script with `-compile`.  This matches my expectation; these commands are supported only for compatibility with `-emacs` / with non-xml PG, and ought not appear in `.v` files except for as test-cases.
+I'd like to see this fixed in both 8.7.1 and in master.  I can make a PR for v8.7 to fix this there.  Regarding master, I think the correct thing to do is to always invalidate the states on `Backtrack` and `BackTo`.
+Indeed, I agree thanks. We will see how far we get in 8.8, a quick fix in `process_back_meta_command` should be possible but again our idea is to completely rewrite that part as the logic is messy to say the least.
+
+On the other hand, I have become convinced that the current implementation of the profiler data store is just wrong. Let's see what we can do.
+The mess with this "meta" commands is large. Why should `Undo` not revert the profiling state?
+In fact in master it seems `Undo` acts the same than backtrack.
+I think `Undo` should revert the profiling state, but I am okay with it not doing so.  (I think interactive backtracking must revert the profiling state.)  (I think that closing a proof should definitely not revert the profiling state.  Hopefully that does not overlap with backtracking commands.)
+> I think Undo should revert the profiling state, but I am okay with it not doing so.
+
+The thing is what happens when you interactively backtrack on `Undo`. The old state must be restored. It is a bit subtle with the current implementation.
+
+> (I think interactive backtracking must revert the profiling state.)
+
+That should work correctly today. Apart from the logical error you've noticed, currently the semantics of `Undo` and `Backtrack` have become closer, however we should indeed modify `Backtrack`, likely by moving out of the core completely and just having it be a special toplevel `-emacs` thing [that runs a regular interactive edit]
+
+> (I think that closing a proof should definitely not revert the profiling state. Hopefully that does not overlap with backtracking commands.)
+
+It does not.
+I'll merge the 8.7-only PR and move the milestone of this issue to 8.8 so that it isn't forgotten.
+So after some more thinking the most promising fix should be to transform `Backtrack` into an `EditAt`, we should be able to do that once #6318 is in.
+@JasonGross can you check #6968 ? It works here.

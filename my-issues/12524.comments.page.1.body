@@ -1,0 +1,28 @@
+@ppedrot, is the time here spent in evar instance creation?
+
+And I'm still confused where the cubic factor could come from; my hypothesis above predicts merely quadratic behavior.
+So, this is indeed quadratic due to evar creation, namely because of `Evarutil.push_rel_context_to_named_context` which is repeatedly called by `Rewrite.new_cstr_evar`. I think we can use the same strategy as in the pretyper, i.e. share those computations.
+(It's probably cubic because evar context creation uses name generation which is *already* quadratic.) 
+@ppedrot Wouldn't that make it quartic rather than cubic?
+@JasonGross Why do you think so? A linear amount of quadratic code results in cubic behaviour.
+
+Also, I have a patch that uses the same strategy as in the pretyper, but the problem is that there are other parts in the proof engine that are linear in the size of the context. After this patch, there is still a quadratic behaviour from clenv creation, and it's very hard to fix without rewriting a variant of the API taking advantage of the additional caching. I believe that the proper fix is to move away from kernel environments in the proof engine and use instead structures similar to the pretyper, but *pervasively*. It's a lot of work though.
+Oh, I see.
+
+What strategy does the pretyper use?
+
+What's the clenv?
+
+Yeah, that sounds like it's going to basically be a another rewrite of the entire proof engine?
+> What strategy does the pretyper use?
+
+It uses a dedicate environment structure that caches additional data inside.
+
+> What's the clenv?
+
+It's the datatype that captures applications of lemmas of type `forall (x1 : X1) ... (xn : Xn). T` by generating evars for the quantifiers, as in the `apply` tactic.
+
+> Yeah, that sounds like it's going to basically be a another rewrite of the entire proof engine?
+
+Nah, it's not *that* violent. Since we now have abstract datatypes everywhere, we can replace the kind of environments used without breaking everything. The problem is more that to really take advantage of the feature we'll need to rewrite every code path that generates evars.
+

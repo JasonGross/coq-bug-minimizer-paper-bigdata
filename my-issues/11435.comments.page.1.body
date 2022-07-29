@@ -1,0 +1,28 @@
+We don't consider that a bug when you use algebraic universe syntax.
+I think "anomaly" should be reserved for actually unexpected behavior, so I think at least it should be turned into a proper error message and not an anomaly then, no?
+I just ran into a similar problem when attempting to check the predicavity of `Type`:
+
+```coq
+Definition check U Q := forall P : U, Q.
+Definition TypePred@{i} := check Type@{i + 1} Type@{i}.
+```
+
+This is very straightforward, no?
+Another version of this anomaly (v8.12.2):
+```Coq
+Polymorphic Definition maxsort@{a b i j}(A:Type@{a})(B:Type@{b})
+            (_:A=Type@{i})(_:B=Type@{j}) := Type@{max(i,j)}.
+
+Ltac is_subsort A B :=
+  let M:=(eval vm_compute in (maxsort A B eq_refl eq_refl)) in
+  constr_eq_strict M B.
+
+Goal True.
+  is_subsort Set Type@{Set+1}.
+```
+An easier case (v8.12.2):
+```Coq
+Example test@{i j}(A:Type@{i})(B : Type@{j}) : True.
+Proof.
+  let _:=constr:(Type@{i+1}:Type@{j+1}) in idtac.
+```

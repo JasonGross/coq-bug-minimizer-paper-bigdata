@@ -1,0 +1,28 @@
+General rule: no "blocker" label without a milestone.
+
+Can you confirm that locally installing `lablgtk.2.18.5` with OPAM (for some reason I didn't manage to do it) then running `ocamlfind query -format "%v" lablgtk2` reports the incorrect version? If yes, that will confirm that the bug is in lablgtk (a recurring one apparently since 2.18.3 also reports 2.18.0).
+Locally:
+```
+$ opam install lablgtk.2.18.5
+[NOTE] Package lablgtk is already installed (current version is 2.18.5).
+$ ocamlfind query -format "%v" lablgtk2
+2.18.4
+```
+But see also https://bugs.launchpad.net/ubuntu/+source/lablgtk2/+bug/1577236 and https://bugs.debian.org/cgi-bin/bugreport.cgi?bug=822949
+Hum OK. Well, my impression about this is that these are upstream bugs that ought to be fixed upstream (Ubuntu / Debian bugs to be more specific). One workaround could be a configure option to disable the version check. Another workaround is not to rely on this version info and instead go back to some heuristic. However, I won't spend time on this. If you, or someone else, is willing, please go ahead and propose a solution.
+So running `ocamlfind` at the command line reports a different `lablgtk2` version than when it's run from `configure`? 
+
+Maybe different versions of `ocamlfind` are being run? To make them the same, you could run
+```
+  configure -ocamlfind `which ocamlfind`
+```
+@psteckler No, these are different machines, with lablgtk installed in different manners.
+
+@Zimmi48 I think we should warn rather than error on getting version `2.16.0` on Linux (which is what all of the debian packages seem to be hard-coded to).
+
+
+Indeed, given the bugs we must just warn the user but don't abort configure.
+Sorry for not reading the issue more carefully.
+
+I wonder if, rather than special-casing for this Ubuntu lablgtk2 packaging bug, it might be better to have a flag that allows configure to succeed in the presence of putative version mismatches, for any package where a version is required. The warnings would still be printed, which a user could ignore if they know there's a version-reporting bug.
+

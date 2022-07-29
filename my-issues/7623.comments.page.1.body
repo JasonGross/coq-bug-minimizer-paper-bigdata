@@ -1,0 +1,3 @@
+@JasonGross: the technical reason of the lack of factorization is that the first extra clause depends on `s` and `s0`, the second extra clause depends on `s` and the third expected default clause depends on nothing. I shall investigate whether these useless `s` and `s0` really need to be there, and/or whether these useless `s` and `s0` really needs to break the factorization algorithm.
+
+I shall not have a lot of time in the short term, so remind it to me within a few weeks if nothing happened on my side.

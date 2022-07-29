@@ -1,0 +1,35 @@
+Comment author: @JasonGross
+
+Goal forall n, exists m, n = m :> nat.
+Proof.
+  eexists.
+  Fail match goal with |- ?x = ?x => idtac end. (* correctly fails *)
+  match goal with
+  | [ |- ?x = ?y ]
+    => match x with y => idtac end
+  end. (* incorrectly succeeds *)
+
+This is present in 8.5pl3, v8.6, and trunk at least.
+
+
+Comment author: @JasonGross
+
+Git bisect says
+
+012fe1a96ba81ab0a7fa210610e3f25187baaf1d is the first bad commit
+commit 012fe1a96ba81ab0a7fa210610e3f25187baaf1d
+Author: Hugo Herbelin <Hugo.Herbelin@ inria.fr>
+Date:   Tue Aug 12 14:03:32 2014 +0200
+
+    Referring to evars by names. Added a parser for evars (but parsing of
+    instances still to do). Using heuristics to name after the quantifier
+    name it comes. Also added a "sigma" to almost all printing functions.
+
+
+Comment author: @herbelin
+
+Fixed in v8.5, v8.6, and eventually merged in trunk.
+
+Note: I finally followed a less ambitious path than discussed on gitter.
+
+

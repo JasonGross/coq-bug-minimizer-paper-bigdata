@@ -1,0 +1,58 @@
+Comment author: @JasonGross
+
+```
+Section foo.
+  Variable C : Type.
+  Goal True.
+    change (eq (A := ?C) ?x ?y) with (eq).
+Toplevel input, characters 34-36:
+> change (eq (A := ?C) ?x ?y) with (eq).
+>                                   ^^
+Anomaly: File "pretyping/evarutil.ml", line 334, characters 2-8: Assertion failed.
+Please report.
+frame @  file "toplevel/vernac.ml", line 349, characters 6-16
+raise @  file "toplevel/vernac.ml", line 341, characters 18-19
+frame @  file "toplevel/vernac.ml", line 333, characters 14-104
+raise @  file "library/states.ml", line 39, characters 45-46
+frame @  file "tactics/tacinterp.ml", line 72, characters 6-11
+frame @  file "pretyping/pretyping.ml", line 748, characters 10-82
+frame @  file "pretyping/pretyping.ml", line 715, characters 3-36
+frame @  file "pretyping/pretyping.ml", line 428, characters 17-49
+frame @  file "pretyping/pretyping.ml", line 407, characters 13-52
+frame @  file "pretyping/pretyping.ml", line 294, characters 12-49
+frame @  file "pretyping/evarutil.ml", line 357, characters 18-70
+raise @  file "pretyping/evarutil.ml", line 334, characters 2-107
+```
+
+If I change the [?C] to a [?D], or if I change [C : Type] to [D : Type], it goes through; the metavariable name needs to already exist in the context.
+
+
+Comment author: @herbelin
+
+Hi Jason,
+
+We can't reproduce this bug in neither V8.4, V8.4pl1, V8.4pl2, trunk. Maybe your example is not as self-contained as you reported it?
+
+Hugo
+
+
+Comment author: @JasonGross
+
+This occurs for me on coq 8.4pl2 on Windows, and coq 8.4pl1 on linux using coqtop -boot -debug (but with coqtop -boot, I get Error: Cannot infer the implicit parameter A of eq.)
+
+
+Comment author: @JasonGross
+
+Oh, I guess I pass the -debug flag to coqtop by default on my windows setup.  Can you reproduce the bug if you pass the -debug flag?
+
+
+Comment author: @ppedrot
+
+Indeed, the -debug flag triggers the bug.
+
+
+Comment author: @herbelin
+
+Apparently fixed in trunk (though not in 8.4).
+
+

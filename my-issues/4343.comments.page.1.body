@@ -1,0 +1,15 @@
+Comment author: @JasonGross
+
+Basically, I'm asking for the following to give an error on [Program Instance bar : Bar foo := { }], of the form "Error: Implicit generalization of name "foo" is not allowed because the program definition for "foo" still has unsolved obligations.  To allow generalization, use [Set Confusingly Permissive Shadowing Of Program Binders]." (or something like that)
+
+Code that I want to error:
+
+Require Import Coq.Program.Tactics.
+Generalizable All Variables.
+Obligation Tactic := idtac.
+Class Foo := { x : True }.
+Class Bar (f : Foo) := { y : True }.
+Program Instance foo : Foo := { }.
+Program Instance bar : Bar foo := { }.
+
+

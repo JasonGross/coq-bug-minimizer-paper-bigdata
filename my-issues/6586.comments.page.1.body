@@ -1,0 +1,2 @@
+I think I already had seen that bug reported somewhere. Probably a variant of #4617 anyways. If it is the same bug I'm thinking about, this is due to an incompleteness of type-based solution refinement when the type is an evar (e.g. we except a product to be refined but we find an evar instead, so we should define it as a product first). I need to check this in details though.
+

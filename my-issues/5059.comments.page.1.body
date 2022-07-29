@@ -1,0 +1,17 @@
+Comment author: @JasonGross
+
+Goal forall x : nat, x = x.
+Proof.
+  intro x.
+  let y := match goal with |- ?x = _ => x end in
+  revert x; induction y. (* 8.4: Error: No such hypothesis x (success with 
+[try]); 8.5, 8.6: Anomaly: variable x unbound. Please report. *)
+
+
+Comment author: @ppedrot
+
+
+
+*** This bug has been marked as a duplicate of bug [BZ#4898](https://github.com/coq/coq/issues?q=is%3Aissue%20%22Original%20bug%20ID%3A%20BZ%234898%22) ***
+
+

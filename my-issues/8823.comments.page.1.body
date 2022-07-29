@@ -1,0 +1,1 @@
+I am pretty confident that most of the terms are actually shared in the OCaml runtime representation. Anyways, the reason the strategy is slow seems unrelated to this problem at first sight, it is rather due to bad algorithmics.

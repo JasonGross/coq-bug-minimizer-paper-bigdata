@@ -1,0 +1,739 @@
+Is fiat-crypto a heavy user of `abstract`?
+Yes.  Did `abstract exact_no_check (eq_refl ...)` and `abstract vm_cast_no_check (eq_refl ...)` get much slower on large types/terms?
+You should not compare timings on Travis, it can vary by a huge amount from one build to another. Did you reproduce on a physical machine?
+Ah, indeed, the difference is small on my physical machine:
+8.7.0:
+```
+src/Specific/X25519/C64/ladderstep (real: 129.71, user: 129.44, sys: 0.27, mem: 1473360 ko)
+Total (real: 340.49, user: 967.32, sys: 30.28, mem: 1473360 ko)
+```
+master:
+```
+src/Specific/X25519/C64/ladderstep (real: 128.93, user: 128.66, sys: 0.26, mem: 1473740 ko)
+Total (real: 334.82, user: 979.24, sys: 32.03, mem: 1473740 ko)
+```
+
+Thanks for asking @maximedenes, and apologies for the spurious bug report.
+Well even so that's a 10% [over a few cores] Is that 10% consistent?
+
+Recently I benchmarked the first 900 commits for 8.8 and indeed I didn't saw anything too bad, but some PRs such as #6324 have the potential to bring noticeable slowdowns. So please complain loudly even for a couple of %.
+
+[IMHO the worst disease of performance is the one you make your system 0.1% slower at each commit]
+Hmm, no, I think there is something really weird going on here, at least with printing.  (Is the lazy printer an issue?)  In https://travis-ci.org/mit-plv/fiat-crypto/builds/315800966?utm_source=github_status&utm_medium=notification, stage `selected-specific selected-specific-display`, it takes Coq master over 20 minutes to finish two .vo files (about 33 minutes for 12 files, vs 46 seconds in 8.7.0 and 47 seconds in v8.7).  Given that there's a factor of 50x between 8.7 and master, and a difference of about 2% between 8.7.0 and v8.7, and that it's happened at least twice.  I think this is a real effect.
+
+
+Umm, IMHO any result you get from Travis is gonna be bogus, printing depends on many factors including buffering so unless you can reproduce in a more controlled environment I'm afraid that we cannot trust the data. 
+On our jenkins machine here at MIT (ignore the glitchy lines), fiat-crypto is about 2x slower.  `Specific/X25519/C64/ladderstepDisplay` is about 11316% slower.  Not being able to reproduce it before was because I was accidentally building with the same version of Coq in both cases.  I can also reproduce it locally now.
+```
+master      | File Name                                                               | v8.7       || Change     | % Change  
+----------------------------------------------------------------------------------------------------------------------------
+195m45.92s | Total                                                                   | 102m10.97s || +93m34.94s | +91.58%   
+----------------------------------------------------------------------------------------------------------------------------
+28m46.15s  | Specific/X25519/C64/ladderstepDisplay                                   | 0m15.12s   || +28m31.03s | +11316.33%
+12m09.35s  | Specific/X25519/C32/femulDisplay                                        | 0m06.08s   || +12m03.26s | +11895.88%
+10m42.72s  | Specific/X25519/C32/fesquareDisplay                                     | 0m05.57s   || +10m37.14s | +11438.95%
+8m45.73s   | Specific/X2448/Karatsuba/C64/femulDisplay                               | 0m05.04s   || +8m40.69s  | +10331.15%
+6m10.81s   | Specific/NISTP256/AMD64/femulDisplay                                    | 0m05.55s   || +6m05.25s  | +6581.26% 
+3m55.77s   | Specific/X25519/C64/femulDisplay                                        | 0m03.98s   || +3m51.79s  | +5823.86% 
+3m18.29s   | Specific/X25519/C64/fesquareDisplay                                     | 0m03.96s   || +3m14.32s  | +4907.32% 
+2m36.15s   | Specific/X25519/C32/fecarryDisplay                                      | 0m03.77s   || +2m32.37s  | +4041.90% 
+2m33.44s   | Specific/X25519/C32/freezeDisplay                                       | 0m04.27s   || +2m29.16s  | +3493.44% 
+2m18.60s   | Specific/NISTP256/AMD128/femulDisplay                                   | 0m04.43s   || +2m14.16s  | +3028.66% 
+1m25.14s   | Specific/X25519/C64/fecarryDisplay                                      | 0m03.45s   || +1m21.68s  | +2367.82% 
+1m22.79s   | Specific/X25519/C64/freezeDisplay                                       | 0m03.80s   || +1m18.98s  | +2078.68% 
+1m17.96s   | Specific/X25519/C32/fesubDisplay                                        | 0m03.62s   || +1m14.34s  | +2053.59% 
+5m09.66s   | Specific/X25519/C64/ladderstep                                          | 4m00.56s   || +1m09.10s  | +28.72%   
+6m05.02s   | Curves/Montgomery/AffineProofs                                          | 5m00.28s   || +1m04.74s  | +21.55%   
+1m06.88s   | Specific/NISTP256/AMD64/feoppDisplay                                    | 0m03.77s   || +1m03.10s  | +1674.00% 
+0m57.58s   | Specific/NISTP256/AMD64/feaddDisplay                                    | 0m04.20s   || +0m53.37s  | +1270.95% 
+0m54.19s   | Specific/NISTP256/AMD64/fesubDisplay                                    | 0m04.53s   || +0m49.65s  | +1096.24% 
+17m35.77s  | Curves/Weierstrass/AffineProofs                                         | 16m58.58s  || +0m37.18s  | +3.65%    
+0m40.05s   | Specific/X25519/C64/fesubDisplay                                        | 0m03.74s   || +0m36.30s  | +970.85%  
+0m36.52s   | Specific/NISTP256/AMD128/fesubDisplay                                   | 0m04.19s   || +0m32.33s  | +771.59%  
+0m36.24s   | Specific/NISTP256/AMD128/feaddDisplay                                   | 0m04.07s   || +0m32.17s  | +790.41%  
+0m31.56s   | Specific/NISTP256/AMD128/feoppDisplay                                   | 0m04.07s   || +0m27.48s  | +675.42%  
+0m29.40s   | Specific/X25519/C32/feaddDisplay                                        | 0m03.68s   || +0m25.71s  | +698.91%  
+0m18.13s   | Specific/X25519/C64/feaddDisplay                                        | 0m03.32s   || +0m14.80s  | +446.08%  
+3m34.72s   | Specific/NISTP256/AMD64/femul                                           | 3m24.44s   || +0m10.28s  | +5.02%    
+1m58.80s   | Specific/X25519/C32/femul                                               | 1m48.97s   || +0m09.82s  | +9.02%    
+0m51.78s   | Curves/Montgomery/XZProofs                                              | 0m42.07s   || +0m09.71s  | +23.08%   
+2m36.45s   | Specific/X2448/Karatsuba/C64/femul                                      | 2m28.37s   || +0m08.07s  | +5.44%    
+1m28.86s   | Specific/X25519/C32/fesquare                                            | 1m20.81s   || +0m08.04s  | +9.96%    
+0m09.09s   | Specific/NISTP256/AMD64/fenzDisplay                                     | 0m03.51s   || +0m05.58s  | +158.97%  
+5m18.58s   | Curves/Weierstrass/Jacobian/Precomputed                                 | 5m23.57s   || -0m04.99s  | -1.54%    
+3m05.61s   | Spec/Test/X25519                                                        | 3m10.43s   || -0m04.81s  | -2.53%    
+0m51.04s   | Specific/X25519/C32/fecarry                                             | 0m46.72s   || +0m04.32s  | +9.24%    
+0m41.91s   | Specific/X25519/C32/feadd                                               | 0m37.18s   || +0m04.72s  | +12.72%   
+1m06.78s   | Specific/X25519/C32/freeze                                              | 1m03.68s   || +0m03.10s  | +4.86%    
+0m40.60s   | Compilers/Named/MapCastWf                                               | 0m43.90s   || -0m03.29s  | -7.51%    
+6m59.29s   | Curves/Weierstrass/Projective                                           | 6m57.15s   || +0m02.14s  | +0.51%    
+1m44.97s   | Compilers/Z/Named/RewriteAddToAdcInterp                                 | 1m42.94s   || +0m02.03s  | +1.97%    
+0m45.00s   | Arithmetic/MontgomeryReduction/WordByWord/Abstract/Dependent/Proofs     | 0m42.77s   || +0m02.22s  | +5.21%    
+0m42.25s   | Specific/X25519/C64/femul                                               | 0m39.95s   || +0m02.29s  | +5.75%    
+0m38.54s   | Specific/X25519/C32/Synthesis                                           | 0m40.77s   || -0m02.23s  | -5.46%    
+0m28.95s   | Specific/X25519/C64/fecarry                                             | 0m26.90s   || +0m02.05s  | +7.62%    
+0m16.34s   | Compilers/Named/CompileInterpSideConditions                             | 0m18.72s   || -0m02.37s  | -12.71%   
+1m59.01s   | Demo                                                                    | 2m00.50s   || -0m01.49s  | -1.23%    
+1m27.11s   | Arithmetic/Karatsuba                                                    | 1m25.44s   || +0m01.67s  | +1.95%    
+1m15.31s   | Spec/Ed25519                                                            | 1m16.49s   || -0m01.17s  | -1.54%    
+1m03.98s   | Compilers/CommonSubexpressionEliminationWf                              | 1m02.74s   || +0m01.23s  | +1.97%    
+0m45.31s   | Specific/NISTP256/AMD64/fesub                                           | 0m43.47s   || +0m01.84s  | +4.23%    
+0m45.09s   | Arithmetic/Core                                                         | 0m47.01s   || -0m01.91s  | -4.08%    
+0m44.13s   | Curves/Edwards/AffineProofs                                             | 0m45.57s   || -0m01.43s  | -3.15%    
+0m43.95s   | Specific/X25519/C32/fesub                                               | 0m42.16s   || +0m01.79s  | +4.24%    
+0m41.21s   | Specific/NISTP256/AMD64/feadd                                           | 0m40.19s   || +0m01.02s  | +2.53%    
+0m36.00s   | Compilers/Named/MapCastInterp                                           | 0m37.62s   || -0m01.61s  | -4.30%    
+0m33.08s   | Compilers/Named/ContextProperties/NameUtil                              | 0m31.86s   || +0m01.21s  | +3.82%    
+0m29.21s   | Specific/NISTP256/AMD64/fenz                                            | 0m30.39s   || -0m01.17s  | -3.88%    
+0m28.78s   | Compilers/Z/Syntax/Equality                                             | 0m30.18s   || -0m01.39s  | -4.63%    
+0m26.60s   | Arithmetic/MontgomeryReduction/WordByWord/Abstract/Proofs               | 0m25.33s   || +0m01.27s  | +5.01%    
+0m20.13s   | LegacyArithmetic/Double/Proofs/Multiply                                 | 0m21.52s   || -0m01.39s  | -6.45%    
+0m20.09s   | Specific/X2448/Karatsuba/C64/Synthesis                                  | 0m21.36s   || -0m01.26s  | -5.94%    
+0m14.21s   | ─erewrite                                                             | 0m13.18s   || +0m01.03s  | +7.81%    
+0m11.83s   | ─rewrite                                                              | 0m13.28s   || -0m01.44s  | -10.91%   
+0m10.39s   | Compilers/Z/HexNotationConstants                                        | 0m09.37s   || +0m01.02s  | +10.88%   
+0m08.51s   | Compilers/Z/Bounds/Pipeline/Definition                                  | 0m09.89s   || -0m01.38s  | -13.95%   
+0m05.30s   | Specific/NISTP256/AMD128/fenzDisplay                                    | 0m03.57s   || +0m01.73s  | +48.45%   
+0m03.84s   | Compilers/Named/ContextProperties/Proper                                | 0m04.90s   || -0m01.06s  | -21.63%   
+   N/A     | Util/ZUtil/Stabilization                                                | 0m01.55s   || -0m01.55s  | -100.00%  
+1m14.78s   | Compilers/Z/ArithmeticSimplifierInterp                                  | 1m14.85s   || -0m00.06s  | -0.09%    
+1m11.18s   | Compilers/Z/ArithmeticSimplifierWf                                      | 1m11.01s   || +0m00.17s  | +0.23%    
+0m57.40s   | Specific/NISTP256/AMD128/femul                                          | 0m56.73s   || +0m00.67s  | +1.18%    
+0m51.52s   | Primitives/EdDSARepChange                                               | 0m51.42s   || +0m00.10s  | +0.19%    
+0m40.02s   | Curves/Edwards/XYZT/Basic                                               | 0m40.48s   || -0m00.45s  | -1.13%    
+0m35.38s   | Specific/X25519/C64/freeze                                              | 0m35.87s   || -0m00.48s  | -1.36%    
+0m33.52s   | Specific/X25519/C64/fesquare                                            | 0m34.24s   || -0m00.71s  | -2.10%    
+0m33.46s   | Specific/NISTP256/AMD64/feopp                                           | 0m33.45s   || +0m00.00s  | +0.02%    
+0m32.49s   | Compilers/Named/ContextProperties/SmartMap                              | 0m31.93s   || +0m00.56s  | +1.75%    
+0m31.03s   | Specific/NISTP256/AMD128/feadd                                          | 0m30.65s   || +0m00.38s  | +1.23%    
+0m31.03s   | Specific/NISTP256/AMD128/fesub                                          | 0m31.90s   || -0m00.86s  | -2.72%    
+0m30.20s   | Algebra/Field                                                           | 0m29.51s   || +0m00.68s  | +2.33%    
+0m27.89s   | Specific/NISTP256/AMD128/fenz                                           | 0m28.63s   || -0m00.73s  | -2.58%    
+0m27.70s   | Arithmetic/Saturated/AddSub                                             | 0m27.66s   || +0m00.03s  | +0.14%    
+0m26.34s   | Specific/X25519/C64/fesub                                               | 0m25.65s   || +0m00.69s  | +2.69%    
+0m25.50s   | Specific/NISTP256/AMD128/feopp                                          | 0m25.65s   || -0m00.14s  | -0.58%    
+0m24.23s   | Specific/X25519/C64/feadd                                               | 0m23.34s   || +0m00.89s  | +3.81%    
+0m23.45s   | Util/ZUtil                                                              | 0m23.55s   || -0m00.10s  | -0.42%    
+0m23.26s   | Primitives/MxDHRepChange                                                | 0m23.20s   || +0m00.06s  | +0.25%    
+0m23.17s   | Arithmetic/Saturated/MontgomeryAPI                                      | 0m22.82s   || +0m00.35s  | +1.53%    
+0m22.97s   | Arithmetic/MontgomeryReduction/Proofs                                   | 0m22.32s   || +0m00.64s  | +2.91%    
+0m22.45s   | Arithmetic/Saturated/Core                                               | 0m23.10s   || -0m00.65s  | -2.81%    
+0m20.06s   | Algebra/Ring                                                            | 0m19.58s   || +0m00.48s  | +2.45%    
+0m19.39s   | Compilers/Named/RegisterAssignInterp                                    | 0m18.54s   || +0m00.85s  | +4.58%    
+0m17.34s   | LegacyArithmetic/Double/Proofs/ShiftRightDoubleWordImmediate            | 0m16.75s   || +0m00.58s  | +3.52%    
+0m17.04s   | LegacyArithmetic/ArchitectureToZLikeProofs                              | 0m17.27s   || -0m00.23s  | -1.33%    
+0m16.47s   | Compilers/InlineConstAndOpWf                                            | 0m16.40s   || +0m00.07s  | +0.42%    
+0m16.37s   | Util/ZUtil/ZSimplify/Autogenerated                                      | 0m16.61s   || -0m00.23s  | -1.44%    
+0m15.68s   | Specific/NISTP256/AMD64/Synthesis                                       | 0m14.98s   || +0m00.69s  | +4.67%    
+0m15.68s   | Util/ZUtil/Modulo                                                       | 0m16.29s   || -0m00.60s  | -3.74%    
+0m15.56s   | LegacyArithmetic/Double/Proofs/SpreadLeftImmediate                      | 0m15.72s   || -0m00.16s  | -1.01%    
+0m15.36s   | Compilers/Z/CNotations                                                  | 0m16.32s   || -0m00.96s  | -5.88%    
+0m14.57s   | Compilers/InlineWf                                                      | 0m14.35s   || +0m00.22s  | +1.53%    
+0m14.21s   | Arithmetic/Saturated/MulSplit                                           | 0m14.46s   || -0m00.25s  | -1.72%    
+0m13.70s   | Util/FixedWordSizesEquality                                             | 0m12.85s   || +0m00.84s  | +6.61%    
+0m13.31s   | Compilers/LinearizeWf                                                   | 0m13.72s   || -0m00.41s  | -2.98%    
+0m12.20s   | Specific/X25519/C64/Synthesis                                           | 0m12.42s   || -0m00.22s  | -1.77%    
+0m12.12s   | Curves/Edwards/Pre                                                      | 0m11.18s   || +0m00.93s  | +8.40%    
+0m11.40s   | LegacyArithmetic/Pow2BaseProofs                                         | 0m11.51s   || -0m00.10s  | -0.95%    
+0m10.93s   | Compilers/WfProofs                                                      | 0m11.27s   || -0m00.33s  | -3.01%    
+0m10.65s   | Util/ListUtil                                                           | 0m10.68s   || -0m00.02s  | -0.28%    
+0m10.12s   | Algebra/Field_test                                                      | 0m09.83s   || +0m00.28s  | +2.95%    
+0m09.43s   | Compilers/Named/CompileWf                                               | 0m09.79s   || -0m00.35s  | -3.67%    
+0m09.29s   | Util/ForLoop/Unrolling                                                  | 0m08.55s   || +0m00.73s  | +8.65%    
+0m09.27s   | Arithmetic/BarrettReduction/HAC                                         | 0m08.67s   || +0m00.59s  | +6.92%    
+0m09.27s   | Experiments/SimplyTypedArithmetic                                       | 0m09.48s   || -0m00.21s  | -2.21%    
+0m08.55s   | Curves/Montgomery/Affine                                                | 0m09.12s   || -0m00.56s  | -6.24%    
+0m08.37s   | Compilers/Z/BinaryNotationConstants                                     | 0m08.03s   || +0m00.33s  | +4.23%    
+0m08.31s   | LegacyArithmetic/InterfaceProofs                                        | 0m08.34s   || -0m00.02s  | -0.35%    
+0m07.96s   | Arithmetic/MontgomeryReduction/WordByWord/Proofs                        | 0m07.65s   || +0m00.30s  | +4.05%    
+0m07.48s   | Arithmetic/BarrettReduction/Generalized                                 | 0m07.21s   || +0m00.27s  | +3.74%    
+0m07.30s   | Compilers/InlineInterp                                                  | 0m06.86s   || +0m00.43s  | +6.41%    
+0m07.25s   | Arithmetic/ModularArithmeticTheorems                                    | 0m07.38s   || -0m00.12s  | -1.76%    
+0m07.25s   | Specific/Framework/ArithmeticSynthesis/Montgomery                       | 0m07.06s   || +0m00.19s  | +2.69%    
+0m07.10s   | Specific/NISTP256/AMD128/Synthesis                                      | 0m06.94s   || +0m00.15s  | +2.30%    
+0m07.08s   | LegacyArithmetic/ZBoundedZ                                              | 0m07.18s   || -0m00.09s  | -1.39%    
+0m06.97s   | Compilers/Z/ArithmeticSimplifier                                        | 0m07.22s   || -0m00.25s  | -3.46%    
+0m06.87s   | Compilers/EtaWf                                                         | 0m07.21s   || -0m00.33s  | -4.71%    
+0m06.87s   | Compilers/Named/ContextProperties                                       | 0m06.58s   || +0m00.29s  | +4.40%    
+0m06.60s   | Algebra/Group                                                           | 0m06.89s   || -0m00.29s  | -4.20%    
+0m06.53s   | Util/ZUtil/AddGetCarry                                                  | 0m06.60s   || -0m00.06s  | -1.06%    
+0m06.47s   | LegacyArithmetic/Double/Proofs/ShiftRight                               | 0m06.25s   || +0m00.21s  | +3.51%    
+0m06.14s   | Compilers/Z/Bounds/InterpretationLemmas/IsBoundedBy                     | 0m06.36s   || -0m00.22s  | -3.45%    
+0m05.94s   | LegacyArithmetic/Double/Proofs/ShiftLeft                                | 0m05.57s   || +0m00.37s  | +6.64%    
+0m05.80s   | Bedrock/Word                                                            | 0m05.63s   || +0m00.16s  | +3.01%    
+0m05.74s   | Spec/MontgomeryCurve                                                    | 0m05.39s   || +0m00.35s  | +6.49%    
+0m05.67s   | Coqprime/PocklingtonCertificat                                          | 0m05.34s   || +0m00.33s  | +6.17%    
+0m05.59s   | Compilers/Named/CompileInterp                                           | 0m06.09s   || -0m00.50s  | -8.21%    
+0m05.50s   | LegacyArithmetic/Double/Proofs/Decode                                   | 0m05.73s   || -0m00.23s  | -4.01%    
+0m05.36s   | LegacyArithmetic/BarretReduction                                        | 0m05.15s   || +0m00.20s  | +4.07%    
+0m05.32s   | Specific/NISTP256/FancyMachine256/Montgomery                            | 0m04.46s   || +0m00.86s  | +19.28%   
+0m05.20s   | Arithmetic/Saturated/Freeze                                             | 0m05.13s   || +0m00.07s  | +1.36%    
+0m04.99s   | Util/ForLoop/InvariantFramework                                         | 0m05.12s   || -0m00.12s  | -2.53%    
+0m04.98s   | Compilers/TestCase                                                      | 0m05.01s   || -0m00.02s  | -0.59%    
+0m04.93s   | Util/WordUtil                                                           | 0m04.75s   || +0m00.17s  | +3.78%    
+0m04.85s   | Compilers/CommonSubexpressionEliminationProperties                      | 0m04.98s   || -0m00.13s  | -2.61%    
+0m04.78s   | Specific/NISTP256/FancyMachine256/Barrett                               | 0m04.46s   || +0m00.32s  | +7.17%    
+0m04.77s   | Compilers/Z/RewriteAddToAdcInterp                                       | 0m04.78s   || -0m00.01s  | -0.20%    
+0m04.64s   | Compilers/Z/Bounds/Relax                                                | 0m04.68s   || -0m00.04s  | -0.85%    
+0m04.56s   | Specific/NISTP256/FancyMachine256/Core                                  | 0m04.31s   || +0m00.25s  | +5.80%    
+0m04.47s   | Compilers/WfReflective                                                  | 0m04.40s   || +0m00.06s  | +1.59%    
+0m04.43s   | Specific/Framework/ArithmeticSynthesis/Defaults                         | 0m04.17s   || +0m00.25s  | +6.23%    
+0m04.35s   | Compilers/Named/NameUtilProperties                                      | 0m04.70s   || -0m00.35s  | -7.44%    
+0m04.04s   | LegacyArithmetic/MontgomeryReduction                                    | 0m03.76s   || +0m00.28s  | +7.44%    
+0m03.77s   | Spec/WeierstrassCurve                                                   | 0m03.52s   || +0m00.25s  | +7.10%    
+0m03.74s   | Arithmetic/BarrettReduction/Wikipedia                                   | 0m03.75s   || -0m00.00s  | -0.26%    
+0m03.54s   | Compilers/Z/JavaNotations                                               | 0m03.57s   || -0m00.02s  | -0.84%    
+0m03.54s   | Util/Tuple                                                              | 0m03.32s   || +0m00.22s  | +6.62%    
+0m03.53s   | Compilers/Named/InterpretToPHOASWf                                      | 0m03.23s   || +0m00.29s  | +9.28%    
+0m03.45s   | Compilers/Named/WfFromUnit                                              | 0m03.78s   || -0m00.32s  | -8.73%    
+0m03.44s   | Arithmetic/CoreUnfolder                                                 | 0m03.42s   || +0m00.02s  | +0.58%    
+0m03.29s   | Specific/Framework/OutputType                                           | 0m03.43s   || -0m00.14s  | -4.08%    
+0m03.25s   | ─assert                                                               | 0m02.97s   || +0m00.27s  | +9.42%    
+0m03.16s   | Arithmetic/PrimeFieldTheorems                                           | 0m03.24s   || -0m00.08s  | -2.46%    
+0m03.11s   | Compilers/Relations                                                     | 0m02.86s   || +0m00.25s  | +8.74%    
+0m03.06s   | Util/ZUtil/Quot                                                         | 0m03.01s   || +0m00.05s  | +1.66%    
+0m02.90s   | Compilers/LinearizeInterp                                               | 0m02.40s   || +0m00.50s  | +20.83%   
+0m02.89s   | Coqprime/Pocklington                                                    | 0m02.62s   || +0m00.27s  | +10.30%   
+0m02.80s   | Util/NatUtil                                                            | 0m02.74s   || +0m00.05s  | +2.18%    
+0m02.79s   | Specific/Framework/ArithmeticSynthesis/Base                             | 0m02.60s   || +0m00.18s  | +7.30%    
+0m02.75s   | Curves/Edwards/XYZT/Precomputed                                         | 0m02.84s   || -0m00.08s  | -3.16%    
+0m02.69s   | Algebra/ScalarMult                                                      | 0m02.61s   || +0m00.08s  | +3.06%    
+0m02.68s   | Coqprime/Pmod                                                           | 0m02.64s   || +0m00.04s  | +1.51%    
+0m02.51s   | Arithmetic/Saturated/CoreUnfolder                                       | 0m02.23s   || +0m00.27s  | +12.55%   
+0m02.49s   | Specific/Framework/ArithmeticSynthesis/Karatsuba                        | 0m02.84s   || -0m00.34s  | -12.32%   
+0m02.49s   | Util/PartiallyReifiedProp                                               | 0m02.28s   || +0m00.21s  | +9.21%    
+0m02.47s   | Experiments/Loops                                                       | 0m02.48s   || -0m00.00s  | -0.40%    
+0m02.39s   | Compilers/MultiSizeTest                                                 | 0m01.92s   || +0m00.47s  | +24.47%   
+0m02.39s   | Util/ZUtil/Pow2Mod                                                      | 0m02.41s   || -0m00.02s  | -0.82%    
+0m02.30s   | Compilers/Z/RewriteAddToAdcWf                                           | 0m02.26s   || +0m00.04s  | +1.76%    
+0m02.29s   | Specific/Framework/ReificationTypes                                     | 0m01.90s   || +0m00.39s  | +20.52%   
+0m02.25s   | Curves/Montgomery/AffineInstances                                       | 0m02.05s   || +0m00.20s  | +9.75%    
+0m02.24s   | LegacyArithmetic/Double/Proofs/LoadImmediate                            | 0m02.27s   || -0m00.02s  | -1.32%    
+0m02.23s   | LegacyArithmetic/Double/Proofs/BitwiseOr                                | 0m02.17s   || +0m00.06s  | +2.76%    
+0m02.22s   | Arithmetic/Saturated/UniformWeight                                      | 0m01.87s   || +0m00.35s  | +18.71%   
+0m02.21s   | Coqprime/EGroup                                                         | 0m02.13s   || +0m00.08s  | +3.75%    
+0m02.15s   | Compilers/Named/InterpretToPHOASInterp                                  | 0m02.44s   || -0m00.29s  | -11.88%   
+0m02.14s   | Algebra/IntegralDomain                                                  | 0m01.89s   || +0m00.25s  | +13.22%   
+0m02.07s   | Util/NumTheoryUtil                                                      | 0m02.05s   || +0m00.02s  | +0.97%    
+0m02.05s   | Util/ZUtil/Div                                                          | 0m01.77s   || +0m00.27s  | +15.81%   
+0m02.03s   | Coqprime/LucasLehmer                                                    | 0m02.04s   || -0m00.01s  | -0.49%    
+0m02.01s   | Coqprime/ZCAux                                                          | 0m01.97s   || +0m00.03s  | +2.03%    
+0m01.97s   | Specific/Framework/SynthesisFramework                                   | 0m01.97s   || +0m00.00s  | +0.00%    
+0m01.93s   | Arithmetic/Saturated/WrappersUnfolder                                   | 0m02.02s   || -0m00.09s  | -4.45%    
+0m01.93s   | Compilers/InlineConstAndOpInterp                                        | 0m01.52s   || +0m00.40s  | +26.97%   
+0m01.89s   | Compilers/Z/Syntax/Util                                                 | 0m01.75s   || +0m00.13s  | +7.99%    
+0m01.88s   | Compilers/Named/AListContext                                            | 0m01.78s   || +0m00.09s  | +5.61%    
+0m01.88s   | Compilers/Named/CompileProperties                                       | 0m01.74s   || +0m00.13s  | +8.04%    
+0m01.82s   | Arithmetic/Saturated/MulSplitUnfolder                                   | 0m01.77s   || +0m00.05s  | +2.82%    
+0m01.80s   | Compilers/Z/Bounds/Pipeline/ReflectiveTactics                           | 0m01.80s   || +0m00.00s  | +0.00%    
+0m01.79s   | Compilers/Z/CommonSubexpressionElimination                              | 0m02.57s   || -0m00.77s  | -30.35%   
+0m01.76s   | Specific/X25519/C32/CurveParameters                                     | 0m01.86s   || -0m00.10s  | -5.37%    
+0m01.74s   | Compilers/WfInversion                                                   | 0m02.02s   || -0m00.28s  | -13.86%   
+0m01.73s   | LegacyArithmetic/BaseSystemProofs                                       | 0m01.74s   || -0m00.01s  | -0.57%    
+0m01.73s   | Specific/Framework/ArithmeticSynthesis/Freeze                           | 0m01.88s   || -0m00.14s  | -7.97%    
+0m01.69s   | Compilers/Named/InterpSideConditionsInterp                              | 0m01.67s   || +0m00.02s  | +1.19%    
+0m01.66s   | Compilers/Named/FMapContext                                             | 0m01.82s   || -0m00.16s  | -8.79%    
+0m01.64s   | Compilers/InterpByIsoProofs                                             | 0m01.90s   || -0m00.26s  | -13.68%   
+0m01.64s   | Compilers/MapCastByDeBruijnInterp                                       | 0m01.80s   || -0m00.16s  | -8.88%    
+0m01.62s   | Coqprime/Root                                                           | 0m01.33s   || +0m00.29s  | +21.80%   
+0m01.56s   | Arithmetic/Saturated/FreezeUnfolder                                     | 0m01.41s   || +0m00.15s  | +10.63%   
+0m01.56s   | Specific/Framework/ReificationTypesPackage                              | 0m01.82s   || -0m00.26s  | -14.28%   
+0m01.53s   | Arithmetic/Saturated/Wrappers                                           | 0m01.40s   || +0m00.13s  | +9.28%    
+0m01.53s   | Specific/Framework/IntegrationTestTemporaryMiscCommon                   | 0m01.61s   || -0m00.08s  | -4.96%    
+0m01.51s   | Specific/Framework/MontgomeryReificationTypes                           | 0m01.60s   || -0m00.09s  | -5.62%    
+0m01.50s   | Arithmetic/MontgomeryReduction/WordByWord/Definition                    | 0m01.74s   || -0m00.24s  | -13.79%   
+0m01.50s   | Util/CPSUtil                                                            | 0m01.33s   || +0m00.16s  | +12.78%   
+0m01.49s   | Util/ZUtil/Testbit                                                      | 0m01.72s   || -0m00.23s  | -13.37%   
+0m01.48s   | Specific/Framework/ArithmeticSynthesis/LadderstepPackage                | 0m01.62s   || -0m00.14s  | -8.64%    
+0m01.48s   | Specific/Framework/ArithmeticSynthesis/SquareFromMul                    | 0m01.39s   || +0m00.09s  | +6.47%    
+0m01.46s   | Compilers/CommonSubexpressionEliminationInterp                          | 0m01.92s   || -0m00.46s  | -23.95%   
+0m01.45s   | Specific/Framework/ArithmeticSynthesis/FreezePackage                    | 0m01.53s   || -0m00.08s  | -5.22%    
+0m01.45s   | Specific/Framework/IntegrationTestDisplayCommon                         | 0m01.42s   || +0m00.03s  | +2.11%    
+0m01.44s   | Specific/Framework/ArithmeticSynthesis/DefaultsPackage                  | 0m01.49s   || -0m00.05s  | -3.35%    
+0m01.44s   | Specific/Framework/MontgomeryReificationTypesPackage                    | 0m01.35s   || +0m00.08s  | +6.66%    
+0m01.43s   | Coqprime/ZSum                                                           | 0m01.41s   || +0m00.02s  | +1.41%    
+0m01.43s   | Util/QUtil                                                              | 0m01.40s   || +0m00.03s  | +2.14%    
+0m01.42s   | Specific/Framework/ArithmeticSynthesis/Ladderstep                       | 0m01.41s   || +0m00.01s  | +0.70%    
+0m01.41s   | Arithmetic/Saturated/UniformWeightInstances                             | 0m01.53s   || -0m00.12s  | -7.84%    
+0m01.41s   | Specific/Framework/ArithmeticSynthesis/BasePackage                      | 0m01.60s   || -0m00.19s  | -11.87%   
+0m01.41s   | Specific/Framework/ArithmeticSynthesis/HelperTactics                    | 0m01.47s   || -0m00.06s  | -4.08%    
+0m01.40s   | Specific/Framework/ArithmeticSynthesis/MontgomeryPackage                | 0m01.33s   || +0m00.06s  | +5.26%    
+0m01.39s   | Compilers/SmartMap                                                      | 0m01.33s   || +0m00.05s  | +4.51%    
+0m01.39s   | Specific/Framework/ArithmeticSynthesis/KaratsubaPackage                 | 0m01.26s   || +0m00.12s  | +10.31%   
+0m01.38s   | Compilers/Z/Bounds/Pipeline                                             | 0m01.36s   || +0m00.01s  | +1.47%    
+0m01.37s   | Compilers/CommonSubexpressionElimination                                | 0m01.27s   || +0m00.10s  | +7.87%    
+0m01.36s   | LegacyArithmetic/Interface                                              | 0m01.43s   || -0m00.06s  | -4.89%    
+0m01.35s   | LegacyArithmetic/Double/Proofs/SelectConditional                        | 0m01.32s   || +0m00.03s  | +2.27%    
+0m01.32s   | Coqprime/Cyclic                                                         | 0m01.28s   || +0m00.04s  | +3.12%    
+0m01.31s   | Coqprime/ZCmisc                                                         | 0m01.25s   || +0m00.06s  | +4.80%    
+0m01.30s   | Coqprime/PGroup                                                         | 0m01.35s   || -0m00.05s  | -3.70%    
+0m01.29s   | Compilers/Named/WfInterp                                                | 0m01.34s   || -0m00.05s  | -3.73%    
+0m01.29s   | Util/ZUtil/Modulo/PullPush                                              | 0m01.19s   || +0m00.10s  | +8.40%    
+0m01.28s   | Compilers/MapBaseTypeWf                                                 | 0m01.31s   || -0m00.03s  | -2.29%    
+0m01.28s   | Util/Decidable                                                          | 0m01.26s   || +0m00.02s  | +1.58%    
+0m01.25s   | Compilers/Z/MapCastByDeBruijnInterp                                     | 0m01.08s   || +0m00.16s  | +15.74%   
+0m01.21s   | Spec/CompleteEdwardsCurve                                               | 0m01.32s   || -0m00.11s  | -8.33%    
+0m01.21s   | Util/NUtil                                                              | 0m01.12s   || +0m00.08s  | +8.03%    
+0m01.20s   | Curves/Weierstrass/Affine                                               | 0m01.33s   || -0m00.13s  | -9.77%    
+0m01.20s   | LegacyArithmetic/Double/Core                                            | 0m01.24s   || -0m00.04s  | -3.22%    
+0m01.19s   | Compilers/WfReflectiveGen                                               | 0m01.20s   || -0m00.01s  | -0.83%    
+0m01.16s   | Compilers/Z/Bounds/MapCastByDeBruijnInterp                              | 0m01.20s   || -0m00.04s  | -3.33%    
+0m01.15s   | Compilers/Z/Named/RewriteAddToAdc                                       | 0m01.26s   || -0m00.11s  | -8.73%    
+0m01.14s   | Util/HList                                                              | 0m01.00s   || +0m00.13s  | +13.99%   
+0m01.12s   | Compilers/MapCastByDeBruijnWf                                           | 0m01.44s   || -0m00.31s  | -22.22%   
+0m01.12s   | Compilers/Z/Bounds/InterpretationLemmas/Tactics                         | 0m01.03s   || +0m00.09s  | +8.73%    
+0m01.12s   | Compilers/Z/Reify                                                       | 0m01.28s   || -0m00.15s  | -12.49%   
+0m01.11s   | Arithmetic/ModularArithmeticPre                                         | 0m01.05s   || +0m00.06s  | +5.71%    
+0m01.11s   | Compilers/Z/Bounds/MapCastByDeBruijnWf                                  | 0m01.15s   || -0m00.03s  | -3.47%    
+0m01.11s   | Compilers/Z/Syntax                                                      | 0m00.97s   || +0m00.14s  | +14.43%   
+0m01.09s   | ─apply                                                                | 0m01.08s   || +0m00.01s  | +0.92%    
+0m01.07s   | Compilers/InterpWf                                                      | 0m00.96s   || +0m00.11s  | +11.45%   
+0m01.07s   | Curves/Montgomery/XZ                                                    | 0m01.41s   || -0m00.33s  | -24.11%   
+0m01.05s   | Compilers/Z/Bounds/Pipeline/Glue                                        | 0m01.22s   || -0m00.16s  | -13.93%   
+0m01.05s   | Compilers/Z/RewriteAddToAdc                                             | 0m00.78s   || +0m00.27s  | +34.61%   
+0m01.05s   | Util/ZBounded                                                           | 0m01.01s   || +0m00.04s  | +3.96%    
+0m01.04s   | Algebra/Nsatz                                                           | 0m00.91s   || +0m00.13s  | +14.28%   
+0m01.04s   | Compilers/Z/InlineConstAndOpByRewrite                                   | 0m00.94s   || +0m00.10s  | +10.63%   
+0m01.03s   | Spec/EdDSA                                                              | 0m01.00s   || +0m00.03s  | +3.00%    
+0m01.02s   | Compilers/Z/Bounds/RoundUpLemmas                                        | 0m01.11s   || -0m00.09s  | -8.10%    
+0m01.02s   | Compilers/Z/CommonSubexpressionEliminationWf                            | 0m01.03s   || -0m00.01s  | -0.97%    
+0m01.00s   | Compilers/Z/Bounds/MapCastByDeBruijn                                    | 0m00.91s   || +0m00.08s  | +9.89%    
+0m01.00s   | Compilers/Z/MapCastByDeBruijnWf                                         | 0m01.07s   || -0m00.07s  | -6.54%    
+0m00.99s   | Compilers/GeneralizeVarInterp                                           | 0m01.19s   || -0m00.19s  | -16.80%   
+0m00.99s   | Compilers/InterpWfRel                                                   | 0m01.16s   || -0m00.16s  | -14.65%   
+0m00.99s   | Coqprime/Zp                                                             | 0m01.02s   || -0m00.03s  | -2.94%    
+0m00.97s   | Compilers/Z/ArithmeticSimplifierUtil                                    | 0m01.06s   || -0m00.09s  | -8.49%    
+0m00.97s   | LegacyArithmetic/ZBounded                                               | 0m01.13s   || -0m00.15s  | -14.15%   
+0m00.96s   | Compilers/InlineConstAndOpByRewriteWf                                   | 0m01.26s   || -0m00.30s  | -23.80%   
+0m00.96s   | Util/ForLoop/Tests                                                      | 0m01.08s   || -0m00.12s  | -11.11%   
+0m00.95s   | Compilers/ZExtended/MapBaseType                                         | 0m01.00s   || -0m00.05s  | -5.00%    
+0m00.95s   | LegacyArithmetic/BaseSystem                                             | 0m01.00s   || -0m00.05s  | -5.00%    
+0m00.95s   | Spec/ModularArithmetic                                                  | 0m00.86s   || +0m00.08s  | +10.46%   
+0m00.95s   | Util/Decidable/Decidable2Bool                                           | 0m01.16s   || -0m00.20s  | -18.10%   
+0m00.95s   | Util/ZUtil/Morphisms                                                    | 0m00.99s   || -0m00.04s  | -4.04%    
+0m00.93s   | Compilers/InputSyntax                                                   | 0m01.07s   || -0m00.14s  | -13.08%   
+0m00.93s   | Compilers/InterpProofs                                                  | 0m01.00s   || -0m00.06s  | -6.99%    
+0m00.93s   | Compilers/Z/Inline                                                      | 0m01.06s   || -0m00.13s  | -12.26%   
+0m00.92s   | Compilers/GeneralizeVarWf                                               | 0m01.34s   || -0m00.42s  | -31.34%   
+0m00.92s   | Compilers/Z/InlineConstAndOp                                            | 0m00.95s   || -0m00.02s  | -3.15%    
+0m00.92s   | Compilers/Z/InlineInterp                                                | 0m01.06s   || -0m00.14s  | -13.20%   
+0m00.92s   | Compilers/Z/InlineWf                                                    | 0m00.92s   || +0m00.00s  | +0.00%    
+0m00.91s   | Compilers/Named/DeadCodeEliminationInterp                               | 0m00.99s   || -0m00.07s  | -8.08%    
+0m00.90s   | Compilers/Z/CommonSubexpressionEliminationInterp                        | 0m00.99s   || -0m00.08s  | -9.09%    
+0m00.90s   | Compilers/Z/InlineConstAndOpWf                                          | 0m00.90s   || +0m00.00s  | +0.00%    
+0m00.90s   | LegacyArithmetic/Double/Proofs/ShiftLeftRightTactic                     | 0m01.00s   || -0m00.09s  | -9.99%    
+0m00.89s   | Compilers/Z/FoldTypes                                                   | 0m01.23s   || -0m00.34s  | -27.64%   
+0m00.89s   | Specific/X25519/C64/CurveParameters                                     | 0m00.82s   || +0m00.07s  | +8.53%    
+0m00.88s   | Compilers/Reify                                                         | 0m00.81s   || +0m00.06s  | +8.64%    
+0m00.88s   | Util/ZUtil/CPS                                                          | 0m00.88s   || +0m00.00s  | +0.00%    
+0m00.87s   | Compilers/Named/WeakListContext                                         | 0m00.88s   || -0m00.01s  | -1.13%    
+0m00.87s   | Compilers/Z/Bounds/Interpretation                                       | 0m00.97s   || -0m00.09s  | -10.30%   
+0m00.86s   | Compilers/Z/InlineConstAndOpByRewriteWf                                 | 0m00.81s   || +0m00.04s  | +6.17%    
+0m00.86s   | Compilers/ZExtended/Syntax                                              | 0m00.83s   || +0m00.03s  | +3.61%    
+0m00.85s   | Util/ZUtil/EquivModulo                                                  | 0m00.80s   || +0m00.04s  | +6.24%    
+0m00.85s   | Util/ZUtil/ZSimplify/Simple                                             | 0m00.74s   || +0m00.10s  | +14.86%   
+0m00.84s   | Compilers/InlineConstAndOpByRewriteInterp                               | 0m00.91s   || -0m00.07s  | -7.69%    
+0m00.84s   | Compilers/Named/PositiveContext/DefaultsProperties                      | 0m00.81s   || +0m00.02s  | +3.70%    
+0m00.84s   | Compilers/Z/InlineConstAndOpByRewriteInterp                             | 0m00.88s   || -0m00.04s  | -4.54%    
+0m00.84s   | Compilers/Z/InterpSideConditions                                        | 0m00.78s   || +0m00.05s  | +7.69%    
+0m00.84s   | Util/ZUtil/Tactics/RewriteModSmall                                      | 0m00.70s   || +0m00.14s  | +20.00%   
+0m00.83s   | Compilers/Z/InlineConstAndOpInterp                                      | 0m00.98s   || -0m00.15s  | -15.30%   
+0m00.83s   | Specific/Framework/CurveParameters                                      | 0m00.75s   || +0m00.07s  | +10.66%   
+0m00.83s   | Util/ZRange                                                             | 0m00.88s   || -0m00.05s  | -5.68%    
+0m00.81s   | Compilers/Z/GeneralizeVarWf                                             | 0m01.03s   || -0m00.21s  | -21.35%   
+0m00.81s   | Specific/Framework/RawCurveParameters                                   | 0m00.70s   || +0m00.11s  | +15.71%   
+0m00.80s   | Coqprime/Permutation                                                    | 0m00.82s   || -0m00.01s  | -2.43%    
+0m00.79s   | Compilers/InterpRewriting                                               | 0m01.05s   || -0m00.26s  | -24.76%   
+0m00.79s   | Util/ZUtil/Peano                                                        | 0m00.95s   || -0m00.15s  | -16.84%   
+0m00.78s   | Arithmetic/MontgomeryReduction/Definition                               | 0m00.93s   || -0m00.15s  | -16.12%   
+0m00.77s   | Compilers/Z/GeneralizeVarInterp                                         | 0m01.19s   || -0m00.41s  | -35.29%   
+0m00.77s   | LegacyArithmetic/Pow2Base                                               | 0m00.92s   || -0m00.15s  | -16.30%   
+0m00.76s   | Compilers/Z/MapCastByDeBruijn                                           | 0m00.87s   || -0m00.10s  | -12.64%   
+0m00.76s   | Specific/Framework/CurveParametersPackage                               | 0m00.62s   || +0m00.14s  | +22.58%   
+0m00.76s   | Specific/NISTP256/AMD128/CurveParameters                                | 0m00.63s   || +0m00.13s  | +20.63%   
+0m00.76s   | Util/AdditionChainExponentiation                                        | 0m00.86s   || -0m00.09s  | -11.62%   
+0m00.75s   | Coqprime/UList                                                          | 0m00.69s   || +0m00.06s  | +8.69%    
+0m00.74s   | Compilers/InlineConstAndOp                                              | 0m00.80s   || -0m00.06s  | -7.50%    
+0m00.74s   | Coqprime/Lagrange                                                       | 0m00.67s   || +0m00.06s  | +10.44%   
+0m00.74s   | Specific/Framework/IntegrationTestDisplayCommonTactics                  | 0m00.80s   || -0m00.06s  | -7.50%    
+0m00.74s   | Specific/X2448/Karatsuba/C64/CurveParameters                            | 0m00.64s   || +0m00.09s  | +15.62%   
+0m00.73s   | Compilers/Named/RegisterAssign                                          | 0m00.68s   || +0m00.04s  | +7.35%    
+0m00.73s   | Compilers/Z/GeneralizeVar                                               | 0m00.63s   || +0m00.09s  | +15.87%   
+0m00.73s   | Coqprime/ZProgression                                                   | 0m00.61s   || +0m00.12s  | +19.67%   
+0m00.72s   | Compilers/GeneralizeVar                                                 | 0m00.69s   || +0m00.03s  | +4.34%    
+0m00.72s   | Compilers/Z/Bounds/Pipeline/OutputType                                  | 0m00.70s   || +0m00.02s  | +2.85%    
+0m00.72s   | Compilers/Z/OpInversion                                                 | 0m00.68s   || +0m00.03s  | +5.88%    
+0m00.72s   | Specific/NISTP256/AMD64/CurveParameters                                 | 0m00.63s   || +0m00.08s  | +14.28%   
+0m00.72s   | Util/BoundedWord                                                        | 0m00.71s   || +0m00.01s  | +1.40%    
+0m00.70s   | Compilers/FoldTypes                                                     | 0m00.63s   || +0m00.06s  | +11.11%   
+0m00.70s   | Compilers/InlineConstAndOpByRewrite                                     | 0m00.56s   || +0m00.13s  | +24.99%   
+0m00.70s   | Compilers/Named/PositiveContext                                         | 0m00.71s   || -0m00.01s  | -1.40%    
+0m00.70s   | Compilers/ZExtended/Syntax/Util                                         | 0m00.70s   || +0m00.00s  | +0.00%    
+0m00.70s   | Coqprime/IGroup                                                         | 0m00.77s   || -0m00.07s  | -9.09%    
+0m00.70s   | Util/FixedWordSizes                                                     | 0m00.64s   || +0m00.05s  | +9.37%    
+0m00.70s   | Util/ZUtil/Hints/PullPush                                               | 0m00.69s   || +0m00.01s  | +1.44%    
+0m00.70s   | Util/ZUtil/Zselect                                                      | 0m00.53s   || +0m00.16s  | +32.07%   
+0m00.69s   | Algebra/Monoid                                                          | 0m00.78s   || -0m00.09s  | -11.53%   
+0m00.69s   | Compilers/Inline                                                        | 0m00.64s   || +0m00.04s  | +7.81%    
+0m00.69s   | Compilers/Named/ExprInversion                                           | 0m00.68s   || +0m00.00s  | +1.47%    
+0m00.69s   | Compilers/Named/InterpretToPHOAS                                        | 0m00.66s   || +0m00.02s  | +4.54%    
+0m00.69s   | Compilers/Named/MapType                                                 | 0m00.65s   || +0m00.03s  | +6.15%    
+0m00.69s   | Compilers/StripExpr                                                     | 0m00.67s   || +0m00.01s  | +2.98%    
+0m00.69s   | Compilers/Z/Named/DeadCodeEliminationInterp                             | 0m00.65s   || +0m00.03s  | +6.15%    
+0m00.68s   | Compilers/CommonSubexpressionEliminationDenote                          | 0m00.66s   || +0m00.02s  | +3.03%    
+0m00.68s   | Compilers/Named/Compile                                                 | 0m00.64s   || +0m00.04s  | +6.25%    
+0m00.67s   | Compilers/Named/DeadCodeElimination                                     | 0m00.65s   || +0m00.02s  | +3.07%    
+0m00.67s   | Compilers/ZExtended/InlineConstAndOpByRewriteWf                         | 0m00.72s   || -0m00.04s  | -6.94%    
+0m00.67s   | Coqprime/ListAux                                                        | 0m00.66s   || +0m00.01s  | +1.51%    
+0m00.67s   | Util/Factorize                                                          | 0m00.66s   || +0m00.01s  | +1.51%    
+0m00.67s   | Util/ZUtil/Hints                                                        | 0m00.59s   || +0m00.08s  | +13.55%   
+0m00.67s   | Util/ZUtil/Tactics/DivModToQuotRem                                      | 0m00.69s   || -0m00.01s  | -2.89%    
+0m00.67s   | Util/ZUtil/Tactics/SimplifyFractionsLe                                  | 0m00.74s   || -0m00.06s  | -9.45%    
+0m00.67s   | Util/ZUtil/Tactics/Ztestbit                                             | 0m00.61s   || +0m00.06s  | +9.83%    
+0m00.66s   | Compilers/Linearize                                                     | 0m00.65s   || +0m00.01s  | +1.53%    
+0m00.66s   | Compilers/Named/ContextOn                                               | 0m00.52s   || +0m00.14s  | +26.92%   
+0m00.66s   | Compilers/Named/MapCast                                                 | 0m00.66s   || +0m00.00s  | +0.00%    
+0m00.66s   | Compilers/Named/Wf                                                      | 0m00.57s   || +0m00.09s  | +15.78%   
+0m00.66s   | Compilers/Tuple                                                         | 0m00.66s   || +0m00.00s  | +0.00%    
+0m00.66s   | Compilers/ZExtended/InlineConstAndOpByRewrite                           | 0m00.65s   || +0m00.01s  | +1.53%    
+0m00.66s   | Compilers/ZExtended/InlineConstAndOpInterp                              | 0m00.60s   || +0m00.06s  | +10.00%   
+0m00.66s   | Util/ZUtil/Sgn                                                          | 0m00.65s   || +0m00.01s  | +1.53%    
+0m00.65s   | Bedrock/Nomega                                                          | 0m00.60s   || +0m00.05s  | +8.33%    
+0m00.65s   | Compilers/ExprInversion                                                 | 0m00.78s   || -0m00.13s  | -16.66%   
+0m00.65s   | Compilers/MapCastByDeBruijn                                             | 0m00.71s   || -0m00.05s  | -8.45%    
+0m00.65s   | Compilers/Named/Syntax                                                  | 0m00.63s   || +0m00.02s  | +3.17%    
+0m00.65s   | Compilers/Z/Named/DeadCodeElimination                                   | 0m00.77s   || -0m00.12s  | -15.58%   
+0m00.65s   | Compilers/ZExtended/InlineConstAndOp                                    | 0m00.83s   || -0m00.17s  | -21.68%   
+0m00.65s   | Compilers/ZExtended/InlineConstAndOpByRewriteInterp                     | 0m00.66s   || -0m00.01s  | -1.51%    
+0m00.65s   | Util/Sum                                                                | 0m00.75s   || -0m00.09s  | -13.33%   
+0m00.65s   | Util/ZUtil/Tactics                                                      | 0m00.63s   || +0m00.02s  | +3.17%    
+0m00.65s   | Util/ZUtil/Tactics/LtbToLt                                              | 0m00.62s   || +0m00.03s  | +4.83%    
+0m00.65s   | Util/ZUtil/Tactics/PeelLe                                               | 0m00.62s   || +0m00.03s  | +4.83%    
+0m00.64s   | Compilers/Z/TypeInversion                                               | 0m00.65s   || -0m00.01s  | -1.53%    
+0m00.63s   | Compilers/Named/ContextDefinitions                                      | 0m00.57s   || +0m00.06s  | +10.52%   
+0m00.63s   | Compilers/Named/EstablishLiveness                                       | 0m00.71s   || -0m00.07s  | -11.26%   
+0m00.63s   | Compilers/Named/InterpSideConditions                                    | 0m00.65s   || -0m00.02s  | -3.07%    
+0m00.63s   | Compilers/Named/PositiveContext/Defaults                                | 0m00.84s   || -0m00.20s  | -24.99%   
+0m00.63s   | Compilers/ZExtended/InlineConstAndOpWf                                  | 0m00.63s   || +0m00.00s  | +0.00%    
+0m00.63s   | Util/ZUtil/Hints/Core                                                   | 0m00.71s   || -0m00.07s  | -11.26%   
+0m00.62s   | Util/ZUtil/Tactics/ZeroBounds                                           | 0m00.62s   || +0m00.00s  | +0.00%    
+0m00.61s   | Compilers/Named/Context                                                 | 0m00.57s   || +0m00.04s  | +7.01%    
+0m00.61s   | Compilers/Named/CountLets                                               | 0m00.62s   || -0m00.01s  | -1.61%    
+0m00.61s   | Compilers/Named/IdContext                                               | 0m00.73s   || -0m00.12s  | -16.43%   
+0m00.60s   | Coqprime/Euler                                                          | 0m00.58s   || +0m00.02s  | +3.44%    
+0m00.60s   | Util/ZUtil/ZSimplify/Core                                               | 0m00.74s   || -0m00.14s  | -18.91%   
+0m00.59s   | Compilers/CountLets                                                     | 0m00.60s   || -0m00.01s  | -1.66%    
+0m00.59s   | Compilers/InterpByIso                                                   | 0m00.66s   || -0m00.07s  | -10.60%   
+0m00.59s   | Compilers/Named/SmartMap                                                | 0m00.66s   || -0m00.07s  | -10.60%   
+0m00.59s   | Util/ZUtil/MulSplit                                                     | 0m00.63s   || -0m00.04s  | -6.34%    
+0m00.58s   | Compilers/Named/ContextProperties/Tactics                               | 0m00.58s   || +0m00.00s  | +0.00%    
+0m00.58s   | Compilers/Named/GetNames                                                | 0m00.62s   || -0m00.04s  | -6.45%    
+0m00.58s   | Util/IdfunWithAlt                                                       | 0m00.65s   || -0m00.07s  | -10.76%   
+0m00.58s   | Util/ZUtil/Hints/ZArith                                                 | 0m00.71s   || -0m00.13s  | -18.30%   
+0m00.57s   | Coqprime/Iterator                                                       | 0m00.62s   || -0m00.05s  | -8.06%    
+0m00.57s   | Util/PointedProp                                                        | 0m00.36s   || +0m00.20s  | +58.33%   
+0m00.56s   | Compilers/FilterLive                                                    | 0m00.59s   || -0m00.02s  | -5.08%    
+0m00.56s   | Util/ZUtil/Tactics/PullPush/Modulo                                      | 0m00.73s   || -0m00.16s  | -23.28%   
+0m00.55s   | Compilers/MapBaseType                                                   | 0m00.65s   || -0m00.09s  | -15.38%   
+0m00.55s   | Util/ZUtil/Tactics/PullPush                                             | 0m00.55s   || +0m00.00s  | +0.00%    
+0m00.54s   | Arithmetic/MontgomeryReduction/WordByWord/Abstract/Dependent/Definition | 0m00.64s   || -0m00.09s  | -15.62%   
+0m00.54s   | Util/ZUtil/ZSimplify                                                    | 0m00.55s   || -0m00.01s  | -1.81%    
+0m00.53s   | Arithmetic/MontgomeryReduction/WordByWord/Abstract/Definition           | 0m00.60s   || -0m00.06s  | -11.66%   
+0m00.53s   | Util/ZUtil/Hints/Ztestbit                                               | 0m00.59s   || -0m00.05s  | -10.16%   
+0m00.53s   | Util/ZUtil/Tactics/LinearSubstitute                                     | 0m00.58s   || -0m00.04s  | -8.62%    
+0m00.53s   | Util/ZUtil/Z2Nat                                                        | 0m00.58s   || -0m00.04s  | -8.62%    
+0m00.52s   | Util/ZUtil/Tactics/PrimeBound                                           | 0m00.47s   || +0m00.05s  | +10.63%   
+0m00.51s   | Coqprime/FGroup                                                         | 0m00.44s   || +0m00.07s  | +15.90%   
+0m00.51s   | Util/ZUtil/Definitions                                                  | 0m00.64s   || -0m00.13s  | -20.31%   
+0m00.51s   | Util/ZUtil/Land                                                         | 0m00.61s   || -0m00.09s  | -16.39%   
+0m00.50s   | Util/ForLoop/Instances                                                  | 0m00.63s   || -0m00.13s  | -20.63%   
+0m00.49s   | Util/SideConditions/RingPackage                                         | 0m00.49s   || +0m00.00s  | +0.00%    
+0m00.49s   | Util/ZUtil/ModInv                                                       | 0m00.49s   || +0m00.00s  | +0.00%    
+0m00.48s   | Compilers/Equality                                                      | 0m00.57s   || -0m00.08s  | -15.78%   
+0m00.47s   | Compilers/EtaInterp                                                     | 0m00.60s   || -0m00.13s  | -21.66%   
+0m00.47s   | Util/SideConditions/ModInvPackage                                       | 0m00.53s   || -0m00.06s  | -11.32%   
+0m00.46s   | Algebra/Hierarchy                                                       | 0m00.63s   || -0m00.17s  | -26.98%   
+0m00.46s   | Util/ZUtil/Ge                                                           | 0m00.57s   || -0m00.10s  | -19.29%   
+0m00.44s   | Util/Decidable/Bool2Prop                                                | 0m00.39s   || +0m00.04s  | +12.82%   
+0m00.44s   | Util/ZUtil/Tactics/ReplaceNegWithPos                                    | 0m00.49s   || -0m00.04s  | -10.20%   
+0m00.43s   | Util/ZUtil/Tactics/DivideExistsMul                                      | 0m00.41s   || +0m00.02s  | +4.87%    
+0m00.41s   | Util/ForLoop                                                            | 0m00.41s   || +0m00.00s  | +0.00%    
+0m00.40s   | Coqprime/NatAux                                                         | 0m00.39s   || +0m00.01s  | +2.56%    
+0m00.40s   | Spec/MxDH                                                               | 0m00.43s   || -0m00.02s  | -6.97%    
+0m00.39s   | Util/ZUtil/Tactics/CompareToSgn                                         | 0m00.44s   || -0m00.04s  | -11.36%   
+0m00.38s   | Util/SideConditions/ReductionPackages                                   | 0m00.38s   || +0m00.00s  | +0.00%    
+0m00.37s   | Util/LetInMonad                                                         | 0m00.46s   || -0m00.09s  | -19.56%   
+0m00.37s   | Util/ZUtil/Notations                                                    | 0m00.33s   || +0m00.03s  | +12.12%   
+0m00.34s   | Util/SideConditions/Autosolve                                           | 0m00.54s   || -0m00.20s  | -37.03%   
+0m00.33s   | Util/Option                                                             | 0m00.35s   || -0m00.01s  | -5.71%    
+0m00.29s   | Compilers/RewriterWf                                                    | 0m00.24s   || +0m00.04s  | +20.83%   
+0m00.28s   | Compilers/InSet/TypeifyInterp                                           | 0m00.45s   || -0m00.17s  | -37.77%   
+0m00.25s   | Compilers/Wf                                                            | 0m00.27s   || -0m00.02s  | -7.40%    
+0m00.25s   | Util/Prod                                                               | 0m00.21s   || +0m00.04s  | +19.04%   
+0m00.24s   | Compilers/TypeInversion                                                 | 0m00.21s   || +0m00.03s  | +14.28%   
+0m00.21s   | Util/Sigma                                                              | 0m00.21s   || +0m00.00s  | +0.00%    
+0m00.21s   | Util/TagList                                                            | 0m00.20s   || +0m00.00s  | +4.99%    
+0m00.20s   | Compilers/Conversion                                                    |    N/A     || +0m00.20s  | ∞       
+0m00.20s   | Compilers/Named/NameUtil                                                | 0m00.22s   || -0m00.01s  | -9.09%    
+0m00.20s   | Util/ListUtil/Forall                                                    | 0m00.26s   || -0m00.06s  | -23.07%   
+0m00.20s   | Util/Relations                                                          | 0m00.20s   || +0m00.00s  | +0.00%    
+0m00.19s   | Util/ListUtil/FoldBool                                                  | 0m00.19s   || +0m00.00s  | +0.00%    
+0m00.18s   | Compilers/Syntax                                                        | 0m00.18s   || +0m00.00s  | +0.00%    
+0m00.18s   | Specific/Framework/Packages                                             | 0m00.24s   || -0m00.06s  | -25.00%   
+0m00.16s   | Compilers/InterpSideConditions                                          |    N/A     || +0m00.16s  | ∞       
+0m00.15s   | Compilers/Intros                                                        | 0m00.11s   || +0m00.03s  | +36.36%   
+0m00.15s   | Compilers/Map                                                           | 0m00.13s   || +0m00.01s  | +15.38%   
+0m00.14s   | Compilers/InSet/Syntax                                                  | 0m00.14s   || +0m00.00s  | +0.00%    
+0m00.14s   | Util/Bool                                                               | 0m00.19s   || -0m00.04s  | -26.31%   
+0m00.14s   | Util/Tower                                                              | 0m00.08s   || +0m00.06s  | +75.00%   
+0m00.13s   | Util/Equality                                                           | 0m00.21s   || -0m00.07s  | -38.09%   
+0m00.13s   | Util/Sigma/Lift                                                         |    N/A     || +0m00.13s  | ∞       
+0m00.12s   | Compilers/Eta                                                           |    N/A     || +0m00.12s  | ∞       
+0m00.12s   | Compilers/RewriterInterp                                                | 0m00.16s   || -0m00.04s  | -25.00%   
+0m00.12s   | LegacyArithmetic/VerdiTactics                                           | 0m00.15s   || -0m00.03s  | -20.00%   
+0m00.12s   | Util/LetIn                                                              | 0m00.10s   || +0m00.01s  | +19.99%   
+0m00.12s   | Util/Sumbool                                                            | 0m00.12s   || +0m00.00s  | +0.00%    
+0m00.12s   | Util/Tactics/CacheTerm                                                  | 0m00.10s   || +0m00.01s  | +19.99%   
+0m00.11s   | Compilers/InSet/Typeify                                                 | 0m00.09s   || +0m00.02s  | +22.22%   
+0m00.11s   | Compilers/Rewriter                                                      | 0m00.11s   || +0m00.00s  | +0.00%    
+0m00.11s   | Util/FixCoqMistakes                                                     | 0m00.09s   || +0m00.02s  | +22.22%   
+0m00.11s   | Util/HProp                                                              | 0m00.16s   || -0m00.05s  | -31.25%   
+0m00.11s   | Util/IffT                                                               | 0m00.11s   || +0m00.00s  | +0.00%    
+0m00.11s   | Util/Logic/ImplAnd                                                      | 0m00.09s   || +0m00.02s  | +22.22%   
+0m00.11s   | Util/Tactics                                                            | 0m00.15s   || -0m00.03s  | -26.66%   
+0m00.11s   | Util/Tactics/Not                                                        | 0m00.06s   || +0m00.05s  | +83.33%   
+0m00.10s   | Compilers/RenameBinders                                                 | 0m00.11s   || -0m00.00s  | -9.09%    
+0m00.10s   | Compilers/TypeUtil                                                      | 0m00.11s   || -0m00.00s  | -9.09%    
+0m00.10s   | Util/AutoRewrite                                                        | 0m00.08s   || +0m00.02s  | +25.00%   
+0m00.10s   | Util/Bool/IsTrue                                                        | 0m00.08s   || +0m00.02s  | +25.00%   
+0m00.10s   | Util/Curry                                                              | 0m00.09s   || +0m00.01s  | +11.11%   
+0m00.10s   | Util/Notations                                                          | 0m00.12s   || -0m00.01s  | -16.66%   
+0m00.10s   | Util/Tactics/BreakMatch                                                 | 0m00.10s   || +0m00.00s  | +0.00%    
+0m00.10s   | Util/Tactics/PoseTermWithName                                           | 0m00.09s   || +0m00.01s  | +11.11%   
+0m00.10s   | Util/Tactics/RewriteHyp                                                 | 0m00.09s   || +0m00.01s  | +11.11%   
+0m00.10s   | Util/Tactics/Test                                                       | 0m00.07s   || +0m00.03s  | +42.85%   
+0m00.09s   | Util/CPSNotations                                                       | 0m00.06s   || +0m00.03s  | +50.00%   
+0m00.09s   | Util/SideConditions/CorePackages                                        | 0m00.10s   || -0m00.01s  | -10.00%   
+0m00.09s   | Util/Sigma/Associativity                                                | 0m00.10s   || -0m00.01s  | -10.00%   
+0m00.09s   | Util/Tactics/ClearDuplicates                                            | 0m00.09s   || +0m00.00s  | +0.00%    
+0m00.09s   | Util/Tactics/ConvoyDestruct                                             | 0m00.06s   || +0m00.03s  | +50.00%   
+0m00.09s   | Util/Tactics/DebugPrint                                                 | 0m00.09s   || +0m00.00s  | +0.00%    
+0m00.09s   | Util/Tactics/DoWithHyp                                                  | 0m00.07s   || +0m00.01s  | +28.57%   
+0m00.09s   | Util/Tactics/ETransitivity                                              | 0m00.12s   || -0m00.03s  | -25.00%   
+0m00.09s   | Util/Tactics/Forward                                                    | 0m00.07s   || +0m00.01s  | +28.57%   
+0m00.09s   | Util/Tactics/GetGoal                                                    | 0m00.06s   || +0m00.03s  | +50.00%   
+0m00.09s   | Util/Tactics/OnSubterms                                                 | 0m00.07s   || +0m00.01s  | +28.57%   
+0m00.09s   | Util/Tactics/PrintContext                                               | 0m00.08s   || +0m00.00s  | +12.49%   
+0m00.09s   | Util/Tactics/Revert                                                     | 0m00.08s   || +0m00.00s  | +12.49%   
+0m00.09s   | Util/Tactics/RunTacticAsConstr                                          | 0m00.05s   || +0m00.03s  | +79.99%   
+0m00.09s   | Util/Tactics/SimplifyProjections                                        | 0m00.06s   || +0m00.03s  | +50.00%   
+0m00.09s   | Util/Tactics/UnifyAbstractReflexivity                                   | 0m00.10s   || -0m00.01s  | -10.00%   
+   N/A     | ─destruct                                                             | 0m00.09s   || -0m00.09s  | -100.00%  
+0m00.08s   | Util/DefaultedTypes                                                     | 0m00.11s   || -0m00.03s  | -27.27%   
+0m00.08s   | Util/GlobalSettings                                                     | 0m00.09s   || -0m00.00s  | -11.11%   
+0m00.08s   | Util/Logic                                                              | 0m00.10s   || -0m00.02s  | -20.00%   
+0m00.08s   | Util/Tactics/ClearbodyAll                                               | 0m00.08s   || +0m00.00s  | +0.00%    
+0m00.08s   | Util/Tactics/Contains                                                   | 0m00.07s   || +0m00.00s  | +14.28%   
+0m00.08s   | Util/Tactics/DestructHead                                               | 0m00.12s   || -0m00.03s  | -33.33%   
+0m00.08s   | Util/Tactics/DestructTrivial                                            | 0m00.09s   || -0m00.00s  | -11.11%   
+0m00.08s   | Util/Tactics/Head                                                       | 0m00.10s   || -0m00.02s  | -20.00%   
+0m00.08s   | Util/Tactics/MoveLetIn                                                  | 0m00.11s   || -0m00.03s  | -27.27%   
+0m00.08s   | Util/Tactics/SideConditionsBeforeToAfter                                | 0m00.10s   || -0m00.02s  | -20.00%   
+0m00.08s   | Util/Tactics/SpecializeBy                                               | 0m00.08s   || +0m00.00s  | +0.00%    
+0m00.08s   | Util/Tactics/SplitInContext                                             | 0m00.09s   || -0m00.00s  | -11.11%   
+0m00.08s   | Util/Tactics/TransparentAssert                                          | 0m00.10s   || -0m00.02s  | -20.00%   
+0m00.08s   | Util/Tactics/UniquePose                                                 | 0m00.06s   || +0m00.02s  | +33.33%   
+0m00.08s   | Util/Tactics/VM                                                         | 0m00.09s   || -0m00.00s  | -11.11%   
+0m00.08s   | Util/Unit                                                               | 0m00.09s   || -0m00.00s  | -11.11%   
+0m00.07s   | Util/ChangeInAll                                                        | 0m00.08s   || -0m00.00s  | -12.49%   
+0m00.07s   | Util/Isomorphism                                                        | 0m00.11s   || -0m00.03s  | -36.36%   
+0m00.07s   | Util/SideConditions/AdmitPackage                                        | 0m00.06s   || +0m00.01s  | +16.66%   
+0m00.07s   | Util/Sigma/MapProjections                                               | 0m00.06s   || +0m00.01s  | +16.66%   
+0m00.07s   | Util/Tactics/ChangeInAll                                                | 0m00.08s   || -0m00.00s  | -12.49%   
+0m00.07s   | Util/Tactics/ClearAll                                                   | 0m00.07s   || +0m00.00s  | +0.00%    
+0m00.07s   | Util/Tactics/DestructHyps                                               | 0m00.06s   || +0m00.01s  | +16.66%   
+0m00.07s   | Util/Tactics/ESpecialize                                                | 0m00.07s   || +0m00.00s  | +0.00%    
+0m00.07s   | Util/Tactics/SetEvars                                                   | 0m00.08s   || -0m00.00s  | -12.49%   
+0m00.07s   | Util/Tactics/SetoidSubst                                                | 0m00.10s   || -0m00.03s  | -30.00%   
+0m00.07s   | Util/Tactics/SimplifyRepeatedIfs                                        | 0m00.07s   || +0m00.00s  | +0.00%    
+0m00.07s   | Util/Tactics/SubstEvars                                                 | 0m00.08s   || -0m00.00s  | -12.49%   
+0m00.07s   | Util/Tactics/UnfoldArg                                                  | 0m00.11s   || -0m00.03s  | -36.36%   
+0m00.06s   | Util/Tactics/EvarExists                                                 | 0m00.10s   || -0m00.04s  | -40.00%   
+0m00.06s   | Util/Tactics/HeadUnderBinders                                           | 0m00.06s   || +0m00.00s  | +0.00%    
+0m00.06s   | Util/Tactics/SubstLet                                                   | 0m00.08s   || -0m00.02s  | -25.00%   
+0m00.05s   | Coqprime/Tactic                                                         | 0m00.03s   || +0m00.02s  | +66.66%   ```
+
+With `src/Specific/X25519/C64/ladderstepDisplay`, on v8.7:
+```
+real: 15.59, user: 15.12, sys: 0.38, mem: 872328 ko
+```
+On master:
+```
+real: 1751.85, user: 1726.15, sys: 9.41, mem: 2782940 ko
+```
+Perhaps the easiest one to bench will be
+```
+1m25.14s   | Specific/X25519/C64/fecarryDisplay  | 0m03.45s   || +1m21.68s  | +2367.82% 
+```
+Much afraid that a bisect is needed. I am not sure I understand what's the purpose of the `Check` thou.
+The notation uses tactics in terms to transform the identifier a bit; the `Check` prints out the resulting term, which is saved to a file.
+@ejgallego Do happen to have a bisect setup that supports bisecting on the max memory usage of Coq on a particular file in a particular development?
+I'd guess it's #914, at least for the printing issue.  I'm bisecting now.
+
+After that, I guess I'll bisect for the 20% increase in `src/Curves/Montgomery/AffineProofs` (which is indeed a big user of `abstract`; @ejgallego what had you asking about `abstract`?)
+```
+6m05.02s   | Curves/Montgomery/AffineProofs | 5m00.28s   || +1m04.74s  | +21.55%
+```
+It is not #914, if my manual tests were done correctly.  Still bisecting
+Bisect says that it's #873:
+
+e4a09fc480f512f54d5e7ba05d7e408dc5817a46 is the first bad commit
+commit e4a09fc480f512f54d5e7ba05d7e408dc5817a46
+Author: Hugo Herbelin <Hugo.Herbelin@inria.fr>
+Date:   Sat Jul 8 17:12:59 2017 +0200
+
+    Selecting which notation to print based on current stack of scope.
+
+    See discussion on coq-club starting on 23 August 2016.
+
+    An open question: what priority to give to "abbreviations"?
+
+:100644 100644 7a326c589aa149b6436d5bf6ddafaef43fb08586 76ff0f52c6f1eade37262d02e305f18d4a8b5cdb M      CHANGES
+:040000 040000 65c26e99ffd76d140251df049d1d129b2e9287f3 0abeafad689ddae93149dd74ee8606ebf57aa32b M      interp
+:040000 040000 6c44b940d41155e02a164829a677da8bd77cba33 4bdfb7f837b86a1ed260fc70f2abf14b7224af17 M      test-suite
+
+
+For both slowdowns? For abstract I was thinking of #6324
+No, only for printing.  I haven't looked at abstract yet.
+#873 indeed will slow down printing. Good catch, I was sloppy in not thinking of large printing contexts. I think the PR can be optimized as to avoid the slowdown.
+Yeah, I suspect that memoizing some relevant function (the scope sorting one?) would be enough to recover the lost time.
+We really need systematic performance testing, however I am at my max workload-wise and machine resources seem scare :( 
+I doubt it is #6324.  By "heavy use of abstract", I meant a couple dozen or a couple hundred times, and none of the use cases introduce new types / universes in the proof body (basically it's a lot of `abstract nsatz`)
+The profile diff for not printing:
+v8.7:
+```
+Finished transaction in 151.42 secs (21.211u,0.432s) (successful)
+total time:    256.328s
+
+ tactic                                   local  total   calls       max 
+────────────────────────────────────────┴──────┴──────┴───────┴─────────┘
+─fsatz ---------------------------------   0.0%  99.6%      24   27.940s
+─fsatz_prepare_hyps_on -----------------   0.0%  93.0%      24   26.371s
+─forward_nonzero -----------------------   0.0%  83.7%     388   23.805s
+─assert (H' : ~ eq x zero) by (clear H;    0.0%  83.7%     241   13.242s
+─solver_tac ----------------------------  64.3%  83.7%     241   13.242s
+─IntegralDomain.nsatz ------------------  53.7%  63.9%     265    3.880s
+─divisions_to_inverses -----------------   0.0%   8.5%      24    3.071s
+─rewrite ?Hierarchy.field_div_definition   7.7%   8.5%      24    3.071s
+─fsatz_solve_on ------------------------   0.0%   6.6%      24    1.568s
+─rewrite <- Nsatz.cring_sub_diag_iff in    3.7%   3.7%    2498    0.034s
+─split ---------------------------------   2.8%   2.8%    3337    1.949s
+─apply  (fun Haa refl cond =>   Integral   2.2%   2.2%     265    0.127s
+
+ tactic                                   local  total   calls       max 
+────────────────────────────────────────┴──────┴──────┴───────┴─────────┘
+─fsatz ---------------------------------   0.0%  99.6%      24   27.940s
+ ├─fsatz_prepare_hyps_on ---------------   0.0%  93.0%      24   26.371s
+ │ ├─forward_nonzero -------------------   0.0%  83.7%     364   23.805s
+ │ │└assert (H' : ~ eq x zero) by (clear   0.0%  83.7%     241   13.242s
+ │ │└solver_tac ------------------------  64.3%  83.7%     241   13.242s
+ │ │└IntegralDomain.nsatz --------------  48.2%  57.3%     241    3.880s
+ │ │ ├─rewrite <- Nsatz.cring_sub_diag_i   3.3%   3.3%    2257    0.033s
+ │ │ └─split ---------------------------   2.7%   2.7%    3044    1.949s
+ │ └─divisions_to_inverses -------------   0.0%   8.5%      24    3.071s
+ │  └rewrite ?Hierarchy.field_div_defini   7.7%   8.5%      24    3.071s
+ └─fsatz_solve_on ----------------------   0.0%   6.6%      24    1.568s
+  └IntegralDomain.nsatz ----------------   5.6%   6.6%      24    1.568s
+```
+master:
+```
+Finished transaction in 203.772 secs (24.994u,0.411s) (successful)
+total time:    314.004s
+
+ tactic                                   local  total   calls       max 
+────────────────────────────────────────┴──────┴──────┴───────┴─────────┘
+─fsatz ---------------------------------   0.0%  99.6%      24   35.689s
+─fsatz_prepare_hyps_on -----------------   0.0%  91.6%      24   33.983s
+─forward_nonzero -----------------------   0.0%  82.3%     388   30.078s
+─assert (H' : ~ eq x zero) by (clear H;    0.0%  82.3%     241   17.117s
+─solver_tac ----------------------------  64.1%  82.3%     241   17.117s
+─IntegralDomain.nsatz ------------------  54.4%  64.1%     265    5.535s
+─divisions_to_inverses -----------------   0.0%   8.5%      24    3.728s
+─rewrite ?Hierarchy.field_div_definition   7.7%   8.5%      24    3.728s
+─fsatz_solve_on ------------------------   0.0%   8.0%      24    5.548s
+─rewrite <- Nsatz.cring_sub_diag_iff in    3.8%   3.8%    2498    0.045s
+─apply  (fun Haa refl cond =>   Integral   2.3%   2.3%     265    0.177s
+─split ---------------------------------   2.1%   2.1%    3337    0.034s
+
+ tactic                                   local  total   calls       max 
+────────────────────────────────────────┴──────┴──────┴───────┴─────────┘
+─fsatz ---------------------------------   0.0%  99.6%      24   35.689s
+ ├─fsatz_prepare_hyps_on ---------------   0.0%  91.6%      24   33.983s
+ │ ├─forward_nonzero -------------------   0.0%  82.3%     364   30.078s
+ │ │└assert (H' : ~ eq x zero) by (clear   0.0%  82.3%     241   17.117s
+ │ │└solver_tac ------------------------  64.1%  82.3%     241   17.117s
+ │ │└IntegralDomain.nsatz --------------  47.5%  56.2%     241    3.282s
+ │ │└rewrite <- Nsatz.cring_sub_diag_iff   3.4%   3.4%    2257    0.045s
+ │ └─divisions_to_inverses -------------   0.0%   8.5%      24    3.728s
+ │  └rewrite ?Hierarchy.field_div_defini   7.7%   8.5%      24    3.728s
+ └─fsatz_solve_on ----------------------   0.0%   8.0%      24    5.548s
+  └IntegralDomain.nsatz ----------------   6.9%   7.9%      24    5.535s
+```
+The time all comes from `Time par: abstract fsatz.`
+
+Although @ejgallego the first jump that I see in jenkins logs (from 166s to 220s) does indeed include that commit:
+```
+    Fix #6323: stronger restrict universe context vs abstract. (commit: 5b8b02cd060097c3c980b0498257c30eda1ad207) (detail / githubweb)
+    Overlay for Equations. (commit: ea87cce3f81e9b73047c1695ea716162aeb09ede) (detail / githubweb)
+    Getting rid of pf_is_matching in Funind. (commit: 8972a5ed75b7778ad992ef018b163c6ac6e27297) (detail / githubweb)
+    Getting rid of pf_matches in Hipattern. (commit: 37cf90492cb6ed468e696fa052192f1a9fc4b003) (detail / githubweb)
+    [default.nix] Add ocpIndent and ocp-index. (commit: 2f7b3abe3edbb681586735482351a814e9c31843) (detail / githubweb)
+    [ci] CoLoR has moved to github (commit: 212aec0103f797f33aab56dd3d9389d0869d7c04) (detail / githubweb)
+    Fix a copy-paste error in ci-ltac2. (commit: 2434e85e1f2006e66efd74bd6cd7224e301e3bff) (detail / githubweb)
+    [makefile] Address #6291: install more development files. (commit: d8298ac9c1cc5cde0dfa35963efd1dcddb57c4d7) (detail / githubweb)
+    [ci] Download ci-sf archives into the proper CI build dir. (commit: 751375678bfee0cf3abb05dafe79fcf5689c4fce) (detail / githubweb)
+    Remove up-to-conversion matching functions. (commit: 59cd53f187939ad32c268cc8ec995d58cee4c297) (detail / githubweb)
+    [stm] Remove all but one use of VtUnknown. (commit: c78de8b5456fdaf2067b6b2d5c128923b4cda7fc) (detail / githubweb)
+    [META] Some dependency fixes. (commit: 2f405298e35458ec0b78153261ede58921e723d7) (detail / githubweb)
+    [api] Remove yet another type alias. (commit: 611da26d847888031cac4d6976b9e7e1e90cdc0e) (detail / githubweb)
+    [api] Remove kernel dependency on intf (Decl_kind) (commit: 4f0607dc76d3981fa67ab6231f2817cd1e6134a5) (detail / githubweb)
+    [ci] Temporal workaround for checker non-backwards compatible change. (commit: 5d4cf69a3d7d472b54b5decc8400164b87e9a73f) (detail / githubweb)
+```
+Well that was one sensitive one I could think of, however other good candidate in that list!!
+There's another, smaller, earlier jump that seems to be in this list:
+```
+    Use large arrays in the checker demarshaller. (commit: d8093626b49b539bec283285ea37ba50e79f69d4) (detail / githubweb)
+    Use safe demarshalling in the checker. (commit: 8f47273f118808373649a3a084e4a3c99167edd3) (detail / githubweb)
+    Proper nametab handling of global universe names (commit: 20c98eab851210702b39e1c66e005acfc351d8dd) (detail / githubweb)
+    Tests for global universe declarations (commit: 1d7d1012228459cfbc33ba9805315f5dc94950c3) (detail / githubweb)
+    [refman] Expand a little on global universes. (commit: 0d580ce929060df98b7d566a40adc2e46c4a1d6c) (detail / githubweb)
+    Cleanup API for registering universe binders. (commit: 4fcf1fa32ff395d6bd5f6ce4803eee18173c4d36) (detail / githubweb)
+    Update CHANGES (commit: 17b620f8bdf47a744d24513dcaef720d9160d443) (detail / githubweb)
+```
+Oh, urg, I think I need to restart my bisect on this because I was using times from jenkins, not from the machine I was bisecting on
+@ejgallego It is not #6324.  Stats on my machine for before/after that commit (in some order):
+```
+src/Curves/Montgomery/AffineProofs (real: 99.42, user: 172.18, sys: 0.82, mem: 1352268 ko)
+src/Curves/Montgomery/AffineProofs (real: 98.68, user: 171.06, sys: 0.64, mem: 1349564 ko)
+```
+Argh, I can't seem to reproduce this locally on my machine.  Also, what does it mean when real time reported by `Time` is 10x user time?
+> Also, what does it mean when real time reported by Time is 10x user time?
+
+Did you have some other processes running, maybe, that contributed to the real time?
+> Also, what does it mean when real time reported by Time is 10x user time?
+
+Maybe that file triggered a lot of IO [both to console or to a file].
+No, I don't think it's either of those.  On my machine, when I have 12 cores and not too much else running  `Time par: abstract fsatz` reports
+> Finished transaction in 88.008 secs (12.335u,0.136s) (successful)
+
+The entire file is reported as:
+
+> src/Curves/Montgomery/AffineProofs (real: 100.84, user: 175.91, sys: 0.76, mem: 1338596 ko)
+
+There is only one `par:` in the file.  I don't see a way to make up 153s of user-time on a single-threaded execution of a file in 12 real seconds...  Maybe user time on `Time` does not count subprocesses and so `Time par:` is bugged?
+`Time par:` is bugged, it times the local process so most of the time is just spent on waiting from IO from the worker.
+WG discussion: should be fixed by reverting #873 
+Should be fixed by #6949.
+In theory, #6952 is fixing the performance regression but I did not check in practice (is there an easy way to do so?). I'm reopening for the same motivation as in #6777 and #6536, that the issue with #873 is not fixed by #6949.
+@herbelin you reopened this [and a few of the bugs mentioned in the reopening message]. However I am not sure I understand what is the point of keeping this opened as the bug is fixed. Should we close?
+I let it open as a reminder that, what is now called #8187 is not merged (but it is now probably a question of less than a few weeks). It shall be closed automatically when #8187 is merged.

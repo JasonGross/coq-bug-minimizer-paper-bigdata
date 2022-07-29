@@ -1,0 +1,19 @@
+Comment author: @JasonGross
+
+Definition foo (x := 1) {y : nat} (H : y = y) : True := I.
+Definition bar {y : nat} (x := 1) (H : y = y) : True := I.
+Check bar (eq_refl 1).
+Check foo (eq_refl 1). (* Toplevel input, characters 11-20:
+Error:
+The term "eq_refl" has type "1 = 1" while it is expected to have type "nat". *)
+
+Both of these should work.  This is broken in both 8.4 and 8.5.
+
+
+Comment author: @maximedenes
+
+
+
+*** This bug has been marked as a duplicate of bug [BZ#3376](https://github.com/coq/coq/issues?q=is%3Aissue%20%22Original%20bug%20ID%3A%20BZ%233376%22) ***
+
+

@@ -1,0 +1,64 @@
+Comment author: @JasonGross
+
+The following code produces "Anomaly: Uncaught exception Not_found. Please report."  Sorry I haven't made it into a more minimal example.
+
+Set Implicit Arguments.
+
+Record SpecializedCategory (obj : Type) (Morphism : obj -> obj -> Type) := {
+  Object :> _ := obj;
+
+  Identity' : forall o, Morphism o o;
+  Compose' : forall s d d', Morphism d d' -> Morphism s d -> Morphism s d'
+}.
+
+Section SpecializedCategoryInterface.
+  Variable obj : Type.
+  Variable mor : obj -> obj -> Type.
+  Variable C : @ SpecializedCategory obj mor.
+
+  Definition Morphism (s d : C) := mor s d.
+  Definition Identity (o : C) : Morphism o o := C.(Identity') o.
+  Definition Compose (s d d' : C) (m : Morphism d d') (m0 : Morphism s d) : Morphism s d' := C.(Compose') s d d' m m0.
+End SpecializedCategoryInterface.
+
+Section ProductCategory.
+  Variable objC : Type.
+  Variable morC : objC -> objC -> Type.
+  Variable objD : Type.
+  Variable morD : objD -> objD -> Type.
+  Variable C : SpecializedCategory morC.
+  Variable D : SpecializedCategory morD.
+
+  Definition ProductCategory : @ SpecializedCategory (objC * objD)%type (fun s d => (morC (fst s) (fst d) * morD (snd s) (snd d))%type).
+    refine {|
+      Identity' := (fun o => (Identity (fst o), Identity (snd o)));
+      Compose' := (fun s d d' m2 m1 => (Compose (fst m2) (fst m1), Compose (snd m2) (snd m1))) (* gives Uncaught exception: Not_found *)
+    |}.
+  Defined.
+End ProductCategory.
+
+
+Comment author: @JasonGross
+
+It's a bug, not an enhancement.  Oops.
+
+
+Comment author: @letouzey
+
+
+I've tried to trace the Not_found to its source, it's an issue with Evarutil:
+a find_undefined fails in invert_invertible_arg launched by project_evar_on_evar.
+Hugo suspects a bug in materialize_evar which produces a defined_evar,
+not an undefined one
+
+Pierre
+
+
+Comment author: @herbelin
+
+Was fixed on July 29, 2012 but not reported as fixed.
+
+trunk: svn r15657, git c6763b44c75b2bd9aebdbcd0798287c90431cde4
+v8.4: svn r15658, git 973a7c20078cf7670fb4cd41ee9d4f67ba3ddfc8
+
+

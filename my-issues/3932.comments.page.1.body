@@ -1,0 +1,33 @@
+Comment author: @JasonGross
+
+Currently, I get error messages like
+
+Toplevel input, characters 15-24:
+Error: Universe inconsistency. Cannot enforce Top.21 = Top.52 because Top.52
+<= Top.7 < Coq.Lists.List.301 <= Coq.Lists.List.13 <= Coq.Init.Specif.8
+<= Top.21).
+
+This, combined with printing universes with definitions, is much, much better 
+than 8.4.  It would be nice to have an option to turn on two more levels of 
+verbosity:
+
+The first should tag each (in)equality with the name of the definition or 
+constant causing this constraint, if there is one:
+
+Toplevel input, characters 15-24:
+Error: Universe inconsistency. Cannot enforce Top.21 = Top.52 because
+Top.52 <= (ex)
+Top.7 < (normal_neutral_weaken)
+Coq.Lists.List.301 <= (incl_tl)
+Coq.Lists.List.13 <= (nil_cons)
+Coq.Init.Specif.8 <= (existsEach_cons)
+Top.21.
+
+(I had to manually print each definition in my local file and search for each 
+of the constraints, and then had to [Print List] to get the remaining ones.)
+
+It would be nice to have an even more verbose mode, which called out which 
+applications within each of these terms caused that constraint to be added.
+
+
+Duplicate of #2829.

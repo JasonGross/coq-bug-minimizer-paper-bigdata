@@ -1,0 +1,14 @@
+Comment author: @JasonGross
+
+jgross@ cagnode17:~/coq-bug-finder$ cat baz.v
+Module Export foo.
+jgross@ cagnode17:~/coq-bug-finder$ coqc baz
+Anomaly: File "kernel/safe_typing.ml", line 252, characters 31-37: Assertion failed.
+Please report.
+
+
+Comment author: @ppedrot
+
+*** Bug [BZ#3536](https://github.com/coq/coq/issues?q=is%3Aissue%20%22Original%20bug%20ID%3A%20BZ%233536%22) has been marked as a duplicate of this bug. ***
+
+

@@ -1,0 +1,393 @@
+Comment author: @JasonGross
+```coq
+(* -*- mode: coq; coq-prog-args: ("-emacs" "-R" "src" "Crypto" "-top" 
+"DoubleBounded") -*- *)
+(* File reduced by coq-bug-finder from original input, then from 165 lines to 
+24 lines, then from 121 lines to 28 lines, then from 146 lines to 29 lines, 
+then from 326 lines to 30 lines, then from 44 lines to 30 lines *)
+(* coqc version 8.6.0 (September 2016) compiled on Sep 27 2016 19:1:59 with 
+OCaml 4.02.3
+   coqtop version jgross-Leopard-WS:/home/jgross/Downloads/coq/coq-v8.6,v8.6 
+(72c1fefcfb3f0dff02005034685f6b58ff84b3cc) *)
+
+Fixpoint tuple' T n : Type :=
+  match n with
+  | O => T
+  | S n' => (tuple' T n' * T)%type
+  end.
+
+Reserved Notation "'dlet' x := y 'in' f"
+         (at level 200, f at level 200, format "'dlet'  x  :=  y  'in' '//' f").
+
+Definition Let_In {A P} (x : A) (f : forall a : A, P a) : P x := let y := x in 
+f y.
+Notation "'dlet' x := y 'in' f" := (Let_In y (fun x => f)).
+Local Notation eta x := (fst x, snd x).
+
+Fixpoint ripple_carry_tuple' {T} (f : T -> T -> bool -> bool * T) k
+  : forall (xs ys : tuple' T k) (carry : bool), bool * tuple' T k
+  := match k return forall (xs ys : tuple' T k) (carry : bool), bool * tuple' T 
+k with
+     | O => f
+     | S k' => fun xss yss carry => dlet xss := xss in
+                                dlet yss := yss in
+                                let '(xs, x) := eta xss in
+                                let '(ys, y) := eta yss in
+                                dlet addv := (@ ripple_carry_tuple' _ f k' xs ys 
+carry) in
+                                let '(carry, zs) := eta addv in
+                                dlet fxy := (f x y carry) in
+                                let '(carry, z) := eta fxy in
+                                (carry, (zs, z))
+     end. (* Error:
+In environment
+ripple_carry_tuple' : forall T : Type,
+                      (T -> T -> bool -> bool * T) ->
+                      forall k : nat, tuple' T k -> tuple' T k -> bool -> bool 
+* tuple' T k
+T : Type
+f : T -> T -> bool -> bool * T
+k : nat
+k' : nat
+xss : tuple' T (S k')
+yss : tuple' T (S k')
+carry : bool
+xss0 : tuple' T (S k')
+yss0 : tuple' T (S k')
+xs :
+(fix tuple' (T : Type) (n : nat) {struct n} : Type :=
+   match n with
+   | 0 => T
+   | S n' => (tuple' T n' * T)%type
+   end) T k'
+x : T
+ys :
+(fix tuple' (T : Type) (n : nat) {struct n} : Type :=
+   match n with
+   | 0 => T
+   | S n' => (tuple' T n' * T)%type
+   end) T k'
+y : T
+addv : bool * tuple' T k'
+carry0 : bool
+zs : tuple' T k'
+The term
+ "dlet fxy := f x y carry0 in
+ let
+ '(carry, z) as x0 := eta fxy
+  return
+    (?T@ {xss0:=xss; yss0:=yss; carry0:=carry; xss:=xss0; yss:=yss0; 
+carry:=carry0; p0:=x0} fxy)
+  in (carry, (zs, z))" has type
+ "?P2@ {xss0:=xss; yss0:=yss; carry0:=carry; xss:=xss0; yss:=yss0; 
+carry:=carry0} (f x y carry0)"
+while it is expected to have type "?P1@ {xss0:=xss; yss0:=yss; xss:=xss0; 
+yss:=yss0} addv".
+ *)
+```
+
+Comment author: @JasonGross
+
+Here's a slightly shorter example:
+```coq
+Reserved Notation "'dlet' x := y 'in' f"
+         (at level 200, f at level 200, format "'dlet'  x  :=  y  'in' '//' f").
+Definition Let_In {A P} (x : A) (f : forall a : A, P a) : P x := let y := x in  
+f y.
+Notation "'dlet' x := y 'in' f" := (Let_In y (fun x => f)).
+Check (fun T (xss yss : T * T) =>
+         ((dlet xss := xss in
+           dlet yss := yss in
+           let '(xs, x) := (xss : T * T) in
+           ((x, x) : T * T))
+          : T * T)).
+(* Error:
+In environment
+T : Type
+xss : T * T
+yss : T * T
+xss0 : T * T
+The term
+ "dlet yss0 := yss in
+ let
+ '(_, x) as x := xss0 : T * T return (?T@ {xss0:=xss; yss0:=yss; xss:=xss0; 
+x0:=x} yss0) in
+  (x, x) : T * T" has type "?T@ {xss0:=xss; yss0:=yss; xss:=xss0; x0:=xss0} yss"
+while it is expected to have type "?P xss0".
+ *)
+```
+
+Comment author: @JasonGross
+
+Running my coq-bisect script on the following file:
+```coq
+(* -*- coq-prog-args: ("-emacs" "-boot" "-nois") -*- *)
+Reserved Notation "'dlet' x := y 'in' f"
+         (at level 200, f at level 200, format "'dlet'  x  :=  y  'in' '//' f").
+Definition Let_In {A P} (x : A) (f : forall a : A, P a) : P x := let y := x in  
+f y.
+Notation "'dlet' x := y 'in' f" := (Let_In y (fun x => f)).
+Record prod A B := pair { fst : A ; snd : B }.
+Set Asymmetric Patterns.
+Check (fun T (xss yss : prod T T) =>
+         ((dlet xss := xss in
+           dlet yss := yss in
+           let '(pair xs x) := (xss : prod T T) in
+           ((@ pair _ _ x x) : prod T T))
+          : prod T T)).
+```
+
+I get:
+
+980b434552d73cb990860f8d659b64686f6dbc87 is the first bad commit
+commit 980b434552d73cb990860f8d659b64686f6dbc87
+Author: Hugo Herbelin <Hugo.Herbelin@ inria.fr>
+Date:   Thu Aug 18 13:24:50 2016 +0200
+
+    Inference of return clause: giving uniformly priority to "small inversion".
+    
+    As noted by Jason Gross on coq-club (Aug 18, 2016), the "small
+    inversion" heuristic is not used consistently depending on whether the
+    variables in the type constraint are Rel or Var.
+    
+    This commit simply gives uniformly preference to the inversion of the
+    predicate along the indices of the type over other heuristics.
+    
+    The next three commits will improve further a uniform use of the
+    different heuristics.
+    
+    ----------------------------------------------------------------------
+    Here are some extra comments on how to go further with the inference
+    of the return predicate:
+    
+    The "small inversion" heuristic build_inversion_problem (1) is
+    characterized by two features:
+    
+    - small inversion properly speaking (a), i.e. that is for a match on
+      t:I params p1(u11..u1p1) ... pn(un1..unpn) with pi exposing the
+      constructor structure of the indices of the type of t, a return
+      clause of the form "fun x1..xn (y:I params x1..xn) => match x1..xn y with
+      | p1(z11..z1p1) ... pn(zn1..znpn) => ?T@ {z11..znpn}
+      | _ => IDProp
+      end" is used,
+    
+    - the dependent subterms in the external type constraint U are replaced
+      by existential variables (b) which can be filled either by projecting
+      (i.e. installing a dependency) or imitating (i.e. no dependency);
+      this is obtained by solving the constraint ?T@ {u11..unpn} == U by
+      setting ?T@ {z11..znpn} := U'(...?wij@ {zij:=uij}...) where U has been
+      written under the form U'(...uij...) highlighting all occurrences of
+      each of the uij occurring in U; otherwise said the problem is reduced to
+      the question of instantiating each wij, deciding whether wij@ {zij} := zij
+      (projection) or wij@ {zij} := uij (imitation) [There may be different
+      way to expose the uij in U, e.g. in the presence of overlapping, or of
+      evars in U; this is left undetermined].
+    
+    The two other heuristics used are:
+    
+    - prepare_predicate_from_arsign_tycon (2): takes the external type
+      constraint U and decides that each subterm of the form xi or y for a
+      match on "y:I params x1 ... xn" is dependent; otherwise said, it
+      corresponds to the degenerated form of (1) where
+      - no constructor structure is exposed (i.e. each pi is trivial)
+      - only uij that are Rel are replaced by an evar ?wij and this evar is
+        directly instantiated by projection (hence creating a dependency),
+    
+    - simple use of of an evar in case no type constraint is given (3):
+      this evar is not dependent on the indices nor on the term to match.
+    
+    Heuristic (1) is not strictly more powerful than other heuristics
+    because of (at least) two weaknesses.
+    
+    - The first weakness is due to feature (b), i.e. to letting
+      unification decide whether these evars have to create a dependency
+      (projection) or not (imitation).
+    
+      In particular, the heuristic (2) gives priority to systematic
+      abstraction over the dependencies (i.e. giving priority to
+      projection over imitation) and it can then be better as the
+      following example (from RelationClasses.v) shows:
+    
+      Fixpoint arrows (l : Tlist) (r : Type) : Type :=
+        match l with
+        | Tnil => r
+        | A :: l' => A -> arrows l' r
+        end.
+    
+      Fixpoint predicate_all (l : Tlist) : arrows l Prop -> Prop :=
+        match l with
+        | Tnil => fun f => f
+        | A :: tl => fun f => forall x : A, predicate_all tl (f x)
+        end.
+    
+      Using (1) fails. It proposes the predicate
+      "fun l' => arrows ?l[l':=l'] Prop" so that typing the first branch
+      leads to unify "arrows ?l[l:=Tnil] Prop == Prop", a problem about
+      which evarconv unification is not able (yet!) to see what are the
+      two possible solutions. Using (2) works. It instead directly
+      suggests that the predicate is "fun l => arrows l Prop" is used, so
+      that unification is not needed.
+    
+      Even if in practice the (2) is good (and hence could be added to
+      (1)), it is not universally better. Consider e.g.
+    
+         y:bool,H1:P y,H2:P y,f:forall y, P y -> Q y |-
+                  match y as z return Q y with
+                  | true  => f y H1
+                  | false => f y H2
+                  end : Q y
+    
+      There is no way to type it with clause "as z return Q z" even if
+      trying to generalize H1 and H2 so that they get type P z.
+    
+    - A second weakness is due to the interaction between small inversion
+      and constructors having a type whose indices havex a less refined
+      constructor structure than in the term to match, as in:
+    
+      Inductive I : nat -> Set :=
+      | C1 : forall n : nat, listn n -> I n
+      | C2 : forall n : nat, I n -> I n.
+    
+      Check (fun x : I 0 => match x with
+                            | C1 n l => 0
+                            | C2 n c => 0
+                            end).
+    
+      where the inverted predicate is "in I n return match n with 0 => ?T | _ 
+=> IDProp end"
+      but neither C1 nor C2 have fine enough types so that n becomes
+      constructed. There is a generic solution to that kind of situation which
+      is to compile the above into
+    
+      Check (fun x : I 0 => match x with
+                            | C1 n l => match n with 0 => 0 | _ -> id end
+                            | C2 n c => match n with 0 => 0 | _ -> id end
+                            end).
+    
+      but this is not implemented yet.
+    
+      In the absence of this refinement, heuristic (3) can here work
+      better.
+    
+    So, the current status of the claim is that for (1) to be strictly
+    more powerful than other current heuristics, work has to be done
+    
+    - (A) at the unification level (by either being able to reduce problems of
+      the form "match ?x[constructor] with ... end = a-rigid-term", or, at
+      worst, by being able to use the heuristic favoring projecting for such
+      a problem), so that it is better than (2),
+    
+    - (B) at the match compilation level, by enforcing that, in each branch,
+      the corresponding constructor is refined so has to match (or
+      discriminate) the constraints given by the type of the term to
+      match, and hence being better than (3).
+    
+    Moreover, (2) and (3) are disjoint. Here is an example which (3) can
+    solve but not (2) (and (1) cannot because of (B)). [To be fixed in
+    next commit.]
+    
+    Inductive I : bool -> bool -> Type := C : I true true | D x : I x x.
+    
+    Check fun z P Q (y:I true z) (H1 H2:P y) (f:forall y, P y -> Q y z) =>
+                  match y with
+                  | C  => f y H1
+                  | D _ => f y H2
+                  end : Q y z.
+    
+    Indeed, (2) infers "as y' in I b z return Q y z" which does not work.
+    
+    Here is an example which (2) can solve but not (3) (and (1) cannot
+    because of (B) again). [To be fixed in 2nd next commit].
+    
+    Check fun z P Q (y:I true z) (H1 H2:P y) (f:forall y z, P y -> Q y z) =>
+                  match y with
+                  | C  => f y true H1
+                  | D b => f y b H2
+                  end : Q y z.
+
+
+Comment author: @JasonGross
+
+I'm a bit surprised, given that the descriptions of the subsequent commits 
+suggests that all three strategies are used for return clause inference...
+
+Hugo, any feedback on this?
+
+commit 0658ba7b908dad946200f872f44260d0e4893a94
+Author: Hugo Herbelin <Hugo.Herbelin@ inria.fr>
+Date:   Sat Aug 20 17:29:26 2016 +0200
+
+    Posssible abstractions over goal variables when inferring match return 
+clause.
+    
+    The no-inversion and maximal abstraction over dependencies now
+    supports abstraction over goal variables rather than only on "rel"
+    variables. In particular, it now works consistently using
+    "intro H; refine (match H with ... end)" or
+    "refine (fun H => match H with ... end)".
+    
+    By doing so, we ensure that all three strategies are tried in all
+    situations where a return clause has to be inferred, even in the
+    context of a "refine".
+    
+    See antepenultimate commit for discussion.
+
+commit 292f365185b7acdee79f3ff7b158551c2764c548
+Author: Hugo Herbelin <Hugo.Herbelin@ inria.fr>
+Date:   Sat Aug 20 17:13:58 2016 +0200
+
+    Trying an abstracting dependencies heuristic for the match return clause 
+even when no type constraint is given.
+    
+    This no-inversion and maximal abstraction over dependencies in (rel)
+    variables heuristic was used only when a type constraint was given.
+    
+    By doing so, we ensure that all three strategies "inversion with
+    dependencies as evars", "no-inversion and maximal abstraction over
+    dependencies in (rel) variables", "no-inversion and no abstraction
+    over dependencies" are tried in all situations where a return clause
+    has to be inferred.
+    
+    See penultimate commit for discussion.
+
+
+Comment author: @herbelin
+
+What happens is that the indicated commit gives priority to a dependent return clause for the `let '(xs, x) := (xss : T * T) in ...` pattern-matching, while before a non-dependent return clause was tried first.
+
+Because of the dependency, the unification problem `?P xss0 = ?T@ {xss0:=xss; yss0:=yss; xss:=xss0; x0:=xss0} yss` is not anymore a single-solution problem and we enter the class of problems where unification is not strong enough to deal with the generality of the "small inversion" algorithm.
+
+The cast should have helped but did not: it leads to a unification problem of the form
+
+  `prod T T = ?U@ {p:=(y,z),T:=T} x`
+
+which the naive algorithm used for flex-rigid problems is only able to postpone. There is a smarter pattern-unification algorithm with pruning used in evar-evar problems which would solve it, but it would take some time to experiment using it for flex-rigid problems (in particular I'm unsure to be able to finely control its complexity wrt the number of hypotheses and the number of let-ins in the context).
+
+So, in the short term, I would suggest to revert the "return clause" commit, since there were already discussions about its timeliness for v8.6.
+
+
+Comment author: @JasonGross
+
+I would agree: I'm in favor of adding this to the test suite, reverting the change in unification, and then planning for the unification change to be in 8.7, and finding a way to make it handle this example.
+
+
+Comment author: @mattam82
+
+It seems we all agree on removing that commit. Hopefully we can still salvage 
+the cleanup ones still?
+
+
+Comment author: @herbelin
+
+Removed from 8.6. Rescheduled for next 8.x.
+
+
+A cast on the `let '` helps though. The following (expanded) example, works:
+```coq
+Axiom Let_In : forall P (x : bool) (f : forall a : bool, P a), P x.
+Check fun T xss yss =>
+         Let_In ?[P] true (fun y => 
+         Let_In ?[Q] true (fun y => 
+         let '(pair xs x) := xss return _ in
+         (xs,x))).
+```

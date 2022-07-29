@@ -1,0 +1,7 @@
+You should maybe ask @fajb (but I fear this would be a huge amount of work).
+For `psatz`, that looks out of reach: there is a call to a Semidefinite programming solver.
+For `lia`, `nia` (without `zify`), this is implemented in OCaml using a little bit of imperative features.
+If you don't care about proving termination, that looks feasible but I have no idea of the precise amount of work.
+> If you don't care about proving termination
+
+I'm fine with running on fuel.  I might look into this sometime if I get a chance, but if someone else wants to do it that'd be amazing.

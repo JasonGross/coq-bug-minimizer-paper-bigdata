@@ -1,0 +1,38 @@
+Comment author: @JasonGross
+
+Created attachment 681
+Buggy file displaying the 20x slow-down ([Require Coq.Compat.Coq84] must be removed to make it work in Coq 8.4)
+
+I have a sneaking suspicion this is due to either the ability of tactics to handle more open terms, or to look inside [match] return clauses, or to do more powerful backtracking, but I'm reporting it in the hopes that I'm wrong, and this is actually a bug.  (Either way, there should be a way to do this in 8.5 without incurring the slowdown of 20x.)
+
+> Attached file: [bug_slow_match_05.v](https://coq.inria.fr/bugfiles/attachment.cgi?id=681) (text/plain, 23859 bytes)
+> Description:   Buggy file displaying the 20x slow-down ([Require Coq.Compat.Coq84] must be removed to make it work in Coq 8.4)
+
+
+Comment author: @JasonGross
+
+Pierre-Marie, you seem to be the one who does all the profiling/speed fixes, so I'm assigning this to you (let me know if I should not do this in the future).
+
+
+Comment author: @ppedrot
+
+Assigning it to me such bugs is probably the right thing to do in general.
+
+In this case, it seems that Coq is repeatedly normalizing goals with the nf_gmake function, but it's hard to find which tactic is responsible because of the way the tactic monad is defined. I'm going to look more closely.
+
+
+Comment author: @ppedrot
+
+Fixed by 09c2011f. The tactic are still a bit slower, but this is now due to the overhead introduced by the new universe mechanism. This is fixed in trunk, but don't expect too much this to be backported in 8.5.
+
+
+Comment author: @JasonGross
+
+Thanks!  Should this get a test-suite case?
+
+
+Comment author: @ppedrot
+
+I am personally a bit concerned by the tests checking complexity. I find them very brittle, although they might be useful in general. In this particular case, I doubt we will be reintroducing this bug, as the faulty code was a kludge for 8.5 compatibility. In trunk it has been rewritten cleanly. If you insist, we can indeed add a test.
+
+

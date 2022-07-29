@@ -1,0 +1,20 @@
+Comment author: @JasonGross
+
+Require Import Coq.Program.Tactics.
+Class Foo := { bar : Type }.
+Fail Lemma foo : Foo -> bar. (* 'Command has indeed failed.' in both 8.4 and trunk *)
+Program Lemma foo : Foo -> bar. (* success in 8.4, but in trunk:
+Error: Unable to satisfy the following constraints:
+
+?f : "Foo" *)
+  admit.
+Defined.
+
+At the very least, this should be marked as an incompatibility in CHANGES, if not reverted to the old behavior.  Was the change intentional?
+
+
+Comment author: @mattam82
+
+Yes, it is intentional, following the standard typechecking algorithm. Now in CHANGES
+
+

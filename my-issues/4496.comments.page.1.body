@@ -1,0 +1,34 @@
+Comment author: @JasonGross
+```
+
+Class A := a : True.
+Check _ : A. (* succeeds, leaves an evar *)
+Hint Extern 1 A => abstract exact I : typeclass_instances.
+Goal True.
+  let x := constr:(_ : A) in
+  pose x.
+  Undo.
+  let H := fresh in
+  let x := constr:(_ : A) in
+  pose x as H;
+    let T := type of H in
+    idtac T.
+  Undo.
+  let x := constr:(_ : A) in
+  let T := type of x in
+  idtac.
+
+
+```
+Comment author: @ppedrot
+
+In the current code, Tacinterp.interp_constr_gen drops the current environment. Here, the constr evaluation has created a new variable which is therefore lost after the let has returned. Not sure how to fix that properly in this version though.
+
+
+Comment author: @JasonGross
+
+What do you mean by "lost"?  [pose x] works perfectly fine.  And after a [pose] (as long as I end with a period and not a semicolon), the [type of] can "find" the identifier.  See bug [BZ#4781](https://github.com/coq/coq/issues?q=is%3Aissue%20%22Original%20bug%20ID%3A%20BZ%234781%22) for more.
+
+Alternatively, why is dropping the current environment the desired behavior for Tacinterp.interp_constr_gen?
+
+

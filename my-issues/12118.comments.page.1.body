@@ -1,0 +1,7 @@
+FTR: it's the very same problem occurring in the pretyper.
+Is there any hope of fixing things here?  I recall you saying that it was much harder to fix in the pretyper...
+@ppedrot You commented in https://github.com/coq/coq/pull/8255
+> Fixes #8232. The pretyper is still quadratic but I don't think there is hope for that one though.
+
+Can you elaborate on the lack of hope?
+I could solve the quadratic behaviour in the kernel thanks to the fact we use a delayed representation for conversion. Doing the same in the pretyper would require changing much more code, I believe.

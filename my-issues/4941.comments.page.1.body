@@ -1,0 +1,49 @@
+Comment author: @JasonGross
+
+When doing [Require Import], I get things like:
+
+File "C:\Users\Jason\AppData\Roaming/.coqrc", line 8, characters 0-47:
+ Warning: Notation _ =ℕ _ was already used [notation-overridden,parsing]
+File "C:\Users\Jason\AppData\Roaming/.coqrc", line 8, characters 0-47:
+ Warning: Notation _ =ℕ _ was already used [notation-overridden,parsing]
+File "C:\Users\Jason\AppData\Roaming/.coqrc", line 8, characters 0-47:
+ Warning: Notation _ =p _ was already used [notation-overridden,parsing]
+File "C:\Users\Jason\AppData\Roaming/.coqrc", line 8, characters 0-47:
+ Warning: Notation _ =p _ was already used [notation-overridden,parsing]
+File "C:\Users\Jason\AppData\Roaming/.coqrc", line 8, characters 0-47:
+ Warning: Notation _ =ℕ _ was already used [notation-overridden,parsing]
+File "C:\Users\Jason\AppData\Roaming/.coqrc", line 8, characters 0-47:
+ Warning: Notation _ =ℕ _ was already used [notation-overridden,parsing]
+File "C:\Users\Jason\AppData\Roaming/.coqrc", line 8, characters 0-47:
+ Warning: Notation _ =ℕ _ was already used [notation-overridden,parsing]
+
+I don't recall who to cc on this, or who to assign this to, but I suspect you 
+might know, Emilo.
+
+
+Comment author: @ejgallego
+
+Hi Jason,
+
+I think the bug is assigned correctly to Maxime (and also Pierre-Marie) should know more about this.
+
+Why do you say locations are confusing?
+
+It seems you have some code in your .coqrc that triggers the warning, is it not the case?
+
+
+Comment author: @JasonGross
+
+That is not the case.  My ~/.coqrc file is one line long.  The error locations corresponds to the current file, but name coqrc
+
+
+Comment author: @ejgallego
+
+Thanks for the hint Jason, it is clear now.
+
+
+Comment author: @maximedenes
+
+Fixed in v8.6 branch by cc6957b0.
+
+

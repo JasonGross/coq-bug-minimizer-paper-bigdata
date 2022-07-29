@@ -1,0 +1,48 @@
+Comment author: @JasonGross
+
+OCAMLOPT  lib/cString.ml
+File "lib/cString.ml", line 83, characters 10-23:
+Warning 3: deprecated: String.create
+Use Bytes.create instead.
+File "lib/cString.ml", line 84, characters 26-44:
+Warning 3: deprecated: String.set
+Use Bytes.set instead.
+OCAMLOPT  kernel/names.ml
+File "kernel/names.ml", line 49, characters 12-23:
+Warning 3: deprecated: Util.String.copy
+File "kernel/names.ml", line 54, characters 12-23:
+Warning 3: deprecated: Util.String.copy
+File "kernel/names.ml", line 57, characters 21-32:
+Warning 3: deprecated: Util.String.copy
+OCAMLOPT  kernel/cemitcodes.ml
+File "kernel/cemitcodes.ml", line 27, characters 2-19:
+Warning 3: deprecated: String.unsafe_set
+OCAMLOPT  library/nameops.ml
+File "library/nameops.ml", line 64, characters 26-37:
+Warning 3: deprecated: Util.String.copy
+File "library/nameops.ml", line 83, characters 13-24:
+Warning 3: deprecated: Util.String.copy
+File "library/nameops.ml", line 84, characters 1-12:
+Warning 3: deprecated: Util.String.fill
+Use Bytes.fill instead.
+File "library/nameops.ml", line 85, characters 1-47:
+Warning 3: deprecated: Util.String.set
+Use Bytes.set instead.
+File "library/nameops.ml", line 91, characters 1-12:
+Warning 3: deprecated: Util.String.fill
+Use Bytes.fill instead.
+File "library/nameops.ml", line 92, characters 1-26:
+Warning 3: deprecated: Util.String.set
+Use Bytes.set instead.
+
+
+Comment author: @SkySkimmer
+
+Should be fixed now, especially since travis fails when we have warnings.
+
+
+Comment author: @Zimmi48
+
+Can someone with the powers give permissions to Gaetan (and also Tej) to close bugs?
+
+

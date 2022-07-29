@@ -1,0 +1,65 @@
+Comment author: @JasonGross
+
+Quoting Mattheiu from coq-club:
+On Thu, Aug 18, 2016, 9:13 AM Matthieu Sozeau <mattam@ mattam.org> wrote:
+Hi Vadim, 
+
+It's more likely to be failing unifications that take a long time indeed. It's 
+easy to check which it is using Set Typeclasses Depth 0 which will make 
+resolution fail immediately. Maybe using Hint Opaque foo : rewrite. for a few 
+constants you don't want to unfold during unification of the lemma would help 
+(these hints are used by setoid_rewrite).
+
+Hope this helps,
+-- Matthieu
+
+
+
+However, there is no documentation at 
+https://coq.inria.fr/refman/Reference-Manual010.html#sec398 about this database:
+
+8.9.2  Hint databases defined in the Coq standard library
+
+Several hint databases are defined in the Coq standard library. The actual 
+content of a database is the collection of the hints declared to belong to this 
+database in each of the various modules currently loaded. Especially, requiring 
+new modules potentially extend a database. At Coq startup, only the core and 
+v62 databases are non empty and can be used.
+
+core
+This special database is automatically used by auto, except when 
+pseudo-database nocore is given to auto. The core database contains only basic 
+lemmas about negation, conjunction, and so on from. Most of the hints in this 
+database come from the Init and Logic directories.
+arith
+This database contains all lemmas about Peano’s arithmetic proved in the 
+directories Init and Arith
+zarith
+contains lemmas about binary signed integers from the directories 
+theories/ZArith. When required, the module Omega also extends the database 
+zarith with a high-cost hint that calls omega on equations and inequalities in 
+nat or Z.
+bool
+contains lemmas about booleans, mostly from directory theories/Bool.
+datatypes
+is for lemmas about lists, streams and so on that are mainly proved in the 
+Lists subdirectory.
+sets
+contains lemmas about sets and relations from the directories Sets and 
+Relations.
+typeclass_instances
+contains all the type class instances declared in the environment, including 
+those used for setoid_rewrite, from the Classes directory.
+There is also a special database called v62. It collects all hints that were 
+declared in the versions of Coq prior to version 6.2.4 when the databases core, 
+arith, and so on were introduced. The purpose of the database v62 is to ensure 
+compatibility with further versions of Coq for developments done in versions 
+prior to 6.2.4 (auto being replaced by auto with v62). The database v62 is 
+intended not to be extended (!). It is not included in the hint databases list 
+used in the auto with * tactic.
+
+Furthermore, you are advised not to put your own hints in the core database, 
+but use one or several databases specific to your development.
+
+
+@mattam82 Do you intend to address this in the foreseeable future? If not, please remove your assignment.

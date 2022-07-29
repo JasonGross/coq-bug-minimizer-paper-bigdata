@@ -1,0 +1,28 @@
+Note that we discussed the problem previously and said that if the hint name was kept the same, this would mean that the change of default locality would happen at the same time for all `Hint` commands. Given this, would you still prefer a different warning name? If yes, please open a PR.
+> if the hint name was kept the same
+
+Do you mean "warning name" rather than "hint name"?
+
+I guess I'm a bit confused about what migration is supposed to look like here.  Once Debian Bullseye releases (no release date yet, but according to the dates [here](https://lists.debian.org/debian-devel-announce/2020/03/msg00002.html) it seems like the hard freeze should be coming soon?), Fiat-Crypto can move it's minimum Coq version from 8.9 to 8.11 (the version in the Ubuntu focal (20.04) package, which is the latest LTS version of Ubuntu).  However, `Hint Resolve` did not get support for `#[export]` until Coq 8.12, so I guess we'll be able to move `Hint Resolve` to `#[export]` in April 2022 (if the pattern in [Ubuntu releases](https://wiki.ubuntu.com/Releases) for LTS versions continues)?  But it seems like `Instance` and `Hint Rewrite` won't get `#[export]` (and `Hint Rewrite` won't even have `Global`) until Coq 8.14, and we'll have to wait for two Debian release cycles for that, so we won't actually be able to annotate `Hint Rewrite` until ... 2024? 2025?
+
+Given the fact that we can't actually annotate our `Hint Rewrite` for the foreseeable future, what should we be doing?  Should we just suppress this warning entirely, and fix the issue all at once, so that we're compatible with both behaviors, when the default hint behavior changes?  (It might be nice to have a compatibility command that sets the default behavior, so we have more leeway in migrating.)  Or should we be annotating the hints we can with `Global` (as the warning message suggests) so that we don't break when the default behavior changes, and we can move to `#[export]` at our own pace?
+> Do you mean "warning name" rather than "hint name"?
+
+Yes
+
+Yes, annotating with `Global` and moving to `#[ export ]` at your own pace sounds good. But as you noticed `Hint Rewrite` won't even support `Global` until Coq 8.14. If you can't restrict your compatibility range (which is a bit extreme IMHO), then you will have to find a way of structuring your code so that `global` or `export` do not make any difference (at least for `Hint Rewrite`)
+> Yes, annotating with `Global` and moving to `#[ export ]` at your own pace sounds good. But as you noticed `Hint Rewrite` won't even support `Global` until Coq 8.14.
+
+Right, so my use-case for the per-hint-type warning flags is so that I can suppress the warning for hint types I can't annotate and so that I can have Coq make it an error to introduce new hints without the annotation for hint types that I can annotate.  Does this seem like a good enough reason to split the warning?
+
+> If you can't restrict your compatibility range (which is a bit extreme IMHO)
+
+Indeed, though I think it's nice to be able to support the latest LTS of Ubuntu and the latest Debian stable, especially as I expect the primary consumers of fiat-crypto are using the binary we produce rather than using it as a Coq library.
+It's quite easy to trigger a different warning, that's what I did for instances. We can do that before 8.14 since the locality implementation for hint rewrite was introduced there, so there is currently no released version with a Hint Rewrite reusing the standard hint warning.
+
+(Also, I think we should stop calling Hint Rewrite that way, they're really different beasts not using the same databases and relying on a completely different implementation.)
+>Right, so my use-case for the per-hint-type warning flags is so that I can suppress the warning for hint types I can't annotate and so that I can have Coq make it an error to introduce new hints without the annotation for hint types that I can annotate. Does this seem like a good enough reason to split the warning?
+
+Yes, that sounds reasonable.
+
+Marking this for 8.14 because if it is changed, that should happen before the release.

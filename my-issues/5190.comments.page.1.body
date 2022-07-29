@@ -1,0 +1,18 @@
+Comment author: @JasonGross
+
+This definition fails in 8.4, but succeeds in 8.5/8.6.  Is there anything we 
+can do about this, or does this need to wait for statically typed Ltac?
+
+Ltac bad := try (right eexists).
+
+
+Comment author: @ppedrot
+
+You would need typing to prevent this kind of stuff, otherwise it must be implemented as a tactic-wise check, which is *not* something we want to do. I think it is wiser to close this bug and wait for Ltac 2. What do you think?
+
+
+Comment author: @ppedrot
+
+Let's mark it as WONTFIX, as I doubt anybody will fix it.
+
+

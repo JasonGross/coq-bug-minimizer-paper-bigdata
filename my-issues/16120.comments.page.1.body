@@ -1,0 +1,26 @@
+Even simpler:
+```coq
+Inductive t1 := q1 (v : option t1) (pf : v = v).
+Inductive t2 := q2 (v : option t2) (pf : v = None).
+(* Error: Non strictly positive occurrence of "t2" in
+ "forall v : option t2, v = None -> t2". *)
+```
+In what sense is it incorrect? `t2` appears in `@None t2` which appears in index position for `eq`
+In the reverse order
+~~~
+Inductive t3 := q3 (v : option t3) (pf : None = v).
+~~~
+the issue is https://coq.github.io/doc/master/refman/language/core/inductive.html#strict-positivity
+>and the (instantiated) types of constructor Ci{pj/aj}j=1…m of I satisfy the nested positivity condition for X1…Xk
+
+the instantiated type of eq_refl here is `@eq t2 (@None t2) (@None t2)`, the second `@None t2` breaks nested positivity because it is in index position.
+Does anything go wrong (metatheoretically) if we first (recursively) erase uniform parameters from constructors (and, I guess, erase parameters from primitive projections) and then check the (strict) positivity condition on the resulting erased term?
+Maybe we should add an an example of a derivation of absurdity from an inductive that breaks strict positivity only by violating the rule about lack of occurrences in the indices?  Before the change to the guard checker that fixed the inconsistency with univalence / propositional extensionality, I think the following would do:
+```coq
+Inductive Questionable := questionable (T : Type) (pf : T = Questionable) (t : T).
+```
+But now that the guard checker no longer preserves the subterm relation across transport (at least this is my understanding), I think the resulting infinite loop fixpoint would be unguarded (because we must choose whether `t` is recognized as a subterm of `@questionable _ _ t` or whether it is recognized as being of type `Questionable`, and we cannot get both simultaneously).  I actually cannot think of an example here, and I'm wondering if occurrences in indices have lost their bite since the change to the guard checker.
+
+
+`Inductive t1 := q1 (v : option t1) (pf : v = v).` breaks the translation from nested to mutual AFAICT, so what you want seems like a subset of inductive-inductive types.
+By the way does anybody know if we can get full blown induction-induction with some kind of generalization of nested inductive types? I've always had the impression that there was something going on with this since I discovered that not all nested were translatable to mutual (and hence transitively to non-mutual indexed) types.

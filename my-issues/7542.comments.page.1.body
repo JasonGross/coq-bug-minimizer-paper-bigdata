@@ -1,0 +1,6 @@
+This was caught by my debian packaging script, btw.
+
+Could we add a test for this?  e.g., before building Coq, run `make clean` on the fresh clone in ci?
+> Could we add a test for this? e.g., before building Coq, run make clean on the fresh clone in ci?
+
+This makes sense to me.

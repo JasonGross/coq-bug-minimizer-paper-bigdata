@@ -1,0 +1,35 @@
+Comment author: @JasonGross
+
+$ cat foo.v
+Set Primitive Projections.
+
+Inductive foo : Prop := mkfoo { proj1 : False -> foo; proj2 : (forall P : Prop,
+P -> P) }.
+
+Fixpoint loop (x : foo) : False :=
+  loop (proj2 x _ x).
+
+Definition bad : False := loop (mkfoo (fun x => match x with end) (fun _ x => x)).
+$ cat bar.v
+Require Import Foo.foo.
+
+Definition bad := foo.bad.
+Print Assumptions bad.
+$ /path/to/coq-8.5/bin/coqc -Q . Foo foo
+$ /path/to/coq-8.5pl1/bin/coqc -Q . Foo bar
+Closed under the global context
+
+
+I assume this is a bug/oversight?
+
+
+Comment author: @silene
+
+The magic number is only there to prevent a memory corruption caused by loading a file with an older internal representation. It is not meant to prevent a logical inconsistency. The .vo representation did not change between 8.5 and 8.5pl1, as far as I know.
+
+
+Comment author: @ppedrot
+
+I agree with Guillaume , so definitely a WONTFIX. Plus this bug clearly qualifies as "loading a vo can make dragons fly out of your nose", as you can already make Coq accept handcrafted proofs of False (as e.g. demonstrated by Guillaume again). The only thing you can trust in the end is the checker, period.
+
+

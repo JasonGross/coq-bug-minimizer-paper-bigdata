@@ -1,0 +1,23 @@
+Comment author: @JasonGross
+
+Class foo := { F : nat }.
+Class bar := { B : nat }.
+Instance: foo := { F := 0 }.
+Instance: foo := { F := 1 }.
+Instance: bar := { B := 0 }.
+Set Printing All.
+Definition BAZ := eq_refl : @ F _ = @ B _.
+(* Toplevel input, characters 18-25:
+Error: The term "@ eq_refl ?8 ?9" has type "@ eq ?8 ?9 ?9"
+ while it is expected to have type
+ "@ eq nat (@ F foo_instance_1) (@ B bar_instance_0)". *)
+
+
+If we switch the order of the instances, then they resolve fine, by chance.
+
+
+Comment author: @mattam82
+
+Hmm, no, that's not gonna happen :) Again, you're using typeclass resolution for something it is not made for. Classes are indexed by their parameters not their fields. Also, even with canonical structures this test case will fail as there is no concrete natural number to infer a record from here, only two existentials of record type.
+
+

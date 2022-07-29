@@ -1,0 +1,26 @@
+Comment author: @JasonGross
+
+Axiom iter2 : bool -> bool -> bool.
+Fixpoint do2 (n : nat) (A : bool) :=
+  match n with
+    | 0 => A
+    | S n' => do2 n' (iter2 A A)
+  end.
+Ltac display2 := hnf; unfold do2; cbv beta.
+Axiom x : bool.
+Notation hidden := (_ = _).
+Goal let n := 20 in do2 n x = do2 n x.
+  display2.
+  Time let G := match goal with |- ?G => G end in set (H := G). (* 1 s *)
+  Time evar (e : Set). (* 0.361 s *)
+  Time cbv delta [e]. (* 0.231 s in trunk, 0.128 in 8.5pl1 *)
+  Time clear e. (* 0.361 *)
+Admitted.
+
+
+What is [cbv delta] doing that's so slow, when there's nothing interesting going on in the goal?
+
+
+Hasn't that been solved?
+No answer and from what I can see, this is solved on my machine.
+I could also believe that this used to be how long it takes to print, since I think `Time` used to also measure how long it took to redisplay the goal?

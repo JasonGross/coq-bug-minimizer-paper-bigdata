@@ -1,0 +1,12 @@
+Comment author: @JasonGross
+
+See for example, bug [BZ#4394](https://github.com/coq/coq/issues?q=is%3Aissue%20%22Original%20bug%20ID%3A%20BZ%234394%22), where you can get an error message
+  Refiner was given an argument of type "Type -> Type" instead of "Type -> Type"
+explain_refiner_bad_type should probably go through pr_explicit, though that seems to mean that it'll need to take env and sigma?
+
+
+Comment author: @ppedrot
+
+This code is going to die anyway as it is part of the old tactic engine. I'm not sure it is worth the time to fix this error message.
+
+

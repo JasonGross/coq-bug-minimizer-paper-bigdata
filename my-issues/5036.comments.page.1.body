@@ -1,0 +1,21 @@
+Comment author: @JasonGross
+
+In fa141fa1d2df2720f84a3e2c1fc4900a47f9939f
+
+Section foo.
+  Context (F : Type -> Type).
+  Context (admit : forall {T}, F T = True).
+  Hint Rewrite (fun T => @ admit T).
+  Lemma bad : F False.
+  Proof.
+    autorewrite with core.
+    constructor.
+  Qed.
+End foo. (* Anomaly: Universe Top.16 undefined. Please report. *)
+
+
+Comment author: @mattam82
+
+Fixed in 8.6 branch
+
+

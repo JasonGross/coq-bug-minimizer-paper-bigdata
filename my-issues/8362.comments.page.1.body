@@ -1,0 +1,18 @@
+Yes, but then we should reduce the number of targets. That being said, maybe Dune solves this problem.
+I disagree that this issue is fixed by the use of Dune for the OCaml parts only. That being said, we may consider that this objective is unrealistic and that we could leave the issue closed as a won't fix. There could be specific issues opened for specific developer targets if needed.
+The rationale here is that actually, in a pure dune build, all targets should effectively be already tested by dune's own test suite and coverage tools, so we can be relieved of this testing ourselves; at some point we should have 3 kind of targets:
+- targets native to dune: tested by Dune test suite
+- targets native to coq_makefile [stdlib build]: should be tested by coq_makefile test-suite
+- "bureaucratic targets" : indeed these targets should be tested, but IMHO this is doable as I think it is a quite reduced set of targets we need to care about.
+>"bureaucratic targets" : indeed these targets should be tested, but IMHO this is doable as I think it is a quite reduced set of targets we need to care about.
+
+OK, let's reopen then.
+@JasonGross is there a way to list all the targets a makefile does know about?
+I think I will consider this closed once we merge #15561 
+> @JasonGross is there a way to list all the targets a makefile does know about?
+
+According to https://stackoverflow.com/a/26339924/377022, 
+```bash
+LC_ALL=C make -pRrq : 2>/dev/null | awk -v RS= -F: '/^# File/,/^# Finished Make data base/ {if ($$1 !~ "^[#.]") {print $$1}}' | sort | egrep -v -e '^[^[:alnum:]]' -e '^$@$$'
+```
+should do the job?

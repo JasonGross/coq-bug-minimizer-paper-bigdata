@@ -1,0 +1,47 @@
+Comment author: @JasonGross
+
+Goal exists x : Prop, x /\ x = True.
+Proof.
+  esplit.
+  Fail solve [ repeat esplit ]. (* The command has indeed failed with message:
+=> Error: No applicable tactic. *)
+  solve [ repeat repeat esplit ]. (* success *)
+
+I find this to be rather confusing behavior, and I suspect other users will too.  Georges helped me see (in a larger example) that the issue is that [repeat esplit] will give up on the first goal before trying the second goal, and the first goal can only be solved after the second one is solved.  I guess [repeat repeat esplit] means "repeatedly, apply repeat esplit all goals, rather than "on all goals, repeatedly apply repeat esplit".
+
+
+Comment author: @aspiwack
+
+It's impossible. The semantics of repeat is specifically local to goals. And you almost certainly use this fact all the time.
+
+Now, there could be (in trunk) a multi-goal repeat, though. Let's call it grepeat. Then you could get the result you expect with (grepeat ltac:(try esplit)). Exercise: (grepeat esplit) wouldn't work. Why is that?
+
+
+Comment author: @JasonGross
+
+If [repeat] is local to goals, why does [repeat repeat esplit] work?
+
+I suspect [grepeat esplit] would fail whenever and because [all:esplit] fails; it would say that you need to run [esplit] the same number of times, simultaneously, on all goals.
+
+
+Comment author: @aspiwack
+
+Indeed.
+
+So about [repeat repeat esplit]. It works because you only start with one goal, so in a sense, the first repeat is global. Since [repeat esplit] generates one subgoal, [repeat repeat esplit] will apply [repeat esplit] to this subgoal, and it succeeds. The issue at hand is that tactics are sensitive to the order in which the goals are considered, which there is no real way around: unification of evars is a side-effect.
+
+Maybe it will help to consider the following script (in trunk) were additional [repeat] don't make a difference:
+
+Goal exists x : Prop, x /\ x = True.
+Proof.
+  esplit.
+  esplit.
+  all:repeat repeat esplit.
+Fail Qed.
+
+
+Comment author: @ppedrot
+
+So I think we can close this bug...
+
+

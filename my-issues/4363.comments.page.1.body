@@ -1,0 +1,43 @@
+Comment author: @JasonGross
+
+Set Printing Universes.
+Definition foo : Type.
+Proof.
+  assert (H : Set) by abstract (assert Type by abstract exact Type using bar; exact nat).
+  exact bar.
+Defined. (* Toplevel input, characters 0-8:
+Error:
+The term "(fun _ : Set => bar) foo_subproof" has type
+"Type@ {Top.2}" while it is expected to have type "Type@ {Top.1}". *)
+
+
+Comment author: @silene
+
+The error is now
+
+Anomaly: Uncaught exception Not_found. Please report.
+
+
+Comment author: @silene
+
+Actually, the anomaly is raised while looking for an identifier when fixing an exception (stm/lemmas.ml:211). So cc-ing Enrico, in case there is a simple way to improve the code so that failures during exception fixup cannot swallow the original error.
+
+
+Comment author: @gares
+
+Now the error is not masked.  It says:
+
+Error:
+The term "(fun _ : Set => bar) foo_subproof"
+has type "Type@ {Top.2}"
+while it is expected to have type
+ "Type@ {Top.1}".
+
+Hope it helps.
+
+
+Comment author: @mattam82
+
+Fixed in 8.5, that was a bug in close_proof which was too eager removing universe constraints.
+
+

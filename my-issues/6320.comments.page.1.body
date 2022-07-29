@@ -1,0 +1,4 @@
+Place where this comes up in actual code: https://github.com/mit-plv/fiat-crypto/pull/277#discussion_r154990548
+Your example is a typical example supported by the algorithm developed by @pirbo ([Ph.D, ch. 4](https://tel.archives-ouvertes.fr/tel-01054723/document), in French) and that @thierry-martinez is implementing (while working with this generalization of small inversion, we arrived indeed to this same observation that such eta-expansion is needed for configurations such as the one of your example).
+
+Currently, only [`Equations`](https://github.com/mattam82/Coq-Equations) I guess is able to support such kind of inversion (using dependent-equality-based Goguen-McBride-McKinna's algorithm).

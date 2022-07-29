@@ -1,0 +1,147 @@
+Shouldn't we just remove this last column? It seems to me that it is bound to become outdated anyway as tactics learn new tricks. It would be adequately replaced by numerous examples.
+I think it's important to not remove it until we have the examples.  Also, I think the tactics should not have tricks that are not available to tactic notations / Ltac2 tactic notations.  I don't think I would have to write OCaml just to wrap a tactic and preserve syntax and flexibility
+So, this is in fact more than just a documentation issue, right?
+The non-documentation part is more properly https://github.com/coq/coq/issues/3224
+Regarding `unfold`, there is a tolerance when the name does not exist. And similarly for `cbv delta` and `lazy delta`.
+
+Shouldn't we deprecate this tolerance, even if it requires to adapt developments?
+
+Or should we instead generalize this tolerance to all arguments expecting a global reference? Or, halfway, to all arguments expecting an evaluable reference?
+
+Feedback welcome.
+Well, at least a warning could be emitted if some argument is ignored, no?
+> Regarding `unfold`, there is a tolerance when the name does not exist. And similarly for `cbv delta` and `lazy delta`.
+
+@herbelin Do you have an example?  For example, this does not work:
+```coq
+Goal let x := True in x.
+  unfold x. (* Error: The reference x was not found in the current environment. *)
+```
+I could not find any variant of this that succeeded silently with no error.
+My previous message was unrelated to the issue, sorry. (I was referring to the fact that `unfold` does not fail if the constant does not occur. @Zimmi48: A warning could indeed be generated though if the constant does not occur.)
+
+Back to the current issue, I'm proposing the following:
+1. add a new `evaluable_ref` tactic argument type which
+  - parses exactly what `unfold` parses, namely a "smart qualid" (i.e. a qualid or a notation string denoting a qualid)
+  - is globalized and interpreted exactly like the argument to `unfold`
+2. change the manual to say that it is `evaluable_ref` which is like `unfold`
+
+Additionally, here are questionable issues with `unfold A`:
+-  the unfoldability of `A` is done both statically and dynamically. Shouldn't it be done only dynamically? For instance:
+   ```coq
+   Opaque id.
+   Fail Ltac f := unfold id.
+   Transparent id.
+   Ltac f := unfold id.
+   Goal id 0 = 0.
+   Opaque id.
+   Fail f.
+   Transparent id.
+   f.
+   ```
+   → I propose to remove the static check and to keep only the dynamic check.
+
+- In the same vein, should `Ltac f := unfold A` fails if `A` is an axiom. If `A` is an axiom in the argument of a functor, it may become dynamically an unfoldable constant. So, it should not be forbidden. What to do similarly if `A` is an inductive type or a constructor. Should the failure be detected statically or dynamically?
+
+   In Ltac2 `unfold A` is accepted statically for any (global) `A` and rejected for non-evaluable `A` only dynamically. In Ltac2, local definitions have to be referred to using `&`.
+   ```coq
+   From Ltac2 Require Import Ltac2.
+   Ltac2 f () := unfold Some. (* ok *)
+   ```
+   → I propose a decision is taken consistently with Ltac2 (cc @ppedrot) about accepting all global references statically or not.
+
+See also #11830 for questions about the Ltac2 convergence.
+
+In the meantime, I made ~#11495~ #11840.
+FTR, Ltac2 exposes more to the user, or at least it makes easier to access bugs that were only exploitable via subtle Ltac tricks before. I'd recommend hardening of the tactic APIs against this kind of issues. This would benefit both versions since they're sharing the code.
+
+Regarding the Ltac1 fix, I'd refrain from introducing a new generic argument. This has consequences on the runtime and might break some contrived uses in the wild. If anything, we should have *less* genargs, not more.
+
+Also, trying to fix Ltac is a Danaides' barrel. This precise bug is about documentation, the spinoff on the reproductibility of primitive notations is solved by Ltac2 AFAIK. Thus, I would ask once again not to touch the runtime if this can be solved by tweaking the doc.
+
+> If anything, we should have less genargs, not more.
+
+How do you hope to have less genargs? Don't you see genargs as types (with coercions between them), even if the types are not computed statically? Don't you see this `evaluable_ref` as just giving a user-accessible name to an internal tactic argument which was already there but not exported?
+
+But I'd be also ok to extend the existing `global` genarg so that it accepts "smart" qualids. That would be another direction to go so as to reduce the number of genargs when it is possible.
+
+My feeling though is that discussing about a generalization of `global` to smart qualid would require more time, since this would require to specify exactly when a global can be denoted by a string in a non-confusing way (the idea being of course that when I see `1 + 1 = 0`, I don't want to expose the global name of `+`, I want to use `+` directly).
+
+> This has consequences on the runtime and might break some contrived uses in the wild.
+
+I don't see why a new tactic argument would break existing Ltac code. (The semantical changes I made on the "runtime" are only about relaxing some constraints on the static interpretation of `unfold`'s argument in Ltac's definitions, and I believe we want these changes anyway.)
+
+> Also, trying to fix Ltac is a Danaides' barrel.
+
+Again, I'm not trying per se to fix a Danaides' barrel. I'm trying to reach a state where we understand what we are doing. What I'm trying to understand is a priori useful for Ltac2. The more precisely we understand the differences between Ltac1 and Ltac2, the easiest it will be to make an automatic transition (at least of the toplevel tactic calls).
+
+ 
+> Don't you see genargs as types
+
+Unfortunately, genargs are a catch-all structure having deep interactions all over the place and are much more than types. Your PR is trying to solve a problem that lies in the semantics of the `unfold` tactic by changing the arguments of the tactic.
+
+> I don't see why a new tactic argument would break existing Ltac code.
+
+Isn't not having the same runtime tag enough? That would definitely break some tactic notations where people happily use variables-but-no-so-much to refer to such values.
+
+> I'm trying to reach a state where we understand what we are doing.
+
+Yes, and I claim you're never going to reach that point trying to understand Ltac1.
+
+> What I'm trying to understand is a priori useful for Ltac2
+
+Let me put it clearly: the problem is already solved in Ltac2. No need to tweak the interpretation of arguments, there is a clear separation between parsing, evaluation and runtime representation. Something that doesn't exist in Ltac1 genargs, where everything is cobbled together, not even to mention the ad-hoc hacks in the runtime to recognize static variables at runtime, and whose semantics depends on the phase of the moon.
+
+> the easiest it will be to make an automatic transition
+
+To perform an automatic transition that works in 90% of the cases, I am afraid that it is precisely better not to try to understand the craziness underlying the Ltac1 implementation. Your PR introducing a new genarg is not only useless on that front, but it is actually *counter-productive*. By having more ad-hoc-ness to handle corner cases that only exist due to terrible base design, you're adding fuel to the combinatorial explosion. It ain't broken, don't fix it.
+> A warning could indeed be generated though if the constant does not occur.
+
+Please don't.  Or at least make it completely silent by default.  And absolutely don't add it for the reduction tactics other than `unfold`.  This would make `unfold` useless for automation, where I often need to pass a list to `unfold`, only some of which will appear.  It also makes `progress unfold foo` terribly noisy in a `repeat match` block.  Additionally, setting such a warning to an error would drastically change the behavior of various automation, likely causing it to fail.  This is not how warnings are supposed to work, in my opinion.
+
+> I propose to remove the static check and to keep only the dynamic check.
+
+Let's move discussion about this to https://github.com/coq/coq/issues/11794, which seems to almost be about exactly this question.
+
+> Regarding the Ltac1 fix, I'd refrain from introducing a new generic argument. This has consequences on the runtime and might break some contrived uses in the wild. If anything, we should have less genargs, not more.
+
+I agree a priori with minimizing the kinds of arguments tactics accept, but I think all the kinds of arguments should be exposed to the user.  So I strongly support adding `evaluable_ref`, and indeed I already wrote code to do this (with your help, @ppedrot) in https://github.com/coq/coq/pull/11029.  I called it `smart_global`.  Are there subtle differences here?  Is there anything that takes an `evaluable_ref` that doesn't accept everything that can be given to `smart_global`?
+> In the meantime, I made #11495
+
+@herbelin that is an issue about OCaml versions.  I think you might have typoed the number?
+@ppedrot @herbelin I think you two might be talking past each other a little bit.  I want to summarize what I think each of your views are on the various issues and proposals in this bug report
+> So I strongly support adding evaluable_ref, and indeed I already wrote code to do this
+
+No, that's not the right solution. Evaluability is a dynamic property, as observed by @herbelin himself, and should be checked at runtime by `unfold`, not its argument. If you really want to, we can extend the `ref` genarg to also parse notations.
+@JasonGross: I meant #11840. (The point is that when I type `#11840.` followed by return in GitHub, it changes it automatically to `#11495` - and I failed to pay attention to the change.)
+
+@ppedrot:
+> If you really want to, we can extend the ref genarg to also parse notations.
+
+I'd be fine with this alternative too. In practice, when used for `unfold`, we would only lose a static check of meaninglessness of `unfold cons` or `unfold nat`, but that's not so a big deal.
+
+By the way, if I may add an extra comment: in `g_tactic.mlg`, only `smart_global` is used (which additionally are expected to be evaluable). So, the apparent "redundancy" between `reference` and `evaluable_ref` is not the existence of `reference` in tactic notations but really the absence of `evaluable_ref`.
+
+So, I believe we all agree:
+- If there were a genarg that we want in practice to define the tactic language as it is now, it is the one that has the semantics of `evaluable_ref` (up to fixing #11794 as #11840 does). 
+- But we may imagine needing in the future non-evaluable `ref` in tactics (e.g. to denote hints?), so, for simplicity, this justifies renouncing to the ability to statically check potential evaluability.
+
+We still need to sort out the confusion around the names `global`, `ref` and `reference`:
+- Term notations use `global` which cannot be extended to smart globals (since a string in a term is already interpreted as a primitive token).
+- `TACTIC EXTEND` accepts `global` and `reference`
+- `Tactic Notation` accept `ref` and `reference`
+- Ltac2 uses `reference`
+- the reference manual already indicates `reference` for tactics
+
+So, the natural candidate is to use `reference` for `smart_qualid` and to clearly introduce a difference between `global` (not "smart") and `reference` (smart).
+
+Is this the conclusion?
+
+(Or do we have to think more at whether this is the terminology we really want.)
+> The point is that when I type #11840. followed by return in GitHub, it changes it automatically to #11495 - and I failed to pay attention to the change.)
+
+That's really unfortunate behavior.
+
+>  So, the natural candidate is to use reference for smart_qualid and to clearly introduce a difference between global (not "smart") and reference (smart).
+
+This sounds good to me, personally.  I have no strong opinions on names.

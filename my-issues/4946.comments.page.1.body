@@ -1,0 +1,33 @@
+Comment author: @JasonGross
+
+Here is code that should work.  Only the first module works, because [pf] has 
+type [0 < y] in the first module, but [0 < x] in the second module.
+
+Require Import Coq.omega.Omega.
+Module nprim.
+  Unset Primitive Projections.
+  Class R := { x : nat ; y := x ; pf : 0 < y }.
+  Goal forall v : R, 0 < y.
+  Proof.
+    intros; pose proof pf.
+    match goal with H : 0 < y |- 0 < y => idtac end.
+    omega.
+  Qed.
+End nprim.
+
+Module prim.
+  Set Primitive Projections.
+  Class R := { x : nat ; y := x ; pf : 0 < y }.
+  Goal forall v : R, 0 < y.
+  Proof.
+    intros; pose proof pf.
+    match goal with H : 0 < y |- 0 < y => idtac end. (* fails *)
+    omega. (* fails, because omega doesn't unfold things *)
+  Qed.
+End prim.
+
+
+Not that hard to fix, I think. Hopefully people are not relying on the current behaviour.
+>Not that hard to fix, I think. Hopefully people are not relying on the current behaviour.
+
+Really? It seems like the fundamental issue is that with emulated records, a `:=` projection has the same status as a regular one (they're both constants) whereas with primitive records only the `:=` projections are constants, preventing them from being interleaved with the regular projections.

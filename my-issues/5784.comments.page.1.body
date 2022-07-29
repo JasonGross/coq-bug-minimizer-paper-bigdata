@@ -1,0 +1,21 @@
+Comment author: @JasonGross
+```coq
+Require Import Coq.Arith.Arith.
+Axiom admit : forall {T}, T.
+
+Lemma Foo (A : Type) (n : nat) (gen : forall p : nat, p < S n -> A)
+      (ic0 : 0 < S n) (ic1 : 0 mod S n < S n):
+  gen (n - n) ic1 = gen 0 ic0.
+Proof.
+  remember (gen (n-n)) as Q eqn:HeqQ.
+  remember (n-n) as Q1 eqn:HeqQ1.
+  match goal with |- ?g => let _ := type of g in idtac end.
+(* Error: Illegal application:
+The term "Q" of type "Q1 < S n -> A"
+cannot be applied to the term
+ "ic1" : "0 mod S n < S n"
+This term has type "0 mod S n < S n" which should be coercible to
+"Q1 < S n".
+ *)
+```
+

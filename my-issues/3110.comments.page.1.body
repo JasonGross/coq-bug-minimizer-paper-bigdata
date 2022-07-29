@@ -1,0 +1,15 @@
+Comment author: @JasonGross
+
+It would be nice if "Mismatched instance and context when building universe substitution." included the instance and the context.
+
+
+Comment author: @ppedrot
+
+I cannot find this error in Coq trunk. I assume this is something particular to the HoTT branch?
+
+
+Comment author: @JasonGross
+
+Indeed.  Apologies for not checking that this appeared in both HoTT/coq and coq trunk before posting the issue here.
+
+

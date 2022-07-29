@@ -1,0 +1,1 @@
+Yet another tactic notation feature wish. While I am not opposed to Ltac bugfixes, this is a wish on a part of Ltac1 I really don't want to see grow. I'd qualify this as WONTFIX and use Ltac2 notations instead.

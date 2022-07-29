@@ -1,0 +1,14 @@
+Comment author: @JasonGross
+
+The code
+  Definition X (A := Type) : A := nat.
+gives "Anomaly: Cannot take the successor of a non variable universe: (maybe a bugged tactic). Please report."  Moving the binders after the colon, like
+  Definition X : forall (A := Type), A := nat.
+works fine.
+
+
+Comment author: @mattam82
+
+This has been fixed in 8.4 and trunk.
+
+

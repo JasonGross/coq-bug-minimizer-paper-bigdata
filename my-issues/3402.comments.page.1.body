@@ -1,0 +1,37 @@
+Comment author: @JasonGross
+
+Set Primitive Projections.
+Record prod A B := pair { fst : A ; snd : B }.
+Goal forall A B (p : prod A B), p = let (x, y) := p in pair A B x y.
+Proof.
+  intros A B p.
+  Fail exact eq_refl.
+  change p with (pair A B (fst p) (snd p)).
+  simpl.
+  exact eq_refl.
+Defined.
+(* Toplevel input, characters 15-23:
+Error:
+The term "fun (A B : Type) (p : prod A B) => eq_refl" has type
+ "forall (A B : Type) (p : prod A B),
+  {| fst := fst p; snd := snd p |} = {| fst := fst p; snd := snd p |}"
+while it is expected to have type
+ "forall (A B : Type) (p : prod A B),
+  p = (let (x, y) := p in {| fst := x; snd := y |})". *)
+
+
+Comment author: @mattam82
+
+We don't have the eta-rule p = match p with (x, y) => pair x y, as (it seems) this would require some typing information we don't have currently. You're not supposed to destruct a primitive record like this. I think it should be forbidden, or the let (x, y) := p should be elaborated to a use of projections.
+
+
+Comment author: @JasonGross
+
+Does it require typing information, or can you just say "when the match has a single branch and that branch is a constructor for a primitive record, then you can look up the projections from that"?  In any case, I'm fine with match/let on a primitive projection being elaborated to a use of projections (though I'd prefer to move in the direction of "primitive projections are something the user doesn't need to think about" rather than in the direction of "primitive records are super special").
+
+
+Comment author: @mattam82
+
+Done in trunk.
+
+

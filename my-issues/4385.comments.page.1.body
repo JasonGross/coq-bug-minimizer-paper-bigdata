@@ -1,0 +1,24 @@
+Comment author: @JasonGross
+
+Goal exists f : nat -> nat, ((forall x, f x = x) -> (forall y, f y = y)) -> (forall z, f z = z).
+Proof.
+  clear; eexists; intros H y.
+  refine (_ : (fun w => _) y = _); cbv beta in *.
+  Fail revert y. (* The command has indeed failed with message:
+=> Error: Refiner was given an argument
+    "(?16420:forall y : nat, ?3711 = y) y" of type 
+   "?3711 = y" instead of "?3711 = y". *)
+  match goal with |- ?lhs = _ => set (LHS := lhs) in * end.
+  revert y.
+
+
+Comment author: @silene
+
+It seems like this issue cannot be reproduced with 8.5.
+
+
+Comment author: @maximedenes
+
+This seems fixed in 8.5 and 8.6. I don't think we are going to backport a fix, so closing.
+
+

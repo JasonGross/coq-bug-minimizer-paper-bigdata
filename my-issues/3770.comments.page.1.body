@@ -1,0 +1,52 @@
+Comment author: @JasonGross
+
+$ echo "Axiom f : True. Undo. Backtrack 2 0 0." | coqtop -emacs
+Welcome to Coq cagnode15:/afs/csail.mit.edu/u/j/jgross/coq-trunk,trunk (0397aa549645df23cc50c9018b543e6c0b346d62)
+
+<prompt>Coq < 1 || 0 < </prompt>f is assumed
+
+
+<prompt>Coq < 2 || 0 < </prompt>
+
+
+<prompt>Coq < 1 || 0 < </prompt>Toplevel input, characters 22-38:
+> Axiom f : True. Undo. Backtrack 2 0 0.
+>                       ^^^^^^^^^^^^^^^^
+Anomaly: error with no safe_id attached:
+Uncaught exception Stm.Vcs_aux.Expired.. Please report.
+
+<prompt>Coq < 1 || 0 < </prompt>
+
+
+Comment author: @gares
+
+A commit is coming
+
+
+Comment author: @JasonGross
+
+Note that the -emacs flag isn't required:
+
+$ echo "Axiom f : True. Undo. Backtrack 2 0 0." | coqtop
+Welcome to Coq cagnode15:/afs/csail.mit.edu/u/j/jgross/coq-trunk,(no branch) (884b6cc6c12bd557085cdaa4972d593684c9cc1a)
+
+Coq < f is assumed
+
+
+
+
+
+Toplevel input, characters 22-38:
+> Axiom f : True. Undo. Backtrack 2 0 0.
+>                       ^^^^^^^^^^^^^^^^
+Anomaly: error with no safe_id attached:
+Uncaught exception Stm.Vcs_aux.Expired.. Please report.
+
+Coq <
+
+
+From reading the commit, it doesn't seem to handle this case?
+
+(Also, the exception message has an extra period.)
+
+

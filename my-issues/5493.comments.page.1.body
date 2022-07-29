@@ -1,0 +1,136 @@
+Comment author: @JasonGross
+
+This code works in Coq 8.4pl6, but times out in 8.5, 8.6:
+
+Require Import Coq.FSets.FSetAVL.
+Declare Module NatKey : OrderedType.OrderedType
+    with Definition t := nat
+    with Definition eq := @ eq nat.
+Remove Hints NatKey.eq_trans NatKey.eq_refl.
+Module Import NatMap := FSetAVL.Make NatKey.
+Goal forall x y, NatMap.E.eq x y.
+  Timeout 1 intros; debug eauto.
+Admitted.
+
+
+Comment author: @JasonGross
+
+Bisecting gives:
+
+There are only 'skip'ped commits left to test.
+The first bad commit could be any of:
+c606c4870d492fc0b96b62368498227c3e4e5e86
+0d5c92c80d14def48432093fc1ac94aae544c7fe
+e7e52a4c56954f148a5ded1a2f7c2794b115a166
+6254115b358899886163da4a4add6d419a55b1e9
+
+
+These are:
+commit c606c4870d492fc0b96b62368498227c3e4e5e86
+Author: ppedrot <ppedrot@ 85f007b7-540e-0410-9357-904b9bb8a0f7>
+Date:   Sat Dec 8 16:23:32 2012 +0000
+
+    Small optimization in Closure: replaced an index list with an array.
+    This may consume more memory, but this should also be more efficient,
+    in particular when doing intensive computation. I get a ~2% speedup
+    on stdlib.
+
+    git-svn-id: svn+ssh://scm.gforge.inria.fr/svn/coq/trunk@ 16047 
+85f007b7-540e-0410-9357-904b9bb8a0f7
+
+commit 0d5c92c80d14def48432093fc1ac94aae544c7fe
+Author: letouzey <letouzey@ 85f007b7-540e-0410-9357-904b9bb8a0f7>
+Date:   Fri Dec 7 18:55:31 2012 +0000
+
+    Coqide: more cleanup (buffers)
+
+    git-svn-id: svn+ssh://scm.gforge.inria.fr/svn/coq/trunk@ 16046 
+85f007b7-540e-0410-9357-904b9bb8a0f7
+commit e7e52a4c56954f148a5ded1a2f7c2794b115a166
+Author: ppedrot <ppedrot@ 85f007b7-540e-0410-9357-904b9bb8a0f7>
+Date:   Sat Dec 8 18:22:33 2012 +0000
+
+    Removed a unused function in Pp
+
+    git-svn-id: svn+ssh://scm.gforge.inria.fr/svn/coq/trunk@ 16048 
+85f007b7-540e-0410-9357-904b9bb8a0f7
+commit 6254115b358899886163da4a4add6d419a55b1e9
+Author: letouzey <letouzey@ 85f007b7-540e-0410-9357-904b9bb8a0f7>
+Date:   Sat Dec 8 20:44:51 2012 +0000
+
+    Coqide: get rid of threads, use gtk asynchronous i/o instead
+
+
+I am dubious about these results.
+
+
+Comment author: @JasonGross
+
+A slightly faster bisection case might be:
+
+Require Coq.FSets.FSetCompat Coq.Structures.OrdersAlt.
+Declare Module NatKey : OrderedType.OrderedType
+    with Definition t := nat
+    with Definition eq := @ eq nat.
+Remove Hints NatKey.eq_trans NatKey.eq_refl.
+Declare Module MSetIntMake (X: Orders.OrderedType) : MSetInterface.S with Module E := X.
+Module IntMake (X: OrderedType.OrderedType) <: FSetInterface.S with Module E := X.
+ Module X' := OrdersAlt.Update_OT X.
+ Module MSet := MSetIntMake X'.
+ Include FSetCompat.Backport_Sets X MSet.
+End IntMake.
+Module Make (X: OrderedType.OrderedType) <: FSetInterface.S with Module E := X := IntMake X.
+Module Import NatMap := Make NatKey.
+Goal forall x y z, NatMap.E.eq x y -> NatMap.E.eq y z -> NatMap.E.eq x z.
+  Fail solve [ eauto ].
+Admitted.
+
+(this succeeds in 8.4 because [solve [eauto]] fails, and it fails in 8.5 because [eauto] is using hints that I don't want to be there)
+
+
+Comment author: @JasonGross
+
+I suppose this also works (I was trying to minimize dependencies, but didn't get very far):
+
+Require Import Coq.FSets.FSetAVL.
+Declare Module NatKey : OrderedType.OrderedType
+    with Definition t := nat
+    with Definition eq := @ eq nat.
+Remove Hints NatKey.eq_trans NatKey.eq_refl.
+Module Import NatMap := FSetAVL.Make NatKey.
+Goal forall x y z, NatMap.E.eq x y -> NatMap.E.eq y z -> NatMap.E.eq x z.
+  Fail solve [ eauto ].
+Admitted.
+
+
+Comment author: @ejgallego
+
+I got:
+
+> 466c4cbacfb5ffb19ad9a042af7ab1f43441f925 is the first bad commit
+> commit 466c4cbacfb5ffb19ad9a042af7ab1f43441f925
+> Author: letouzey <letouzey@ 85f007b7-540e-0410-9357-904b9bb8a0f7>
+> Date:   Wed Jul 17 15:32:11 2013 +0000
+> 
+>     Declaremods: major refactoring, stop duplicating libobjects in modules
+> 
+>      When refering to a module / module type, or when doing an include,
+>      we do not duplicate and substitution original libobjects immediatly.
+>      Instead, we store the module path, plus a substitution. The libobjects
+>      are retrieved later from this module path and substituted, typically
+>      during a Require. This allows to vastly decrease vo size (up to 50%
+>      on some files in the stdlib). More work is done during load (some
+>      substitutions), but the extra time overhead appears to be negligible.
+> 
+>      Beware: all subst_function operations should now be
+>      environment-insensitive, since they may be arbitrarily delayed.
+>      Apparently only subst_arguments_scope had to be adapted.
+> 
+>      A few more remarks:
+> 
+>      - Increased code factorisation between modules and modtypes
+>      - Many errors and anomaly are now assert
+>      - One hack : brutal access of inner parts of module types
+>        (cf handle_missing_substobjs)
+
+

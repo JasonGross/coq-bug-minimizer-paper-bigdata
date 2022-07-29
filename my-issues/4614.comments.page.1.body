@@ -1,0 +1,134 @@
+Comment author: @JasonGross
+
+Created attachment 677
+Screen cast of poor behavior
+
+Once I click "fully check the document", it's impossible to interrupt the computation, and impossible to step forward or back, except by unevaluating the entire document.  This is counter-intuitive, even if expected; at the very least, editing should display a warning (once),and interrupting should pop up a dialog box, saying that the document cannot be edited when it's being fully checked, and the only option is to fully revert the document and start again.
+
+> Attached file: [vokoscreen-2016-03-08_12-17-21.avi](https://coq.inria.fr/bugfiles/attachment.cgi?id=677) (video/x-msvideo, 591324 bytes)
+> Description:   Screen cast of poor behavior
+
+
+Comment author: @gares
+
+The current implementation makes the main Coq process "wait on a lock" so there is no way to have it process a "please stop" message.  Rewinding the entire document simply sends a kill -9 to Coq, this is why it works.
+
+
+Comment author: @ppedrot
+
+Can't we just stuff a check_for_interrupt somewhere in Stm.join?
+
+
+Comment author: @gares
+
+There is no "thread" reading on the channel for a message saying "please flip the interrupt bit".  It is the main thread that does the Mutex.lock.
+
+This is why I tagged this as major redesign: one needs to add an extra thread
+as PIDE based UI do.  Such thread would always be responsive, and could "unlock" the mutex (so that the other guy can check for interrupt and bail out).
+
+
+Comment author: @ppedrot
+
+That's true if we want to have a proper message for interruption, but currently we're using signals. So if I'm not mistaken, as soon as we send a SIGINT signal to the coqtop worker, the join operation is going to be interrupted and the handler for that signal is going to be fired. We need no threads.
+
+If we want to have interruption as a protocol message, that's going to be different indeed.
+
+
+Comment author: @gares
+
+Oh, so you think the only thing preventing the [X] to work is the "grab_coqtop" thingy?
+
+
+Comment author: @ppedrot
+
+I'm doing some experiments (Linux here) and it seems that the Sys.break exception is indeed raised in Coqtop, but it only results in killing some thread and leaving the STM in a bad state.
+
+
+Comment author: @ppedrot
+
+BTW here is the backtrace of the Sys.Break exception:
+
+Raised by primitive operation at file "ide/ide_slave.ml", line 29, characters 13-43
+Called from file "stm/asyncTaskQueue.ml", line 182, characters 17-29
+Called from file "thread.ml", line 37, characters 8-14
+Thread 9 killed on uncaught exception Sys.Break
+
+Not really informative, but who knows...
+
+
+Comment author: @gares
+
+each worker is "managed" by a thread.  Its code is in asyncTaskQueue.
+There, you have a panel of functions to call (from the Task module) but I'm afraid you can't know if you are the (only) worker that has to stop.
+
+
+Comment author: @gares
+
+I mean, you could call
+
+  Task.on_task_cancellation_or_expiration_or_slave_death
+
+or better catch one more exception here:
+ 
+  https://github.com/coq/coq/blob/trunk/stm/asyncTaskQueue.ml#L223
+
+
+Comment author: @gares
+
+and here:
+
+  https://github.com/coq/coq/blob/trunk/stm/asyncTaskQueue.ml#L213
+
+
+Comment author: @ppedrot
+
+The fact is that currently, the function that receives the signal is the kill_if watch. The SIGINT unexpectedly kills this thread, which is at least a bug.
+
+
+Comment author: @gares
+
+You are right, the watch dog should catch the exception and execute the code in the else_if branch.
+
+The other patch I was suggesting seems relevant too.
+
+Best,
+
+
+Comment author: @ppedrot
+
+Joy of spaghetti code, fixing that part shows that there are other places where the exception escapes:
+
+Raised by primitive operation at file "ide/ide_slave.ml", line 29, characters 13-43
+Called from file "unix.ml", line 249, characters 7-33
+Called from file "lib/cThread.ml", line 15, characters 8-30
+Called from file "lib/cThread.ml", line 31, characters 12-50
+Called from file "lib/cThread.ml", line 71, characters 4-50
+Called from file "stm/workerPool.ml", line 50, characters 13-51
+Called from file "stm/workerPool.ml", line 83, characters 2-29
+Called from file "list.ml", line 55, characters 20-23
+Called from file "stm/workerPool.ml", line 91, characters 13-160
+Called from file "stm/workerPool.ml", line 75, characters 12-15
+Called from file "stm/workerPool.ml", line 84, characters 32-44
+Called from file "thread.ml", line 37, characters 8-14
+Thread 3 killed on uncaught exception Sys.Break
+
+I'll see if I can patch them one by one.
+
+
+Comment author: @ppedrot
+
+In addition, CoqIDE is badly behaving if I fiddle too much with it. When receiving the error "Worker dies of task expired", most often the document in not in sync with the cancelled part. Any idea where it could come from?
+
+
+Comment author: @ppedrot
+
+This particular issue should be fixed by 45e4391, although I know that stray Sys.Break exceptions can be raised in unexpected parts of the code, leading to strange and uncommon behaviours. Yet, this is a real mess to track statically and typically falls in the eisenbug category, so that I think we can close this bug for now and open a new one when we face the issue. (Or when we get rid of threads.)
+
+
+Comment author: @JasonGross
+
+Thanks!
+
+Are there any plans to get rid of signals entirely (or at least get rid of them for everything except communicating to threads/processes at the top level)?
+
+

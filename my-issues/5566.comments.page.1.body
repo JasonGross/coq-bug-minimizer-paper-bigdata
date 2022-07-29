@@ -1,0 +1,64 @@
+Comment author: @psteckler
+
+If I understand the code in g_vernac.ml4, there's a command
+
+  Set xxx Append "yyy"
+
+where xxx can be Warnings, but could be something else. The command gets turned into a VernacSetAppendOption containing xxx and yyy.
+
+In the special case 
+
+  Set Warnings "yyy"
+
+a VernacSetAppendOption containing Warnings and yyy is built. So the Append is implicit in this case.
+
+It looks like xxx can be any Set-able option that takes a string value.
+
+If I've got this right, what's the best way to document it? As a variant for each string option?
+
+
+Comment author: @ejgallego
+
+Maxime is working on the warning system right now; he informs me that this and the plugin warning bug will be fixed shortly.
+
+
+Comment author: @psteckler
+
+Does that mean that the parsing mechanism for Set xxx Append yyy goes away, where xxx is not Warnings?
+
+For example, Coq 8.6 accepts:
+
+  Set Extraction File Comment Append "foo".
+
+via the mechanism mentioned (whatever that might mean).
+
+
+Comment author: @Zimmi48
+
+Maxime said to me that he was not the one who implemented this (it was Guillaume), that this Set xxx Append is indeed a general mechanism that is (for now) only used for warnings.
+
+I personally think that it is a bug that it doesn't even emit a warning when used in a nonsensical way like in your example. (IMHO it should even be an error but right now you can also do Set foo and only get a warning so by consistency this should emit a warning too).
+
+
+Comment author: @JasonGross
+
+The reason that [Set foo] is only a warning is for compatibility; it is nice to be able to [Set Asymmetric Patterns] and have the file still build with Coq 8.4.  If there is a particular option for which [Append] can never make sense, then it should error.  If it might someday make sense but does not presently, it should warn.
+
+
+Comment author: @psteckler
+
+I can change the code so that Append works only with Warnings, and results in an error otherwise. 
+
+If that's OK, I can also document [Set Warnings Append], which is the same as [Set Warnings].
+
+
+Comment author: @psteckler
+
+Or, since the Append is redundant for Warnings, just remove that syntax, obviating the need to document it.
+
+
+I finally figured out how the warnings mechanism works and I think it's incredibly confusing. First of all, re-using the options mechanism is extremely confusing for users: currently, finding the documentation requires checking the option index for `Warnings` - searching for "warnings" is useless.
+
+My preferred API is to have separate commands `Enable Warning` and `Disable Warning` that do not allow commas or minuses in their arguments. The implementation might still 
+
+I think at the very least `Set Warnings Append` should be required for changing the warnings list, not removing `Append` and making it implicit for this single option. `Set` is already confusing and having its behavior be so dependent on the option involved is even worse. One compromise would be a separate command `Append Warnings` that changes the warnings option (and no way to set it with `Set`).

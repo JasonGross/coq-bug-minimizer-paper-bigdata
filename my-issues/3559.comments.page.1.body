@@ -1,0 +1,254 @@
+Comment author: @JasonGross
+
+This is the error message with -indices-matter.  There's a different error message without it.
+
+(* -*- mode: coq; coq-prog-args: ("-emacs" "-indices-matter") -*- *)
+(* File reduced by coq-bug-finder from original input, then from 8657 lines to 4731 lines, then from 4174 lines to 192 lines, then from 161 lines to 55 lines, then from 51 lines to 37 lines, then from 43 lines to 30 lines *)
+(* coqc version trunk (August 2014) compiled on Aug 31 2014 10:12:32 with OCaml 4.01.0
+   coqtop version cagnode17:/afs/csail.mit.edu/u/j/jgross/coq-trunk,trunk (437b91a3ffd7327975a129b95b24d3f66ad7f3e4) *)
+Set Universe Polymorphism.
+Generalizable All Variables.
+Definition iff A B := prod (A -> B) (B -> A).
+Infix "<->" := iff : type_scope.
+Inductive paths {A : Type} (a : A) : A -> Type := idpath : paths a a where "x = y" := (@ paths _ x y) : type_scope.
+Class Contr_internal (A : Type) := { center : A ; contr : (forall y : A, center = y) }.
+Inductive trunc_index : Type := minus_two | trunc_S (_ : trunc_index).
+Fixpoint IsTrunc_internal (n : trunc_index) (A : Type) : Type :=
+  match n with
+    | minus_two => Contr_internal A
+    | trunc_S n' => forall (x y : A), IsTrunc_internal n' (x = y)
+  end.
+Notation minus_one:=(trunc_S minus_two).
+Class IsTrunc (n : trunc_index) (A : Type) : Type := Trunc_is_trunc : IsTrunc_internal n A.
+Instance istrunc_paths (A : Type) n `{H : IsTrunc (trunc_S n) A} (x y : A) : IsTrunc n (x = y) := H x y.
+Notation IsHProp := (IsTrunc minus_one).
+Record hProp := hp { hproptype :> Type ; isp : IsHProp hproptype}.
+Axiom path_iff_hprop_uncurried : forall `{IsHProp A, IsHProp B}, (A <-> B) -> A = B.
+Inductive V : Type@ {U'} := | set {A : Type@ {U}} (f : A -> V) : V.
+Axiom is0trunc_V : IsTrunc (trunc_S (trunc_S minus_two)) V.
+Axiom bisimulation : V@ {U' U} -> V@ {U' U} -> hProp@ {U'}.
+Notation "u ~~ v" := (bisimulation u v) (at level 30).
+Lemma bisimulation_equals_id : forall u v : V, (u = v) = (u ~~ v).
+Proof.
+  intros u v.
+  refine (@ path_iff_hprop_uncurried _ _ _ _ _).
+  exact (isp _). (* Toplevel input, characters 22-27:
+Error:
+In environment
+u : V
+v : V
+The term "isp (u ~~ v)" has type
+ "IsTrunc@ {Top.76} (trunc_S minus_two)
+    (hproptype@ {Top.76} (bisimulation@ {Top.67 Top.76} u v))"
+while it is expected to have type
+ "IsTrunc@ {Top.67} (trunc_S minus_two)
+    (hproptype@ {Top.69} (bisimulation@ {Top.67 Top.69} u v))"
+(cannot unify "(fix IsTrunc_internal (n : trunc_index)
+                                     (A : Type@ {Top.76}) {struct n} :
+                  Type@ {Top.76} :=
+                  match n with
+                  | minus_two => Contr_internal@ {Top.76} A
+                  | trunc_S n' => forall x y : A, IsTrunc_internal n' (x = y)
+                  end) minus_two (x = y)" and
+"(fix IsTrunc_internal (n : trunc_index) (A : Type@ {Top.67}) {struct n} :
+    Type@ {Top.67} :=
+    match n with
+    | minus_two => Contr_internal@ {Top.67} A
+    | trunc_S n' => forall x y : A, IsTrunc_internal n' (x = y)
+    end) minus_two (x = y)").
+ *)
+
+
+Comment author: @JasonGross
+
+This might be
+
+
+Comment author: @JasonGross
+
+Sorry for the partial comment.
+
+This might be an actual universe inconsistency, though it didn't show up a week or two ago.  I'll try to track down the commit that changed things.
+
+
+Comment author: @JasonGross
+
+The pasted git bisect script tells me:
+
+3007da7147d86f2e85347b9e70c1faea7d2eed06 is the first bad commit
+commit 3007da7147d86f2e85347b9e70c1faea7d2eed06
+Author: Pierre-Marie Pédrot <pierre-marie.pedrot@ inria.fr>
+Date:   Mon Jul 21 19:42:44 2014 +0200
+
+    Universe level maps use HMaps.
+
+:040000 040000 f2b31494a3343534baa6407e4d2cfaec91e6acd1 b0ea7ab5708b7fb9d3ad3c076cd3c48a950e65d0 M      kernel
+:040000 040000 4a6031aba0d0bdd07c10d4f6894faefff33dea4a 092c71738f8e5c869be87b463aa6dbb39e04dae0 M      lib
+bisect run success
+
+
+#!/bin/bash
+
+SCRIPT="$(readlink -f "${BASH_SOURCE[0]}")"
+COQ_DIR="$HOME/coq"
+
+# exit immediately and abort the bisect if killed
+trap "exit 128" SIGHUP SIGINT SIGTERM
+
+if [ "$1" = "--init" ]
+then
+    shift
+    cd "$COQ_DIR"
+    PS4='$ '
+    set -x
+    # git bisect start [--no-checkout] [<bad> [<good>...]] [--] [<paths>...]
+    git bisect start 437b91a3ffd7327975a129b95b24d3f66ad7f3e4 c4ecec191130a51975bf97d067472e0e5bd744f5
+    git bisect run "$SCRIPT" "$@ "
+    exit 128 # if git bisect run gets --init, abort immediately
+fi
+
+cd "$COQ_DIR"
+
+ARGS="-local"
+for arg in "-nodoc" "-no-native-compiler"; do
+    if [ ! -z "$(./configure -h 2>&1 | grep -- "$arg")" ]; then
+        ARGS="$ARGS $arg"
+    fi
+done
+for arg in "-coqide" "-with-doc"; do
+    if [ ! -z "$(./configure -h 2>&1 | grep -- "$arg")" ]; then
+        ARGS="$ARGS $arg no"
+    fi
+done
+if [ "$1" == "--no-build" ]; then
+    shift
+else
+    git clean -xfd 2>&1 >/dev/null
+    echo "./configure $ARGS"
+    ./configure $ARGS
+    make coqlight "$@ " || exit 125
+fi
+ls ./bin
+
+
+FILE=`mktemp --suffix=.v --tmpdir tmpXXXXXXXXXX`
+
+cat > "$FILE" <<'EOF'
+(* -*- mode: coq; coq-prog-args: ("-emacs" "-indices-matter" "-nois") -*- *)
+(* File reduced by coq-bug-finder from original input, then from 8657 lines to 4731 lines, then from 4174 lines to 192 lines, then from 161 lines to 55 lines, then from 51 lines to 37 lines, then from 43 lines to 30 lines *)
+(* coqc version trunk (August 2014) compiled on Aug 31 2014 10:12:32 with OCaml 4.01.0
+   coqtop version cagnode17:/afs/csail.mit.edu/u/j/jgross/coq-trunk,trunk (437b91a3ffd7327975a129b95b24d3f66ad7f3e4) *)
+Require Import Coq.Init.Notations.
+Set Universe Polymorphism.
+Generalizable All Variables.
+Record prod A B := pair { fst : A ; snd : B }.
+Arguments pair {_ _} _ _.
+Reserved Notation "x -> y" (at level 99, right associativity, y at level 200).
+Reserved Notation "x <-> y" (at level 95, no associativity).
+Reserved Notation "x = y" (at level 70, no associativity).
+Notation "A -> B" := (forall (_ : A), B) : type_scope.
+Open Scope type_scope.
+
+Definition iff A B := prod (A -> B) (B -> A).
+Infix "<->" := iff : type_scope.
+Inductive paths {A : Type} (a : A) : A -> Type := idpath : paths a a where "x = y" := (@ paths _ x y) : type_scope.
+Class Contr_internal (A : Type) := { center : A ; contr : (forall y : A, center = y) }.
+Inductive trunc_index : Type := minus_two | trunc_S (_ : trunc_index).
+Fixpoint IsTrunc_internal (n : trunc_index) (A : Type) : Type :=
+  match n with
+    | minus_two => Contr_internal A
+    | trunc_S n' => forall (x y : A), IsTrunc_internal n' (x = y)
+  end.
+Notation minus_one:=(trunc_S minus_two).
+Class IsTrunc (n : trunc_index) (A : Type) : Type := Trunc_is_trunc : IsTrunc_internal n A.
+Instance istrunc_paths (A : Type) n `{H : IsTrunc (trunc_S n) A} (x y : A) : IsTrunc n (x = y) := H x y.
+Notation IsHProp := (IsTrunc minus_one).
+Record hProp := hp { hproptype :> Type ; isp : IsHProp hproptype}.
+Axiom path_iff_hprop_uncurried : forall `{IsHProp A, IsHProp B}, (A <-> B) -> A = B.
+Inductive V : Type@ {U'} := | set {A : Type@ {U}} (f : A -> V) : V.
+Axiom is0trunc_V : IsTrunc (trunc_S (trunc_S minus_two)) V.
+Axiom bisimulation : V@ {U' U} -> V@ {U' U} -> hProp@ {U'}.
+Notation "u ~~ v" := (bisimulation u v) (at level 30).
+Lemma bisimulation_equals_id : forall u v : V, (u = v) = (u ~~ v).
+Proof.
+  intros u v.
+  refine (@ path_iff_hprop_uncurried _ _ _ _ _).
+  exact (isp _).
+Admitted.
+EOF
+
+rm -f "${FILE%.v}.vo"
+OUTPUT="$(timeout 30 ./bin/coqtop -nois -indices-matter -boot -compile "${FILE%.v}" 2>&1)"
+ls "${FILE%.v}"*
+ERR=$?
+echo "$OUTPUT"
+echo "$ERR"
+#echo "$FILE"
+rm -f "$FILE" "${FILE%.v}.vo" "${FILE%.v}.glob"
+
+if [ ! -z "$(echo "$OUTPUT" | grep -o 'cannot unify')" ]; then
+    echo 'exit 1'
+    exit 1 # bad
+elif [ $ERR = 0 ]; then
+    echo 'exit 0'
+    exit 0 # good
+else
+    echo 'exit 125'
+    exit 125 # failed for other reason
+fi
+
+
+Comment author: @mattam82
+
+It is a rightful universe inconsistency. If you look at V's universes, the second is strictly larger than the first one, however the unification you attempt would make them equal (76 and 67 in your run). One solution is to let the IsTrunc in hProp live at any level higher than the hproptype, so you can use it in that proof which requires it at a strictly higher level.
+Record hProp := hp { hproptype :> Type@ {j} ; isp : IsTrunc@ {i} minus_one hproptype}.
+
+I'm really curious about why it worked before that patch, I'll have a look.
+
+Another solution would be to show that IsTrunc is liftable to any higher universe, but it seems to require univalence to show that paths at any level in the same type are equal:
+
+Lemma paths_lift (A : Type@ {i}) (x y : A) (p : x = y) : paths@ {j} x y.
+Proof.
+  destruct p. apply idpath.
+Defined.
+
+Lemma paths_change (A : Type@ {i}) (x y : A) : paths@ {j} x y = paths@ {i} x y.
+Proof. (* require Univalence *)
+  apply cheat.
+Defined.
+  
+Lemma IsTrunc_lift (n : trunc_index) :
+  forall (A : Type@ {i}), IsTrunc_internal@ {i} n A -> IsTrunc_internal@ {j} n A.
+Proof.
+  induction n; simpl; intros. 
+  destruct X. exists center0. intros. apply (paths_lift _ _ _  (contr0 y)).
+
+  rewrite paths_change. 
+  apply IHn, X. 
+Defined.
+
+Lemma bisimulation_equals_id : forall u v : V@ {i j}, (u = v) = (u ~~ v).
+Proof.
+ intros u v.
+ refine (@ path_iff_hprop_uncurried _ _ _ _ _).
+ apply IsTrunc_lift.
+ exact (isp _).
+ split; intros. destruct X. apply bisimulation_refl.
+ apply bisimulation_eq, X.
+Defined.
+
+
+Comment author: @mattam82
+
+Uhoh.. ok, the problem comes from V's universe levels which got inverted after that patch, so defining:
+
+Axiom bisimulation : V@ {U U'} -> V@ {U U'} -> hProp@ {U'}.
+
+Works in the newest version. Letting it open, we'll get back to the old ordering which follows the universe numbering.
+
+
+Comment author: @mattam82
+
+Ok, this is fixed in trunk now. The file goes through as before the patch by PMP. The order of universes for a polymorphic constant now always follows the order of introduction in the term/inductive, which is the level numbers.
+
+

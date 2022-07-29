@@ -1,0 +1,4 @@
+See #11822. However, this does not fix #11691 (error message) nor #11689 (efficiency), which I don't know well how to address in pure Ltac.
+Note that #11691 can be "fixed" simply my making the error message a bit more verbose: "hypothesis to clear is used in the conclusion (maybe indirectly) or is a section variable contained in the body of a definition which is used in a hypothesis (maybe indirectly)"
+
+#11689 can be fixed (at the cost of a bit of compatibility that probably (hopefully) no-one is taking advantage of) simply by replacing `match goal` with `lazymatch goal`, and I believe this is worth doing.

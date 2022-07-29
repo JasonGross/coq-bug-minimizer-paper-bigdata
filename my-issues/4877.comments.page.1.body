@@ -1,0 +1,26 @@
+Comment author: @JasonGross
+
+Here is code that works in 8.4 and 8.5, but breaks in trunk.  I don't think it should be an error.  It fails with "Syntax error: ':' expected after [range_selector_or_nth] (in [vernac:selector])" in trunk:
+
+Ltac induction_last :=
+  let v := match goal with
+           | |- forall x y, _ = _ -> _ => 1
+           | |- forall x y, _ -> _ = _ -> _ => 2
+           | |- forall x y, _ -> _ -> _ = _ -> _ => 3
+           end in
+  induction v.
+  
+Goal forall n m : nat, True -> n = m -> False.
+  induction_last.
+
+
+Comment author: @JasonGross
+
+(Note that this is an actual use-case from Fiat.)
+
+
+Comment author: @maximedenes
+
+Fixed by merging PR#232. Thanks!
+
+

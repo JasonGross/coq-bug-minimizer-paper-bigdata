@@ -1,0 +1,38 @@
+Comment author: @JasonGross
+```coq
+Set Primitive Projections.
+Set Implicit Arguments.
+Record prod A B := pair { fst : A ; snd : B }.
+Goal fst (pair nat nat) = nat.
+  progress compute. (* failed to progress *)
+  match goal with
+    | [ |- fst ?x = nat ] => fail 1 "compute failed"
+    | [ |- nat = nat ] => idtac
+  end.
+  reflexivity.
+Defined.
+
+Goal fst (pair nat nat) = nat.
+  unfold fst. (* Error: Cannot unfold primitive projection fst *)
+  match goal with
+    | [ |- fst ?x = nat ] => fail 1 "compute failed"
+    | [ |- nat = nat ] => idtac
+  end.
+  reflexivity.
+Defined.
+```
+
+Comment author: @JasonGross
+
+I think the right behavior for [cbv delta [fst]] should appear to behave the same as without primitive projections, with [fst] unfolding to the compatibility representation [fun (A B : Type) (p : prod A B) =>
+match p return A with
+| pair fst _ => fst
+end]
+In this case, I think [Print fst] should possibly also display this compatibility representation.  Displaying [fst = fun (A B : Type) (p : prod A B) => @ fst A B p] is kind-of confusing.
+
+
+Comment author: @mattam82
+
+Fixed in trunk. cbv/compute were actually implementing everything but the reduction rule of projections :)
+
+

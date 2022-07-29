@@ -1,0 +1,68 @@
+Comment author: @JasonGross
+
+$ cat foo.v
+Theorem a : True.
+Proof I.
+Check a.
+Theorem b : True.
+Time Proof I.
+Check b.
+$ coqc foo
+a
+     : True
+File "./foo.v", line 5, characters 0-13:
+Error: Attempt to save an incomplete proof (in proof b)
+
+This means that I can't run coqc -time on the standard library (which is the 
+actual thing I'm trying to do).
+
+
+Comment author: @ejgallego
+
+That should be easy to fix, however I heard some discussion about deprecating the `Proof term` form altogether, Théo?
+
+
+Comment author: @ejgallego
+
+diff --git a/stm/stm.ml b/stm/stm.ml
+index a79bf5426..11aca1627 100644
+--- a/stm/stm.ml
++++ b/stm/stm.ml
+@ @  -2046,7 +2046,8 @ @  let collect_proof keep cur hd brkind id =
+    | `ASync(_,pua,_,name,_) -> `Sync (name,pua,why) in
+  let check_policy rc = if async_policy () then rc else make_sync `Policy rc in
+  match cur, (VCS.visit id).step, brkind with
+- | (parent, { expr = VernacExactProof _ }), `Fork _, _ ->
++ | (parent, { expr = VernacExactProof _ }), `Fork _, _
++ | (parent, { expr = VernacTime (_, VernacExactProof _) }), `Fork _, _ ->
+      `Sync (no_name,None,`Immediate)
+  | _, _, { VCS.kind = `Edit _ }  -> check_policy (collect (Some cur) [] id)
+  | _ ->
+
+
+Comment author: @JasonGross
+
+If you want to deprecate it, that's fine, but then you should remove all of its uses from the standard library.
+
+
+Comment author: @Zimmi48
+
+I talked about deprecating it indeed but only if we provide a reasonable alternative. My suggestion was to have a "Lemma ident [: type] := term." form which would be the symmetric of "Definition ident [: type] := term." with the difference that the former is opaque while the latter is transparent.
+
+So if it can, this bug should still be fixed in the meantime (or this form be removed from the standard library but I count many uses).
+
+
+Comment author: @ejgallego
+
+Interesting, I didn't know they use was so widespread.
+
+IMHO from the STM / state handling point of view removing the command won't make much difference, other than removing yet another special case in the code, as now we could handle this case in the same codepath than `Definition`.
+
+However, I wouldn't expect the gains on code clarity to be as high as to push for the deprecation of this.
+
+
+Comment author: @ejgallego
+
+Oh I forgot https://github.com/coq/coq/pull/748
+
+

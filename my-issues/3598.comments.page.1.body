@@ -1,0 +1,30 @@
+Comment author: @JasonGross
+
+Set Implicit Arguments.
+Set Primitive Projections.
+Record prod A B := pair { fst : A ; snd : B }.
+Goal forall x : prod Set Set, fst x = fst x.
+  intros.
+  match goal with
+    | [ |- context[?f ?x = ?f ?x] ] => idtac
+  end. (* works as expected *)
+Admitted.
+Goal (forall y : prod (Set -> prod (Set -> Set) Set) Set,
+        Set = fst (fst y nat) nat)
+-> True.
+  match goal with
+    | [ |- context[forall y, ?f (fst (@ fst ?C ?D y ?x) ?k)] ]
+      => idtac
+  end.
+  match goal with
+    | [ |- context[forall y, ?f (?g (@ fst ?C ?D y ?x) ?k)] ]
+      => idtac
+  end. (* Toplevel input, characters 0-98:
+Error: No matching clauses for match. *)
+
+
+Comment author: @mattam82
+
+Fixed in trunk
+
+

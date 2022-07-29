@@ -1,0 +1,19 @@
+Comment author: @JasonGross
+
+This code works in 8.4pl6, but neither 8.5pl2 nor 8.6 with `Require Import Coq.Compat.Coq84.`
+```
+Section a.
+  Context (x : Type).
+  Definition foo : Type.
+  Admitted.
+End a.
+Check foo : Type.
+```
+There should be a setting that restores the 8.4 behavior, which is set in Compat.Coq84.
+
+
+Comment author: @ppedrot
+
+Fixed by 12268be that introduces the `Keep Admitted Variables` option.
+
+

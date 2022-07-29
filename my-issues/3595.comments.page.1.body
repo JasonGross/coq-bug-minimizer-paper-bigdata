@@ -1,0 +1,21 @@
+Comment author: @JasonGross
+
+When I build a local stdlib with -quick, and then I try to run coqc -coqlib /path/to/vi/coqlib -quick foo.v
+I get
+Error: /afs/csail.mit.edu/u/j/jgross/HoTT/coq/theories/Init/Prelude.vo: /afs/csail.mit.edu/u/j/jgross/HoTT/coq/theories/Init/Prelude.vo: No such file or directory. Try to rebuild it.
+
+
+Comment author: @gares
+
+It is easy to fix, just add a fallback in require_prelude in toplevel.ml.
+I'll push the fix soon.
+
+Still, it makes little sense to compile Prelude.v with -quick.
+How did you ended up doing so?
+
+
+Comment author: @JasonGross
+
+The HoTT library needs to rip out the stdlib in favor of one that's been compiled with -indices-matter.  We also don't use coq_makefile, so we have our own targets for building the replacement stdlib.  I decided to try making the `quick` target be about everything, including the replacement stdlib, and ran into this error.
+
+

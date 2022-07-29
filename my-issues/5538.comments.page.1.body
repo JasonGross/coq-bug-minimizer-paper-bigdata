@@ -1,0 +1,12 @@
+Comment author: @JasonGross
+
+In trunk, it says "simpl", whereas in 8.6, it says "simpl in *"
+
+
+Comment author: @ejgallego
+
+Do we have a bisect candidate here? 
+
+What about https://coq.inria.fr/bugs/show_bug.cgi?id=5536 ? Did that also happen in 8.6?
+
+

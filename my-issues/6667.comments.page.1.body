@@ -1,0 +1,9 @@
+Probably related to the unfolding of constants, that keep requiring going through the stack. I'll have a closer look.
+Indeed, it looks like most of the time is passed into zipping the stack, because the reduction machine doesn't try to compute the normal form of the right hand side in one go, although this is eventually the only meaningful reduction. I know @maximedenes had some plans regarding the conversion algorithm, in particular this exact issue. Not sure when it's going to be implemented though.
+Is it really zipping or comparing the stacks that takes time?
+I had a patch that gets rid of the `pure_stack` construction. I can try to resurrect it. Is it the bottleneck on this example?
+@maximedenes Nope, (microscopically) the problem is zipping and to a lesser extent, useless computation of shifts in `eqappr`. But macroscopically the problem is a stupid unfolding heuristic.
+
+I wrote a trivial patch that follows your idea about forcing δ-reduction in flex/constructor case in the kernel and it makes the comparison from 7s down to 0.2s. It's [here](https://github.com/ppedrot/coq/tree/rigid-constructor-conversion) if you're curious.
+
+I'll bench it on more realistic examples, but the benching machine is already somewhat saturated right now.

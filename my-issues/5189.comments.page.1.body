@@ -1,0 +1,32 @@
+Comment author: @JasonGross
+
+The following example demonstrates this inconsistency, as does "Print Hint *".  
+This is present since at least 8.4
+
+Module Import X.
+  Axioms A B C : Prop.
+  Axiom AB : A -> B.
+  Axiom AC : A <-> C.
+  Create HintDb foo discriminated.
+  Hint Resolve AB : foo.
+  Hint Resolve <- AC : foo.
+  Goal A -> B.
+    auto with foo.
+  Qed.
+  Goal C -> A.
+    auto with foo.
+  Qed.
+End X.
+Goal A -> B.
+  auto with foo.
+Qed.
+Goal C -> A.
+  auto with foo.
+Qed. (* Error: Attempt to save an incomplete proof (in proof Unnamed_thm2) *)
+
+
+Comment author: @silene
+
+Fixed by commit 88b2eb9. Thanks for the report.
+
+

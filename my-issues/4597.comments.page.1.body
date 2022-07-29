@@ -1,0 +1,12 @@
+Comment author: @JasonGross
+
+It'd be nice if copy-pasting the code of an inductive to another module led to lemmas about a type convertible with the original one.
+
+
+Comment author: @ppedrot
+
+I would be betting a heck of a lot that twenty years from now, it won't have happened. Modules are already really tricky on their own, so adding inductive stuff that raises horrendous issues of generativity and the like atop of that is a no-go.
+
+While the local inductive wish is on the verge of reasonableness, I think it is saner to close this one.
+
+

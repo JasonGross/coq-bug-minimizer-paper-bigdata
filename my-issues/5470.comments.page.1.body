@@ -1,0 +1,23 @@
+Comment author: @JasonGross
+
+Reserved Notation "x +++ y" (at level 70, x binder). (* Anomaly: Should occur 
+only as part of BinderList. Please report at http://coq.inria.fr/bugs/. *)
+
+At the very least, this should not be an anomaly.
+
+
+Comment author: @herbelin
+
+Fixed in branch v8.6.
+
+
+Comment author: @JasonGross
+
+Thanks!
+
+
+Comment author: @herbelin
+
+*** Bug [BZ#3256](https://github.com/coq/coq/issues?q=is%3Aissue%20%22Original%20bug%20ID%3A%20BZ%233256%22) has been marked as a duplicate of this bug. ***
+
+

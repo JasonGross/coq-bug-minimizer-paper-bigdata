@@ -1,0 +1,41 @@
+Comment author: @JasonGross
+
+This code works in 8.4 but fails in trunk:
+
+Section foo.
+  Variable A : Type.
+  Definition foo := A.
+  Definition bar : Type.
+  Proof.
+    clear A.
+    exact foo. (* Toplevel input, characters 0-10:
+Error: foo depends on the variable A which is not declared in the context. *)
+  Defined.
+End foo.
+
+
+Either this should be fixed, or it should be mentioned that this is an intentional change in the changelog.  (And perhaps a test-suite case should be added so that we remember to mark it as a change if this behavior changes again.)
+
+
+Comment author: @herbelin
+
+Hi Jason,
+
+See https://coq.inria.fr/bugs/show_bug.cgi?id=3418. This is a "quick"
+change for a serious worry which sometimes manifests into a real
+typing bug.
+
+It is unfortunate that the fix breaks a couple of scripts which do not
+show incorrect typing, but I/we don't have a better fix at the current
+time.
+
+I forgot to document the change. Now it is done. Thanks.
+
+Hugo
+
+
+Comment author: @JasonGross
+
+I assume you actually meant https://coq.inria.fr/bugs/show_bug.cgi?id=2996, as per  the commit message.  (Mentioning it for anyone else who comes looking.)
+
+

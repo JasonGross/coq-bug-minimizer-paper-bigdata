@@ -1,0 +1,7 @@
+Does https://github.com/coq/coq/issues/6105#issuecomment-397644133 work for you?
+`Hint Opaque constants : rewrite` seems to have no effect, at least when `Set Keyed Unification` is on.
+I support the solution of making more tactics support hint databases and putting the transparency information there.
+Here's an earlier comment of mine where I was suggesting something along those lines: https://github.com/coq/coq/pull/7004#issuecomment-394396188
+Note that this is currently blocking adoption of `Set Keyed Unification` in some of our projects.
+The fact that `autorewrite` ignores `Hint Opaque ... : rewrite` remains a severe issue for fiat-crypto.  I'm currently in the process of adding `Local Opaque` directives to speed up `autorewrite` significantly, but it's very anti-modular, and quite painful.
+And this just bit me again, since I have other proofs that need the given constants to be `Transparent`, while `autorewrite` can only be fast if they are `Opaque`. :-(

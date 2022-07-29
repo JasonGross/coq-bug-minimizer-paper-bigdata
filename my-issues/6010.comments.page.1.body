@@ -1,0 +1,2 @@
+For windows, I see no other solution than to add a patch disabling worker processes from `par` too.
+What?  Why would you do that?  `par:` works fine on Windows, as long as the workers don't OOM.  I could see the usefulness of having a `-disable-par-on-windows` command-line flag, but I don't think it should be forcibly disabled.

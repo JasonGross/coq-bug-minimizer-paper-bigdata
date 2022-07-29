@@ -1,0 +1,26 @@
+Comment author: @JasonGross
+
+I would like to be able to specify the form of the thing I'm doing transitivity with.  That is, I'd like to be able to do something like
+
+Goal 1 = 1.
+etransitivity (_ + _).
+
+and get two new goals, [1 = ?1 + ?2] and [?1 + ?2 = 1].
+
+If the enhancement request at https://coq.inria.fr/bugs/show_bug.cgi?id=3064 gets filled, I believe this variant of etransitivity could be implemented as something like
+
+Require Import Setoid.
+Tactic Notation "etransitivity" constr_pattern(y) :=
+  let R := match goal with |- ?R ?x ?z => constr:(R) end in
+  let x := match goal with |- ?R ?x ?z => constr:(x) end in
+  let z := match goal with |- ?R ?x ?z => constr:(z) end in
+  eapply (transitivity (R := R) (x := x) (y := y) (z := z)).
+
+and the present [etransitivity] should be equivalent to [etransitivity _].
+
+
+Comment author: @JasonGross
+
+This can apparently be implemented now with [open_constr], rather than [constr_pattern].  It doesn't quite deal with all the cases that [etransitivity] and [setoid_etransitivity] deal with, such as [JMeq], but I still think it might make a good addition to the standard library as-is.
+
+

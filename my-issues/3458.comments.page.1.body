@@ -1,0 +1,23 @@
+Comment author: @JasonGross
+
+Ltac foo term1 term2 := match term1 with context[term2] => idtac end.
+Ltac bar := let G := match goal with |- ?G => constr:(G) end in
+            let x := constr:(fun f : Set => $(foo G f; exact I)$) in
+            pose x.
+Goal forall f : nat, f = f.
+Proof.
+  intro f.
+  bar. (* um... this should not succeed *)
+  rename f into f'.
+  bar. (* and now it fails as expected *)
+
+
+The use of [f] in [bar] seems to be picking up the one in the context, not the one in my local tactic.  This is wrong.
+
+
+Comment author: @ppedrot
+
+This is due to the way Ltac handles variable. This is going to be difficult to solve without essentially rewriting Ltac...
+
+
+I think that this is actually the expected semantics.

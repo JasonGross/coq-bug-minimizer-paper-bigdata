@@ -1,0 +1,250 @@
+Comment author: @JasonGross
+
+This error message could be more helpful, e.g., by mentioning that the [intro] 
+call occurs in [f], called from [g].
+
+Ltac f := let x := fresh in intro x; exact x.
+Ltac g _ := f.
+Notation foo := (ltac:(g ())) (only parsing).
+Definition bar := foo. (* Error: No product even after head-reduction. *)
+
+
+Comment author: @herbelin
+
+I cannot reproduce. In 8.5 and 8.6, I get:
+
+In nested Ltac calls to "g", "f" and "intro x", last call failed.
+Error: No product even after head-reduction.
+
+In trunk, I get:
+
+In nested Ltac calls to "g", "f" and "intro (ident)", last call failed.
+No product even after head-reduction.
+
+
+Comment author: @JasonGross
+
+Oh, I think this is partially an emacs/PG issue.  The following are different in a way that PG has trouble with:
+
+$ echo 'Ltac f := let x := fresh in intro x; exact x.
+Ltac g _ := f.
+Goal True.
+  g ().' | coqtop
+Welcome to Coq 8.6 (December 2016)
+
+Coq < f is defined
+
+Coq < g is defined
+
+Coq < 1 subgoal
+
+  ============================
+  True
+
+Unnamed_thm < Toplevel input, characters 2-6:
+>   g ().
+>   ^^^^
+In nested Ltac calls to "g", "f" and "intro (ident)", last call failed.
+Error: No product even after head-reduction.
+
+Unnamed_thm <
+
+
+(this displays correctly in PG)
+
+vs
+
+$ echo 'Ltac f := let x := fresh in intro x; exact x.
+Ltac g _ := f.
+Notation foo := (ltac:(g ())) (only parsing).
+Definition bar := foo. (* Error: No product even after head-reduction. *)' | coqtop
+Welcome to Coq 8.6 (December 2016)
+
+Coq < f is defined
+
+Coq < g is defined
+
+Coq <
+Coq < In nested Ltac calls to "g", "f" and "intro (ident)", last call failed.
+Error: No product even after head-reduction.
+
+Coq <
+
+
+Note that there's no line number / location information here, so PG doesn't pick up that the first bit is an error.  Can we add the "Toplevel input, characters ..." bit?
+
+
+Comment author: @ejgallego
+
+Jason, likely the issue is that location information was lost so the toplevel cannot point the error out. This may be or not tricky to fix.
+
+
+Comment author: @psteckler
+
+I think it's entirely a PG issue, and not a Coq issue.
+
+If you look in the *coq* buffer, you'll see the full error message that Hugo reports. Somehow, either the *response* buffer is getting erased before printing the last line of the error, or only the last line is being printed.
+
+Should I report this on the PG repo?
+
+Incidentally, PG/xml shows the full error message. :-) :-)
+
+
+Comment author: @psteckler
+
+Although adding the Toplevel input and carets stuff would probably allow PG to work as-is, as you suggest.
+
+Still, I'd think PG could the full error message, without a location.
+
+The XML protocol does give a location for the error.
+
+
+Comment author: @psteckler
+
+Here's the trace of what happens in vanilla PG:
+
+======================================================================
+1 -> (pg-response-display "In nested Ltac calls to \"g\", \"f\" and \"intro (ident)\", last call failed.
+Error: No product even after head-reduction.
+")
+| 2 -> (pg-response-display-with-face "In nested Ltac calls to \"g\", \"f\" and \"intro (ident)\", last call failed.
+Error: No product even after head-reduction.
+")
+| 2 <- pg-response-display-with-face: nil
+1 <- pg-response-display: nil
+======================================================================
+1 -> (pg-response-display-with-face "Error: No product even after head-reduction.
+")
+1 <- pg-response-display-with-face: nil
+======================================================================
+1 -> (pg-response-display "In nested Ltac calls to \"g\", \"f\" and \"intro (ident)\", last call failed.
+Error: No product even after head-reduction.
+")
+| 2 -> (pg-response-display-with-face "In nested Ltac calls to \"g\", \"f\" and \"intro (ident)\", last call failed.
+Error: No product even after head-reduction.
+")
+| 2 <- pg-response-display-with-face: nil
+1 <- pg-response-display: nil
+======================================================================
+1 -> (pg-response-display-with-face "Error: No product even after head-reduction.
+")
+1 <- pg-response-display-with-face: nil
+
+----------------------------------------------------------------------
+
+So the call to `pg-response-display' with the full error is called twice, and for each of those calls, there's an additional call to `pg-response-display-with-face' with just the second line, and that's what you see in the end.
+
+I'll see why there are duplicate calls in PG, and why the second line is pulled off for a second call.
+
+
+Comment author: @psteckler
+
+The duplicate calls may have been caused by my running a command twice, so never mind that.
+
+
+Comment author: @psteckler
+
+OK, there is a call to handle "delayed output", then a subsequent call to handle "error output". I'll work this out on the PG list.
+
+
+Comment author: @psteckler
+
+I've filed this issue on the PG repo:
+
+  https://github.com/ProofGeneral/PG/issues/173
+
+
+Comment author: @JasonGross
+
+Thanks!
+
+
+Comment author: @Matafou
+
+OK line numbers are lost, but the formatting of the error is bad anyway. I pushed a workaround in pg but it is still a bad error message formatting imho.
+
+The "In nested bla" message should be sent via msg_warning or msg_error, so that it is formatted in the same way than other error messages. since there is an error message after it I suggest a warning for the first part.
+
+
+Comment author: @ejgallego
+
+Indeed Pierre, I think I may introduced a bug here. In the code prior to my PR on pretty printing, errors could be printed by the "logger" (then using the emacs-specific markers) but some other errors were printer by a different toplevel error printer, that didn't insert that markers.
+
+How emacs dealt with that, I don't know. But my PR shifted all error printing to the toplevel printer (which IMO is the right place) so the markers may not be inserted anymore.
+
+I'll take care of it next week so you don't need to introduce any workaround in PG.
+
+
+Comment author: @ejgallego
+
+I'm taking this bug as I think it is indeed a printing bug caused by me.
+
+
+Comment author: @ejgallego
+
+Ok, issue identified, see https://coq.inria.fr/bugs/show_bug.cgi?id=5429 patch will come soon.
+
+
+Comment author: @ejgallego
+
+https://github.com/coq/coq/pull/530
+
+
+Comment author: @ejgallego
+
+Now *all errors* should have the emacs marker, but for a couple of exit messages handled in the init routine (these would be easy to fix too).
+
+
+Comment author: @psteckler
+
+I'm testing this patch against Jason's example here.
+
+
+Comment author: @psteckler
+
+I tested PR 530 against the code here, please see the comment I added there.
+
+A link for your convenience:
+
+  https://github.com/coq/coq/pull/530
+
+
+Comment author: @ejgallego
+
+Great. Also one minor comment, I was a bit surprised that the response to "Coq is doing something wrong" was "lets add a workaround in PG".
+
+IMHO, it would be more productive if we tried "lets fix Coq", at least when it is feasible to do. I think we got too used to try to "workaround Coq".
+
+
+Comment author: @psteckler
+
+It wasn't clear to me that Coq was doing something wrong, exactly, maybe just incomplete.
+
+
+Comment author: @Matafou
+
+In the past I proceeded like this: first workaround in pg because the bug is there for some time and I want it to be fixed for users using pg with old versions of coq. Second fix coq for the next releas / patch level. then 1 or 2 year later remove the workaround in pg.
+
+
+Comment author: @ejgallego
+
+Sure, it may be reasonable to do that for stable versions, however we are talking about the Coq development version here. Just a comment anyways.
+
+
+Comment author: @Matafou
+
+Indeed I did not see that the bug was introduced lately.
+
+
+Comment author: @ejgallego
+
+Fixed in trunk.
+
+
+Comment author: @ejgallego
+
+However PG seems confused about outputting errors with the markers, I dunno what to do here as I am sorry but couldn't decipher what Coq is expected to do.
+
+Please open a new bug if you wanna modify how Coq reports errors under `-emacs`.
+
+

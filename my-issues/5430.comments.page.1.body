@@ -1,0 +1,29 @@
+Comment author: @JasonGross
+
+I expect this code to work.  It does not in 8.5 nor in 8.6.
+
+Goal forall T (x y z : T), exists f, f x y = z.
+  clear.
+  intros; eexists ?[mul].
+  set (mul := ?mul).
+  let f := mul in
+  let T := type of f in
+  lazymatch T with
+  | forall a : _, _
+    => idtac
+  end. (* Error: No matching clauses for match. *)
+
+
+If you add [cbv beta in *], then the [match] works.
+
+
+Comment author: @herbelin
+
+Looks like this will be solved by the Econstr branch (for some reason, the type T of f is a defined evar, which then does not exactly match "forall _, _").
+
+
+Comment author: @JasonGross
+
+Fixed in 8.7, presumably by econstr.
+
+

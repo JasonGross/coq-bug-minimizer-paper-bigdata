@@ -1,0 +1,16 @@
+Comment author: @JasonGross
+
+Here is code that works with Coq 8.4, but fails with Coq 95a4fcf8cd36e29034e886682ed3a6e2914ce04f:
+
+Axiom f : nat -> nat.
+Axiom g : nat -> nat.
+Axiom foo : forall x, g (f x) = x.
+Goal exists n, g n = g (f 1) -> True.
+  evar (n : nat).
+  exists n; intro H.
+  rewrite foo in H.
+  Undo.
+  subst n.
+  rewrite foo in H. (* Error: Cannot find an instance for x. *)
+
+

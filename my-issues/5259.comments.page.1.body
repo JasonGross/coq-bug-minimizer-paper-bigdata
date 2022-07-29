@@ -1,0 +1,60 @@
+Comment author: @JasonGross
+
+This fails:
+Class lattice' T (carrier := T) := { top' : T ; bottom' : T }.
+
+This works:
+Class lattice' T := { top' : T ; bottom' : T }.
+
+
+Comment author: @Zimmi48
+
+BTW once again this is undocumented syntax.
+
+
+Comment author: @JasonGross
+
+Is it?  Is the syntax documented for Definition or Lemma, or for binding lists in general (e.g., for [fun])?
+
+
+Comment author: @Zimmi48
+
+Indeed, my bad this is a generic feature documented in the binders section: https://coq.inria.fr/refman/Reference-Manual003.html#hevea_default19
+
+
+Comment author: @Zimmi48
+
+As far as I understand, this syntax just allows the following equivalent lemma statements:
+
+Lemma foo1 : forall (n : nat), let m := S n in n = m.
+Lemma foo2 (n : nat) : let m := S n in n = m.
+Lemma foo3 (n : nat) (m := S n) : n = m.
+
+In the case of Class declarations, it just feels like this let-binder syntax is not supported.
+
+Indeed, this fails:
+Class lattice' T (carrier := T) := { top' : T ; bottom' : T }.
+
+but this is not surprising given that this fails too:
+Class lattice' T := let (carrier := T) in { top' : T ; bottom' : T }.
+
+So unless I missed some cases where the syntax is supported (and useful), your bug report looks like an enhancement request (and in the meantime the error message should be much clearer than it is today).
+
+
+Comment author: @JasonGross
+
+Indeed, that fails, but this succeeds:
+
+Record lattice' T (carrier := T) := { top' : T ; bottom' : T }.
+Existing Class lattice'.
+
+(And you could, hypothetically make the same argument about [Record] that you did about [Class].)
+
+Regardless, the error message is wrong.  You can see a bit more of what goes wrong here:
+
+Class foo (a:=1) := x : True.
+(* Error: Illegal application (Non-functional construction): 
+The expression "foo" of type "let a := 1 in Prop" cannot be applied to the term
+ "a" : "nat" *)
+
+

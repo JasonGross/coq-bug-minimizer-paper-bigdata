@@ -1,0 +1,81 @@
+Interesting bug.  You should only see absolute file paths in this dialog.  Clearly the server should have returned `/home/jgross/Documents/GitHub/fiat-crypto+14252/rewriter/src/Rewriter/Rewriter/AllTactics.v`.  I'm in the midst of rewriting the relevant code.
+
+If it's no trouble, I'd like to see the previously-highlighted code (corresponding to the second-to-last line from the log `... 19972 20348`.  From the last line, the debugger should have highlighted the subrange `20105 20348`.  I may do a band-aid fix sooner if it's simple.
+Here's the sequence
+```
+server:db_upd_bpts ToplevelInput: 1212 true
+db_loc returns ToplevelInput: 1212 1225
+db_loc returns /home/jgross/Documents/GitHub/fiat-crypto+14252/rewriter/src/Rewriter/Rewriter/AllTactics.v: 20387 20787
+db_loc returns /home/jgross/Documents/GitHub/fiat-crypto+14252/rewriter/src/Rewriter/Rewriter/AllTactics.v: 20387 20392
+db_loc returns /home/jgross/Documents/GitHub/fiat-crypto+14252/rewriter/src/Rewriter/Rewriter/AllTactics.v: 20402 20787
+db_loc returns /home/jgross/Documents/GitHub/fiat-crypto+14252/rewriter/src/Rewriter/Rewriter/AllTactics.v: 20598 20775
+db_loc returns /home/jgross/Documents/GitHub/fiat-crypto+14252/rewriter/src/Rewriter/Rewriter/AllTactics.v: 20598 20639
+db_loc returns /home/jgross/Documents/GitHub/fiat-crypto+14252/rewriter/src/Rewriter/Rewriter/AllTactics.v: 20654 20775
+db_loc returns /home/jgross/Documents/GitHub/fiat-crypto+14252/rewriter/src/Rewriter/Rewriter/AllTactics.v: 19972 20348
+db_loc returns ./src/Rewriter/Rewriter/AllTactics.v: 20105 20348
+```
+![image](https://user-images.githubusercontent.com/396076/118540041-30c43900-b71e-11eb-8cde-76f3e1a83eff.png)
+![image](https://user-images.githubusercontent.com/396076/118540053-34f05680-b71e-11eb-94ef-3842b0253e0e.png)
+![image](https://user-images.githubusercontent.com/396076/118540064-3752b080-b71e-11eb-956a-57b6e27759aa.png)
+![image](https://user-images.githubusercontent.com/396076/118540073-391c7400-b71e-11eb-81bb-65ede2d9c658.png)
+![image](https://user-images.githubusercontent.com/396076/118540089-3b7ece00-b71e-11eb-878b-82c446c8394a.png)
+![image](https://user-images.githubusercontent.com/396076/118540105-3faaeb80-b71e-11eb-8b7b-62eab5cf22b8.png)
+![image](https://user-images.githubusercontent.com/396076/118540114-420d4580-b71e-11eb-9cfa-7fab2de7bd9c.png)
+![image](https://user-images.githubusercontent.com/396076/118540129-45083600-b71e-11eb-83d4-97148e590edb.png)
+![image](https://user-images.githubusercontent.com/396076/118540143-49ccea00-b71e-11eb-94a7-2c7d54daf42e.png)
+
+Would you send me the higlighted text from the second to last screen shot as characters?  Easier to count characters that way.
+Code is at https://github.com/mit-plv/rewriter/blob/6cbbd2d7dcc46efeaad9cd17d28301fe5d75f3bb/src/Rewriter/Rewriter/AllTactics.v#L377-L380, text is
+I'll copy paste when I get a chance
+I'll manage, don't bother.
+I think it's not amenable to a quick fix.  However, the point where you get the warning dialog corresponds to the first `let` nested in the highlighted text.  I expect you'll see this for all `let`s.  Perhaps you can StepIn/StepOver to get past these?  You can also look at the character ranges shown on the console if that helps.  Other than having the wrong filename, the debugger should still work despite the warnings (perhaps annoying if you get a lot of them).
+> I think it's not amenable to a quick fix. [...] Perhaps you can StepIn/StepOver to get past these? You can also look at the character ranges shown on the console if that helps. Other than having the wrong filename, the debugger should still work despite the warnings (perhaps annoying if you get a lot of them).
+
+That's unfortunate.  What you suggest is not that feasible, and even worse I cannot seem to set a breakpoint on `let` constructs.  I want to debug a tactic like https://github.com/mit-plv/rewriter/blob/6cbbd2d7dcc46efeaad9cd17d28301fe5d75f3bb/src/Rewriter/Rewriter/AllTactics.v#L142-L169
+```coq
+Ltac Build_Rewriter basic_package pkg_proofs include_interp skip_early_reduction skip_early_reduction_no_dtree specs_proofs :=
+      let basic_package := (eval hnf in basic_package) in
+      let exprInfo := (eval hnf in (Basic.GoalType.exprInfo basic_package)) in
+      let exprExtraInfo := (eval hnf in (Basic.GoalType.exprExtraInfo basic_package)) in
+      let exprReifyInfo := (eval hnf in (Basic.GoalType.exprReifyInfo basic_package)) in
+      let ident_is_var_like := lazymatch basic_package with {| Basic.GoalType.ident_is_var_like := ?ident_is_var_like |} => ident_is_var_like end in
+      let reify_package := Basic.Tactic.reify_package_of_package basic_package in
+      let reify_base := Basic.Tactic.reify_base_via_reify_package reify_package in
+      let reify_ident := Basic.Tactic.reify_ident_via_reify_package reify_package in
+      let pkg_proofs_type := type of pkg_proofs in
+      let pkg := lazymatch (eval hnf in pkg_proofs_type) with @package_proofs ?base ?ident ?pkg => pkg end in
+      let specs := lazymatch type of specs_proofs with
+                   | PrimitiveHList.hlist (@snd bool Prop) ?specs => specs
+                   | ?T
+                     => let expected_type := uconstr:(PrimitiveHList.hlist (@snd bool Prop) ?[specs]) in
+                        constr_fail_with ltac:(fun _ => fail 1 "Invalid type for specs_proofs:" T "Expected:" expected_type)
+                   end in
+      let R_name := fresh "Rewriter_data" in
+      let R := Build_RewriterT reify_base reify_ident exprInfo exprExtraInfo pkg ident_is_var_like include_interp skip_early_reduction skip_early_reduction_no_dtree specs in
+      let R := cache_term R R_name in
+      let __ := Make.debug1 ltac:(fun _ => idtac "Proving Rewriter_Wf...") in
+      let Rwf := fresh "Rewriter_Wf" in
+      let Rwf := cache_proof_with_type_by (@Wf_GoalT exprInfo exprExtraInfo pkg R) ltac:(idtac; prove_good ()) Rwf in
+      let __ := Make.debug1 ltac:(fun _ => idtac "Proving Rewriter_Interp...") in
+      let RInterp := fresh "Rewriter_Interp" in
+      let RInterp := cache_proof_with_type_by (@Interp_GoalT exprInfo exprExtraInfo pkg R) ltac:(idtac; prove_interp_good ()) RInterp in
+      let __ := Make.debug1 ltac:(fun _ => idtac "Assembling verified rewriter...") in
+      make_VerifiedRewriter exprInfo exprExtraInfo exprReifyInfo pkg pkg_proofs R Rwf RInterp specs_proofs.
+```
+which is almost nothing but `let`s...
+> I cannot seem to set a breakpoint on `let` constructs
+
+By which I mean, none of these breakpoints get triggered
+![image](https://user-images.githubusercontent.com/396076/118555939-47c05680-b731-11eb-93dd-da38944286b4.png)
+
+
+
+It doesn't work for the same reason it won't highlight the let
+statement--F8 sets the breakpoint using the absolute path to the file, but
+the tactic code still has the relative path, so it won't match and won't
+stop there.  And I think that applies to anything inside the let.
+
+I may have this fixed within a day or two, but the fix is replacing a chunk
+of code.  I had most of the code written as of last night.
+
+This was fixed a while ago.

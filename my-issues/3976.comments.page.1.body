@@ -1,0 +1,32 @@
+Comment author: @JasonGross
+
+(* File reduced by coq-bug-finder from original input, then from 184 lines to 86 lines, then from 104 lines to 76 lines *)
+(* coqc version trunk (January 2015) compiled on Jan 17 2015 21:58:5 with OCaml 4.01.0
+   coqtop version cagnode15:/afs/csail.mit.edu/u/j/jgross/coq-trunk,trunk (9e6b28c04ad98369a012faf3bd4d630cf123a473) *)
+
+Set Universe Polymorphism.
+
+Module F_prod_cmp_M.
+  Axiom m : let x := Type@ {i} : Type@ {j} in Type@ {i} -> Type@ {j}.
+End F_prod_cmp_M.
+
+Module isequiv_F_prod_cmp_M.
+  Set Printing Universes.
+  Print F_prod_cmp_M. (* Module
+F_prod_cmp_M
+:= Struct
+     Parameter m :
+       let x := Type@ {Var(1)} in Type@ {Var(1)} -> Type@ {Var(0)}.
+       (* Top.93
+          Top.94 |= Var(1) < Var(0)
+                     *)
+   End
+
+ *)
+
+
+Comment author: @mattam82
+
+Fixed in 8.5
+
+

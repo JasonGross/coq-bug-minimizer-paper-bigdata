@@ -1,0 +1,1 @@
+Ah, nevermind, apparently `Grab Existential Variables` has always errored when there are unshelved goals; I was confusing it with `Unshelve`.  (It is a bit confusing that these have different semantics though...)

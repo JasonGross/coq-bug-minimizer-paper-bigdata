@@ -1,0 +1,36 @@
+See #6538 for why `constr_eq` is fast. We can probably add the fast path to unify, it wouldn't harm, but I don't believe it'll have any effect at all in more general instances.
+Really?  It seems like it ought to speed up `unify` in the following, slightly less contrived case, and I imagine it ought to speed up `simple refine` here, too, no?  (What is `simple refine` spending its time doing, anyway?)
+```coq
+Axiom prod : Set -> Set -> Set.
+Fixpoint twos (n : nat) (A : Set) :=
+  match n with
+  | 0 => A
+  | S n' => twos n' (prod A A)
+  end.
+
+Tactic Notation "display" string(tacname) tactic3(tac) :=
+  match goal with |- let n := ?k in _ => idtac k "Time" tacname end;
+  lazy [twos];
+  time tac ().
+
+Notation "'hide'" := (_ = _) : type_scope.
+
+Axiom fg_equal : forall {A B} {f g : A -> B} {x y : A}, f = g -> x = y -> f x = g y.
+
+Goal let n := 21 in twos n nat = twos n nat.
+  display ""
+          (fun _ => lazymatch goal with
+                    | [ |- ?G ]
+                      => lazymatch G with
+                         | ?f ?x = ?g ?y :> Set
+                           => let c := time_constr ltac:(fun _ => open_constr:(@fg_equal Set Set f g x y _ _)) in (* 1.567 *)
+                              let ty := time_constr ltac:(fun _ => type of c) in (* 13.739 *)
+                              time "constr_eq" constr_eq ty G; (* 0.127 *)
+                              time "unify" unify ty G; (* 0.921 *)
+                              time "simple refine" simple refine _; (* 0 *)
+                              time "simple refine c" simple refine c (* 1.938 *)
+                         end
+                    end). Undo.
+```
+  
+Refine is slow because Ltac is dumb: AFAIU, for compatibility reasons variable expansion in terms is evar-normalized. Here, Ltac recognizes dynamically thay `c` is a variable pointing to a term, so that it is expanded and thus normalized.

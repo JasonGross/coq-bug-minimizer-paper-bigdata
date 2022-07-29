@@ -1,0 +1,19 @@
+Likely the same cause than #11501 cc @maximedenes 
+I believe it is expected that `Fail` is not wrapped in an "info". But maybe another wrapping is expected? Is there a description of the expected encoding somewhere, so that we can fix it?
+Or maybe the `infomsg` wrapping is expected to be put around all kinds of feedback (info, notices, warnings, etc)?
+@maximedenes there was never a specification other than the comments in the code I think; when I started porting stuff to `Feedback`, and in posterior refactoring I tried to preserve the existing semantics so indeed it is possible that things don't really match in the way they should.
+
+
+I will note that #11501 is not major, since it does not break anything.  But I think if a message (which is not an error) contains a substring which might look like an error message, ProofGeneral will only work correctly if the message is wrapped in something like `<infomsg>`.
+
+It looks like PG only recognizes `<infomsg>` and `<warning>`, if you want it to recognize other wrappers, you can ask them to extend https://github.com/ProofGeneral/PG/blob/cf904b955056f16e46d1541b3ffb1ca1533c936d/coq/coq-syntax.el#L1237-L1244
+@JasonGross Thanks1 If we want to recover backward-compatibility, maybe the easiest way to go is to wrap all "notice" feedback in an `<infomsg>`.
+
+The PG comment to which you gave a pointer seems incorrect, though, since notices seem unwrapped.
+Perhaps it used to be correct, back when Coq first introduced `<infomsg>`?
+ProofGeneral is getting old and was never sufficiently documented, but it is expectable that it breaks if message formatting changes.
+We have regexp to distinguish real errors from warnings/info. These regexp have been simplified over time because coq messages have been standardized.
+`<infomsg>` is used in particular to discard things that may look like an error message but aren't.
+So yes can you please put infomsg back please?
+I can try to write a few simple rules to make sure PG does not lose track of things.
+It is probably time to make things simpler but the constraint of not breaking PG on previous versions of coq makes it complicated. 

@@ -1,0 +1,72 @@
+The `coq_makefile` test for latex is very strange: it runs only if `pdflatex` is found. IMHO the test should either be made to depend on latex or never run it.
+That is not the issue.  The issue is that it depends on a LaTeX package that isn't a dependency of hevea, and thus fails even when hevea and LaTeX are installed.
+> The issue is that it depends on a LaTeX package that isn't a dependency of hevea, and thus fails even when hevea and LaTeX are installed.
+
+Yes, but it does not fail if latex is not installed, and that may be why this bug is harder to detect...
+Is LaTeX installed on the CI that runs Coq's test-suite?
+In fact, apparently yes, but it also has `tipa`: https://github.com/coq/coq/blob/6aa5a28d3409cbac4a888f2fdd9faebf1b3ccd96/dev/ci/docker/bionic_coq/Dockerfile#L18
+Perhaps the configure script should be updated
+However, I have installed tipa, and that is not enough, the test still fails with
+```
+2]
+kpathsea: Running mktextfm ecti1200
+/usr/share/texlive/texmf-dist/web2c/mktexnam: Could not map source abbreviation  for ecti1200.
+/usr/share/texlive/texmf-dist/web2c/mktexnam: Need to update ?
+mkdir: cannot create directory '././sbuild-nonexistent': Permission denied
+mktextfm: Running mf-nowin -progname=mf \mode:=ljfour; mag:=1; nonstopmode; input ecti1200
+This is METAFONT, Version 2.7182818 (TeX Live 2019/dev/Debian) (preloaded base=mf)
+
+kpathsea: Running mktexmf ecti1200
+
+! I can't find file `ecti1200'.
+<*> ...ljfour; mag:=1; nonstopmode; input ecti1200
+                                                  
+Please type another input file name
+! Emergency stop.
+<*> ...ljfour; mag:=1; nonstopmode; input ecti1200
+                                                  
+Transcript written on mfput.log.
+grep: ecti1200.log: No such file or directory
+mktextfm: `mf-nowin -progname=mf \mode:=ljfour; mag:=1; nonstopmode; input ecti1200' failed to make ecti1200.tfm.
+
+Chapter 2.
+! Font T1/cmr/m/it/12=ecti1200 at 12.0pt not loadable: Metric (TFM) file not fo
+und.
+<to be read again> 
+                   relax 
+l.34 \coqdocvar{Declare}
+                         \coqdocvar{ML} \coqdockw{Module} "test\_plugin".\co...
+
+[3] (./coqdoc54fa90.aux)
+
+Package rerunfilecheck Warning: File `coqdoc54fa90.out' has changed.
+(rerunfilecheck)                Rerun to get outlines right
+(rerunfilecheck)                or use package `bookmark'.
+
+ )
+(see the transcript file for additional information)
+Output written on coqdoc54fa90.pdf (3 pages, 1833 bytes).
+Transcript written on coqdoc54fa90.log.
+Couldn't run LaTeX successfully
+```
+see https://launchpadlibrarian.net/462035142/buildlog_ubuntu-disco-i386.coq-8.11.0_8.11.0-1~disco~ppa119_BUILDING.txt.gz
+I will note that I'm using texlive-latex-extra rather than texlive-science; is this an important difference?
+
+Also, my dependency list is:
+```
+Build-Depends:
+ rsync,
+ tipa,
+ python,
+ python3,
+ debhelper (>= 9),
+ dh-ocaml (>= 0.9.5~),
+ ocaml-nox (>= 4.05.0),
+ ocaml-best-compilers,
+ ocaml-findlib (>= 1.4.1),
+ liblablgtk3-ocaml-dev,
+ liblablgtksourceview3-ocaml-dev,
+ texlive-latex-extra,
+ hevea (>= 1.10-7)
+```
+ https://bugs.debian.org/cgi-bin/bugreport.cgi?bug=759928 suggests that maybe I also need texlive-fonts-recommended

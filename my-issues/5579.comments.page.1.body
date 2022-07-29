@@ -1,0 +1,28 @@
+Comment author: @JasonGross
+
+Is this expected?  (It breaks one of the test-suite files on my bug minimizer 
+which is explicitly testing files with dashes in them...)
+
+
+Comment author: @herbelin
+
+This is https://github.com/coq/coq/pull/646.
+
+What is the purpose of your test with explicit dashes?
+
+
+Comment author: @JasonGross
+
+The bug minimizer passes -top $filename so that it can minimize hugs that are dependent on the top name (e.g., at one point, the universe minimization algorithm was topname dependent).  On the other hand, if the starting filename is nonsense, I still want to be able to handle it.  This change means I need to explicitly correct for nonsense filenames in the bug minimizer.
+
+
+Comment author: @herbelin
+
+Would the following quick hack work: trying `coqtop -top foo` to test the correctness of foo, and, if it fails, removing the -top option? Since, iiuc, the -top option shall be useful only when with a well-formed module name.
+
+
+Comment author: @ppedrot
+
+That's the expected behaviour and thus an invalid bug, right?
+
+

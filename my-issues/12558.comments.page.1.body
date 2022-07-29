@@ -1,0 +1,86 @@
+Seems like some kind of cyclic term is being created, the anomaly is due to the printer getting into a loop:
+
+```
+> Check unwrap_refl_tac (option_map _ (Some 0)).
+>                        ^^^^^^^^^^^^^^^^^^^^^
+Error:
+<in exception printer>:
+Raised by primitive operation at file "clib/int.ml", line 52, characters 31-40
+Called from file "engine/evd.ml", line 624, characters 8-37
+Called from file "engine/evd.ml", line 631, characters 35-61
+Called from file "engine/evd.ml", line 1330, characters 13-41
+Re-raised at file "engine/evd.ml", line 1331, characters 44-48
+Called from file "engine/univSubst.ml", line 135, characters 17-31
+Called from file "clib/cList.ml", line 1033, characters 15-18
+Called from file "engine/univSubst.ml", line 134, characters 18-41
+Called from file "kernel/constr.ml", line 651, characters 15-18
+Called from file "clib/cList.ml", line 1033, characters 15-18
+Called from file "engine/univSubst.ml", line 134, characters 18-41
+Called from file "kernel/constr.ml", line 651, characters 15-18
+Called from file "clib/cList.ml", line 1033, characters 15-18
+Called from file "engine/univSubst.ml", line 134, characters 18-41
+Called from file "kernel/constr.ml", line 651, characters 15-18
+Called from file "clib/cList.ml", line 1033, characters 15-18
+Called from file "engine/univSubst.ml", line 134, characters 18-41
+Called from file "kernel/constr.ml", line 651, characters 15-18
+Called from file "clib/cList.ml", line 1033, characters 15-18
+....
+Called from file "clib/cList.ml", line 1033, characters 15-18
+Called from file "engine/univSubst.ml", line 134, characters 18-41
+Called from file "kernel/constr.ml", line 651, characters 15-18
+<original exception:
+Anomaly "Uncaught exception Stack overflow."
+Please report at http://coq.inria.fr/bugs/.
+Raised at file "clib/exninfo.ml", line 80, characters 10-11
+Called from file "set.ml", line 376, characters 35-38
+Called from file "pretyping/pretyping.ml", line 329, characters 26-79
+Called from file "pretyping/pretyping.ml", line 337, characters 14-60
+Called from file "pretyping/pretyping.ml", line 1358, characters 22-65
+Called from file "plugins/ltac/tacinterp.ml", line 169, characters 6-9
+Re-raised at file "clib/exninfo.ml", line 82, characters 34-35
+Called from file "plugins/ltac/tacinterp.ml", line 557, characters 4-75
+Called from file "plugins/ltac/tacinterp.ml", line 736, characters 8-25
+Re-raised at file "clib/exninfo.ml", line 82, characters 34-35
+Called from file "plugins/ltac/tacinterp.ml", line 750, characters 6-51
+Re-raised at file "clib/exninfo.ml", line 82, characters 34-35
+Called from file "plugins/ltac/tacinterp.ml", line 757, characters 6-28
+Called from file "plugins/ltac/tacinterp.ml", line 1239, characters 31-69
+Called from file "engine/proofview.ml", line 1274, characters 8-12
+Re-raised at file "clib/exninfo.ml", line 82, characters 34-35
+Called from file "proofs/proof.ml", line 383, characters 4-42
+Called from file "proofs/proof.ml", line 581, characters 8-30
+Re-raised at file "clib/exninfo.ml", line 82, characters 34-35
+Called from file "proofs/proof.ml", line 585, characters 6-30
+Called from file "plugins/ltac/tacinterp.ml", line 2112, characters 21-72
+Called from file "pretyping/pretyping.ml", line 672, characters 21-69
+Called from file "pretyping/cases.ml", line 1270, characters 17-79
+Called from file "pretyping/cases.ml", line 1472, characters 19-35
+Called from file "pretyping/cases.ml", line 2712, characters 19-49
+Called from file "pretyping/cases.ml", line 78, characters 10-13
+Re-raised at file "clib/exninfo.ml", line 82, characters 34-35
+Called from file "pretyping/cases.ml", line 2720, characters 10-58
+Called from file "pretyping/pretyping.ml", line 1306, characters 21-79
+Called from file "pretyping/pretyping.ml", line 1354, characters 20-71
+Called from file "vernac/vernacentries.ml", line 1632, characters 17-106
+Called from file "vernac/vernacentries.ml", line 2191, characters 8-49
+Called from file "vernac/vernacinterp.ml", line 45, characters 4-13
+Called from file "vernac/vernacinterp.ml", line 203, characters 20-60
+Called from file "lib/flags.ml", line 17, characters 14-17
+Re-raised at file "clib/exninfo.ml", line 82, characters 34-35
+Called from file "vernac/vernacinterp.ml", line 246, characters 18-43
+Called from file "vernac/vernacinterp.ml", line 244, characters 6-279
+Re-raised at file "clib/exninfo.ml", line 82, characters 34-35
+Called from file "stm/stm.ml", line 2431, characters 16-43
+Called from file "stm/stm.ml", line 1000, characters 6-10
+Re-raised at file "clib/exninfo.ml", line 82, characters 34-35
+Called from file "stm/stm.ml", line 2572, characters 4-105
+Called from file "stm/stm.ml", line 2753, characters 4-60
+Re-raised at file "clib/exninfo.ml", line 82, characters 34-35
+Called from file "toplevel/vernac.ml", line 68, characters 31-52
+Re-raised at file "clib/exninfo.ml", line 82, characters 34-35
+Called from file "toplevel/coqloop.ml", line 428, characters 17-62
+Called from file "toplevel/coqloop.ml", line 465, characters 4-39
+Called from file "toplevel/coqloop.ml", line 471, characters 6-34
+```
+I think error catching is working properly, what the message means is that we got an exception inside an exception handler [when printing]
+Actually after reading #12557 I'm indeed not sure this bug is worth keeping open; what should the printer do in this case? Seems like hard to avoid.

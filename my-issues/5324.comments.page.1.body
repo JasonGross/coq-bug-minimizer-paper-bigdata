@@ -1,0 +1,167 @@
+Comment author: @JasonGross
+
+(* -*- mode: coq; coq-prog-args: ("-emacs" "-R" "src" "Crypto" "-R" "Bedrock" 
+"Bedrock" "-R" "coqprime/Coqprime" "Coqprime" "-top" "Interpretations") -*- *)
+(* File reduced by coq-bug-finder from original input, then from 440 lines to 
+147 lines, then from 452 lines to 178 lines, then from 204 lines to 76 lines, 
+then from 102 lines to 44 lines, then from 482 lines to 129 lines, then from 
+223 lines to 132 lines, then from 237 lines to 134 lines, then from 183 lines 
+to 135 lines, then from 149 lines to 135 lines, then from 112 lines to 46 
+lines, then from 60 lines to 47 lines, then from 54 lines to 24 lines, then 
+from 38 lines to 25 lines *)
+(* coqc version 8.6rc1 (December 2016) compiled on Dec 8 2016 13:43:59 with 
+OCaml 4.02.3
+   coqtop version 8.6rc1 (December 2016) *)
+
+Inductive flat_type := Unit | Prod (A B : flat_type).
+Inductive exprf (op : flat_type -> flat_type -> Type) {var : Type} : flat_type 
+-> Type :=
+| Op {t1 tR} (opc : op t1 tR) (args : exprf op t1) : exprf op tR.
+Inductive op : flat_type -> flat_type -> Type := a : op Unit Unit.
+Arguments Op {_ _ _ _} _ _.
+Require Import AdmitAxiom.
+Definition bound_op {var}
+           {src2 dst2}
+           (opc2 : op src2 dst2)
+  : forall (args2 : exprf op (var:=var) src2), Op opc2 args2 = Op opc2 args2.
+  refine (let k := match opc2 return (forall args2, Op opc2 args2 = Op opc2 
+args2) with
+                   | _ => _
+                   end in
+          _).
+  Fail exact k. (* The command has indeed failed with message:
+In environment
+var : Type
+src2, dst2 : flat_type
+opc2 : op src2 dst2
+k := (?Goal) : forall args2 : exprf op dst2, Op opc2 args2 = Op opc2 args2
+The term "k" has type "forall args2 : exprf op dst2, Op opc2 args2 = Op opc2 
+args2" while it is expected to have type
+ "forall args2 : exprf op src2, Op opc2 args2 = Op opc2 args2".
+ *)
+  clearbody k.
+  admit.
+  Unshelve.
+  exact True.
+  reflexivity.
+Defined. (* Error: Illegal application:
+The term "@ Op" of type
+ "forall (op : flat_type -> flat_type -> Type) (var : Type) (t1 tR : 
+flat_type), op t1 tR -> exprf op t1 -> exprf op tR"
+cannot be applied to the terms
+ "op" : "flat_type -> flat_type -> Prop"
+ "True" : "Prop"
+ "dst2" : "flat_type"
+ "src2" : "flat_type"
+ "opc2" : "op src2 dst2"
+ "args2" : "exprf op dst2"
+The 5th term has type "op src2 dst2" which should be coercible to "op dst2 
+src2".
+ *)
+
+
+This probably can't be turned into a proof of False, right?
+
+
+Comment author: @JasonGross
+
+Bisecting gives:
+
+ade2363e357db3ac3f258e645fe6bba988e7e7dd is the first bad commit
+commit ade2363e357db3ac3f258e645fe6bba988e7e7dd
+Author: Hugo Herbelin <Hugo.Herbelin@ inria.fr>
+Date:   Thu Nov 19 22:49:25 2015 +0100
+
+    About building of substitutions from instances.
+
+    Redefining adjust_subst_to_rel_context from instantiate_context who
+    was hidden in inductiveops.ml, renamed the latter into
+    subst_of_rel_context_instance and moving them to Vars. The new name
+    highlights that the input is an instance (as for applist) and the
+    output a substitution (as for substl). This is a clearer unified
+    interface, centralizing the difficult de-Bruijn job in one place. It
+    saves a couple of List.rev.
+
+:040000 040000 0beffa811e5ec1efbf2de01364278bf2b2b0f86d 
+8b2a3a399bac72e71c3e49cf378abf90d48d2563 M      engine
+:040000 040000 0fb23dc3aa950ecdf3ee7fc7ae7e7f5ecc4f2909 
+e8fc30353a0a08826b12050bb2bb5dbec1239eb5 M      kernel
+:040000 040000 8b67a8c362e410ee16216cf67274e4c040c15269 
+4e875efb97d3732e8a6901382a14d63edde624d8 M      pretyping
+
+Though the error message here is a bit more unreadable:
+
+File "/home/jgross/Documents/repos/coq-bisect/bug_5324.v", line 16, characters 
+2-163:
+Error: Illegal application:
+The term "@ Op" of type
+ "forall (op : forall (_ : flat_type) (_ : flat_type), Type)
+    (var : Type) (t1 tR : flat_type) (_ : op t1 tR)
+    (_ : exprf op t1), exprf op tR"
+cannot be applied to the terms
+ "?X24@ {__:=var; __:=src2; __:=dst2; __:=opc2; __:=dst2; __:=src2; __:=opc2}"
+   : "forall (_ : flat_type) (_ : flat_type), Type"
+ "?X25@ {__:=var; __:=src2; __:=dst2; __:=opc2; __:=dst2; __:=src2; __:=opc2}"
+   : "Type"
+ "?X26@ {__:=var; __:=src2; __:=dst2; __:=opc2; __:=dst2; __:=src2; __:=opc2}"
+   : "flat_type"
+ "?X23@ {__:=var; __:=src2; __:=dst2; __:=opc2; __:=dst2; __:=src2; __:=opc2;
+        __:=args2}" : "flat_type"
+ "opc2" : "op src2 dst2"
+ "args2"
+   : "exprf
+        ?X24@ {__:=var; __:=src2; __:=dst2; __:=opc2; __:=dst2; __:=src2;
+              __:=opc2}
+        ?X26@ {__:=var; __:=src2; __:=dst2; __:=opc2; __:=dst2; __:=src2;
+              __:=opc2}"
+The 5th term has type "op src2 dst2" which should be coercible to
+ "?X24@ {__:=var; __:=src2; __:=dst2; __:=opc2; __:=dst2; __:=src2; __:=opc2}
+    ?X26@ {__:=var; __:=src2; __:=dst2; __:=opc2; __:=dst2; __:=src2; __:=opc2}
+    ?X23@ {__:=var; __:=src2; __:=dst2; __:=opc2; __:=dst2; __:=src2;
+          __:=opc2; __:=args2}".
+
+
+
+The script I used for bisecting is:
+(* -*- mode: coq; coq-prog-args: ("-emacs" "-nois") -*- *)
+
+Require Import Coq.Init.Notations.
+
+Inductive flat_type := Unit | Prod (A B : flat_type).
+Inductive exprf (op : forall x y : flat_type, Type) {var : Type} : forall _ : 
+flat_type, Type :=
+| Op {t1 tR} (opc : op t1 tR) (args : exprf op t1) : exprf op tR.
+Inductive op : forall x y : flat_type, Type := a : op Unit Unit.
+Inductive foo {T} (x : T) := b.
+Arguments Op {_ _ _ _} _ _.
+Axiom admit : forall {T}, T.
+Definition bound_op {var}
+           {src2 dst2}
+           (opc2 : op src2 dst2)
+  : forall (args2 : exprf op (var:=var) src2), foo (Op opc2 args2).
+  refine (let k := match opc2 return (forall args2, foo (Op opc2 args2)) with
+                   | _ => _
+                   end in
+          _); shelve_unifiable.
+  exact k.
+  Unshelve.
+  exact admit.
+Defined.
+
+
+Comment author: @JasonGross
+
+Interestingly, in Coq 8.6, the typing error manages to sneak past [refine], 
+only being caught on the subsequent [exact].  Bisecting for this gives 
+5b0b6c92354c34a4f0d5551f88b16264fb08be5f, in which MS made [refine] typecheck 
+the terms only once (which seems right, though it seems strange that a second 
+typechecking pass would catch the bug; can someone explain this?).
+
+
+Comment author: @herbelin
+
+
+
+*** This bug has been marked as a duplicate of bug [BZ#5322](https://github.com/coq/coq/issues?q=is%3Aissue%20%22Original%20bug%20ID%3A%20BZ%235322%22) ***
+
+

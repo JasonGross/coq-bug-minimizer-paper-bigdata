@@ -1,0 +1,110 @@
+Comment author: @JasonGross
+
+Consider this log:
+
+<warning>
+Warning: /home/jgross/Documents/repos/coq/theories was previously bound to
+Coq; it is remapped to <> [overriding-logical-loadpath,loadpath]</warning>
+Welcome to Coq trunk (May 2017)
+
+<prompt>Coq < 3 || 0 < </prompt>Add Search Blacklist "Private_" "_subproof".
+
+<prompt>Coq < 4 || 0 < </prompt>Set Printing Depth 50 .
+
+<prompt>Coq < 5 || 0 < </prompt>Remove Search Blacklist "Private_" "_subproof". 
+ Add Search Blacklist "Private_" "_subproof".
+
+<prompt>Coq < 6 || 0 < </prompt>
+<prompt>Coq < 7 || 0 < </prompt>Set Printing Width 133.
+
+<prompt>Coq < 8 || 0 < </prompt>Set Silent.
+
+<prompt>Coq < 9 || 0 < </prompt>Goal True -> True.
+
+<prompt>Unnamed_thm < 10 |branch| 0 < </prompt>Proof.
+
+<prompt>Unnamed_thm < 11 |branch| 0 < </prompt>Unset Silent.
+
+<prompt>Unnamed_thm < 13 |branch| 0 < </prompt>intro p.
+1 subgoal (ID 2)
+
+  p : True
+  ============================
+  True
+
+(dependent evars: (printing disabled) )
+
+<prompt>Unnamed_thm < 14 |branch| 0 < </prompt>Backtrack 11 0 0 .
+
+<prompt>Unnamed_thm < 11 |branch| 0 < </prompt>Set Printing Width 133.
+
+<prompt>Unnamed_thm < 17 |branch| 0 < </prompt>Show.
+1 subgoal (ID 1)
+
+  ============================
+  True -> True
+
+(dependent evars: (printing disabled) )
+
+<prompt>Unnamed_thm < 18 |branch| 0 < </prompt>intro p.
+
+<prompt>Unnamed_thm < 19 |branch| 0 < </prompt>
+
+
+This is wrong.  The issue is that [Set Silent] is a command issued by PG, which 
+should not be synchronized with the document state.
+
+
+Comment author: @ejgallego
+
+This whole business of Setting Silent and Goals printing seems broken by design as I have warned in the past.
+
+I will take some time to form an opinion but from my part it is not looking good for this approach.
+
+We discussed of a plan to support "global" options that wouldn't be part of the document, however I am reluctant to implement it for goal display as it is not the approach.
+
+If PG wants to see goals, then it should call Show, Coq has no business on trying to guess when it should show them.
+
+
+Comment author: @ejgallego
+
+And all options pertaining Goal display, such as hypothesis limits, filtering, etc... _should be_ arguments to Show IMO.
+
+
+Comment author: @ejgallego
+
+That being said, there are two ways to fix this for 8.7 [for 8.8 is very likely that the unspecified silent option and flag goes away].
+
+1.- Fix PG so it doesn't rely on heuristics and Silent.
+2.- Re-instantiate the global semantics for the silent flag in the toplevel (note that in CoqIDE / proper documents it will be synchronized indeed).
+
+2 is fairly easy to do (a couple of lines in toplevel/vernac.ml), so PG maintainers think that fixing PG is not possible we could opt for that.
+
+
+Comment author: @JasonGross
+
+Fixing PG for this particular bug should be pretty easy: just issue [Unset Silent.] after every [Backtrack].  I personally like 1, because it means that it won't require updating PG to work with 8.7, but I don't have a very strong preference.
+
+
+Comment author: @ejgallego
+
+Ok preliminary patch implementing 2 at https://github.com/ejgallego/coq/tree/toplevel%2Bunsync_silent
+
+as you can see the idea is that this mechanism will evolve to be able to set true "document global" options, however this will not be done using a part of the document as now. Maybe in the toplevel something such as ":option blah x"
+
+It may look inconvenient but having "pure" evaluation of document state is very important to process the document in parallel effectively IMO.
+
+
+Comment author: @Matafou
+
+There is no need of global document option to solve this. And I think we should try to avoid such things. I just commited a fix in PG so that a "Set Silent." is sent after a backtrack, and a "Show." if inside a proof.
+
+
+Comment author: @ejgallego
+
+Thanks Pierre; as I mentioned in GitHub I think it is overkill for PG to have to check if we are inside a proof. IMHO it would be just simpler to make Show print nothing if there is not proof.
+
+If we want to retain backwards compatibility with Show we could just add an option Set Show Silent.
+
+
+I stand on my ground here; I think there are better ways to achieve clean interaction than the "non synchronized" hack; as far as I am concerned non-syncronized options as document spans are not coming back.

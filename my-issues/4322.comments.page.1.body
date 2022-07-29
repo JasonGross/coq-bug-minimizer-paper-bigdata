@@ -1,0 +1,20 @@
+Comment author: @JasonGross
+
+This is a regression since 8.4, and an annoying one to track down, because it makes behavior dependent on the names you use in scripts, and the names in the environment:
+
+Goal Type -> True.
+  clear.
+  intro H.
+  lazymatch goal with
+    | [ H0 : Type |- _ ] => pose (fun H : nat => H0 -> H + H = H + H )
+  end. (* Toplevel input, characters 84-86:
+Error: In environment
+H : Type
+H0 : nat
+The term "H0" has type "nat" which should be Set, Prop or Type. *)
+
+In 8.4, the code succeeds, and poses [fun H0 : nat => H -> H0 + H0 = H0 + H0 : nat -> Prop]
+
+In 8.5beta2, it seems that [H] is already being treated as [H0], and thus shadows the ltac-bound [H0].
+
+

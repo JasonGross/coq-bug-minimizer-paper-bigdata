@@ -1,0 +1,31 @@
+Comment author: @JasonGross
+
+I believe all of these should work:
+
+```coq
+Axiom foo : Type.
+Definition bar := 1.
+Definition bar' := Eval cbv -[bar] in bar.
+Declare Reduction red' := cbv -[bar].
+Opaque bar.
+Definition bar'' := Eval red' in bar. 
+Declare Reduction red'' := cbv -[bar]. (* Error: Cannot coerce bar to an 
+evaluable reference. *)
+Definition bar''' := Eval cbv -[bar] in bar. (* Error: Cannot coerce bar to an 
+evaluable reference. *)
+Definition foo' := Eval cbv -[foo] in foo. (* Error: Cannot coerce foo to an 
+evaluable reference. *)
+```
+
+The reason is that it's useful to proactively indicate that something should 
+not be unfolded, even if I later change code to make it unfoldable.  It's 
+especially confusing that [bar''] is definable and [red''] is not, which 
+suggests that this check happens at interpretation time, which seems even more 
+wrong.
+
+
+Comment author: @maximedenes
+
+Ok, I didn't know but this part of the code is still Ltac-dependent (at least in 8.6). So not touching it now, as it is too fragile.
+
+

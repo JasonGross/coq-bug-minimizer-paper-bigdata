@@ -1,0 +1,29 @@
+Comment author: @JasonGross
+
+Class instructions (n : nat) :=
+  {
+    W : Type;
+    ldi :> nat -> W
+  }.
+Goal instructions 64 -> True.
+  intro.
+  Set Printing All.
+  let v := constr:(
+             let (CF, _) := (true, 0) in
+             ldi 0) in
+  idtac. (* Error: Cannot infer type of pattern-matching on "@ pair bool nat 
+true O". *)
+
+This seems bogus.
+
+
+Comment author: @ppedrot
+
+The problem comes from the fact that the return type of the let-biding mentions the term being matched in some evars. I'm not sure whether the fix is to provide a more intelligent heuristic, or to rephrase slightly the error message. Indeed, 'type of pattern-matching' refers to the return type, not the type of the argument being matched.
+
+
+Comment author: @ppedrot
+
+Fixed by 67c713c. I just clarified the error message, but we should do something about the heuristic in 8.7.
+
+

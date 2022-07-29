@@ -1,0 +1,9 @@
+The cause is similar to #9971: a retyping of some `fst c` which discovers that the type of `c` is not an inductive but a type of the form `E[?x]`. There is however a postponed constraint `E[?x] = prod ?y ?z` (here, exactly: `?P (projT1 pii ?P k') <=                                                                         
+  prod ?y ?z`), so maybe could the same trick of @skyskimmer based on `get_type_from_constraint` in #13371 can be used?
+
+In the present case, the constraint is kept under this form to anticipate a possible use of first-order unification in the heuristics, but with a smarter treatment of postponed f.o. problems, it could have been resolved earlier into `?P := fun x => prod ?y'[x:=d] ?z'[x:=d]` with `d` shortcut for `projT1 pii ?P k'` and expected (presumably trivial) equations between `?y`, `?y'`, `?z` and `?z'`.
+
+The smarter treatment would be more difficult for an equation of the form `match ?x with ... end == prod ?y ?z` though.
+
+So, the short term is maybe @SkySkimmer's trick, while a more "aggressive" absorption of `E` in `E[?x] == c` problems. 
+I think it would be cleaner to build the template type and add a constraint rather than lookup in the postponed constraints. 

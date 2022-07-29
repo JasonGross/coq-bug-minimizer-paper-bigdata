@@ -1,0 +1,9 @@
+It's an unlucky consequence of a grammar conflict with the `pattern` tactic. I don't know how to fix that though, I probably need some advice from CAMLP5 experts.
+Workaround: allow `pat:(...)` to mean `pattern:(...)`?
+
+The issue is that I need to import `Notations.v` to get notations for constr matching, I think(?), but if I do that, then I can no longer use my match goal combinators.
+
+Regarding exposing, e.g., `match_goal!`, what if you have a syntax that compiles into `(ident option * pattern option * pattern option) list * pattern` for a list of optionally named hypothesis (body, type) pattern pairs, together with the goal pattern (I guess you also need the function that handles that branch), and then you do a similar thing too `multi_match!` over the hyps and goal?
+> Regarding exposing, e.g., match_goal!, what if you have a syntax that compiles into (ident option * pattern option * pattern option) list * pattern for a list of optionally named hypothesis (body, type) pattern pairs, together with the goal pattern (I guess you also need the function that handles that branch), and then you do a similar thing too multi_match! over the hyps and goal?
+
+Yes, that's the plan indeed.

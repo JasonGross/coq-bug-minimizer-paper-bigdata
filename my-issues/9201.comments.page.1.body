@@ -1,0 +1,26 @@
+We are starting to track these better in master, hopefully we can fix it in 8.10
+More extensive test
+~~~coq
+Require Import Coq.setoid_ring.Ring.
+
+Set Universe Polymorphism.
+Inductive word : Type -> Type :=.
+Axiom wzero : forall sz, word sz.
+Axiom wone : forall sz, word sz.
+Axiom wplus : forall sz, word sz -> word sz -> word sz.
+Axiom wmult : forall sz, word sz -> word sz -> word sz.
+Axiom wminus : forall sz, word sz -> word sz -> word sz.
+Axiom wneg : forall sz, word sz -> word sz.
+Axiom wring : forall sz, ring_theory (wzero sz) (wone sz) (@wplus sz) (@wmult sz) (@wminus sz) (@wneg sz) (@eq _).
+
+
+Section foo.
+  Context (sz : Type).
+  Add Ring word_sz_ring : (wring sz).
+
+  Lemma use_ring : forall a b, wplus sz a b = wplus sz b a.
+  Proof. intros. ring. (* anomaly *) Qed.
+
+End foo.
+~~~
+They both seem to work in 8.15+alpha. Will add a test and close.

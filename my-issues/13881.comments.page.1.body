@@ -1,0 +1,8 @@
+For `cbv`, `cbn` and `lazy` it's easy to do since the base operation is actually to perform a weak-head reduction. We call it recursively in the exposed user primitive.
+
+For the VM and native I don't think it is possible, due to the way these reduction mechanisms work. They are NbE algorithms and by construction once you've sent something into the semantic world the only thing you can get out of it is a normal form.
+
+I would be quite happy having this even just for `cbv`, `cbn`, and `lazy`.  Either as an extra flag for the reduction strategies (`cbv only_weak_head ...` or something) or as a separate user primitive (`hnf_cbv`, etc).
+
+Re VM and native: oh, that's interesting.  I wonder if, once these mechanisms support blacklisting/whitelisting constants, there'd be a way to forbid just delta reduction under remaining lambdas?  (I'm not sure how delta fits with the NbE picture.)
+For `vm_compute`, I don't think it would be that complicated, at least not conceptually. The way it currently works is that it takes any remaining lambda-abstractions, apply them to dummy opaque arguments, and give them back to the bytecode interpreter in turn. More precisely, the lambda-abstractions directly come from the original term but their free variables are reduced values. But there is no reason to give the lambda-abstractions back to the bytecode interpreter, we could give them (or rather their original Gallina counterpart) to any other reduction engine. The free variables being already reduced, it is not difficult to retrieve them and pass them to another reduction engine.

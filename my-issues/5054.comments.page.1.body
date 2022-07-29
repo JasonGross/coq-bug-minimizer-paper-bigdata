@@ -1,0 +1,116 @@
+Comment author: @JasonGross
+```coq
+Inductive type := TW | TZ | Tbool.
+Fixpoint tuple' T n : Type :=
+  match n with
+  | O => T
+  | S n' => (tuple' T n' * T)%type
+  end.
+Definition tuple T n : Type :=
+  match n with
+  | O => unit
+  | S n' => tuple' T n'
+  end.
+Inductive nop : forall (narg nret : nat), tuple type narg -> tuple type nret -> 
+Type :=
+| OPldi     : nop 1 1 TZ TW
+| OPadc     : nop 3 2 (TW, TW, Tbool) (Tbool, TW).
+Inductive expr : type -> Type :=
+| LetUnop : forall {t1 tC}, nop 1 1 t1 TW -> expr t1 -> expr tC
+| Const : nat -> expr TZ.
+Goal forall t, expr t -> expr t.
+  intros ? v.
+  Fail refine (match v in expr t return expr t with
+          | @ LetUnop t1 tC (OPldi as op) x0
+            => @ LetUnop t1 tC op x0
+          | _ => _
+          end). (* Error:
+In environment
+t : type
+v : expr t
+t1 : tuple type 1
+tC : type
+op : nop 1 1 t1 TW
+x0 : expr t1
+op0 := OPldi : nop 1 1 TZ TW
+x1 : expr TZ
+The term "op0" has type "nop 1 1 TZ TW" while it is expected to have type "nop 
+1 1 t1 TW".
+ *)
+  Fail refine (match v in expr t return expr t with
+               | @ LetUnop t1 tC (OPldi as op) x0
+                 => @ LetUnop _ _ op x0
+               | _ => _
+               end). (* Ltac call to "refine" failed.
+Illegal application: 
+The term "expr" of type "type -> Type"
+cannot be applied to the term
+ "(TW, TW, Tbool)" : "(type * type * type)%type"
+This term has type "(type * type * type)%type" which should be coercible to 
+"type". *)
+```
+It seems like not enough things are being unified early enough?
+
+Note that the following works fine:
+```coq
+Inductive expr : type -> Type :=
+| LetUnop : forall {t1 tC}, nop 1 1 t1 TW (*-> expr t1*) -> expr tC
+| Const : nat -> expr TZ.
+Goal forall t, expr t -> expr t.
+  intros ? v.
+  refine (match v in expr t return expr t with
+          | @ LetUnop t1 tC (OPldi as op) (*x0*)
+            => @ LetUnop t1 tC op (*x0*)
+          | _ => _
+          end).
+
+```
+Comment author: @JasonGross
+
+Interestingly, you can get Illegal Application errors that mention constants 
+that are not given anywhere in the term; this shows that it is Coq's 
+unification algorithm that is building ill-typed terms:
+```coq
+Inductive type := TW | TZ | Tbool.
+Fixpoint tuple' T n : Type :=
+  match n with
+  | O => T
+  | S n' => (tuple' T n' * T)%type
+  end.
+Definition tuple T n : Type :=
+  match n with
+  | O => unit
+  | S n' => tuple' T n'
+  end.
+Inductive nop : forall (narg nret : nat), tuple type narg -> tuple type nret -> 
+ Type :=
+| OPldi     : nop 1 1 TZ TW
+| OPadc     : nop 3 2 (TW, TW, Tbool) (Tbool, TW).
+Inductive expr : type -> Type :=
+| LetUnop : forall {t1 tC}, nop 1 1 t1 TW -> expr t1 -> expr tC
+| Const : nat -> expr TZ.
+Goal forall t, expr t -> expr t.
+  intros ? v.
+  refine (match v in expr t return expr t with
+          | @ LetUnop t1 tC (OPldi as op) x0 as expr
+            => _
+          | expr => expr
+          end). (* Ltac call to "refine" failed.
+Error: Illegal application: 
+The term "@ LetUnop" of type
+ "forall (t1 : tuple type 1) (tC : type), nop 1 1 t1 TW -> expr t1 -> expr tC"
+cannot be applied to the terms
+ "(TW, TW, Tbool)" : "(type * type * type)%type"
+ "tC" : "type"
+ "OPadc" : "nop 3 2 (TW, TW, Tbool) (Tbool, TW)"
+ "x0" : "expr t1"
+The 1st term has type "(type * type * type)%type" which should be coercible to 
+"tuple type 1".
+ *)
+
+```
+Comment author: @herbelin
+
+Thanks for these case studies. There will probably soon be a new phase at working at the pattern-matching algorithm and these are interesting "real-world" examples.
+
+

@@ -1,0 +1,25 @@
+The real bug is that coqc ignores -top, it should either respect it or error.
+Is there a case where -top is useful in coqc? It ignores it since some time as we set the topname based on the output file [and as far as I know that's the only valid choice, isn't it?]
+If coqc ignores top, then auto-minimized files will sometimes not be able to be automatically ported to the test-suite, because the minimizer has no way of adjusting references that are based on the top name.  Consider, for example:
+```coq
+(* -*- coq-prog-args: ("-top" "Bar") -*- *)
+Definition foo := Set.
+Check Bar.foo.
+```
+This passes in coqtop, but fails in `coqc -q -top Bar` unless the file is named `Bar.v`.  I suppose I can try doing some extra wrapping to eliminate the need for `-top`, but it might be nicer if coqc permitted `-top` (perhaps with a warning message to the effect of "Using -top with a name (topname) that does not match the filename (fname) will result in an unusable .vo file unless the .vo file is renamed to match." But this would break coqchk on the test-suite, so, idk.  Maybe I should bite the bullet and get the minimizer to do the wrapping needed to eliminate `-top`.  It would still be nice to be able to get coqc to respect `-top` so I can do this pass at the end of minimization rather than the beginning.)
+Putting such files in the test suite is a bad idea, they'll break in coqide.
+I thought CoqIDE parsed the header and made use of it?  I seem to recall something like this being necessary for some of the files in Coq's Init directory?
+@JasonGross this is done with a _CoqProject file; indeed, the invariant that file names do correspond to module hierarchy is common among module-based languages.
+
+Seems that for the minimizer you want to have multi-project files; the way I see it is that it is much easier for us to support a minimizer format that allows something such as:
+```
+#file A.v:
+Definition ....
+EOF
+#file B/C.v
+Require Import A.
+....
+EOF
+....
+```
+This can be read by a tool and create a virtual layout that runs OK, in jsCoq we already have something like that for workspaces.

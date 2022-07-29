@@ -1,0 +1,2 @@
+Seems to probably come from the OCaml GC? https://github.com/ocaml/ocaml/blob/10561873487c185c0727f08b26706226dbb1a7b6/runtime/minor_gc.c#L614-L622
+Not much we can do with this, especially without a reproduction case.

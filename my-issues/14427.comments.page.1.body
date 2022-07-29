@@ -1,0 +1,4 @@
+For backwards compatibility, `coqc` behaves in 8.14 as in 8.13 regarding the native compilation option, except that it outputs a deprecation warning when given the `-native-compiler` option. You can remove the warning passing the corresponding `-w` option, this is what coq_makefile does.
+
+In 8.15 `coqc` will probably stop producing native files at all, but we're not there yet.
+

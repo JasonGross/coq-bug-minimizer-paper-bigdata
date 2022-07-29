@@ -1,0 +1,4 @@
+Well, `Set Silent` is broken by design, so not sure what kind of brokeness we are seeing here. I'd like to see #6374 merged before addressing this, but that'll require some more work.
+`Set Silent` is supposed to suppress printing of the goal, at least for commands other than `Show.`
+Umm, this is strange, I'll do a bisect [but not before Fri as I am on the road right now, so feel free to provide a bad commit if you can]. Looking at the code I still see the `not !Flags.quiet` so I wonder what's going wrong.
+Umm, strange... for some reason, even after `Set Silent` the `quiet` flags is false at goal printing time.

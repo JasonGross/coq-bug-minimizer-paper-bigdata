@@ -1,0 +1,18 @@
+Comment author: @JasonGross
+
+Please change
+	camlp5dir="$(camlp5 -where)"
+to
+	camlp5dir="$(camlp5 -where | tr -d '\r')"
+
+
+Comment author: @JasonGross
+
+Pull request to fix this bug at https://github.com/coq/coq/pull/3
+
+
+Comment author: @letouzey
+
+Thanks. Applied to trunk (commit 71bd17b). I'll apply it to 8.4 shortly...
+
+

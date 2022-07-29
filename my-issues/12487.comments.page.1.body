@@ -1,0 +1,829 @@
+Btw, @jfehrle , if you plan to track this down, the fastest file that uses ~10 GB RAM is `src/Specific/montgomery32_2e165m25_6limbs/femul.vo` which builds for me in about 7.5 minutes and takes 10,212,660 ko RAM.  The stats for all files are available [here](https://github.com/mit-plv/fiat-crypto/blob/sp2019latest/time-of-build-after-pretty.log).
+
+_Originally posted by @JasonGross in https://github.com/coq/coq/issues/12271#issuecomment-640976919_
+It's tempting--it seems like a fun problem that may identify significant opportunities for improvement.  I'll take a quick look now.
+
+Is there another file that takes less time to run that still shows the problem?
+
+_Originally posted by @jfehrle in https://github.com/coq/coq/issues/12271#issuecomment-640997056_
+I'm currently working on making it build on master (turns out it only builds on 8.11).  https://github.com/mit-plv/fiat-crypto/pull/812 should fix this.
+
+The first file over 5 GB is `src/Specific/montgomery32_2e152m17_5limbs/femul.vo` at 3m57.47s , 5258312 ko.  I think this is probably the first one that stands out from the rest.  The first file over 4 GB is only about 4 seconds faster, and there are a lot of files that take over 3 GB.
+
+_Originally posted by @JasonGross in https://github.com/coq/coq/issues/12271#issuecomment-641002396_
+Btw, my first guess, knowing nothing about what's going on internally, is that kernel conversion is taking some unfortunate path and the intermediate terms it's generating in the course of doing conversion are blowing up.
+
+_Originally posted by @JasonGross in https://github.com/coq/coq/issues/12271#issuecomment-641003791_
+On master (I'm using 831e901a8b796c3f2e7cec7f2b5d8adae4dfbea3), things are somewhat better than on 8.8, but not drastically so:
+```
+src/Specific/montgomery32_2e152m17_5limbs/femul.vo (real: 211.43, user: 209.86, sys: 1.56, mem: 3990152 ko)
+src/Specific/montgomery32_2e165m25_6limbs/femul.vo (real: 436.08, user: 433.29, sys: 2.78, mem: 7368456 ko)
+```
+
+Btw, the timing breakdown for subtactics:
+In src/Specific/montgomery32_2e152m17_5limbs/femul.v:
+```
+total time:    136.195s
+
+ tactic                                   local  total   calls       max
+────────────────────────────────────────┴──────┴──────┴───────┴─────────┘
+─synthesize_mul ------------------------   0.0% 100.0%       0  136.195s
+─synthesize_carry_mul ------------------   0.0% 100.0%       0  136.195s
+─synthesize_2arg_choice_with_carry -----   0.0% 100.0%       0  136.195s
+─synthesize_narg_choice_gen ------------   0.0% 100.0%       0  136.195s
+─Pipeline.refine_reflectively_gen ------   0.0%  99.1%       1  134.994s
+─ReflectiveTactics.do_reflective_pipelin   0.0%  98.8%       1  134.626s
+─ReflectiveTactics.solve_side_conditions   0.0%  98.7%       1  134.466s
+─ReflectiveTactics.do_reify ------------   0.0%  87.5%       1  119.157s
+─Reify.Reify_rhs_gen -------------------   0.4%  87.2%       1  118.813s
+─Reify ---------------------------------   0.0%  82.3%       0  112.079s
+─Compilers.Reify.Reify -----------------   0.1%  82.3%       0  112.076s
+─Compilers.Reify.Reify' ----------------   0.0%  82.2%       0  111.958s
+─Reify.do_reify_abs_goal ---------------   0.0%  82.2%       2  111.947s
+─Reify.reify_abs -----------------------  82.1%  82.1%       0  111.828s
+─ReflectiveTactics.solve_post_reified_si   0.0%  11.2%       1   15.309s
+─UnifyAbstractReflexivity.unify_transfor   0.0%  10.1%       7    3.143s
+─abstract exact_no_check eq_refl -------   8.9%   8.9%       8    2.422s
+
+ tactic                                   local  total   calls       max
+────────────────────────────────────────┴──────┴──────┴───────┴─────────┘
+─synthesize_mul ------------------------   0.0% 100.0%       0  136.195s
+└synthesize_carry_mul ------------------   0.0% 100.0%       0  136.195s
+└synthesize_2arg_choice_with_carry -----   0.0% 100.0%       0  136.195s
+└synthesize_narg_choice_gen ------------   0.0% 100.0%       0  136.195s
+└Pipeline.refine_reflectively_gen ------   0.0%  99.1%       1  134.994s
+└ReflectiveTactics.do_reflective_pipelin   0.0%  98.8%       1  134.626s
+└ReflectiveTactics.solve_side_conditions   0.0%  98.7%       1  134.466s
+ ├─ReflectiveTactics.do_reify ----------   0.0%  87.5%       1  119.157s
+ │└Reify.Reify_rhs_gen -----------------   0.4%  87.2%       1  118.813s
+ │└Reify -------------------------------   0.0%  82.3%       0  112.079s
+ │└Compilers.Reify.Reify ---------------   0.1%  82.3%       0  112.076s
+ │└Compilers.Reify.Reify' --------------   0.0%  82.2%       0  111.958s
+ │└Reify.do_reify_abs_goal -------------   0.0%  82.2%       2  111.947s
+ │└Reify.reify_abs ---------------------  82.1%  82.1%       0  111.828s
+ └─ReflectiveTactics.solve_post_reified_   0.0%  11.2%       1   15.309s
+  └UnifyAbstractReflexivity.unify_transf   0.0%  10.1%       7    3.143s
+  └abstract exact_no_check eq_refl -----   8.3%   8.3%       7    2.422s
+```
+In src/Specific/montgomery32_2e165m25_6limbs/femul.v:
+```
+total time:    321.404s
+
+ tactic                                   local  total   calls       max
+────────────────────────────────────────┴──────┴──────┴───────┴─────────┘
+─synthesize_mul ------------------------   0.0% 100.0%       0  321.404s
+─synthesize_carry_mul ------------------   0.0% 100.0%       0  321.404s
+─synthesize_2arg_choice_with_carry -----   0.0% 100.0%       0  321.404s
+─synthesize_narg_choice_gen ------------   0.0% 100.0%       0  321.404s
+─Pipeline.refine_reflectively_gen ------   0.0%  99.5%       1  319.882s
+─ReflectiveTactics.do_reflective_pipelin   0.0%  99.4%       1  319.385s
+─ReflectiveTactics.solve_side_conditions   0.0%  99.3%       1  319.137s
+─ReflectiveTactics.do_reify ------------   0.0%  92.6%       1  297.487s
+─Reify.Reify_rhs_gen -------------------   0.2%  92.4%       1  297.068s
+─Reify ---------------------------------   0.0%  89.4%       0  287.464s
+─Compilers.Reify.Reify -----------------   0.1%  89.4%       0  287.460s
+─Compilers.Reify.Reify' ----------------   0.0%  89.4%       0  287.288s
+─Reify.do_reify_abs_goal ---------------   0.0%  89.4%       2  287.271s
+─Reify.reify_abs -----------------------  89.3%  89.3%       0  287.091s
+─ReflectiveTactics.solve_post_reified_si   0.0%   6.7%       1   21.649s
+─UnifyAbstractReflexivity.unify_transfor   0.0%   6.1%       7    4.371s
+─abstract exact_no_check eq_refl -------   5.3%   5.3%       8    3.354s
+
+ tactic                                   local  total   calls       max
+────────────────────────────────────────┴──────┴──────┴───────┴─────────┘
+─synthesize_mul ------------------------   0.0% 100.0%       0  321.404s
+└synthesize_carry_mul ------------------   0.0% 100.0%       0  321.404s
+└synthesize_2arg_choice_with_carry -----   0.0% 100.0%       0  321.404s
+└synthesize_narg_choice_gen ------------   0.0% 100.0%       0  321.404s
+└Pipeline.refine_reflectively_gen ------   0.0%  99.5%       1  319.882s
+└ReflectiveTactics.do_reflective_pipelin   0.0%  99.4%       1  319.385s
+└ReflectiveTactics.solve_side_conditions   0.0%  99.3%       1  319.137s
+ ├─ReflectiveTactics.do_reify ----------   0.0%  92.6%       1  297.487s
+ │└Reify.Reify_rhs_gen -----------------   0.2%  92.4%       1  297.068s
+ │└Reify -------------------------------   0.0%  89.4%       0  287.464s
+ │└Compilers.Reify.Reify ---------------   0.1%  89.4%       0  287.460s
+ │└Compilers.Reify.Reify' --------------   0.0%  89.4%       0  287.288s
+ │└Reify.do_reify_abs_goal -------------   0.0%  89.4%       2  287.271s
+ │└Reify.reify_abs ---------------------  89.3%  89.3%       0  287.091s
+ └─ReflectiveTactics.solve_post_reified_   0.0%   6.7%       1   21.649s
+  └UnifyAbstractReflexivity.unify_transf   0.0%   6.1%       7    4.371s
+  └abstract exact_no_check eq_refl -----   4.9%   4.9%       7    3.354s
+```
+
+So my guess looking at this is that the time and memory is spent in typeclass resolution, possibly in allocating large evar contexts/substitutions?
+
+(Btw, we should plausibly move this discussion to another issue...)
+
+_Originally posted by @JasonGross in https://github.com/coq/coq/issues/12271#issuecomment-641005536_
+Let me also copy over the initial comments that started this off:
+I'll be interested to read your results when they're available.  I'd appreciate it if you'd email me then.  Indeed, if you like, I"ll proofread it.
+
+Separately, I would love to understand what drives maximum memory use.  Seems like it should be roughly:
+
+(# of steps in the open proof) * (average size of the proof at each step) + (total sizes of all closed proofs)
+
+IIRC Adam mentioned runs that needed almost 32GB to complete.  Hard to see how Coq would use that much memory.  I recall there was a major fast memory leak that someone, maybe you, fixed about a year ago.  Not sure it's still an issue.  Would be interesting to identify the drivers of memory use and suggest improvements.  Also, I don't have a good feel for the range of numbers for my rough formula that are reached in practice or are common.
+
+Once the drivers for memory use are identified, it should be possible to create a command or two to compute the exact amount used for various purposes.  I also wonder if some gigantic proofs might be optimized to make them much smaller.
+
+_Originally posted by @jfehrle in https://github.com/coq/coq/issues/12271#issuecomment-640943091_
+
+
+I have indeed had individual Coq sessions go over 32 GB of memory use (it at least used to be quite easy to do with a long enough proof script using a lot of automation), but more commonly the scaling challenges come from several Coq sessions at once via a parallel build.
+
+_Originally posted by @achlipala in https://github.com/coq/coq/issues/12271#issuecomment-640946982_
+I'm trying to make on 8.11.2.  I see this:
+
+```
+$ make
+COQ_MAKEFILE -f _CoqProject > Makefile.coq
+make: *** No rule to make target 'bbv/src/bbv/BinNotation.v', needed by 'bbv/src/bbv/BinNotation.vo'.  Stop.
+```
+
+EDIT: figured this out
+`git submodule update --init --recursive`
+How about this?
+
+```
+$ coqc src/Specific/montgomery32_2e165m25_6limbs/femul.v
+File "./src/Specific/montgomery32_2e165m25_6limbs/femul.v", line 1, characters 15-51:
+Error: Cannot find a physical path bound to logical path matching suffix
+Crypto.Arithmetic.
+```
+You're missing the relevant flags from _CoqProject.  Also possibly missing a COQPATH setting.  Use `make src/Specific/montgomery32_2e165m25_6limbs/femul.vo` instead.  If you need to see the correct flags to pass to coqc, pass VERBOSE=1 (or it might be V=1) to `make`.  If you need to see the COQPATH setting, run `make printenv`
+I'll try that.  In the meantime, I was trying to set up the `spacetime` memory profiler, which is described here: https://blog.janestreet.com/a-brief-trip-through-spacetime/ and here: https://caml.inria.fr/pub/docs/manual-ocaml/libref/Spacetime.html
+
+And this is how far I got:
+https://discuss.ocaml.org/t/spacetime-on-windows-subsystem-for-linux/5942
+
+If you have Linux rather than Windows and/or >32 GB on your system perhaps it will work better for you.
+PS the opam build segfaults while compiling Byte.v
+Note that to use the spacetime feature, you need to (minimally) patch Coq. I have a branch somewhere on my disk that does that, if you want.
+I've just realized that I don't use spacetime for Coq profiling, because it's usually too costly on the kind of CPU-bound runs typical in Coq. Instead, I use the statistical-memprof patch of the OCaml compiler. It seems that [it is currently being revamped and integrated](http://gallium.inria.fr/~scherer/doc/chameau-sur-le-plateau/2019-11-12-jacques-henri-jourdan-statmemprof.pdf) into upstream OCaml, but AFAICT there is a switch [available up to OCaml 4.07](https://opam.ocaml.org/packages/ocaml-variants/ocaml-variants.4.07.1+statistical-memprof/) on opam.
+
+EDIT: the link to my branch is https://github.com/ppedrot/coq/tree/jh-memprof-new. You can trigger a memory dump with SIGUSR1, and reset the memory count with SIGUSR2.
+Look no further: this memory explosion is due to the reallocation of evar environments in pretyping, namely in `GlobEnv.new_evar`.
+@JasonGross could you try with https://github.com/ppedrot/coq/tree/share-val-context-new-evar to see if the problem persists?
+@ppedrot An excellent start.  That reduced memory use after the proof completed from ~4GB to <2GB for `montgomery32_2e152m17_5limbs`
+
+as reported by `Print Debug GC`
+```
+            old       new       new/old
+heap_words: 564421632 236036608 41.8 %
+live_words  435654906 190527438 43.7 %
+```
+
+`montgomery32_2e165m25_6limbs` was using 10GB, is now under 4 GB:
+
+```
+heap_words: 412830720
+live_words: 280046129
+```
+
+@JasonGross I can rerun some of the other scripts and see if the growth is still exponential.  Which ones should I run?
+If you run `src/Specific/montgomery*_<n>limbs/femul.vo` for a variety of values of `n`, that should give a good sense (it doesn't really matter which of the many `montgomery` files you run for a particular value of `n`, you can see the variation in how much the dots overlap or not for each value of `n` in my plot).  You can look up how long each file took for me in [this table](https://github.com/mit-plv/fiat-crypto/blob/sp2019latest/time-of-build-after-pretty.log)
+Next in line is another evar-manipulating function, namely `Evd.restrict`. It keeps generating identity substitutions, and there is probably a way to introduce a bit more of sharing.
+Here's what I got.  It seems to run faster, too, though part of that is that my hardware is somewhat faster.
+
+![image](https://user-images.githubusercontent.com/1253341/84203485-5c469a00-aa5e-11ea-8e78-807a2b8c5a2e.png)
+
+The .vo file generated for the 8 limb case is only 26MB.  Would be interesting to understand why, in contrast, the process still has 4GB of live data in the heap.  Understanding that might lead to further reductions in heap use.
+The live data is due to a huge proof state. There are seemingly gazillions of evars with very large contexts, and even though they probably collapse to trivial terms in the end, they do exist transiently.
+
+When are those evars released?  Are they there even after the proof has ended with `Defined` or `Qed`, `Optimize Heap` and `Optimize Proof`?  An easy experiment.
+They are collected after `Qed`, `Defined` and `Optimize Proof`.
+The numbers I gave are already after `Defined`.
+I don't know what the GC considers "live" at this point, it might be that this data is still considered reachable because the GC has not performed a traversal of the memory graph yet. You could try forcing this with `Optimize Heap` after the `Defined` command to see whether it reclaims more memory.
+This is the 5 nlimb case.  The GC reduces the live data by almost half, but it's still 773MB while the .vo file is only 8 MB.  That seems like a lot.
+
+```
+minor words: 47129288418.
+promoted words: 230099690.
+major words: 278512323.
+minor_collections: 1427
+major_collections: 6
+heap_words: 236036608
+heap_chunks: 43
+live_words: 187979097
+live_blocks: 57873144
+free_words: 47998176
+free_blocks: 236544
+largest_free: 16158437
+fragments: 59335
+compactions: 0
+top_heap_words: 236036608
+stack_size: 176
+
+(GC here)
+
+minor words: 47129351632.
+promoted words: 230101705.
+major words: 278514338.
+minor_collections: 1429
+major_collections: 8
+heap_words: 223497216
+heap_chunks: 21
+live_words: 101353755
+live_blocks: 33816493
+free_words: 122143460
+free_blocks: 17
+largest_free: 17331940
+fragments: 1
+compactions: 1
+top_heap_words: 236036608
+stack_size: 176
+```
+Math is hard.  It's actually 773MB after GC.  That seems fishy.
+Updated to show post-GC live and heap words.  The GC doesn't reduce the heap size that much.  And probably there's nothing that tries to keep the free space to a sensible size.
+
+To address this, perhaps we could set an alarm function for major collections with Gc.create_alarm.  It could look at the stats and call Gc.set to make the heap smaller.  The 8 nlimbs did 13 major collections while 2 limbs did 4 collections.  Maybe have a command or tactic to cut back the heap size.  WDYT?
+
+![image](https://user-images.githubusercontent.com/1253341/84212805-bbfb7000-aa73-11ea-9b4a-11674a4ae95d.png)
+
+
+@JasonGross What's the incantation needed to run this file, which is in the montgomery64_2e511m187_8limbs directory?  I want to compare the size in this case to the size after processing femul.v.
+
+```
+Require Import (*Specific.montgomery64_2e511m187_8limbs.*)Femul
+
+Optimize Heap.
+Print Debug GC.
+```
+The way to write the file is
+```coq
+Require Import Crypto.Specific.montgomery64_2e511m187_8limbs.femul.
+
+Optimize Heap.
+Print Debug GC.
+```
+If you've already built the .vo file, the incantation is
+```bash
+COQPATH=$(pwd)/coqprime/src ${COQBIN}coqc -q -R src Crypto -R bbv/src/bbv bbv $file_name.v
+```
+Got it, thanks.  For that file, heap = 40019968 words, live = 38057975, about 1/20th the heap and 1/10th the live memory compared to the process that compiled `femul.v` (all post-GC).  Better evidence that Coq retains memory it doesn't need after a proof.
+Is some of it for backtracking?  Or is it a leak?
+Dunno.  TBD.  Let's see if @ppedrot has any ideas.  If not, then we try the memory profiling tool and see what we can figure out.
+_Wandering off topic_: it looks like there's considerable repetition within the proof term.  It would be interesting to apply classic common subexpression elimination to the proof term and see how much smaller it gets.  If it's significant, that would reduce memory use for anything importing the proof and I expect it would type-check faster.  Indeed, it might be applied in the middle of a long proof.  Maybe more human-readable, too.
+Nothing suspicious from what I can see. It's expected that loading a vo takes more memory than its on-disk representation.
+@JasonGross BTW, "make clean" misses a few spots:
+
+```
+/mnt/c/proj/fiat-crypto$ find . -name "*.vo"
+./coqprime/src/Coqprime/List/Iterator.vo
+./coqprime/src/Coqprime/List/ListAux.vo
+./coqprime/src/Coqprime/List/Permutation.vo
+./coqprime/src/Coqprime/List/UList.vo
+./coqprime/src/Coqprime/List/ZProgression.vo
+./coqprime/src/Coqprime/N/NatAux.vo
+./coqprime/src/Coqprime/PrimalityTest/Cyclic.vo
+./coqprime/src/Coqprime/PrimalityTest/EGroup.vo
+./coqprime/src/Coqprime/PrimalityTest/Euler.vo
+./coqprime/src/Coqprime/PrimalityTest/FGroup.vo
+./coqprime/src/Coqprime/PrimalityTest/IGroup.vo
+./coqprime/src/Coqprime/PrimalityTest/Lagrange.vo
+./coqprime/src/Coqprime/PrimalityTest/Root.vo
+./coqprime/src/Coqprime/PrimalityTest/Zp.vo
+./coqprime/src/Coqprime/Tactic/Tactic.vo
+./coqprime/src/Coqprime/Z/ZCAux.vo
+./coqprime/src/Coqprime/Z/ZSum.vo
+./src/Specific/montgomery64_2e511m187_8limbs/jim.vo
+```
+You want `make cleanall` to also clean the coqprime dependency I believe.  It also doesn't clean vo files that aren't tracked / part of the project.
+@ppedrot I ran memprof for the 4 largest cases.  The 8 nlimbs case looks most interesting.
+My code writes the stats upon process exit, which is after an `Optimize Heap`.  That led to several profiles in each file.  The last one should be `femul.v`.  This is on your `share-val-context-new-evar` branch.  Let us know what you see, thanks.
+
+[prof_5.txt](https://github.com/coq/coq/files/4762159/prof_5.txt)
+[prof_6.txt](https://github.com/coq/coq/files/4762156/prof_6.txt)
+[prof_7.txt](https://github.com/coq/coq/files/4762157/prof_7.txt)
+[prof_8.txt](https://github.com/coq/coq/files/4762158/prof_8.txt)
+
+
+@jfehrle It's definitely weird, since the two top memory contributors shouldn't be there. They correspond to evar instances, so at that point of the program the should have been collected. There is probably some way to reach them via STM data structures or some future? I need more dynamic analysis to understand what's going on.
+> There is probably some way to reach them via STM data structures or some future?
+
+What do you mean by "future"?
+
+I took a look at Stm.VCS.vcs.  It still has an entry for each sentence in the .v file.  I don't see why it has this for `coqc`.
+
+I marshaled !vcs at the end of the process for a couple cases (admittedly crude).  There's considerable data there, but not nearly enough to explain everything.  And the growth rate across cases doesn't fit. 
+ That seemed like the main data structure in Stm.
+
+![image](https://user-images.githubusercontent.com/1253341/84454801-73c58480-ac10-11ea-9e77-75ec788e994f.png)
+
+> I need more dynamic analysis to understand what's going on.
+
+If you send me code I'll try it.  The setup takes a long time: each time I change Coq, it takes 25 minutes to rebuild Jason's code.  (There must be a way to disable Coq's version check but I haven't looked for it yet.)
+I confirm that in the above examples, the evar instances are not released by the GC despite a call to `Gc.compact`. I thought at first I might have misread the callstacks and that the remaining memory would refer to the instance variables, which would have been possible since these variables may remain in the proof term. But according to my analysis, the evar instance *lists* are still reachable, which is very wrong. I have no idea about what is still making them reachable though, and little clue to track this.
+
+New suspect: the VM compilation which happily uses global references *because we can*.
+The following snippet reliably generates a dangling evar instance:
+```
+Definition sigT_eta {A P} (p : @sigT A P)
+  : p = existT _ (projT1 p) (projT2 p).
+Proof. Admitted.
+```
+Note that proving the definition with either `Defined` or `Qed` still leaks the instance, while using `Axiom` instead correctly collect it after its generation. I am puzzled.
+
+If I hack constr.ml so that 
+~~~ocaml
+let mkEvar (e,i) =
+  match i with
+  | [] -> Evar (e,i)
+  | x::l ->
+    let l = x :: l in
+    Printf.eprintf "[push\n";
+    Gc.finalise (fun _ -> Printf.eprintf "pop]\n") l;
+    Evar (e,l)
+~~~
+and make `of_kind` go through it, on 
+~~~coq
+Lemma foo (n:nat) : nat. Proof. Abort.
+Lemma foo (n:nat) : nat. Proof. exact n. Defined.
+Lemma bar : nat -> nat. Proof. intros n;exact n. Defined.
+Optimize Heap.
+~~~
+(using coqc so no cache)
+I get 
+~~~
+[push
+[push
+[push
+pop]
+~~~
+The 2 dangling `push` are for the 2 `foo`.
+
+If I do instead 
+~~~ocaml
+let mkEvar e =
+  let t = Evar e in
+  Printf.eprintf "[push\n";
+  Gc.finalise (fun _ -> Printf.eprintf "pop]\n") t;
+  t
+~~~
+I get an extra dangling `push` for each lemma (including for `bar`).
+
+I guess something keeps the starting info of open lemmas around even after they close.
+Not likely but some object stored in `Summary` could be culprit.
+After a careful analysis, it turns out that the STM keeps a pointer to the global state of Coq at the entrance of every single proof, seemingly to allow a faster `Undo`. No wonder why we are eating a crapload of memory...
+Maybe this very simple compiler can be of help to debug stuff https://github.com/ejgallego/coq/tree/simple_compiler
+
+It is as minimal as it can get.
+By the way I did experiments in the past with such simple compilers as to see if there was an speedup, I didn't measure one so moved on, but indeed didn't check memory use.
+@ejgallego unfortunately the simple compiler is too simple for this test, I need to be able to add loadpaths to coqc...
+Let me fix that in a sec.
+Sorry @ppedrot , I got a call just while I was doing this, commit pushed.
+On the more general issue of `coqc` , indeed I identified problems of this kind in the past, unfortunately I could not see simple fix other than rewriting the Stm , as the uses of large closures there is pervasive so it is hard to track what is going on.
+
+One has indeed to be very careful in the DM w.r.t. caching, memory use, etc...
+So the simple coqc didn't help, these evar instances are still reachable somehow even when dropping the STM cache...
+> So the simple coqc didn't help, these evar instances are still reachable somehow even when dropping the STM cache...
+
+Aha, interesting; thanks for the info. We still need to be sure that `cloop` is tail recursive, and the GC is properly triggered. Next step is Libobject / Summary. What does OCaml report the size of the `st` structure (of type `Vernacstate.t`) to be?
+From your code it's fairly obvious that `cloop` is tail-rec, isn't it? Furthermore, I called the GC in two places, once by hand in Coq with `Optimize Heap` and the second time with an `at_exit` ML callback before tracing the remaining live instances. It took a bit of time so I am fairly sure it was triggered not once but actually twice.
+
+As for the size of the vernacstate, I am not sure about which global entry you're referring to?
+I'm gonna push some stats code I have that should print memory consumption for some objects.
+> From your code it's fairly obvious that `cloop` is tail-rec, isn't it? Furthermore, I called the GC in two places, once by hand in Coq with `Optimize Heap` and the second time with an `at_exit` ML callback before tracing the remaining live instances. It took a bit of time so I am fairly sure it was triggered not once but actually twice.
+
+Indeed, I've added a warning just in case.
+
+> As for the size of the vernacstate, I am not sure about which global entry you're referring to?
+
+Look at the newer commit, I'm gonna print more detailed stats to see if something looks off.
+There are many places an `evar_map` could remain dangling, even in the parsing state.
+But a preliminary run shows:
+```
+ [parsing] mem reach: 23855
+ [system ] mem reach: 787202
+ [lemmas ] mem reach: 0
+```
+So proof state seems to be correctly collected [my example is a toy one tho]
+[basic] Libobject stats added, moving on to summary.
+summary stats added.
+Is this stuck because we can't tell what variable(s) point to the leaked memory?
+
+Perhaps we could track it down by:
+- Using the address of one of the leaked objects from memprof
+- Modifying [`caml-do_roots`](https://github.com/ocaml/ocaml/blob/82f77b8ebd5e96ccbe8aa6d25382c35acb766e41/runtime/roots_nat.c#L399) to identify which root(s) can reach that address.  (And maybe also report how many roots have `reachable_words` over some given threshold to verify that it's only one leak.)
+- Working backwards somehow TBD to find the source code line corresponding to that root
+
+This is a fair bit of work.  Is it worthwhile/necessary?  If it works, would you be confident you can identify the root cause of the problem?
+@ejgallego I had assumed you intended `simple_compiler` was meant for @ppedrot to use.  Or did you mean that I should run it?  From my cursory examination of the code, it looks like it gets `reachable_words` for a few key variables.  Is that right or is there more to it?
+@jfehrle It was meant to be used by anyone that may want to analyze "core" memory consumption, without involving other layers such as the document manager.
+Here is a reliable test that generates dangling evar instances even with the simple compiler:
+```coq
+Definition relation (A : Type) := A -> A -> Prop.
+
+Axiom respectful :
+  forall {A B : Type}, relation A -> relation B -> relation (A -> B).
+
+Axiom Proper : forall {A : Type}, relation A -> A -> Prop.
+
+Parameter t : Type.
+Axiom le : t -> t -> Prop.
+
+Lemma max_mono2 : forall f : t -> t, Proper (@respectful _ _ le le) f -> False.
+Proof.
+intros.
+try change (le (@respectful t t le le) f) in H.
+Admitted.
+```
+
+Over the weekend I made good progress modifying the OCaml runtime to track down the leak(s) by examining all the heap roots.  For roots with high reachable_words, I think I'll be able to identify the source file and a range of lines containing the variable definition.
+@jfehrle you can generate a high number of dangling evars by changing the number of implicit arguments of `respectful` in my example. 
+Quick feedback, the leaking evars appear in none of the following places:
+- Summaries
+- Libobject
+- VCS reference (stm.ml)
+- Exninfo cache
+
+I am starting to run out of ideas.
+Indeed that's bizarre, I was doing some investigation yesterday with your example and found very weird results, at first I thought the summary `symbols` in `Notation` could be the culprit, but when I investigated more I got very weird results.
+
+Maybe some registration of genargs / etc... could be at fault here? But indeed I'm a bit lost too.
+
+What does @JasonGross 's example do with the simple_compiler?
+> at first I thought the summary `symbols` in `Notation` could be the culprit, but when I investigated more I got very weird results.
+
+To be more concrete, I observe an increase of `symbols-SUMMARY` when differentially testing two examples, but then I see the summary itself is empty. The increase is suspicious because we have the same number of summary entries.
+> Maybe some registration of genargs
+
+All those functions are called statically, so it shouldn't influence runtime. The evars that leak in my example are also generated at runtime, so instead I suspect that somewhere there is a global cache that captures them and that is not freed, but I have no idea where it could be defined.
+@ppedrot Initial results for the 5 limb case showing fields (aka heap roots) in each .ml file that have more than 100000 reachable words.  Looks like `engine/evarutil.ml` is the main culprit.  Perhaps that's enough of a clue for you to find the leak.  Field numbers correspond to global symbols.  Sometimes they appear in the same order as in the file, but not always.  I can do further experiments tomorrow to refine it/validate it further/narrow it down to a single variable.
+
+```
+    102723 field   0 plugins/ltac/pltac.ml
+    102678 field   1 plugins/ltac/pltac.ml
+    102678 field   2 plugins/ltac/pltac.ml
+    102735 field   4 plugins/ltac/pltac.ml
+    102678 field   5 plugins/ltac/pltac.ml
+    102678 field   6 plugins/ltac/pltac.ml
+    102678 field   8 plugins/ltac/pltac.ml
+    102678 field  10 plugins/ltac/pltac.ml
+    102678 field  11 plugins/ltac/pltac.ml
+    102678 field  14 plugins/ltac/pltac.ml
+    102678 field  15 plugins/ltac/pltac.ml
+    102678 field  16 plugins/ltac/pltac.ml
+    102678 field  17 plugins/ltac/pltac.ml
+    102730 field  18 plugins/ltac/pltac.ml
+    164824 field  20 plugins/ltac/tacenv.ml
+   1542857 field  26 plugins/ltac/tacenv.ml
+  35253743 field  65 stm/stm.ml
+  35201913 field   8 vernac/vernacstate.ml
+   8991864 field  24 vernac/library.ml
+    112035 field   8 vernac/egramml.ml
+   6145454 field  84 vernac/declaremods.ml
+   6435878 field  89 vernac/declaremods.ml
+    162042 field   1 vernac/pvernac.ml
+    106740 field   4 vernac/pvernac.ml
+    106739 field   5 vernac/pvernac.ml
+    106739 field   8 vernac/pvernac.ml
+    110219 field  11 vernac/pvernac.ml
+    112510 field  12 vernac/pvernac.ml
+    140631 field  13 vernac/pvernac.ml
+    106108 field  14 vernac/pvernac.ml
+    159940 field  15 vernac/pvernac.ml
+    103902 field  16 vernac/pvernac.ml
+    102678 field  17 vernac/pvernac.ml
+    102791 field  18 vernac/pvernac.ml
+    160048 field  19 vernac/pvernac.ml
+    105569 field  20 vernac/pvernac.ml
+    351327 field  14 tactics/autorewrite.ml
+   1595070 field  63 tactics/hints.ml
+    105767 field  20 parsing/pcoq.ml
+    102872 field  24 parsing/pcoq.ml
+    103773 field  25 parsing/pcoq.ml
+    210280 field  47 parsing/pcoq.ml
+    105781 field  58 parsing/pcoq.ml
+    102706 field  71 parsing/pcoq.ml
+    102678 field 118 parsing/pcoq.ml
+    102678 field 119 parsing/pcoq.ml
+    102730 field 120 parsing/pcoq.ml
+    102678 field 121 parsing/pcoq.ml
+    102678 field 122 parsing/pcoq.ml
+    102678 field 129 parsing/pcoq.ml
+    102723 field 130 parsing/pcoq.ml
+    102678 field 131 parsing/pcoq.ml
+    102678 field 132 parsing/pcoq.ml
+    102678 field 133 parsing/pcoq.ml
+    102678 field 134 parsing/pcoq.ml
+    102678 field 135 parsing/pcoq.ml
+    102678 field 136 parsing/pcoq.ml
+    102678 field 137 parsing/pcoq.ml
+    102678 field 138 parsing/pcoq.ml
+    102678 field 139 parsing/pcoq.ml
+    102678 field 140 parsing/pcoq.ml
+    103770 field 142 parsing/pcoq.ml
+    947906 field  65 interp/impargs.ml
+    428734 field  29 interp/dumpglob.ml
+   1449580 field 158 interp/notation.ml
+ 262800772 field  18 engine/evarutil.ml
+  27930992 field  60 library/lib.ml
+  18254871 field  80 library/global.ml
+   1548491 field  54 library/nametab.ml
+    414345 field  61 library/nametab.ml
+    669077 field  62 library/nametab.ml
+    148457 field  66 library/nametab.ml
+  10960660 field  20 library/summary.ml
+    291985 field  22 kernel/nativelib.ml
+   8096110 field  37 kernel/cbytegen.ml
+    254431 field 130 kernel/constr.ml
+    101533 field 131 kernel/constr.ml
+    159195 field  35 lib/system.ml
+    159195 field  35 clib/minisys.ml
+    131073 field  15 clib/unicode.ml
+    147454 field   7 clib/cEphemeron.ml
+```
+Could it be this bit from evarutil?
+~~~ocaml
+(* Memoization is safe since evar_map and environ are applicative
+   structures *)
+let memo f =
+  let m = ref None in
+  fun x y -> match !m with
+  | Some (x', y', r) when x == x' && y == y' -> r
+  | _ -> let r = f x y in m := Some (x, y, r); r
+
+let is_ground_env = memo is_ground_env
+~~~
+We can probably use a weak reference instead of option.
+@SkySkimmer cross-posting from the other PR, I confirm that your patch solves the problem on my reduced example.
+@JasonGross After syncing with Coq `master` and pulling and rebasing fiat-crypto on `sp2019lastest`, my local fiat-crypto make now fails with:
+
+```
+File "./bbv/src/bbv/NatLib.v", line 71, characters 4-16:
+Error: No primitive equality found.
+```
+
+I had been using master as of around June 9.  If you can fix that then it's easier for me to pull in changes from the others to get new numbers.  I should be able to use an earlier version of Coq for the moment.
+It'd be interesting to see (once the memo bug is fixed) if the simple compiler has some memory advantage over coqc. It should not.
+@jfehrle Did you forget `git submodule update`?
+@ejgallego I'll try that at some point, but not today.  What does simple_compiler do?  I thought it was just a way to get memory-use statistics.
+@JasonGross That was it, thanks.  Even taking notes, it's hard to remember all the little details 2+ weeks later.  Modifying OCaml adds an additional layer of fun to it.
+@ejgallego why not? since coqc is storing useless proof data in the VCS I don't see how it could perform as efficiently as scoqc...
+> since coqc is storing useless proof data in the VCS I don't see how it could perform as efficiently as scoq
+
+Actually when not in interactive mode it should not cache data, so indeed memory use should remain in the same ballpark.
+Well done @SkySkimmer!  After gc, the run now uses 53 863 708 live words.  That's almost 50% less than where we started, at 101 353 755 words.  That's still more than the following trivial script that loads the completed proof, which uses 36 283 987 live words.  
+
+```
+Require Import Crypto.Specific.montgomery32_2e152m17_5limbs.femul.
+
+Optimize Heap.
+Print Debug GC.
+```
+
+Here are the biggest differences I see now:
+
+```
+FULL RUN
+  35327283 field  65 stm/stm.ml
+   9033104 field  24 vernac/library.ml
+   8096110 field  37 kernel/cbytegen.ml
+
+TRIVIAL SCRIPT
+    810103 field  65 stm/stm.ml
+(vernac/library.ml < 100000 so not listed)
+(kernel/cbytegen.ml < 100000 so not listed)
+```
+
+If we can figure out these 3 we may be able to save another 17M words, though some of the memory is surely counted more than once.  Also, the less-significant `plugins/ltac/pltac.ml`, `vernac/pvernac.ml` and `parsing/pcoq.ml` entries from the earlier stats don't show up in the trivial script.
+
+I'll try to figure out what these fields correspond to and also rerun the largest case, 8 limbs, to see how that's changed.
+
+
+@jfehrle for cbytegen it's most likely due to the use of a global variable to compute the bytecode. Never understood why it's done that way but it is trivial to fix.
+
+> Actually when not in interactive mode it should not cache data
+
+@ejgallego if you wrote *ought to* instead of *should* I would agree, but currently coqc still retains pointers to useless memory, as it was discussed above. Or did you write a PR to solve this already?
+@ppedrot maybe I was confused, I thought the main problem was the `memo` thing, if `coqc` still retains pointers to useless memory indeed we should open a bug, I didn't do any patch/action yet, I was waiting to identify the culprit affecting the lower layers.
+@ejgallego nope, in addition to the memo cache it was also pointed out (on zulip I think?) that `coqc` keeps the global state at the opening of every proof. The reason for that seems to support `Undo` even in batch mode, which doesn't look like a great idea to me. That said, this proof state is not that big, as observed in @jfehrle's experiments. I think we should get rid of it still.
+@ppedrot These are the variables holding the leaked data for the 3 leak points I mentioned.  Would be great if you can clean them up:
+- stm.ml:  vcs (line ~527)
+- library.ml: opaque_tables
+- cbytegen: fun_code
+
+Getting from the field number to the variable isn't as simple as I thought.  In particular I don't have an easy way to find variables in modules defined (`sig`) and instantiated (`struct`) within a single .ml file.
+
+Here's a summary of our progress on live words for the 8 limb case:
+
+```
+550057352   with @ppedrot fix, without GC
+398748067   plus a final GC (72% of previous line)
+ 75174701   plus @SkySkimmer fix (19% of previous line)
+ 39275064   FOR COMPARISON: trivial script loading the proof (52% of previous line)
+```
+@jfehrle
+- stm.ml: this is the cache behaviour of coqc I mentioned above, I have no idea how to fix it since I don't understand the stm (but @gares and @ejgallego should be able to help)
+- library.ml: opaque_tables: this is a cache for the body of opaque proofs. As part of my work on not keeping the proofs in memory, I have a PR that removes that entry point (and a lot of other stuff), but it needs further polishing and evaluation, so I am not going to actively work on this precise issue
+- cbytegen: fun_code: this is the weird compilation scheme mentioned above. I'll first submit a few PRs on the VM I had lying on my drive, and will address it.
+
+All in all, I think the major issue is the STM being too conservative in what it caches, so it'd be good that the specialists address this specifically.
+
+Also, forgot to say that this is quite orthogonal to Coq using way too much memory. The bug we are currently scrutinizing is about Coq not releasing it at exit time, but the root of the problem persists, insofar as Coq generates a hell of a lot of useless data (hello, identity evar instances) for no good reason. There is still a lot of work ahead to reduce dynamic memory consumption to a reasonable amount.
+
+> * stm.ml: this is the cache behaviour of coqc I mentioned above, I have no idea how to fix it since I don't understand the stm (but @gares and @ejgallego should be able to help)
+
+Indeed, I think we will be able to tweak the cache so this is not a problem. In that sense, I'd suggest opening a specific bug for this case [an example like a huge proof of `100 < 1000` could help]
+@ejgallego See #12639.  I've not written many (any?) proofs in the last 2 years, so creating the example you suggest would take me a while.
+@ppedrot Indeed, I was starting to consider that.
+
+I adjusted my instrumentation to use `Gc.create_alarm` so I can print stats in the middle of the proof.  Just after the 12th major collection, at which point the proof is not complete, I `Gc.compact`, dump the field information, `Gc.print_stat` and print a stack trace.
+
+The field information is not all that different from previous runs.  There are several items that use 10s of millions of words, but they total nowhere near enough to account for 399 907 814 live words.  The stack trace is about 88 screenfuls.  Then I got a seg fault for some reason.
+
+The bulk of the heap may be rooted in the stack frames.  I'll create additional instrumentation to report reachable_words for each frame.  In the meantime, feel free to ponder the stack trace.
+
+Also, for the purpose of evaluating any fixes that we make, it would be preferable to trigger reporting the info at a known point in the proof with a new command to get the most useful comparison.  Perhaps @JasonGross can suggest some places to do that.
+
+[big_trace.txt](https://github.com/coq/coq/files/4871071/big_trace.txt)
+
+> Also, for the purpose of evaluating any fixes that we make, it would be preferable to trigger reporting the info at a known point in the proof with a new command to get the most useful comparison. Perhaps @JasonGross can suggest some places to do that
+
+Not sure what you're asking about here, but if you want some relevant breakpoints in the proof script, the best places to insert things are in the tactics `do_reflective_pipeline` (you can either insert before it runs, between its two subtactics, or if you have something that doesn't require a focussed goal, after both subtactics), in `solve_side_conditions` (where you can look at things before and after reification), or in `solve_post_reified_side_conditions` (where you can breakpoint right before attempting to solve any of the 12 side-conditions).  All of these tactics are in https://github.com/mit-plv/fiat-crypto/blob/sp2019latest/src/Compilers/Z/Bounds/Pipeline/ReflectiveTactics.v#L296-L362.  Is this what you're looking for?  (If you need a vernacular command, you can do `Ltac Crypto.Compilers.Z.Bounds.Pipeline.ReflectiveTactics.solve_side_conditions ::= idtac.` before calling the main tactic (if `idtac` doesn't work, you should try `shelve`, and then you'll need `Unshelve. all: shelve_unifiable`, I think).  Then you can invoke the subtactics by hand, if you want to.)
+These are the stack heap roots after the 12th major collection with over 100K reachable words.  Clearly a lot of data is shared between them.  The stack frame is shown only if it has a root of that size.  Full stack trace at the bottom.  Not comparable to the previous info.
+
+If we use a point in the proof such as those @JasonGross suggests we will be able get repeatable results.  We could also add debug code to Coq if you wish.  The point where the stack heap roots jump from 22M to 375M words looks interesting.
+
+```
+Called from file "tactics/redexpr.ml" (inlined), line 207, characters 29-40
+ 356758154 item    0 (stack)
+Called from file "plugins/ltac/tacinterp.ml", line 752, characters 6-51
+  17646719 item    0 (stack)
+    119041 item    1 (stack)
+Called from file "engine/logic_monad.ml", line 195, characters 38-43
+    119130 item    0 (stack)
+ 373378237 item    1 (stack)
+Called from file "engine/logic_monad.ml", line 263, characters 6-27
+ 373378344 item    0 (stack)
+Called from file "engine/logic_monad.ml", line 263, characters 6-27
+ 373378487 item    0 (stack)
+Called from file "engine/logic_monad.ml", line 70, characters 36-42
+ 373379751 item    0 (stack)
+Called from file "engine/logic_monad.ml", line 70, characters 36-42
+ 373382172 item    0 (stack)
+Called from file "engine/logic_monad.ml", line 70, characters 36-42
+ 373379532 item    0 (stack)
+Called from file "engine/logic_monad.ml", line 70, characters 36-42
+ 375174842 item    0 (stack)
+Called from file "engine/logic_monad.ml", line 70, characters 36-42
+ 373269394 item    0 (stack)
+Called from file "engine/logic_monad.ml", line 70, characters 36-42
+ 375780892 item    0 (stack)
+Called from file "engine/logic_monad.ml", line 70, characters 36-42
+  22937285 item    0 (stack)
+Called from file "engine/logic_monad.ml", line 70, characters 36-42
+  22944656 item    0 (stack)
+Called from file "engine/logic_monad.ml", line 70, characters 36-42
+  21289070 item    0 (stack)
+Called from file "engine/logic_monad.ml", line 70, characters 36-42
+  21393808 item    0 (stack)
+Called from file "engine/logic_monad.ml", line 70, characters 36-42
+  20036562 item    0 (stack)
+Called from file "engine/logic_monad.ml", line 70, characters 36-42
+  20148343 item    0 (stack)
+Called from file "engine/logic_monad.ml", line 70, characters 36-42
+  17166662 item    0 (stack)
+Called from file "engine/logic_monad.ml", line 70, characters 36-42
+  17094536 item    0 (stack)
+Called from file "engine/logic_monad.ml", line 70, characters 36-42
+  17094701 item    0 (stack)
+Called from file "engine/logic_monad.ml", line 70, characters 36-42
+  17094890 item    0 (stack)
+Called from file "engine/logic_monad.ml", line 70, characters 36-42
+  17094347 item    0 (stack)
+Called from file "engine/logic_monad.ml", line 70, characters 36-42
+  17094509 item    0 (stack)
+Called from file "engine/logic_monad.ml", line 70, characters 36-42
+  17094375 item    0 (stack)
+Called from file "engine/logic_monad.ml", line 70, characters 36-42
+  17093771 item    0 (stack)
+Called from file "engine/logic_monad.ml", line 70, characters 36-42
+  17093933 item    0 (stack)
+Called from file "engine/logic_monad.ml", line 70, characters 36-42
+  17093864 item    0 (stack)
+Called from file "engine/logic_monad.ml", line 70, characters 36-42
+  17093723 item    0 (stack)
+Called from file "engine/logic_monad.ml", line 70, characters 36-42
+  17093885 item    0 (stack)
+Called from file "engine/logic_monad.ml", line 70, characters 36-42
+  17093941 item    0 (stack)
+Called from file "proofs/proof.ml", line 386, characters 4-42
+    470499 item    0 (stack)
+Called from file "vernac/declare.ml", line 1406, characters 20-33
+    470533 item    0 (stack)
+Called from file "vernac/vernacinterp.ml", line 206, characters 20-60
+    467368 item    0 (stack)
+Called from file "stm/stm.ml", line 2726, characters 4-60
+  33997361 item    0 (stack)
+    470506 item    2 (stack)
+minor_collections: 6019
+major_collections: 14
+compactions:       1
+
+minor_words:    201545205708
+promoted_words:   1047623856
+major_words:      1089911789
+
+top_heap_words: 828360192
+heap_words:     828360192
+live_words:     397297801
+free_words:     431062390
+largest_free:    53718528
+fragments:              1
+
+live_blocks: 147143065
+free_blocks: 51
+heap_chunks: 55
+Raised by primitive operation at file "toplevel/coqtop.ml", line 167, characters 44-73
+Called from file "kernel/csymtable.ml", line 200, characters 2-73
+Called from file "pretyping/vnorm.ml", line 406, characters 10-39
+Called from file "tactics/redexpr.ml" (inlined), line 207, characters 29-40
+Called from file "tactics/redexpr.ml", line 220, characters 12-19
+Called from file "plugins/ltac/tacinterp.ml", line 752, characters 6-51
+Called from file "plugins/ltac/tacinterp.ml", line 1241, characters 31-69
+Called from file "engine/proofview.ml", line 1277, characters 8-12
+Called from file "engine/logic_monad.ml", line 195, characters 38-43
+Called from file "engine/logic_monad.ml", line 263, characters 6-27
+Called from file "engine/logic_monad.ml", line 263, characters 6-27
+Called from file "engine/logic_monad.ml", line 70, characters 36-42
+Called from file "engine/logic_monad.ml", line 70, characters 36-42
+Called from file "engine/logic_monad.ml", line 70, characters 36-42
+Called from file "engine/logic_monad.ml", line 70, characters 36-42
+Called from file "engine/logic_monad.ml", line 70, characters 36-42
+Called from file "engine/logic_monad.ml", line 70, characters 36-42
+Called from file "engine/logic_monad.ml", line 70, characters 36-42
+Called from file "engine/logic_monad.ml", line 70, characters 36-42
+Called from file "engine/logic_monad.ml", line 70, characters 36-42
+Called from file "engine/logic_monad.ml", line 70, characters 36-42
+Called from file "engine/logic_monad.ml", line 70, characters 36-42
+Called from file "engine/logic_monad.ml", line 70, characters 36-42
+Called from file "engine/logic_monad.ml", line 70, characters 36-42
+Called from file "engine/logic_monad.ml", line 70, characters 36-42
+Called from file "engine/logic_monad.ml", line 70, characters 36-42
+Called from file "engine/logic_monad.ml", line 70, characters 36-42
+Called from file "engine/logic_monad.ml", line 70, characters 36-42
+Called from file "engine/logic_monad.ml", line 70, characters 36-42
+Called from file "engine/logic_monad.ml", line 70, characters 36-42
+Called from file "engine/logic_monad.ml", line 70, characters 36-42
+Called from file "engine/logic_monad.ml", line 70, characters 36-42
+Called from file "engine/logic_monad.ml", line 70, characters 36-42
+Called from file "engine/logic_monad.ml", line 70, characters 36-42
+Called from file "engine/logic_monad.ml", line 70, characters 36-42
+Called from file "engine/logic_monad.ml", line 70, characters 36-42
+Called from file "engine/logic_monad.ml", line 120, characters 8-12
+Called from file "engine/proofview.ml", line 232, characters 12-42
+Called from file "proofs/proof.ml", line 386, characters 4-42
+Called from file "proofs/proof.ml", line 560, characters 31-52
+Called from file "plugins/ltac/g_ltac.mlg", line 371, characters 8-83
+Called from file "vernac/declare.ml", line 1406, characters 20-33
+Called from file "plugins/ltac/g_ltac.mlg", line 366, characters 23-576
+Called from file "vernac/vernacstate.ml", line 87, characters 30-34
+Called from file "clib/option.ml", line 103, characters 19-24
+Called from file "vernac/vernacinterp.ml", line 206, characters 20-60
+Called from file "lib/system.ml", line 280, characters 12-15
+Called from file "lib/flags.ml", line 20, characters 14-17
+Called from file "vernac/vernacinterp.ml", line 251, characters 18-43
+Called from file "vernac/vernacinterp.ml", line 249, characters 6-279
+Called from file "stm/stm.ml", line 2395, characters 20-47
+Called from file "stm/stm.ml", line 2325, characters 10-14
+Called from file "stm/stm.ml", line 973, characters 6-10
+Called from file "stm/stm.ml", line 2545, characters 4-105
+Called from file "stm/stm.ml", line 2726, characters 4-60
+Called from file "toplevel/vernac.ml", line 71, characters 31-52
+Called from file "lib/flags.ml", line 20, characters 14-17
+Called from file "lib/flags.ml" (inlined), line 69, characters 19-40
+Called from file "toplevel/vernac.ml", line 114, characters 8-69
+Called from file "toplevel/vernac.ml", line 118, characters 6-19
+Called from file "toplevel/vernac.ml", line 174, characters 30-88
+Called from file "toplevel/ccompile.ml", line 151, characters 18-89
+Called from file "toplevel/ccompile.ml" (inlined), line 217, characters 2-39
+Called from file "toplevel/ccompile.ml", line 226, characters 4-41
+Called from file "list.ml", line 110, characters 12-15
+Called from file "toplevel/coqc.ml", line 48, characters 2-81
+Called from file "toplevel/coqc.ml", line 70, characters 4-25
+Called from file "toplevel/coqc.ml" (inlined), line 88, characters 2-30
+Called from file "topbin/coqc_bin.ml", line 16, characters 2-14
+Segmentation fault (core dumped)
+Makefile.coq:719: recipe for target 'src/Specific/montgomery64_2e511m187_8limbs/femul.vo' failed
+```
+Looks like the evar map is indeed the issue.  I'll try to break it down further.
+
+```
+defn_evars size = 95873
+defn_evars words = 356349945
+undf_evars size = 19
+undf_evars words = 1222952
+future_goals size = 203
+future_goals words = 609
+evar map: 357913708 reachable words
+```
+@JasonGross Where is `synthesize_mul` defined?  I wanted to instrument that to figure out what tactics cause the huge increase in memory use between these two stack frames.  At the moment, I dump the evar info before any work is done in `solve_post_reified_side_conditions`.
+
+```
+Called from file "engine/logic_monad.ml", line 70, characters 36-42
+ 375780892 item    0 (stack)
+Called from file "engine/logic_monad.ml", line 70, characters 36-42
+  22937285 item    0 (stack)
+```

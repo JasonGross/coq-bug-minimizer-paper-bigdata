@@ -1,0 +1,77 @@
+Comment author: @JasonGross
+
+The strategy command should allow more notions of opacity, which I've given tentative names to below:
+
+opaque_irrelevant - the constant is treated as not convertible with its body by the kernel and all reduction machinery
+
+opaque_un_unfoldable - the constant is treated as convertible with its body by the kernel, but no reduction machinery will unfold it, and [unfold qualid] will fail
+
+opaque_unfoldable - the constant is treated as convertible with its body by the kernel, and [unfold qualid] will succeed, but no reduction machinery will unfold it unless it is explicitly mentioned in the list of qualids passed to delta
+
+opaque_autounfoldable - acts as +∞ - the constant is treated as convertible with its body by the kernel, [unfold qualid] will succeed, and reduction machinery will only unfold it after every term of a lower level has been unfolded
+
+
+expand - as currently used (behaves as -∞)
+
+expand_invisible - this term should not appear in the body or type of any definition passed to the kernel; as soon as it is encountered, it is unfolded and beta-reduction is performed on the head of the term until it cannot be beta-reduced further.  The purpose would be to, e.g., declare coercions that are invisible to the resulting term (don't interfere with pattern matching), or typeclass machinery that disappears after it is inferred.
+
+
+Comment author: @gares
+
+> opaque_un_unfoldable - the constant is treated as convertible with its body by 
+> the kernel, but no reduction machinery will unfold it, and [unfold qualid] 
+> will fail
+
+This makes no sense to me.  What do you mean by "no reduction machinery"?
+The kernel "conversion" test is entangled with "reduction", actually it
+uses the "lazy" one.
+
+Image f defined as fun x y => x + y, now the kernel would consider
+  f = fun x y => x + y
+but not
+  f 1 2 = 1 + 2
+on the contrary
+  f 1 2 = (fun x y => x + y) 1 2
+
+This breaks all the nice properties of reduction/conversion, at least If you
+interpret your request literally.
+
+
+Comment author: @JasonGross
+
+Sorry for the confused description.  I meant for [opaque_un_unfoldable] to correspond to what is currently given by [Opaque]:
+
+"""
+The command tells not to unfold the constants qualid1 … qualidn in tactics using δ-conversion (unfolding a constant is replacing it by its definition).
+
+Opaque has also on effect on the conversion algorithm of Coq, telling to delay the unfolding of a constant as later as possible in case Coq has to check the conversion (see Section 4.3) of two distinct applied constants.
+"""
+
+(Also, if the reference manual still reads like this, "telling to delay" should be replaced by "telling it to delay" and "as later as possible in case" should be replaced by "as much as possible when" (grammar).)
+
+
+Does the description I gave make sense (and mean what [opaque] does above) if you replace "reduction machinery" with "tactics"?
+
+
+Comment author: @mattam82
+
+*** #2074 has been marked as a duplicate of this bug. ***
+
+
+I'd like to have a tactical `with_constants_as_truely_opaque [ident_list] tac` which executes `tac ()` in a context where the kernel is forbidden from unfolding any of the identifiers in `ident_list` for any reason whatsoever.  This would let me work around bugs in canonical structure resolution / bugs in unification such as https://github.com/coq/coq/issues/6327.
+@JasonGross I guess `with_constants_as_truely_opaque` should use `opaque_un_unfoldable` and not `opaque_irrelevant`, so it should be named `with_constants_as_opaque_un_unfoldable`. 
+
+Maybe that's obvious, but `opaque_irrelevant` breaks subject reduction:
+```coq
+Section foo.
+Context (A: Type) (a: A).
+Definition B: Type := A.
+Definition b: B := a.
+Lemma eq_ab : a = b. Proof. easy. Qed.
+
+...
+with_constants_as_truely_opaque [b B] (fun () ⇒ exact eq_ab).
+```
+
+For the same reason, terms can never *become* `opaque_irrelevant`, they can only be born as such — via `Qed.` or similar future mechanisms.
+Letting `opaque_irrelevant` terms become less opaque would be safe, but it'd violate abstraction guarantees.

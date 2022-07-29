@@ -1,0 +1,151 @@
+Comment author: @JasonGross
+
+(* -*- mode: coq; coq-prog-args: ("-emacs" "-indices-matter" "-nois" "-R" "." "Top" "-top" "bug_failed_defined_05") -*- *)
+(* File reduced by coq-bug-finder from original input, then from 1168 lines to 33 lines, then from 138 lines to 34 lines, then from 220 lines to 35 lines, then from 93 lines to 37 lines, then from 118 lines to 41 lines, then from 293 lines to 52 lines, then from 350 lines to 86 lines, then from 126 lines to 85 lines, then from 296 lines to 119 lines, then from 135 lines to 119 lines, then from 583 lines to 221 lines, then from 1441 lines to 390 lines, then from 1253 lines to 539 lines, then from 553 lines to 539 lines, then from 553 lines to 539 lines, then from 529 lines to 511 lines, then from 471 lines to 169 lines, then from 353 lines to 173 lines, then from 236 lines to 179 lines, then from 296 lines to 193 lines, then from 207 lines to 194 lines, then from 146 lines to 101 lines, then from 115 lines to 101 lines *)
+(* coqc version 8.5pl1 (June 2016) compiled on Jun 13 2016 21:7:27 with OCaml 4.02.3                                                                                                                              
+   coqtop version 8.5pl1 (June 2016) *)
+
+Module Export Notations.
+Reserved Notation "x -> y" (at level 99, right associativity, y at level 200).
+Reserved Notation "~ x" (at level 75, right associativity).
+Reserved Notation "x = y  :>  T"
+(at level 70, y at next level, no associativity).
+Reserved Notation "x = y" (at level 70, no associativity).
+Open Scope type_scope.
+Declare ML Module "coretactics".
+Declare ML Module "extratactics".
+End Notations.
+Global Set Universe Polymorphism.
+Notation "A -> B" := (forall (_ : A), B) : type_scope.
+Inductive False : Type :=.
+Axiom proof_admitted : False.
+Tactic Notation "admit" := abstract case proof_admitted.
+Global Unset Universe Minimization ToSet.
+Definition relation (A : Type) := A -> A -> Type.
+Class Symmetric {A} (R : relation A) := symmetry : forall x y, R x y -> R y x.
+Class Transitive {A} (R : relation A) := transitivity : forall x y z, R x y -> R y z -> R x z.
+Ltac symmetry :=
+  let R := match goal with |- ?R ?x ?y => constr:(R) end in
+  let x := match goal with |- ?R ?x ?y => constr:(x) end in
+  let y := match goal with |- ?R ?x ?y => constr:(y) end in
+  let pre_proof_term_head := constr:(@ symmetry _ R _) in
+  let proof_term_head := (eval cbn in pre_proof_term_head) in
+  refine (proof_term_head y x _); change (R y x).
+Tactic Notation "etransitivity" open_constr(y) :=
+  let R := match goal with |- ?R ?x ?z => constr:(R) end in
+  let x := match goal with |- ?R ?x ?z => constr:(x) end in
+  let z := match goal with |- ?R ?x ?z => constr:(z) end in
+  let pre_proof_term_head := constr:(@ transitivity _ R _) in
+  let proof_term_head := (eval cbn in pre_proof_term_head) in
+  refine (proof_term_head x y z _ _); [ change (R x y) | change (R y z) ].
+Tactic Notation "etransitivity" := etransitivity _.
+Notation Type0 := Set.
+Delimit Scope path_scope with path.
+Inductive paths {A : Type} (a : A) : A -> Type := idpath : paths a a.
+Arguments idpath {A a} , [A] a.
+Notation "x = y :> A" := (@ paths A x y) : type_scope.
+Notation "x = y" := (x = y :>_) : type_scope.
+Local Open Scope path_scope.
+Definition inverse {A : Type} {x y : A} (p : x = y) : y = x := match p with idpath => idpath end.
+Global Instance symmetric_paths {A} : Symmetric (@ paths A) | 0 := @ inverse A.
+Definition concat {A : Type} {x y z : A} (p : x = y) (q : y = z) : x = z :=
+  match p, q with idpath, idpath => idpath end.
+Global Instance transitive_paths {A} : Transitive (@ paths A) | 0 := @ concat A.
+Notation "1" := idpath : path_scope.
+Definition transport {A : Type} (P : A -> Type) {x y : A} (p : x = y) (u : P x) : P y :=
+  match p with idpath => u end.
+Class IsHProp A := Build_IsHProp : forall x y : A, x = y.
+Inductive Empty : Type0 := .
+Definition not (A:Type) : Type := A -> Empty.
+Notation "~ x" := (not x) : type_scope.
+Module Export Trunc.
+Generalizable Variables A B m n f.
+Global Instance trunc_succ `{IsHProp A} : forall x y : A, IsHProp (x = y) | 1000.
+Admitted.
+Theorem path_ishprop `{H : IsHProp A} : forall x y : A, x = y.
+Proof.
+  apply H.
+Defined.
+Theorem hprop_allpath (A : Type) : (forall (x y : A), x = y) -> IsHProp A.
+Admitted.
+End Trunc.
+Generalizable Variables A B f g e n.
+Global Instance trunc_forall `{P : A -> Type} `{forall a, IsHProp (P a)} : IsHProp (forall a, P a) | 100.
+Admitted.
+Global Instance trunc_arrow {A B : Type} `{IsHProp B} : IsHProp (A -> B) | 100 := trunc_forall.
+Global Instance hprop_Empty : IsHProp Empty.
+Proof.
+  intros [].
+Defined.
+  Definition Book_3_14                                                                                                                                                                                            
+  : forall A (P : ~~A -> Type),                                                                                                                                                                                   
+    (forall a, P (fun na => na a))                                                                                                                                                                                
+    -> (forall x y (z : P x) (w : P y), transport P (path_ishprop x y) z = w)                                                                                                                                     
+    -> forall x, P x.                                                                                                                                                                                             
+  Proof.                                                                                                                                                                                                          
+    intros A P base p nna.                                                                                                                                                                                        
+    assert (forall x, IsHProp (P x)).                                                                                                                                                                             
+    -                                                                                                                                                                                                             
+ intro x.                                                                                                                                                                                                         
+      apply hprop_allpath.                                                                                                                                                                                        
+      intros x' y'.                                                                                                                                                                                               
+      etransitivity; [ symmetry; apply (p x x y' x') | ].                                                                                                                                                         
+      set (path := path_ishprop x x).                                                                                                                                                                             
+      assert (H' : idpath = path) by apply path_ishprop.                                                                                                                                                          
+      destruct H'.                                                                                                                                                                                                
+      reflexivity.                                                                                                                                                                                                
+    -                                                                                                                                                                                                             
+admit.                                                                                                                                                                                                            
+  Defined. (* success *)                                                                                                                                                                                          
+                                                                                                                                                                                                                  
+  Definition Book_3_14'                                                                                                                                                                                           
+  : forall A (P : ~~A -> Type),                                                                                                                                                                                   
+    (forall a, P (fun na => na a))                                                                                                                                                                                
+    -> (forall x y (z : P x) (w : P y), transport P (path_ishprop x y) z = w)                                                                                                                                     
+    -> forall x, P x.                                                                                                                                                                                             
+  Proof.                                                                                                                                                                                                          
+    intros A P base p nna.                                                                                                                                                                                        
+    assert (forall x, IsHProp (P x)).                                                                                                                                                                             
+    -                                                                                                                                                                                                             
+ intro x.                                                                                                                                                                                                         
+      apply hprop_allpath.                                                                                                                                                                                        
+      intros x' y'.                                                                                                                                                                                               
+      etransitivity; [ symmetry; apply (p x x y' x') | ].                                                                                                                                                         
+      (* instead of [set], we inline [path_isphprop] here *)                                                                                                                                                      
+      assert (H' : idpath = path_ishprop x x) by apply path_ishprop.                                                                                                                                              
+      destruct H'.                                                                                                                                                                                                
+      reflexivity.                                                                                                                                                                                                
+    -                                                                                                                                                                                                             
+admit.
+  Defined. (* Error:                                                                                                                                                                                              
+In environment                                                                                                                                                                                                    
+A : Type                                                                                                                                                                                                          
+P : ~ ~ A -> Type                                                                                                                                                                                                 
+base : forall a : A, P (fun na : ~ A => na a)                                                                                                                                                                     
+p : forall (x y : ~ ~ A) (z : P x) (w : P y), transport P (path_ishprop x y) z = w                                                                                                                                
+nna : ~ ~ A                                                                                                                                                                                                       
+x : ~ ~ A                                                                                                                                                                                                         
+x' : P x                                                                                                                                                                                                          
+y' : P x                                                                                                                                                                                                          
+The term                                                                                                                                                                                                          
+ "(fun H' : 1 = path_ishprop x x =>                                                                                                                                                                               
+   let p0 := path_ishprop x x in match H' in (_ = y) return (transport P y y' = y') with                                                                                                                          
+                                 | 1 => 1                                                    
+                                 end) (path_ishprop 1 (path_ishprop x x))" has type                                                                                                                               
+ "@ transport@ {bug_failed_defined_05.114 bug_failed_defined_05.109} (~ ~ A) P x x                                                                                                                                  
+    (@ path_ishprop@ {bug_failed_defined_05.114} (~ ~ A)                                                                                                                                                            
+       (@ trunc_arrow@ {bug_failed_defined_05.107 bug_failed_defined_05.138 bug_failed_defined_05.114}                                                                                                              
+          (~ A) Empty hprop_Empty@ {bug_failed_defined_05.138}) x x) y' = y'"                                                                                                                                      
+while it is expected to have type                                                                                                                                                                                 
+ "@ transport@ {bug_failed_defined_05.114 bug_failed_defined_05.109} (~ ~ A) P x x                                                                                                                                  
+    (@ path_ishprop@ {bug_failed_defined_05.114} (~ ~ A)                                                                                                                                                            
+       (@ trunc_arrow@ {bug_failed_defined_05.107 bug_failed_defined_05.120 bug_failed_defined_05.114}                                                                                                              
+          (~ A) Empty hprop_Empty@ {bug_failed_defined_05.120}) x x) y' = y'".                                                                                                                                     
+ *)
+
+
+Comment author: @ejgallego
+
+Seems to work in 8.7.
+
+

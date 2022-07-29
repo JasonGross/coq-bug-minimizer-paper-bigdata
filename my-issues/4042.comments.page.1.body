@@ -1,0 +1,20 @@
+Comment author: @JasonGross
+
+The following (working!) code recently tripped me up:
+
+Goal Type.
+  change (fun x : Type => x) with z.
+
+Note that [z] is unbound, and Coq will complain about this if I write
+
+Goal Type.
+  change Type with z.
+
+
+However, this will cause backwards incompatibilities, and I suspect the reason [change] does this is that it uses information from the left to type the right.
+
+
+I agree.  Here's another example:
+`Goal True. change true with false. auto. Qed.
+`
+It seems brittle and misleading that `change` should accept unequal terms, when the left-hand side does not appear in the goal.

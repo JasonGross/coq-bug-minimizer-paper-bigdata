@@ -1,0 +1,43 @@
+Comment author: @JasonGross
+
+(* -*- mode: coq; coq-prog-args: ("-emacs" "-R" "src" "Crypto" "-R" "Bedrock" 
+"Bedrock" "-R" "coqprime/Coqprime" "Coqprime" "-top" "Interpretations") -*- *)
+(* File reduced by coq-bug-finder from original input, then from 440 lines to 
+147 lines, then from 452 lines to 178 lines, then from 204 lines to 76 lines, 
+then from 102 lines to 44 lines, then from 482 lines to 129 lines, then from 
+223 lines to 132 lines, then from 237 lines to 134 lines, then from 183 lines 
+to 135 lines, then from 149 lines to 135 lines, then from 112 lines to 46 
+lines, then from 60 lines to 47 lines, then from 54 lines to 24 lines, then 
+from 38 lines to 25 lines *)
+(* coqc version 8.6rc1 (December 2016) compiled on Dec 8 2016 13:43:59 with 
+OCaml 4.02.3
+   coqtop version 8.6rc1 (December 2016) *)
+
+Inductive flat_type := Unit | Prod (A B : flat_type).
+Inductive exprf (op : flat_type -> flat_type -> Type) {var : Type} : flat_type 
+-> Type :=
+| Op {t1 tR} (opc : op t1 tR) (args : exprf op t1) : exprf op tR.
+Inductive op : flat_type -> flat_type -> Type := a : op Unit Unit.
+Arguments Op {_ _ _ _} _ _.
+Definition bound_op {var}
+           {src2 dst2}
+           (opc2 : op src2 dst2)
+  : forall (args2 : exprf op (var:=var) src2), Op opc2 args2 = Op opc2 args2.
+  refine match opc2 return (forall args2, Op opc2 args2 = Op opc2 args2) with
+         | _ => _
+         end. (* Anomaly: index to an anonymous variable. Please report at 
+http://coq.inria.fr/bugs/. *)
+
+
+Comment author: @herbelin
+
+*** Bug [BZ#5324](https://github.com/coq/coq/issues?q=is%3Aissue%20%22Original%20bug%20ID%3A%20BZ%235324%22) has been marked as a duplicate of this bug. ***
+
+
+Comment author: @herbelin
+
+Fixed in e91ae931 (branch v8.6).
+
+Thanks a lot for the help in diagnosing. This is indeed related to ade2363 as reported in [BZ#5322](https://github.com/coq/coq/issues?q=is%3Aissue%20%22Original%20bug%20ID%3A%20BZ%235322%22). The work done in this commit had started to reveal a bug in the presence of let-ins but it had failed to correctly fix the let-in problem, leading instead to the new problems you observed. All of the original problem with let-ins and [BZ#5322](https://github.com/coq/coq/issues?q=is%3Aissue%20%22Original%20bug%20ID%3A%20BZ%235322%22), [BZ#5324](https://github.com/coq/coq/issues?q=is%3Aissue%20%22Original%20bug%20ID%3A%20BZ%235324%22) are fixed.
+
+

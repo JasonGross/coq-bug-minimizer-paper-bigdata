@@ -1,0 +1,17 @@
+Comment author: @JasonGross
+
+Init/Logic.v says:
+
+(** Remark: [exists x, Q] denotes [ex (fun x => Q)] so that [exists x,
+   P x] is in fact equivalent to [ex (fun x => P x)] which may be not
+   convertible to [ex P] if [P] is not itself an abstraction *)
+
+This is false, now that we have function eta in 8.4, right?
+
+
+Comment author: @herbelin
+
+Fixed in trunk (bab2183aa03bd10917b2e1d915083ea8427f5d6c)
+and v8.4 (29aa6def270beaec10f8b90068b7e6b75453ec18).
+
+

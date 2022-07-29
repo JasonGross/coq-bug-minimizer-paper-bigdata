@@ -1,0 +1,21 @@
+Comment author: @JasonGross
+
+Please display line and character numbers, not just character numbers from the 
+beginning of the document (if it's relevant, this is in coqtop -emacs)
+
+Toplevel input, characters 86758-86808:
+ Warning: appcontext is deprecated and will be removed in a future
+ version [deprecated-appcontext,deprecated]
+Toplevel input, characters 86946-86993:
+ Warning: appcontext is deprecated and will be removed in a future
+ version [deprecated-appcontext,deprecated]
+default_should_convert_from_to is defined
+
+
+Comment author: @maximedenes
+
+This is not a regression, there was already no line number for warnings.
+
+It is hard to implement since Coq has no notion of document in -emacs mode. Moreover, it is going to be replaced with the XML protocol very soon (see Paul Steckler's e-mail on coqdev). So I'm closing this report.
+
+

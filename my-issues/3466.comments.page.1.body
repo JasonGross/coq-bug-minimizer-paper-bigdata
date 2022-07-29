@@ -1,0 +1,23 @@
+Comment author: @JasonGross
+
+I've found that if you pass Coq a standard library (along with the plugins, etc) compiled by a different version of Coq, using -coqlib, then Coq might decide to segfault on, e.g., a Require, or a Require Import, or overriding an Ltac or tactic notation.
+
+Perhaps -coqlib should check that the .vo and .cmx files have the right magic number?
+
+
+Comment author: @herbelin
+
+Hi Jason,
+
+We need to know more about which "different version of Coq" you are talking about. We use a magic number per version, so the magic number is the same from one instance of the trunk to another instance of the trunk, even though the vo files might have incompatible structure.
+
+In particular, I just checked that it correctly checks that the magic number is incorrect when calling a 8.4 library from trunk.
+
+Hugo
+
+
+Comment author: @JasonGross
+
+Oh, I see.  I was using two version of trunk, one a few weeks older than the other.  I suspect this isn't a bug worth fixing, then?  Alternatively, perhaps there should be a magic number bump every time the format of the .vo files is changed in an incompatible way?
+
+

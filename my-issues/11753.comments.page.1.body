@@ -1,0 +1,65 @@
+Did you solve the problem? Otherwise, what does `ocamlfind query num` say?
+
+And yet otherwise, I don't know who could help. Maybe @skyskimmer?
+Maybe  @ejgallego 
+Problem is not yet solved.  I have now added `ocamlfind query num` to the packaging [here](https://github.com/JasonGross/coq-packaging/blob/master/debian/rules#L48) and started an import [here](https://code.launchpad.net/~jgross-h/coq/+git/coq-packaging) and will shortly start a new build [here](https://code.launchpad.net/~jgross-h/+recipe/coq-master-daily) so we can see logs.
+According to the [logs](https://launchpadlibrarian.net/468937682/buildlog_ubuntu-focal-amd64.coq_8.master~git~202003131725+21120-0~daily333-576494e~ubuntu20.04.1_BUILDING.txt.gz):
+```
+ocamlfind query num
+/usr/lib/ocaml/num
+```
+I wonder if the issue is that I need `libnum-ocaml-dev` and not just `libnum-ocaml`...
+> I wonder if the issue is that I need libnum-ocaml-dev and not just libnum-ocaml...
+
+Yes, that might be highly possible!
+Indeed, [the file-list for `libnum-ocaml`](https://packages.ubuntu.com/focal/amd64/libnum-ocaml/filelist) is:
+```
+/usr/lib/ocaml/num/META
+/usr/lib/ocaml/nums.cma
+/usr/lib/ocaml/nums.cmxs
+/usr/lib/ocaml/stublibs/dllnums.so
+/usr/share/doc/libnum-ocaml/changelog.Debian.gz
+/usr/share/doc/libnum-ocaml/copyright
+```
+and [the file-list for `libnum-ocaml-dev`](https://packages.ubuntu.com/focal/amd64/libnum-ocaml-dev/filelist) is:
+```
+/usr/lib/ocaml/arith_flags.cmx
+/usr/lib/ocaml/arith_status.cmi
+/usr/lib/ocaml/arith_status.cmti
+/usr/lib/ocaml/arith_status.cmx
+/usr/lib/ocaml/arith_status.mli
+/usr/lib/ocaml/big_int.cmi
+/usr/lib/ocaml/big_int.cmti
+/usr/lib/ocaml/big_int.cmx
+/usr/lib/ocaml/big_int.mli
+/usr/lib/ocaml/int_misc.cmx
+/usr/lib/ocaml/libnums.a
+/usr/lib/ocaml/nat.cmi
+/usr/lib/ocaml/nat.cmti
+/usr/lib/ocaml/nat.cmx
+/usr/lib/ocaml/nat.mli
+/usr/lib/ocaml/num-top/META
+/usr/lib/ocaml/num-top/num_top.cma
+/usr/lib/ocaml/num-top/num_top.cmi
+/usr/lib/ocaml/num-top/num_top_printers.cmi
+/usr/lib/ocaml/num.cmi
+/usr/lib/ocaml/num.cmti
+/usr/lib/ocaml/num.cmx
+/usr/lib/ocaml/num.mli
+/usr/lib/ocaml/nums.a
+/usr/lib/ocaml/nums.cmxa
+/usr/lib/ocaml/ratio.cmi
+/usr/lib/ocaml/ratio.cmti
+/usr/lib/ocaml/ratio.cmx
+/usr/lib/ocaml/ratio.mli
+/usr/share/doc/libnum-ocaml-dev/changelog.Debian.gz
+/usr/share/doc/libnum-ocaml-dev/copyright
+/var/lib/ocaml/lintian/libnum-ocaml-dev.META.num
+/var/lib/ocaml/lintian/libnum-ocaml-dev.info
+/var/lib/ocaml/md5sums/libnum-ocaml-dev.md5sums
+```
+
+So I think `./configure` should check to make sure not just that `num` is present, but also that the dev files for `num` are present.
+
+Question: Is this a build-dependency of Coq, or a runtime dependency?  Or is `libnum-ocaml-dev` the build dependency and `libnum-ocaml` the runtime dependency?
+Num is not used anymore.

@@ -1,0 +1,22 @@
+Comment author: @JasonGross
+
+Goal True.
+Proof.
+  match goal with
+    | _ => let x := constr:(True True) in idtac
+    | _ => idtac
+  end. (* success *)
+  match goal with
+    | _ => let x := constr:($(fail 0)$) in idtac
+    | _ => idtac
+  end. (* Error: Tactic failure *)
+
+
+I discovered this when trying to write a tactic that applies a lemma (such as funext) under binders, and relies on being able to indicate failure by failing inside a tactic in a term.  I suppose I could do something silly like return an indicator error code, but that's annoying...
+
+
+Comment author: @ppedrot
+
+Fixed. An exception container was mishandled.
+
+

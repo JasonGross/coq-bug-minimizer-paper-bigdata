@@ -1,0 +1,62 @@
+Comment author: @JasonGross
+
+Here is code that works in 8.4, and trunk as of a few months ago, but fails on [Defined] in a recent trunk:
+
+(* File reduced by coq-bug-finder from original input, then from 3744 lines to 78 lines, then from 80 lines to 28 lines *)
+(* coqc version trunk (December 2014) compiled on Dec 10 2014 12:26:15 with OCaml 4.01.0
+   coqtop version cagnode15:/afs/csail.mit.edu/u/j/jgross/coq-trunk,trunk (c938cb8e85f741ce697e7486d35c27c1aa31fe7a) *)
+Axiom transport : forall {A : Type} (P : A -> Type) {x y : A} (p : x = y) (u : P x), P y.
+Notation "p # x" := (transport _ p x) (right associativity, at level 65, only parsing).
+Definition Sect {A B : Type} (s : A -> B) (r : B -> A) := forall x : A, r (s x) = x.
+Class IsEquiv {A B} (f : A -> B) := { equiv_inv : B -> A ; eisretr : Sect equiv_inv f }.
+Arguments eisretr {A B} f {_} _.
+Notation "f ^-1" := (@ equiv_inv _ _ f _) (at level 3, format "f '^-1'").
+Generalizable Variables A B f g e n.
+Definition functor_forall `{P : A -> Type} `{Q : B -> Type}
+           (f0 : B -> A) (f1 : forall b:B, P (f0 b) -> Q b)
+: (forall a:A, P a) -> (forall b:B, Q b).
+  admit.
+Defined.
+
+Lemma isequiv_functor_forall `{P : A -> Type} `{Q : B -> Type}
+      `{IsEquiv B A f} `{forall b, @ IsEquiv (P (f b)) (Q b) (g b)}
+: (forall b : B, Q b) -> forall a : A, P a.
+Proof.
+  refine (functor_forall
+            (f^-1)
+            (fun (x:A) (y:Q (f^-1 x)) => eisretr f x # (g (f^-1 x))^-1 y)).
+Defined. (* Error: Attempt to save an incomplete proof *)
+
+
+There is a left-over goal of [IsEquiv f], even though that's a hypothesis.
+
+
+Comment author: @ppedrot
+
+Seems like another instance of leftover typeclass resolvability statuses...
+
+
+Comment author: @aspiwack
+
+It is not the same bug as [BZ#3841](https://github.com/coq/coq/issues?q=is%3Aissue%20%22Original%20bug%20ID%3A%20BZ%233841%22). I really have no idea how to investigate this one right now. I guess the best bet for now will be to bisect.
+
+
+Comment author: @herbelin
+
+Maybe your bisect already gave the answer. If I revert the order of resolution of problems ?n1 = ?n2, it works again as before. I then mark it as duplicate.
+
+*** This bug has been marked as a duplicate of bug [BZ#3854](https://github.com/coq/coq/issues?q=is%3Aissue%20%22Original%20bug%20ID%3A%20BZ%233854%22) ***
+
+
+Comment author: @aspiwack
+
+No, as a matter of fact I hadn't bissected, and I'm happy that the problem is understood.
+
+
+Comment author: @aspiwack
+
+Sorry… my message reopened the issue.
+
+*** This bug has been marked as a duplicate of bug [BZ#3854](https://github.com/coq/coq/issues?q=is%3Aissue%20%22Original%20bug%20ID%3A%20BZ%233854%22) ***
+
+

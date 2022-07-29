@@ -1,0 +1,10 @@
+Why not use a compressed filesystem/folder yourself?
+Is there a way to tell Linux to compress a directory, in a way that I can still run `make` and `coqc` in that directory without first unpacking it?
+You can use either fuse + [fusecompress](https://github.com/tex/fusecompress) or btrfs.
+
+Note that I support compression for vo files, but we may need to add some external dependency to Coq and that will take time.
+FTR, in the case of #6230, virtually all of the memory is taken by the bytecode of huge terms. This bytecode is in turn a very big string mostly made of zero bytes standing for relocations. Just compressing this string with any stupid algorithm like RLE would allow for a substantial gain.
+
+I don't know whether people are pushing for it though.
+@ppedrot Is there a reason to not do that for the bytecode?
+Note that jsCoq already introduced a `coq-pkg` file format that does this, there are plans to integrate `.coq-pkg` generation into dune which would solve this.

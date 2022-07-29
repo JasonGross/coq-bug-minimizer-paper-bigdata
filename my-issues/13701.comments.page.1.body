@@ -1,0 +1,53 @@
+The doc for `rewrite_strat` isn't very detailed for such a complex tactic.
+
+My guess is that innermost/outermost apply to terms with nested rewriting opportunities
+such as `(a + 0) + 0` rather than finding the deepest matching term across independent subterms.  The latter seems like considerably more programming effort for hmm, what benefit?  If you can find convincing examples to clarify how this construct is processed, we could add that explanation to the doc.  Getting the description of the entire tactic into good shape is a bit of a project that's probably driven by trying lots of examples and perhaps reading the code.
+
+I'm also curious how often this is used, how important it is to users and whether it overlaps significantly with other features.
+> My guess is that innermost/outermost apply to terms with nested rewriting opportunities
+> such as `(a + 0) + 0` rather than finding the deepest matching term across independent subterms.
+
+Ah, that seems like a likely explanation for where the name comes from.  Indeed the names make sense when all opportunities are strictly nested.  But the names don't generalize well to cases when the opportunities are not strictly nested; don't you think it's a bit weird that both "innermost" and "outermost" will rewrite the parenthesized zero in `((a + (0)) + ((((a + 0) + 0) + 0) + 0)`?
+
+> The latter seems like considerably more programming effort for hmm, what benefit? 
+
+Doing breadth-first search can lead to significantly more efficient strategies in some cases.  For example, I think some variant of breadth-first might be more efficient for https://github.com/coq/coq/issues/13576#issuecomment-753226532
+
+> I'm also curious how often this is used, how important it is to users and whether it overlaps significantly with other features.
+
+The sense I have is that complex `rewrite_strat` strategies are not often used, possibly in large part due to bugs in `rewrite_strat` (such as that sequences starting with `eval red_expr` pretty much always build ill-typed terms; that you need to sprinkle `; eval cbv beta` after everything to get all the rewriting that's desired; that there are other bugs lurking (I've managed to get `rewrite_strat` to build an ill-typed term apart from the `eval red_expr` bug, but haven't minimized this)) and usability issues (debugging slow calls to `rewrite_strat` that don't spend their time in typeclass search is effectively impossible; the rewriting strategies cannot be named and combined, so it's hard to reuse strategies; the precedence is very strange; the `choice` operator is binary rather than nary (perhaps it should be replaced with `+`); the underlying engine is still slow, I suspect due to pervasive use of evars and their named instances; the strategy language isn't quite expressive enough to control rewriting and term traversal in a fully-customizable way; discovering what typeclass instances need to be added to make it perform well is a bit of a pain).
+If their meaning is explained, "innermost" and "outermost" seem like reasonable names to me.
+
+I tend to think that Coq accumulates multiple tactics for doing similar things with very different code and different sets of limitations/bugs.  I suspect people are more likely to contribute new chunks of code rather than to perfect and extend existing similar functionality.  The latter is harder to do--you have to be careful not break the existing behavior.  It would be an interesting exercise to identify tactics that have significant overlap that could be combined and generalized.  (Really, shouldn't it be possible/easy to implement `rewrite_strat` as an Ltac function?  Perhaps with Ltac extensions?  That might have simpler syntax.  Or even have a way to use a term to define a tactic...)  Seems like a big topic, perhaps we can discuss it sometime.
+
+Something like the follwing would make a good example to explain the behavior.  I couldn't find a theorem for `nat` commutativity--is it in the standard library somewhere?
+
+```
+Require Import Coq.Classes.Morphisms Coq.Setoids.Setoid Nat.
+Theorem comm: forall a b : nat, a + b = b + a.
+Admitted.
+Set Printing Parentheses.
+Goal forall a b c: nat, a + b + c = 0.
+  rewrite_strat outermost <- comm.
+Abort.
+Goal forall a b c: nat, a + b + c = 0.
+  rewrite_strat innermost <- comm.
+```
+> I couldn't find a theorem for `nat` commutativity--is it in the standard library somewhere?
+
+```coq
+Require Import Coq.Arith.Arith.
+Search (?x + ?y = ?y + ?x).
+(* Nat.add_comm: forall n m : nat, n + m = m + n *)
+```
+
+> I tend to think that Coq accumulates multiple tactics for doing similar things with very different code and different sets of limitations/bugs. I suspect people are more likely to contribute new chunks of code rather than to perfect and extend existing similar functionality. The latter is harder to do--you have to be careful not break the existing behavior.
+
+It's already the case that `setoid_rewrite` and `rewrite_strat` share an implementation, and there's https://github.com/coq/coq/issues/6105 about subsuming `autorewrite` (and presumably `rewrite`) into `rewrite_strat`.  I suppose there might be a bit of code duplication between `rewrite` and `replace`.  But really `rewrite_strat` is the most general version of rewriting present in Coq.
+
+> Really, shouldn't it be possible/easy to implement `rewrite_strat` as an Ltac function? Perhaps with Ltac extensions?
+
+Definitely not easy.  Ltac does not support recursing under binders in any sane fashion, and the performance of an Ltac implementation would be horrible.  Moreover the two hard parts are doing subterm matching on lemmas whose arguments aren't filled in (which neither Ltac nor Ltac2 provide any special handling for) and building the proof term that proves the rewrite, which I expect Ltac/Ltac2 won't help at all with.  Presumably the OCaml code for `rewrite_strat` could be mostly ported to Ltac2 (modulo syntax extensions, uses of coqlib constants, reading from hint databases; controlling opacity information based on databases; and invoking typeclass resolution on many goals in parallel in a way that results in backtracking (though maybe `typeclasses eauto` is already multigoal in this way?)).  However, I expect that due to missing usability features of Ltac2, the resulting code would be a bit harder to read.  And in fact I don't expect any benefit from moving the implementation to Ltac2 at this time, though I hope Ltac2 might become expressive and nice enough some day to move things like `rewrite_strat` from OCaml to Ltac2.
+
+
+A momentary excess of enthusiasm about doing in Ltac*, but perhaps someday.

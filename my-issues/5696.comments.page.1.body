@@ -1,0 +1,131 @@
+Comment author: @JasonGross
+
+I expect both of these to work:
+```coq
+Notation "'var' x .. y = z ; e" := (z, (fun x => .. (fun y => e) ..)) (at level 
+200, x binder, y binder, e at level 220).
+Check (var a = 1; a). (* success *)
+```
+```coq
+Notation "'var2' x .. y = z ; e" := (ltac:(exact z), (fun x => .. (fun y => e) 
+..)) (at level 200, x binder, y binder, e at level 220).
+Check (var2 a = 1; a). (* Error: The reference a was not found in the current 
+environment. *)
+```
+
+Comment author: @herbelin
+
+This is a weakness of "ltac:(tac)" in notations. Such "tac" is evaluated in the full environment of term variables of the notation (no analysis of the exact variables occurring, nor of what variable binds what in the tactic is done).
+
+Thus, here, "ltac:(exact z)" is evaluated in an environment [z:=1;e:=a;x:=a], and the evaluation of [e:=a] fails because a is not yet bound in the environment in which [e:=a] is evaluated.
+
+The best we could do is to collect the exact variables used in the tactics.
+Don't know what Pierre-Marie would like to do.
+
+
+Comment author: @JasonGross
+
+> Thus, here, "ltac:(exact z)" is evaluated in an environment
+> [z:=1;e:=a;x:=a], and the evaluation of [e:=a] fails because a is not yet
+> bound in the environment in which [e:=a] is evaluated.
+
+Is this the Ltac environment, or the goal-hypotheses-environment?  I think it should be the former, and I think [z], [e] and [x] should all be uconstrs.
+
+
+Comment author: @herbelin
+
+(In reply to Jason Gross from comment [BZ#2](https://github.com/coq/coq/issues?q=is%3Aissue%20%22Original%20bug%20ID%3A%20BZ%232%22))
+> > Thus, here, "ltac:(exact z)" is evaluated in an environment
+> > [z:=1;e:=a;x:=a], and the evaluation of [e:=a] fails because a is not yet
+> > bound in the environment in which [e:=a] is evaluated.
+> 
+> Is this the Ltac environment, or the goal-hypotheses-environment?  I think
+> it should be the former, and I think [z], [e] and [x] should all be uconstrs.
+
+This is the Ltac environment. Currently, if I understand correctly the code, 
+the "exact z" is turned into a "let z:=constr:(1) with e:=constr:(a) in exact z".
+
+Maybe it could be turned into a "uconstr" instead, but manually trying "let z:=uconstr:(1) with e:=uconstr:(a) in exact z" also fails, so I don't know if it would help.
+
+I looked by curiosity but Pierre-Marie is the real expert here.
+
+By the way, what is your use case for ltac in notations? For instance, I saw in BZ#3881 that you had a:
+
+Notation "g 'o' f" := ltac:(let g' := g in let f' := f in exact (fun x => g' (f' x))) (at level 40, left associativity). (* Ensure that x is not captured in [g] or [f] in case they contain holes *)
+
+If this is a workaround for a weakness of the Notation mechanism, maybe would it be as good to fix the interpretation of notations? Do you have a concrete case where
+
+Notation "g 'o' f" := (fun x => g (f x)) (at level 40, left associativity).
+
+does not work but the former works?
+
+
+Comment author: @JasonGross
+
+> but manually trying "let z:=uconstr:(1) with e:=uconstr:(a) in exact z" also fails
+
+Oh, ew.  Is there not a type of pretyped terms, where identifiers haven't yet been turned into DeBruijn indices or whatever?  Or can anything that's labeled as "binder" be bound as an ident rather than a constr?
+
+> By the way, what is your use case for ltac in notations?
+
+I've used Ltac primarily for two things in notations:
+1. overloading based on the type of arguments, without introducing typeclasses or canonical structures (e.g., [Notation "x =? y" := (ltac:(lazymatch type of x with nat => exact (Nat.eqb x y) | bool => exact (bool_beq x y) end)).])
+2. doing reduction at interpretation time (e.g., [Notation hnf x := (ltac:(let y := eval hnf in x in exact y)).])
+
+> Do you have a concrete case where
+> 
+> Notation "g 'o' f" := (fun x => g (f x)) (at level 40, left associativity).
+> 
+> does not work but the former works?
+
+No, it is the other way around.  Say [Definition f (x : nat) : x = x := eq_refl] and [Definition g {T} {x : T} (p : x = x) : p = p := eq_refl].  Then I want [g o f] to fail to typecheck, because I want it only to work for [f : ?A -> ?B] and [g : ?B -> ?C], and not for dependently typed things.
+
+
+Comment author: @herbelin
+
+(In reply to Jason Gross from comment [BZ#4](https://github.com/coq/coq/issues?q=is%3Aissue%20%22Original%20bug%20ID%3A%20BZ%234%22))
+> > but manually trying "let z:=uconstr:(1) with e:=uconstr:(a) in exact z" also fails
+> 
+> Oh, ew.  Is there not a type of pretyped terms, where identifiers haven't
+> yet been turned into DeBruijn indices or whatever?  Or can anything that's
+> labeled as "binder" be bound as an ident rather than a constr?
+
+But the problem is with the interpretation of "e", which in general can be any expression referring to "a", and not just "a".
+
+[As a side remark, hacking myself in Ltac, I succeeded to have the following working:
+
+ Notation "'var2' x .. y = z ; e" :=
+  (?[n], (fun x => .. (fun y => match ltac:(instantiate (n:=z); exact tt)
+                                with _ => e end) ..))
+ (at level 200, x binder, y binder, e at level 220).
+ Check (var2 a = 1; a).
+
+Not sure that this is very robust/scalable though...]
+
+> > By the way, what is your use case for ltac in notations?
+> 
+> I've used Ltac primarily for two things in notations:
+> 1. overloading based on the type of arguments, without introducing
+> typeclasses or canonical structures (e.g., [Notation "x =? y" :=
+> (ltac:(lazymatch type of x with nat => exact (Nat.eqb x y) | bool => exact
+> (bool_beq x y) end)).])
+> 2. doing reduction at interpretation time (e.g., [Notation hnf x :=
+> (ltac:(let y := eval hnf in x in exact y)).])
+
+OK, thanks.
+
+> > Do you have a concrete case where
+> > 
+> > Notation "g 'o' f" := (fun x => g (f x)) (at level 40, left associativity).
+> > 
+> > does not work but the former works?
+> 
+> No, it is the other way around.  Say [Definition f (x : nat) : x = x :=
+> eq_refl] and [Definition g {T} {x : T} (p : x = x) : p = p := eq_refl]. 
+> Then I want [g o f] to fail to typecheck, because I want it only to work for
+> [f : ?A -> ?B] and [g : ?B -> ?C], and not for dependently typed things.
+
+OK, I see. Thanks.
+
+
+Ad hoc fix in #7924.

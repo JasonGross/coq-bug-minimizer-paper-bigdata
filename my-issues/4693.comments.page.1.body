@@ -1,0 +1,104 @@
+Comment author: @JasonGross
+
+$ ~/.local64/coq/coq-8.5pl1/bin/coqchk --help
+Usage: coqchk <options> modules
+
+coqchk options are:
+  -I dir -as coqdir      map physical dir to logical coqdir
+  -I dir                 map directory dir to the empty logical path
+  -include dir           (idem)
+  -R dir coqdir          recursively map physical dir to logical coqdir
+
+  -admit module          load module and dependencies without checking
+  -norec module          check module but admit dependencies without checking
+
+  -where                 print coqchk's standard library location and exit
+  -v                     print coqchk version and exit
+  -boot                  boot mode
+  -o, --output-context   print the list of assumptions
+  -m, --memory           print the maximum heap size
+  -silent                disable trace of constants being checked
+
+  -impredicative-set     set sort Set impredicative
+  -type-in-type          collapse type hierarchy
+
+  -h, --help             print this list of options
+
+
+I thought -I ... -as ... was removed, and -Q ... ... was added.
+
+
+Comment author: @silene
+
+Note that -Q is of little use for coqchk, since it would be exactly equivalent to -R.
+
+
+Comment author: @RalfJung
+
+> Note that -Q is of little use for coqchk, since it would be exactly equivalent to -R.
+
+Is that because all paths are already fully expanded when coqchk runs?
+
+In any case, this means that "make verify" fails if your flags contain -Q. The Makefile will pass the same flags to both coqc and coqchk.
+
+
+Comment author: @silene
+
+> Is that because all paths are already fully expanded when coqchk runs?
+
+Yes.
+
+> In any case, this means that "make verify" fails if your flags contain -Q.
+
+Good catch.
+
+But on that point at least, I think the culprit is not coqchk but rather coq_makefile. I will fix the later. (More generally, there are various bug-reports complaining that coq_makefile poorly supports coqchk.)
+
+
+Comment author: @RalfJung
+
+I think it would be rather confusing for coqchk to have a very different interface (concerning imports and module paths) than coqc.
+
+
+Comment author: @silene
+
+But it is also confusing to have several options that have exactly behavior. So where do you draw the line?
+
+For instance, you might be fond of "coqdoc --help":
+
+  -R <dir> <coqdir>    map physical dir to Coq dir
+  -Q <dir> <coqdir>    map physical dir to Coq dir
+
+I am not.
+
+
+Comment author: @silene
+
+Somehow fixed by commit 9169e5f. Thanks for the report.
+
+
+Comment author: @RalfJung
+
+Actually, I think coqchk *is* affected by this. The call to coqchk in Iris (https://gitlab.mpi-sws.org/FP/iris-coq/) looks like this:
+
+"/home/r/bin/coq-8.5/bin/coqchk" -silent -o -Q "." iris option fin_map_dom bset fin_maps vector pmap stringmap fin_collections mapset proof_irrel hashset pretty countable orders natmap strings relations collections listset streams gmap base tactics prelude listset_nodup finite numbers nmap zmap coPset lexico set decidable list error functions hlist sorting cmra cmra_big_op cmra_tactics sts auth gmap cofe base dra cofe_solver agree dec_agree excl iprod upred upred_tactics upred_big_op upred_hlist frac csum list updates local_updates gset coPset model adequacy lifting invariants ownership weakestpre pviewshifts hoare viewshifts language ectx_language ectxi_language ectx_lifting ghost_ownership saved_prop auth sts namespaces boxes counter_examples iris lang tactics wp_tactics lifting derived notation heap spawn par assert lock ticket_lock counter barrier specification protocol proof proofmode adequacy heap_lang one_shot joining_existentials proofmode barrier_client list_reverse tree_sum counter coq_tactics pviewshifts environments intro_patterns spec_patterns tactics notation invariants weakestpre ghost_ownership classes class_instances
+
+Notice, for example, that "sts" appears in the list twice. This is because we have "iris.algebra.sts" and "iris.program_logic.sts". If coqchk equates -R and -Q, it cannot even tell the two apart, so how should it be doing the checking properly? While testing coqchk (replacing -Q with -R in the call above), I frequently ran into the issue that it would pick up files like "proofmode/sts.vo" which are leftovers from the time when there used to be a "proofmode/sts.v". Plain Coq doesn't care that these old .vo files are still around since they are not imported, but coqchk picks up the wrong file and then complains about the .vo file not matching what the rest of the development looks like now:
+
+  User error: Cannot find library iris.program_logic.global_functor in loadpath
+
+(The error is btw. not very helpful to find the culprit, as it does not say what is importing global_functor.) Of course I should still delete those files, but this goes to show that coqchk taking the -Q for a -R *is* a problem.
+
+Iris doesn't yet compile with Coq 8.6 (see bug [BZ#5001](https://github.com/coq/coq/issues?q=is%3Aissue%20%22Original%20bug%20ID%3A%20BZ%235001%22)), so I cannot yet test whether this got any better in the newer version. At the very least, the Makefile generator would have to emit full paths and not just basenames for coqchk, and looking at the Coq 8.6 Makefile for iris, that doesn't seem to be the case -- so I suppose things are still equally broken, but can't confirm. Should I still report a bug for this?
+
+
+Comment author: @silene
+
+Yes, the fact that coq_makefile does not use fully-qualified logical paths when invoking coqchk is a bug.
+
+
+Comment author: @RalfJung
+
+Reported as bug [BZ#5020](https://github.com/coq/coq/issues?q=is%3Aissue%20%22Original%20bug%20ID%3A%20BZ%235020%22)
+
+

@@ -1,0 +1,47 @@
+Comment author: @JasonGross
+
+jgross@ cagnode17:~/HoTT/theories$ ~/.local64/coq/coq-trunk/bin/coqtop
+Welcome to Coq cagnode17:/afs/csail.mit.edu/u/j/jgross/coq-trunk,trunk (042497f4841c3884ab81d49df410b4fe0476149b)
+
+Coq < Fixpoint fib (n : nat) := match n with 0 => 0 | 1 => 1 | S n' => fib n' + fib (pred n') end.
+fib is defined
+fib is recursively defined (decreasing on 1st argument)
+
+Coq < Eval compute in fib 22 + fib 24.
+     = 64079
+     : nat
+
+Coq < Timeout 1 Eval compute in fib 22 + fib 24.
+Toplevel input, characters 0-42:
+> Timeout 1 Eval compute in fib 22 + fib 24.
+> ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Timeout!
+
+Coq < Eval compute in fib 22 + fib 24.
+Toplevel input, characters 0-32:
+> Eval compute in fib 22 + fib 24.
+> ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Timeout!
+
+Coq <
+
+
+
+
+This is from a commit which fixes the makefile (https://github.com/coq/coq/pull/7) on top of
+
+commit f5d7b2b1eda550f5bf0965286d449112acbbadde
+Author: Pierre-Marie Pédrot <pierre-marie.pedrot@ inria.fr>
+Date:   Thu Jan 16 18:03:41 2014 +0100
+
+    Fixing bugs [BZ#1039](https://github.com/coq/coq/issues?q=is%3Aissue%20%22Original%20bug%20ID%3A%20BZ%231039%22): Hypotheses don't respect Barendregt convention
+    and [BZ#3204](https://github.com/coq/coq/issues?q=is%3Aissue%20%22Original%20bug%20ID%3A%20BZ%233204%22): Failure of hygiene condition.
+
+    It was sufficient to tweak a flag in the constr externalization...
+
+
+Comment author: @gares
+
+fixed in d8202af0887825d236c3e11704f266d8282c8aa7
+
+

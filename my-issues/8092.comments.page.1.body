@@ -1,0 +1,5 @@
+Indeed, it would be useful to at least provide an option. `vm_compute` probably has the same issue.
+@JasonGross FTR, can you provide a motivation/use case for this flag?
+It makes it easier to reliably profile / performance-debug.
+Do you want a command to disable writing to the cache, or reading from it, or a command to clear it?
+I think either disable reading from it, or clear it.

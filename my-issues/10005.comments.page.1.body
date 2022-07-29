@@ -1,0 +1,129 @@
+Interestingly, wrapping the problem in `ltac:(exact (...))` gives us back a factor of 30x:
+```coq
+...
+time pose (fun a : unit => let x := _ in eq_refl : x = P) as H'; clear H';
+time pose (fun a : unit => let x := _ in ltac:(exact (eq_refl : x = P))) as H'; clear H'.
+(* Tactic call ran for 0.323 secs (0.28u,0.s) (success)
+Tactic call ran for 0.012 secs (0.008u,0.s) (success) *)
+Note that the output of `pose (fun a : unit => let x := _ in eq_refl : x = P) as H'; clear H'` under `Set Debug RAKAM` is 16097 lines ([slow_set_debug_rakam.log](https://github.com/coq/coq/files/3128739/slow_set_debug_rakam.log)), whereas the output of `pose (fun a : unit => let x := _ in ltac:(exact (eq_refl : x = P))) as H'; clear H'` under `Set Debug RAKAM` is 135 lines ([fast_set_debug_rakam.log](https://github.com/coq/coq/files/3128737/fast_set_debug_rakam.log)).
+
+I don't know how to debug this, though.
+
+
+
+Here is a simpler example:
+```coq
+Fixpoint fact (n : nat) :=
+  match n with
+  | O => 1
+  | S n' => fact n' * S n'
+  end.
+
+Definition slow_true := Nat.eqb (fact 9) (fact 9).
+
+Definition a (T : Type) (x : T) := True.
+
+Goal True.
+  let c := constr:(a (true = slow_true) (eq_refl true <: true = slow_true)) in
+  pose c as C.
+  let C := (eval cbv [C] in C) in
+  time pose (eq_refl : _ = C);
+    time pose (fun x : unit => eq_refl : _ = C).
+  (* Tactic call ran for 0. secs (0.u,0.s) (success)
+Tactic call ran for 3.354 secs (2.876u,0.s) (success) *)
+```
+Note that `pose (fun x : unit => ltac:(exact (eq_refl : _ = C))).` is fast.
+Thanks for the simpler example (by chance I was just looking at this right now). It is definitively unification: if I use Unicoq (and Ssreflect's pose), it works fast in the two cases. I will now try to elucidate what heuristic is causing harm here and why.
+(update: no need for Ssreflect. apparently Coq's pose calls the right unification algorithm)
+[Flame graph](https://gist.github.com/JasonGross/bbf6515b7162ccb315ef9b5aaaf657dc)
+With
+```
+Set Debug Unification.
+Set Printing All.
+Set Printing Existential Instances.
+```
+
+I get (note that I reversed the order of the two calls):
+```
+ time pose (E := (fun x : unit => eq_refl : _ = C));   time pose (D := (eq_refl : _ = C)).
+@eq|ZApp(?A@{C:=C; x:=x}, ?x0@{C:=C; x:=x}, ?x0@{C:=C; x:=x})
+@eq|ZApp(Prop, ?x@{C:=C; x:=x},
+         a (@eq bool true slow_true) (@eq_refl bool true))
+
+<infomsg>Tactic call ran for 0.963 secs (0.963u,0.s) (success)</infomsg>
+
+@eq|ZApp(?A@{C:=C; E:=E}, ?x0@{C:=C; E:=E}, ?x0@{C:=C; E:=E})
+@eq|ZApp(Prop, ?x@{C:=C; E:=E},
+         a (@eq bool true slow_true) (@eq_refl bool true))
+
+<infomsg>Tactic call ran for 0. secs (0.u,0.s) (success)</infomsg>
+```
+
+That is, there is a `x:=x` as argument of the meta-variable, at least that's the only observable difference.
+Interestingly, it seems that some of this is order-sensitive:
+```coq
+Fixpoint fact (n : nat) :=
+  match n with
+  | O => 1
+  | S n' => fact n' * S n'
+  end.
+
+Definition slow_true := Nat.eqb (fact 9) (fact 9).
+
+Definition a (T : Type) (x : T) := True.
+
+Goal True.
+  let c := constr:(a (true = slow_true) (eq_refl true <: true = slow_true)) in
+  pose c as C.
+  cbv beta in C.
+  let C := (eval cbv [C] in C) in
+  time pose (fun x : unit => let x := _ in eq_refl x : x = C);
+    time pose (fun x : unit => let x := _ in eq_refl x : C = x);
+    time pose (fun x : unit => let x := _ in eq_refl C : x = C);
+    time pose (fun x : unit => let x := _ in eq_refl C : C = x).
+  (* Tactic call ran for 0. secs (0.003u,0.s) (success)
+Tactic call ran for 0. secs (0.u,0.s) (success)
+Tactic call ran for 2.937 secs (2.712u,0.072s) (success)
+Tactic call ran for 3.164 secs (2.835u,0.083s) (success) *)
+Abort.
+```
+
+And interestingly the two versions with binders (with and without `ltac:(exact ...)` has the exact same output, but clearly different behaviors.
+@beta-ziliani Does Unicoq do refolding?  The only function that checks the RAKAM flag is `whd_state_gen`, and the slow examples spend most of their time in `CClosure.whd_stack`.
+it doesn't
+but why would it be do refolding?
+Possibly a red herring.  The documentation for `Debug RAKAM` says "This option makes `cbn` print various debugging information. `RAKAM` is the Refolding Algebraic Krivine Abstract Machine."  The output under `Set Debug RAKAM` is 100x longer on the slow examples than on the fast examples, so I'm assuming that the slowness comes from some invocation of the RAKAM.  I don't know much about it, though, and I was a bit confused why it would be invoked at all in this problem.
+I guess I can only say here "good luck!"... or "use Unicoq" :-D
+More seriously, I started Unicoq because I couldn't wrap my head around Coq's unification algorithm, and here we see a nice example of why.
+Interestingly, if I replace
+```coq
+Definition a (T : Type) (x : T) := True.
+```
+with
+```coq
+Axiom a : forall (T : Type) (x : T), Prop.
+```
+then all four examples in https://github.com/coq/coq/issues/10005#issuecomment-487713355 (the ones with `let`s under binders) become slow....
+> I guess I can only say here "good luck!"... or "use Unicoq" :-D
+
+Is there a `Set Constr Checking With Unicoq` flag yet?
+What would that be?
+It would be the flag that makes `Check` and `constr` and `open_constr` and `Definition`, etc, use Unicoq rather than Coq's unification.  (Note that there's nothing special about `pose` in any of these examples; the same thing shows up with `constr:(...)`.)
+`Set Use Unicoq`
+It repalces evarconv by Unicoq (in tactics, definitions, etc)
+`Warning: There is no option Use Unicoq.`
+
+(Do I need a package, or a certain version of Coq?)
+On the topic of the actual issue here, @herbelin, do you have any insight about what's going on?
+The slowdown is ultimately due to a closed conversion problem
+```
+(eq bool CSTR.bool._0._1 CSTR.bool._0._1) ≡ (eq bool CSTR.bool._0._1 slow_true)
+```
+that is sent to the kernel by the unification algorithm. So, in particular, this has nothing to do with refolding. Now why unification produces such a problem is another question.
+I may be wrong, but I am under the impression that the source of the difference between the two is that in the first case, the VM cast is present in the term, which makes the kernel use the VM (fast), while in the second, the cast disappears due to some reduction performed by the unification, and the kernel uses the lazy conversion (slow).
+@ppedrot In https://github.com/coq/coq/issues/10005#issuecomment-487713355 (the example with the `let`s), the vm_cast is stripped via `cbv beta` before any of the terms are typechecked, and so there is no cast in any case.  But I believe in all the examples, the `eval cbv [C] in C` removes the vm_cast.
+BTW, Unicoq also calls conversion when there are no evars. For a second I thought that the order might matter, but all of the examples above work smoothly.
+
+@JasonGross , you need to install Unicoq (opam install coq-unicoq).
+
+One more thing: according to the trace, the problem comes from the function that takes the "inversion" substitution (`invert_definition`). For instance, in its simpler form, this function takes an evar like `?X[x:=y]` and a term, say `S y`, and returns the term `S x`, which is valid in `?X`'s context. In evarconv, this function does way too much stuff.

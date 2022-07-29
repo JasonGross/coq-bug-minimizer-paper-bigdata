@@ -1,0 +1,13 @@
+Comment author: @JasonGross
+
+The following code produces "Anomaly: Uncaught exception Not_found. Please report."
+
+Section foo.
+  Let foo := Type.
+  Definition bar : foo -> foo := @ id _.
+  Goal False.
+    subst foo.
+    pose bar as f.
+    simpl in f.
+
+

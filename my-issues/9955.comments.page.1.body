@@ -1,0 +1,193 @@
+More minimal version:
+```coq
+(* -*- coq-prog-args: ("-nois" "-boot") -*- *)
+Inductive bool := true | false.
+Axiom x : bool.
+Definition foo
+  := (fun (T : forall b : bool, Type)
+          (f : forall b, T b)
+      => true)
+       _
+       (fun _ : bool
+        => match x with true => true | false => false end).
+```
+Note that this issue does not show up with `if` statements
+Note also that inserting `return _` makes the code pass.
+Bisect blames https://github.com/coq/coq/pull/262:
+
+> af622fc60e42ee40c83b4e2b744b8212616b681d is the first bad commit
+> commit af622fc60e42ee40c83b4e2b744b8212616b681d
+> Author: Hugo Herbelin <Hugo.Herbelin@inria.fr>
+> Date:   Thu Aug 18 13:24:50 2016 +0200
+> 
+>     Inference of return clause: giving uniformly priority to "small inversion".
+>     
+>     As noted by Jason Gross on coq-club (Aug 18, 2016), the "small
+>     inversion" heuristic is not used consistently depending on whether the
+>     variables in the type constraint are Rel or Var.
+>     
+>     This commit simply gives uniformly preference to the inversion of the
+>     predicate along the indices of the type over other heuristics.
+>     
+>     The next three commits will improve further a uniform use of the
+>     different heuristics.
+>     
+>     ----------------------------------------------------------------------
+>     Here are some extra comments on how to go further with the inference
+>     of the return predicate:
+>     
+>     The "small inversion" heuristic build_inversion_problem (1) is
+>     characterized by two features:
+>     
+>     - small inversion properly speaking (a), i.e. that is for a match on
+>       t:I params p1(u11..u1p1) ... pn(un1..unpn) with pi exposing the
+>       constructor structure of the indices of the type of t, a return
+>       clause of the form "fun x1..xn (y:I params x1..xn) => match x1..xn y with
+>       | p1(z11..z1p1) ... pn(zn1..znpn) => ?T@{z11..znpn}
+>       | _ => IDProp
+>       end" is used,
+>     
+>     - the dependent subterms in the external type constraint U are replaced
+>       by existential variables (b) which can be filled either by projecting
+>       (i.e. installing a dependency) or imitating (i.e. no dependency);
+>       this is obtained by solving the constraint ?T@{u11..unpn} == U by
+>       setting ?T@{z11..znpn} := U'(...?wij@{zij:=uij}...) where U has been
+>       written under the form U'(...uij...) highlighting all occurrences of
+>       each of the uij occurring in U; otherwise said the problem is reduced to
+>       the question of instantiating each wij, deciding whether wij@{zij} := zij
+>       (projection) or wij@{zij} := uij (imitation) [There may be different
+>       way to expose the uij in U, e.g. in the presence of overlapping, or of
+>       evars in U; this is left undetermined].
+>     
+>     The two other heuristics used are:
+>     
+>     - prepare_predicate_from_arsign_tycon (2): takes the external type
+>       constraint U and decides that each subterm of the form xi or y for a
+>       match on "y:I params x1 ... xn" is dependent; otherwise said, it
+>       corresponds to the degenerated form of (1) where
+>       - no constructor structure is exposed (i.e. each pi is trivial)
+>       - only uij that are Rel are replaced by an evar ?wij and this evar is
+>         directly instantiated by projection (hence creating a dependency),
+>     
+>     - simple use of of an evar in case no type constraint is given (3):
+>       this evar is not dependent on the indices nor on the term to match.
+>     
+>     Heuristic (1) is not strictly more powerful than other heuristics
+>     because of (at least) two weaknesses.
+>     
+>     - The first weakness is due to feature (b), i.e. to letting
+>       unification decide whether these evars have to create a dependency
+>       (projection) or not (imitation).
+>     
+>       In particular, the heuristic (2) gives priority to systematic
+>       abstraction over the dependencies (i.e. giving priority to
+>       projection over imitation) and it can then be better as the
+>       following example (from RelationClasses.v) shows:
+>     
+>       Fixpoint arrows (l : Tlist) (r : Type) : Type :=
+>         match l with
+>         | Tnil => r
+>         | A :: l' => A -> arrows l' r
+>         end.
+>     
+>       Fixpoint predicate_all (l : Tlist) : arrows l Prop -> Prop :=
+>         match l with
+>         | Tnil => fun f => f
+>         | A :: tl => fun f => forall x : A, predicate_all tl (f x)
+>         end.
+>     
+>       Using (1) fails. It proposes the predicate
+>       "fun l' => arrows ?l[l':=l'] Prop" so that typing the first branch
+>       leads to unify "arrows ?l[l:=Tnil] Prop == Prop", a problem about
+>       which evarconv unification is not able (yet!) to see what are the
+>       two possible solutions. Using (2) works. It instead directly
+>       suggests that the predicate is "fun l => arrows l Prop" is used, so
+>       that unification is not needed.
+>     
+>       Even if in practice the (2) is good (and hence could be added to
+>       (1)), it is not universally better. Consider e.g.
+>     
+>          y:bool,H1:P y,H2:P y,f:forall y, P y -> Q y |-
+>                   match y as z return Q y with
+>                   | true  => f y H1
+>                   | false => f y H2
+>                   end : Q y
+>     
+>       There is no way to type it with clause "as z return Q z" even if
+>       trying to generalize H1 and H2 so that they get type P z.
+>     
+>     - A second weakness is due to the interaction between small inversion
+>       and constructors having a type whose indices havex a less refined
+>       constructor structure than in the term to match, as in:
+>     
+>       Inductive I : nat -> Set :=
+>       | C1 : forall n : nat, listn n -> I n
+>       | C2 : forall n : nat, I n -> I n.
+>     
+>       Check (fun x : I 0 => match x with
+>                             | C1 n l => 0
+>                             | C2 n c => 0
+>                             end).
+>     
+>       where the inverted predicate is "in I n return match n with 0 => ?T | _ => IDProp end"
+>       but neither C1 nor C2 have fine enough types so that n becomes
+>       constructed. There is a generic solution to that kind of situation which
+>       is to compile the above into
+>     
+>       Check (fun x : I 0 => match x with
+>                             | C1 n l => match n with 0 => 0 | _ -> id end
+>                             | C2 n c => match n with 0 => 0 | _ -> id end
+>                             end).
+>     
+>       but this is not implemented yet.
+>     
+>       In the absence of this refinement, heuristic (3) can here work
+>       better.
+>     
+>     So, the current status of the claim is that for (1) to be strictly
+>     more powerful than other current heuristics, work has to be done
+>     
+>     - (A) at the unification level (by either being able to reduce problems of
+>       the form "match ?x[constructor] with ... end = a-rigid-term", or, at
+>       worst, by being able to use the heuristic favoring projecting for such
+>       a problem), so that it is better than (2),
+>     
+>     - (B) at the match compilation level, by enforcing that, in each branch,
+>       the corresponding constructor is refined so has to match (or
+>       discriminate) the constraints given by the type of the term to
+>       match, and hence being better than (3).
+>     
+>     Moreover, (2) and (3) are disjoint. Here is an example which (3) can
+>     solve but not (2) (and (1) cannot because of (B)). [To be fixed in
+>     next commit.]
+>     
+>     Inductive I : bool -> bool -> Type := C : I true true | D x : I x x.
+>     
+>     Check fun z P Q (y:I true z) (H1 H2:P y) (f:forall y, P y -> Q y z) =>
+>                   match y with
+>                   | C  => f y H1
+>                   | D _ => f y H2
+>                   end : Q y z.
+>     
+>     Indeed, (2) infers "as y' in I b z return Q y z" which does not work.
+>     
+>     Here is an example which (2) can solve but not (3) (and (1) cannot
+>     because of (B) again). [To be fixed in 2nd next commit].
+>     
+>     Check fun z P Q (y:I true z) (H1 H2:P y) (f:forall y z, P y -> Q y z) =>
+>                   match y with
+>                   | C  => f y true H1
+>                   | D b => f y b H2
+>                   end : Q y z.
+>     
+>     fix
+> 
+> ```
+> :040000 040000 03779a3ddf9eb7d266110a546cf927cd2eb0f3cc ed34b20f831bebec0d4e644823e0adc308629d8f M      pretyping`
+> :040000 040000 42e0e2d377786976b4d168e1189b8e5f4fd8943f d7e8e0a075e14bb5f1d9c41ed4ec06d43d491f35 M      test-suite
+> ```
+Some commits to look at:
+- b4561c5047eb2383c2b718fd1cf9da8076497511 (#9690)
+- 3c0e9465029d7dcddff2c9a813cfd727a3ed4444 (merge of #7819)
+@ejgallego No, I don't think so, it was broken already at 0bcbc990dcebce2e66f10aba462c9fed2c2eda06 (merge of #262) and bisect blames one of the commits in that PR.  Thanks, though!
+After some discussion with @ejgallego, this is apparently a regression due to a change in return clause annotations.  (Coq has apparently never been able to solve unification problems of the form `bool == ?1 x` for non-Var `x`.)  Would it be possible to allow backtracking on the return annotation of match statements if unification fails with the existing annotation?

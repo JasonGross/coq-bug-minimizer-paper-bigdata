@@ -1,0 +1,41 @@
+Comment author: @JasonGross
+
+$ ./configure -local
+You have GNU Make 4.2.1. Good!
+You have OCaml 4.01.0. Good!
+You have Camlp5 6.11. Good!
+You have native-code compilation. Good!
+No such directory 'C:/CoqSDK-85-1_64/lib/lablgtk2' (in OCaml library).
+LablGtk2 not found:
+=> no CoqIde will be built.
+
+  Architecture                : win32
+  Operating system          : Windows_NT
+  Coq VM bytecode link flags  : -custom
+  Other bytecode link flags   : -custom
+  OS dependent libraries      : -cclib -lunix
+  OCaml version               : 4.01.0
+  OCaml binaries in           : C:\CoqSDK-85-1_64\bin
+  OCaml library in            : C:/CoqSDK-85-1_64/lib
+  Camlp5 version              : 6.11
+  Camlp5 binaries in          : C:\CoqSDK-85-1_64\bin
+  Camlp5 library in           : +camlp5
+  Native dynamic link support : true
+  CoqIde                      : no
+  Documentation               : None
+  Web browser                 : start %s
+  Coq web site                : http://coq.inria.fr/
+
+  Local build, no installation...
+
+If anything is wrong above, please restart './configure'.
+
+*Warning* To compile the system for a new architecture
+          don't forget to do a 'make clean' before './configure'.
+
+
+Comment author: @silene
+
+That is because you didn't ask for documentation. If you pass "-with-doc yes", then hevea will be tested for presence. This behavior has been the default one for several years.
+
+

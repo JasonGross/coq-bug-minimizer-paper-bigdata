@@ -1,0 +1,120 @@
+Comment author: @JasonGross
+
+(* File reduced by coq-bug-finder from original input, then from 6694 lines to 5554 lines, then from 5074 lines to 4062 lines, then from 4053 lines to 283 lines, then from 270 lines to 195 lines, then from 132 lines to 66 lines, then from 64 lines to 52 lines *)
+Set Implicit Arguments.
+Generalizable All Variables.
+Definition compose {A B C : Type} (g : B -> C) (f : A -> B) := fun x => g (f x).
+Inductive paths {A : Type} (a : A) : A -> Type := idpath : paths a a where "x = y" := (@ paths _ x y) : type_scope.
+Arguments idpath {A a} , [A] a.
+Delimit Scope path_scope with path.
+Local Open Scope path_scope.
+Definition concat {A : Type} {x y z : A} (p : x = y) (q : y = z) : x = z :=
+  match p, q with idpath, idpath => idpath end.
+Definition inverse {A : Type} {x y : A} (p : x = y) : y = x
+  := match p with idpath => idpath end.
+Notation "p @  q" := (concat p q) (at level 20) : path_scope.
+Notation "p ^" := (inverse p) (at level 3) : path_scope.
+Definition transport {A : Type} (P : A -> Type) {x y : A} (p : x = y) (u : P x) : P y :=
+  match p with idpath => u end.
+Notation "p # x" := (transport _ p x) (right associativity, at level 65, only parsing) : path_scope.
+Class IsEquiv {A B : Type} (f : A -> B) := {}.
+Instance isequiv_compose `{IsEquiv A B f} `{IsEquiv B C g} : IsEquiv (compose g f) | 1000.
+Set Printing Implicit.
+Module NonPrim.
+  Record sigT (A : Type) (P : A -> Type) := existT { projT1 : A ; projT2 : P projT1 }.
+  Notation "{ x : A  & P }" := (sigT (fun x:A => P)) : type_scope.
+  Notation "x .1" := (projT1 x) (at level 3).
+  Notation "x .2" := (projT2 x) (at level 3).
+  Axiom path_sigma_uncurried : forall {A : Type} (P : A -> Type) (u v : sigT P),
+                                 {p : u.1 = v.1 &  p # u.2 = v.2} -> u = v.
+  Instance isequiv_path_sigma `{P : A -> Type} {u v : sigT P} : IsEquiv (path_sigma_uncurried u v) | 0.
+  Definition ExtensionAlong {A B : Type} (f : A -> B) (P : B -> Type) (d : forall x:A, P (f x))
+    := { s : forall y:B, P y & forall x:A, s (f x) = d x }.
+  Definition path_extension {A B : Type} {f : A -> B}
+             {P : B -> Type} {d : forall x:A, P (f x)}
+             (ext ext' : ExtensionAlong f P d)
+  : (ExtensionAlong f
+                    (fun y => projT1 ext y = projT1 ext' y)
+                    (fun x => projT2 ext x @  (projT2 ext' x)^))
+    -> ext = ext'.
+  Proof.
+    apply (compose (path_sigma_uncurried _ _)).
+    admit.
+  Defined.
+  Definition isequiv_path_extension {A B : Type} {f : A -> B}
+             {P : B -> Type} {d : forall x:A, P (f x)}
+             (ext ext' : ExtensionAlong f P d)
+  : IsEquiv (path_extension ext ext').
+  Proof.
+    apply @ isequiv_compose.
+    2: refine (@ isequiv_path_sigma _ _ _ _) || fail "bad".
+    Undo.
+    2: apply @ isequiv_path_sigma.
+    admit.
+  Qed.
+End NonPrim.
+Module Prim.
+  Set Primitive Projections.
+  Record sigT (A : Type) (P : A -> Type) := existT { projT1 : A ; projT2 : P projT1 }.
+  Notation "{ x : A  & P }" := (sigT (fun x:A => P)) : type_scope.
+  Notation "x .1" := (projT1 x) (at level 3).
+  Notation "x .2" := (projT2 x) (at level 3).
+  Axiom path_sigma_uncurried : forall {A : Type} (P : A -> Type) (u v : sigT P),
+                                 {p : u.1 = v.1 &  p # u.2 = v.2} -> u = v.
+  Instance isequiv_path_sigma `{P : A -> Type} {u v : sigT P} : IsEquiv (path_sigma_uncurried u v) | 0.
+  Definition ExtensionAlong {A B : Type} (f : A -> B) (P : B -> Type) (d : forall x:A, P (f x))
+    := { s : forall y:B, P y & forall x:A, s (f x) = d x }.
+  Definition path_extension {A B : Type} {f : A -> B}
+             {P : B -> Type} {d : forall x:A, P (f x)}
+             (ext ext' : ExtensionAlong f P d)
+  : (ExtensionAlong f
+                    (fun y => projT1 ext y = projT1 ext' y)
+                    (fun x => projT2 ext x @  (projT2 ext' x)^))
+    -> ext = ext'.
+  Proof.
+    apply (compose (path_sigma_uncurried _ _)).
+    admit.
+  Defined.
+  Definition isequiv_path_extension {A B : Type} {f : A -> B}
+             {P : B -> Type} {d : forall x:A, P (f x)}
+             (ext ext' : ExtensionAlong f P d)
+  : IsEquiv (path_extension ext ext').
+  Proof.
+    apply @ isequiv_compose.
+    2: refine (@ isequiv_path_sigma _ _ _ _) || fail "bad".
+    Undo.
+    2: apply @ isequiv_path_sigma. (* Toplevel input, characters 24-43:
+Error:
+In environment
+A : Type
+B : Type
+f : A -> B
+P : B -> Type
+d : forall x : A, P (f x)
+ext : @ ExtensionAlong A B f P d
+ext' : @ ExtensionAlong A B f P d
+Unable to unify
+ "@ IsEquiv
+    {p : ?225 .1 = ?226 .1 &
+    @ transport ?223 ?224 ?225 .1 ?226 .1 p ?225 .2 = ?226 .2}
+    (?225 = ?226) (@ path_sigma_uncurried ?223 ?224 ?225 ?226)" with
+ "@ IsEquiv
+    {p : ext .1 = ext' .1 &
+    @ transport (forall y : B, P y)
+      (fun s : forall y : B, P y => forall x : A, s (f x) = d x)
+      ext .1 ext' .1 p ext .2 = ext' .2} (ext = ext')
+    (@ path_sigma_uncurried (forall y : B, P y)
+       (fun s : forall y : B, P y => forall x : A, s (f x) = d x) ext ext')".
+ *)
+    admit.
+  Qed.
+End Prim.
+
+
+Comment author: @mattam82
+
+Fixed too.
+
+*** This bug has been marked as a duplicate of bug [BZ#3504](https://github.com/coq/coq/issues?q=is%3Aissue%20%22Original%20bug%20ID%3A%20BZ%233504%22) ***
+
+

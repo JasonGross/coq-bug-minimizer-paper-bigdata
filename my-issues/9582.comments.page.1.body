@@ -1,0 +1,61 @@
+Here is a smaller example that displays the problem, though not quite as egregiously:
+```coq
+Goal True.
+  let tac := ltac:(fun _ => constr:(I)) in
+  time (do 1000 let v := tac () in idtac); (* Tactic call ran for 0.025 secs (0.031u,0.s) (success) *)
+    do 4000 pose proof I;
+    time (do 1000 let v := tac() in idtac). (* Tactic call ran for 0.186 secs (0.187u,0.s) (success) *)
+```
+Note that this behavior shows up using `Check` as well as `constr:(...)`, though it's a bit harder to notice because the times are much smaller.
+Note that this issue shows up even for `uconstr`:
+```coq
+Goal True.
+  let tac := ltac:(fun _ => uconstr:(I : True)) in
+  time (do 1000 let v := tac () in idtac); (* Tactic call ran for 0.048 secs (0.031u,0.015s) (success) *)
+    do 4000 pose proof I;
+  time (do 1000 let v := tac() in idtac). (* Tactic call ran for 0.214 secs (0.218u,0.s) (success) *)
+```
+I think the hotspot might be name resolution?  I don't see what else would explain this behavior:
+```coq
+Goal True.
+  let tac1 := ltac:(fun _ => uconstr:(I)) in
+  let tac2 := ltac:(fun _ => uconstr:((I, I, I, I, I, I, I, I, I, I, I, I, I, I, I, I, I, I, I))) in
+  let tac3 := ltac:(fun _ => let I := uconstr:(I) in uconstr:((I, I, I, I, I, I, I, I, I, I, I, I, I, I, I, I, I, I, I))) in
+  time (do 1000 let v := tac1 () in idtac);
+  time (do 1000 let v := tac2 () in idtac);
+  time (do 1000 let v := tac3 () in idtac);
+    do 4000 pose proof I;
+  time (do 1000 let v := tac1 () in idtac);
+  time (do 1000 let v := tac2 () in idtac);
+  time (do 1000 let v := tac3 () in idtac).
+(* Tactic call ran for 0.04 secs (0.031u,0.015s) (success)
+Tactic call ran for 0.083 secs (0.031u,0.046s) (success)
+Tactic call ran for 0.095 secs (0.062u,0.031s) (success)
+Tactic call ran for 0.122 secs (0.125u,0.s) (success)
+Tactic call ran for 2.04 secs (1.968u,0.s) (success)
+Tactic call ran for 0.141 secs (0.14u,0.s) (success) *)
+```
+```coq
+Goal True.
+  let tac2 := ltac:(fun _ => uconstr:((I, I, I, I, I, I, I, I, I, I, I, I, I, I, I, I, I, I, I))) in
+  do 8000 pose proof I;
+  time (do 8000 let v := tac2 () in idtac).
+Abort.
+```
+
+~~[flame graph](https://gist.github.com/andres-erbsen/07c39e4591609c23514cc35316fe05de)~~  blames `Namegen__name_rec`, `Evarutil__new_evar_from_context`, `Evarutil__new_evar_instance` (for best viewing right-click on the image and open in new tab)
+
+EDIT: the above execution ran out of memory after 5s, 4000; 4000 flame graph [here](https://gist.github.com/andres-erbsen/022962fc00c422b745ec20e3d1c16462) also features `Notation_ops__glob_constr_of_notation_constr_with_binders` calling `Constrintern__subst_var` calling `Context__lookup` at varying recursion depths; also a good 10% of time is spent inside coqc and outside `_start` (ocaml runtime??).
+Can you do a separate flamegraph that doesn't include the `pose proof `?  I think all of the new evars are coming from that.
+[Here](https://gist.github.com/andres-erbsen/66c4b498a2a10ce64cfbb7317375bf22) is a flame graph of the second half of the same execution, indeed spending vast majority of its time in `Context__lookup` calls.
+How's c899b3085f2e15ef05fe3a66470df9bc25eeda59 ?
+https://github.com/coq/coq/commit/c899b3085f2e15ef05fe3a66470df9bc25eeda59 fixes the `Context__lookup` performance, so the examples that use `uconstr` or terms with no holes no longer incur a slowdown when constructed in a large context. Thanks!
+
+The examples with holes (mostly unfilled implicit arguments) in the term are still unusably slow in large contexts, I think this is likely due to something like https://github.com/coq/coq/issues/8245 during implicit argument inference.
+constructing `eq_refl true` (which has one unresolved implicit, for `bool`) spends time in the following functions: `GlobEnv__new_evar` (20%), `Evarsolve__fun` (20%), `Environ__push_named_context_val_val` (15%), `Evarsolve__is_id_subst` (10%). The [flame graph](https://gist.github.com/andres-erbsen/470da4e0f0cf03c324d5eb810fb6f132) looks slightly confusing so you may want to confirm this breakdown.
+ Slowness of evar creation is not surprising, both the algorithm for name creation and the array representation of instances are very bad for big contexts.
+> Slowness of evar creation is not surprising, both the algorithm for name creation and the array representation of instances are very bad for big contexts.
+
+@ppedrot Can you comment on whether there's hope, and if we do plan to address this issue?
+There is hope indeed, but that requires non-trivial changes. I have a branch somewhere that replaces arrays with lists and solves the algorithmic issue, but for some reason it had performance penalty on seemingly unrelated developments. Name creation is even trickier, it would require a serious rework if we wanted to handle all corner cases (in particular regarding sections), but this also implies breaking changes.
+AFAICT this is solved as of 8.15. Closing, please reopen if you don't agree.

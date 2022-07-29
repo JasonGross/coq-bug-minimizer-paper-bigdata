@@ -1,0 +1,91 @@
+Comment author: @JasonGross
+
+(* -*- mode: coq; coq-prog-args: ("-emacs" "-R" "src" "Crypto" "-R" "Bedrock" 
+"Bedrock" "-R" "coqprime/Coqprime" "Coqprime" "-top" 
+"IntegrationTestLadderstep130Display") -*- *)
+(* File reduced by coq-bug-finder from original input, then from 126 lines to 
+15 lines, then from 653 lines to 15 lines, then from 195 lines to 37 lines, 
+then from 223 lines to 89 lines, then from 237 lines to 89 lines, then from 105 
+lines to 90 lines *)
+(* coqc version 8.6 (June 2017) compiled on Jun 15 2017 12:8:43 with OCaml 
+4.02.3
+   coqtop version jgross-Leopard-WS:/home/jgross/Downloads/coq/coq-v8.6,(HEAD 
+detached from 7e992fa) (ce1e1dba837ad6e2c79ff7e531b5e3adea3cd327) *)
+Reserved Notation "'slet' x .. y := A 'in' b"
+         (at level 200, x binder, y binder, b at level 200, format "'slet'  x 
+.. y  :=  A  'in' '//' b").
+Reserved Notation "T x [1] = { A } ; 'return' ( b0 , b1 , .. , b2 )" (at level 
+200, format "T  x [1]  =  { A } ; '//' 'return'  ( b0 ,  b1 ,  .. ,  b2 )").
+
+Delimit Scope ctype_scope with ctype.
+Local Open Scope ctype_scope.
+Delimit Scope expr_scope with expr.
+Inductive base_type := TZ | TWord (logsz : nat).
+Inductive flat_type := Tbase (T : base_type) | Prod (A B : flat_type).
+Context {var : base_type -> Type}.
+Fixpoint interp_flat_type (interp_base_type : base_type -> Type) (t : 
+flat_type) :=
+  match t with
+  | Tbase t => interp_base_type t
+  | Prod x y => prod (interp_flat_type interp_base_type x) (interp_flat_type 
+interp_base_type y)
+  end.
+Inductive exprf : flat_type -> Type :=
+| Var {t} (v : var t) : exprf (Tbase t)
+| LetIn {tx} (ex : exprf tx) {tC} (eC : interp_flat_type var tx -> exprf tC) : 
+exprf tC
+| Pair {tx} (ex : exprf tx) {ty} (ey : exprf ty) : exprf (Prod tx ty).
+Global Arguments Var {_} _.
+Global Arguments LetIn {_} _ {_} _.
+Global Arguments Pair {_} _ {_} _.
+Notation "T x [1] = { A } ; 'return' ( b0 , b1 , .. , b2 )" := (LetIn (tx:=T) A 
+(fun x => Pair .. (Pair b0%expr b1%expr) .. b2%expr)) : expr_scope.
+Definition foo :=
+  (fun x3 =>
+     (LetIn (Var x3) (fun x18 : var TZ
+                      => (Pair (Var x18) (Var x18))))).
+Print foo. (* Anomaly: No printing rule found for _ _ [1] = { _ } ; return ( _ 
+, _ , .. , _ ). Please report at http://coq.inria.fr/bugs/. *)
+
+
+Comment author: @ppedrot
+
+I can't reproduce, the first line raises an error "Error: The format does not match the notation." Are you using some kind of non-printable space or something?
+
+
+Comment author: @JasonGross
+
+You are using 8.6.  Try the tip of the v8.6 branch, or trunk.  (The error message you're getting is bug [BZ#5469](https://github.com/coq/coq/issues?q=is%3Aissue%20%22Original%20bug%20ID%3A%20BZ%235469%22), I believe, and Hugo fixed that in v8.6.
+
+
+Comment author: @ppedrot
+
+Still the same error on the first line on trunk (c0fdb912).
+
+
+Comment author: @herbelin
+
+This is certainly due to the "{ }" hack used to compensate the need for backtracking in parsing things such as { x | x=0 } + { True } in the presence of also a notation for { A } + { B }.
+
+For the record, here is something equivalent but stand-alone which would not work without a special treatment:
+
+Notation "{# x | P #}" := (sig (fun x => P)) (at level 0, x at level 99).
+Notation "{# A #} + {# B #}" := (sumor A B) (at level 50, left associativity).
+Notation "A + {# B #}" := (sumor A B) (at level 50, left associativity).
+Check {# x | x = 0 #} + {# True #}. (* fails *)
+
+My idea is that we should test whether the backtracking feature of camlp5 allow to support these kind of rules, and if it does, to remove the hack, and if not, to keep the hack and address the bug.
+
+See also commit 0541d70 explaining the hack and comment 2 from Guillaume at the discussion at https://coq.inria.fr/bugs/show_bug.cgi?id=4970.
+
+
+Comment author: @herbelin
+
+Finally, see PR#916.
+
+
+Comment author: @herbelin
+
+Fixed committed on 29 Aug 2017, f442efeb (master) and 40bc6a1 (v8.7).
+
+

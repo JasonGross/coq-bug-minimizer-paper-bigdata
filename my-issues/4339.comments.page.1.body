@@ -1,0 +1,181 @@
+Comment author: @JasonGross
+
+In the attached development, `make src/Parsers/SplitterFromParserADT.vo` succeeds in Coq 8.4, but fails in Coq 8.5, with
+File "./src/Parsers/SplitterFromParserADT.v", line 208, characters 19-38:
+In nested Ltac calls to "t", "t'" and "eapply H", last call failed.
+Error:
+In environment
+G : grammar Ascii.ascii
+splitter_impl : FullySharpened (string_spec G)
+n : nat
+x : cRep (projT1 splitter_impl)
+x0 : string
+a : x0 ≃ x
+H : forall (s : string) (ch ch' : Ascii.ascii),
+    string_beq s (String.String ch "") ->
+    string_beq s (String.String ch' "") -> ch = ch'
+Unable to unify "?M9800 = ?M9801" with
+ "exists orig : string, orig ≃ mtake n x".
+
+Changing [intros] to [intros; cbv beta] in [handle_rep] fixes this.
+
+I am currently working on making a smaller test-case that displays this problem.
+
+There is another much more worrisome bug, which won't be in the smaller test case (at least not the first one I make), which is that if you place [Local Obligation Tactic := idtac.] before [Local Program Instance adt_based_StringLikeProperties : ...], then you get, on [Local Program Instance ...]
+
+adt_based_StringLikeProperties has type-checked, generating 22 obligation(s)
+
+
+Solving obligations automatically...
+
+
+22 obligations remaining
+
+
+Obligation 1 of adt_based_StringLikeProperties:
+(forall (adt_based_StringLike : StringLike Ascii.ascii)
+   (s : String) (ch ch' : Ascii.ascii),
+ (s ~= [ch])%string_like -> (s ~= [ch'])%string_like -> ch = ch').
+
+
+
+Obligation 2 of adt_based_StringLikeProperties:
+(forall (adt_based_StringLike : StringLike Ascii.ascii) (s : String),
+ length s = 1 -> exists ch : Ascii.ascii, (s ~= [ch])%string_like).
+
+
+
+Obligation 3 of adt_based_StringLikeProperties:
+(forall (adt_based_StringLike : StringLike Ascii.ascii)
+   (s : String) (ch : Ascii.ascii),
+ (take 1 s ~= [ch])%string_like <-> get 0 s = Some ch).
+
+
+
+Obligation 4 of adt_based_StringLikeProperties:
+(forall (adt_based_StringLike : StringLike Ascii.ascii)
+   (n : nat) (s : String), get (S n) s = get n (drop 1 s)).
+
+
+
+Obligation 5 of adt_based_StringLikeProperties:
+(forall (adt_based_StringLike : StringLike Ascii.ascii)
+   (s : String) (ch : Ascii.ascii), (s ~= [ch])%string_like -> length s = 1).
+
+
+but on [Next Obligation], you get:
+
+1 subgoal, subgoal 1 (ID 1910)
+
+  G : grammar Ascii.ascii
+  splitter_impl : FullySharpened (string_spec G)
+  ============================
+   forall (n : nat)
+     (str : {r : cRep (projT1 splitter_impl) |
+            exists orig : Rep (string_spec G), orig ≃ r}),
+   (fun r : cRep (projT1 splitter_impl) =>
+    exists orig : Rep (string_spec G), orig ≃ r) (mtake n (` str))
+
+(dependent evars:)
+
+
+
+
+
+
+That is, the first obligation that is listed as generated does not match the first obligation we're given, and, furthermore, the generated obligations are all improperly quantified over the instance we're currently defining.  This seems very, very wrong.  (But I can't reproduce it when I simplify the preceding code too much.)
+
+This is with 15e6e2d666252cad3c1e0de4622ef51c2830b6b8.
+
+
+Comment author: @JasonGross
+
+Created attachment 613
+Large development reproducing the bug
+
+> Attached file: [fiat-stage.zip](https://coq.inria.fr/bugfiles/attachment.cgi?id=613) (application/zip, 655005 bytes)
+> Description:   Large development reproducing the bug
+
+
+Comment author: @JasonGross
+
+Created attachment 614
+Smaller file showing the lack of beta where it used to be
+
+> Attached file: [bug_SplitterFromParserADT_no_beta_obligation_08.v](https://coq.inria.fr/bugfiles/attachment.cgi?id=614) (text/plain, 16384 bytes)
+> Description:   Smaller file showing the lack of beta where it used to be
+
+
+Comment author: @JasonGross
+
+Here's an even shorter version:
+
+(* -*- mode: coq; coq-prog-args: ("-emacs" "-R" "." "Fiat" "-top" "SplitterFromParserADT" "-R" "." "Top") -*- *)
+(* File reduced by coq-bug-finder from original input, then from 4286 lines to 550 lines, then from 570 lines to 34 lines *)
+(* coqc version 8.5beta2 (August 2015) compiled on Aug 19 2015 19:14:3 with OCaml 4.01.0
+   coqtop version cagnode12:/afs/csail.mit.edu/u/j/jgross/coq-8.5,v8.5 (15e6e2d666252cad3c1e0de4622ef51c2830b6b8) *)
+Require Coq.Program.Program.
+Require Coq.Strings.String.
+Export Coq.Program.Program.
+Class StringLike {Char : Type} :=
+  {
+    String :> Type;
+    take : nat -> String -> String
+  }.
+
+Arguments StringLike : clear implicits.
+Section foo.
+  Context (T : Type) (P : T -> Prop).
+
+  Notation StringT := { r : T | P r } (only parsing).
+  Axiom mtake : nat -> T -> T.
+
+  Local Obligation Tactic := idtac.
+  Local Program Instance adt_based_StringLike : StringLike Ascii.ascii
+    := { String := StringT;
+         take n str := mtake n str }.
+  Next Obligation.
+    match goal with
+      | [ |- forall (n : nat)
+                    (str : {r : T | P r}),
+             P mtake n (` str) ]
+        => idtac
+      | [ |- forall (n : nat)
+                    (str : {r : T | P r}),
+               (fun r : T =>
+                  P r) (mtake n (` str)) ]
+        => fail 1 "Changed behavior of obligations"
+    end.
+
+
+Comment author: @mattam82
+
+Is this still relevant?
+
+
+Comment author: @JasonGross
+
+What do you mean by relevant?  It's still open, certainly.  It should at the very least be documented in changes / incompatibilities if it's intentional.  And it'd be nice to revert to the old behavior in compat 8.4 mode.  Certainly it's easy to work around once you know it's causing the issue, but lots of small changes add up.
+
+
+Comment author: @mattam82
+
+I meant does the Large example still has issues? I'll check. I think the cbv beta was removed intentionally but can't remember why right now, I'll dig.
+
+
+Comment author: @JasonGross
+
+The example at https://coq.inria.fr/bugs/show_bug.cgi?id=4339#c3 still has issues.  I didn't check the large example when I had Coq in front of me.
+
+
+Comment author: @Zimmi48
+
+What is the current status of this bug? Its current milestone is Next patch level. Moving this to 8.6.1 but maybe it would be more realistic to move it to 8.7 instead?
+
+
+Comment author: @ejgallego
+
+Indeed I think 8.6.1 is mostly done, it should be 8.7 IMHO.
+
+
+wontfix

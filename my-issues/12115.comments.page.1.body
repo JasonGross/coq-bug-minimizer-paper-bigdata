@@ -1,0 +1,13 @@
+Note that we are running
+```
+make states tools coqlight plugins || exit $?
+touch bin/coqtop.byte bin/coqchk stm/{proof,tac,query}workertop.cma
+sudo make install-binaries install-devfiles
+```
+`plugins` is not a real target (it doesn't complain because the directory exists)
+I guess you want `pluginsopt` instead
+
+Or maybe just use `coqocaml`, I don't know why you build  `coqlight`
+It is a regression, because `install-devfiles` works fine on 8.11.  But perhaps something changed when the contents of the `plugins` folder changed to no longer contain .v files?  In any case I am trying out `coqocaml` at HoTT/HoTT#1320
+There is nothing saying that `install-devfiles` should work after some arbitrary selection of targets
+Indeed, but I did not find a `devfiles` target, and was unsure what the relevant target was.

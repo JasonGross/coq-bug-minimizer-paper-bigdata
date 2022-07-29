@@ -1,0 +1,25 @@
+Comment author: @JasonGross
+
+(* File reduced by coq-bug-finder from original input, then from 3160 lines to 84 lines, then from 69 lines to 15 lines *)
+Set Primitive Projections.
+Set Implicit Arguments.
+Module Export Datatypes.
+  Record prod A B := pair { fst : A ; snd : B }.
+End Datatypes.
+Delimit Scope category_scope with category.
+Record PreCategory := { object :> Type ; morphism : object -> object -> Type }.
+Arguments morphism !C%category s d : rename.
+Goal forall (C D : PreCategory), forall (a b : prod (object C) (object D))
+                                        (f : prod (morphism C (fst a) (fst b)) (morphism D (snd a) (snd b))),
+       f = f.
+    intros ? ?.
+    do 9 (lazy iota delta [Datatypes.fst Datatypes.snd] || intros [] || intro).
+    intros [].
+(* Anomaly: Uncaught exception Invalid_argument("List.nth", _). Please report. *)
+
+
+Comment author: @mattam82
+
+Fixed in trunk.
+
+

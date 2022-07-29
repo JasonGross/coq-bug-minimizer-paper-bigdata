@@ -1,0 +1,40 @@
+Comment author: @JasonGross
+
+Visiting https://coq.inria.fr/bugs/attachment.cgi?id=404&action=edit gives 
+
+Minimal example producing the error
+minexample.v (text/x-verilog), 2.21 KB, created by Ryan Kavanagh
+The attachment is not viewable in your browser due to security restrictions enabled by your Bugzilla administrator.
+
+In order to view the attachment, you first have to download it.
+
+
+I would like to be able to view .v files in the browser, as I cannot effectively view them on a chromeboook.
+
+
+Comment author: @pirbo
+
+Bugzilla administration desk says :
+
+allow_attachment_display
+    If this option is on, users will be able to view attachments from their browser, if their browser supports the attachment's MIME type. If this option is off, users are forced to download attachments, even if the browser is able to display them.
+
+    This is a security restriction for installations where untrusted users may upload attachments that could be potentially damaging if viewed directly in the browser.
+
+I agree that it is disturbing but I won't take the responsability to change that by myself ...
+
+Let see what Jean Marc and Hugo say.
+
+
+Comment author: @JasonGross
+
+Is it possible to enable viewing only of attachments with MIME type text/*?  Alternatively, could you enable this, and disable the upload of anything other than MIME type text/*?  I'm not sure that there's any legitimate use of uploading binary files, unless .zip and .tar are considered binary.  If not, perhaps someone (me?) should submit a bug report to bugzilla requesting finer-grained control over display of attachments in the browser.
+
+
+Comment author: Jean-Marc Notin &lt;<notin@lix.polytechnique.fr>&gt;
+
+I can see no option to restrict attachement uploading based on its MIME type. However, I changed the parameters to allow the viewing of files inside the browser. 
+
+I agree that not being able to see attached .v files in the browser is quite annoying. Reading the notice related to the relevant parameters, I think the security risk for users is quite low. Moreover, we can still implement the setup proposed in this notice to avoid the exploit (the setup is to have a domain for attachments that is not related to the one for cookies).
+
+

@@ -1,0 +1,21 @@
+Comment author: @JasonGross
+```coq
+Goal exists f : nat -> nat, ((forall x, f x = x) -> (forall y, f y = y)) -> (forall z, f z = z).
+Proof.
+  clear; eexists; intros H y.
+  refine (_ : (fun w => _) y = _); cbv beta in *.
+  match goal with |- ?lhs = _ => set (LHS := lhs) in * end.
+  revert y; subst LHS.
+  refine (H _); clear H.
+  intro x.
+  Fail lazymatch goal with
+    | [ |- _ = ?x ] => instantiate (1 := x)
+  end. (* Toplevel input, characters 61-62:
+Error: Instance is not well-typed in the environment of ?3711 *)
+  rename x into w.
+  lazymatch goal with
+    | [ |- _ = ?x ] => instantiate (1 := x)
+  end. (* success *)
+```
+
+Both rightfully fail on master (611468b3bb25e8c2ee18bc7e03e3a5b1726df9c0), closing.

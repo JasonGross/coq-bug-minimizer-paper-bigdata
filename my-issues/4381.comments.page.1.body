@@ -1,0 +1,22 @@
+Comment author: @JasonGross
+
+It would be nice to be able to do something like
+
+Tactic Notation "foo" constr(bar)%nat := ...
+
+It'd also be nice to be able to do something like
+
+Tactic Notation "foo" constr(bar)%%goal := ...
+
+to get the constr interpreted in whatever scope is bound to the type of the goal, if such a scope exists.
+
+
+@ppedrot does this seem feasible to you?
+Feasible, without doubt. Very hackish, most probably.
+> Very hackish, most probably.
+
+You mean because the code is already hackish, or because the idea itself does not look sound to you?
+The code is already very hackish. The Ltac runtime is full of hacks to make the whole tactic notation system superficially working, e.g. dynamically realizing that a constr variable might actually stand for a Ltac variable pointing to a list of terms. This ain't pretty, and the less we touch this system the better I sleep at night. 
+@ppedrot how about doing it for Ltac2? Would it be less hackish?
+Yes, Ltac2 tactic notations are just notations, so this is pretty easy to implement.
+@JasonGross are you fine closing this bug after the merge of #10289?

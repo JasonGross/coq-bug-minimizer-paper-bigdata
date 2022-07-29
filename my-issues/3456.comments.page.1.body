@@ -1,0 +1,25 @@
+Comment author: @JasonGross
+
+Goal 1 = 2.
+match goal with
+  | [ |- context G[2] ] => let x := constr:(fun T (x : T) =>
+                                              $(let G' := context G[x] in
+                                                exact G')$) in
+                           evar (T : Type);
+                             let x' := constr:(x T) in
+                             let x'' := (eval cbv beta delta [T] in x') in
+                             pose x''; subst T;
+                             let T := type of x'' in
+                             assert T by (abstract exact x'')
+
+end.
+
+
+Yes, I know, I'm playing with fire when I poke holes in Coq's protective barriers.
+
+
+Comment author: @ppedrot
+
+Fixed in trunk.
+
+

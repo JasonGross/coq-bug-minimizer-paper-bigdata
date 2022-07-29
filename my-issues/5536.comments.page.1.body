@@ -1,0 +1,16 @@
+Comment author: @JasonGross
+
+Something is very wrong with this output
+
+Ltac foo := idtac; idtac.
+Ltac bar := match goal with | _ => split; foo; foo end.
+
+Goal True /\ True.
+  Info 0 bar. (* split ;foo ;foo ;[> bar  | bar  ] *)
+
+
+Comment author: @JasonGross
+
+Note: This is present in 8.5, 8.6, and trunk
+
+

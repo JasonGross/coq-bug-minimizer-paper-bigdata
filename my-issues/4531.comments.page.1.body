@@ -1,0 +1,16 @@
+Comment author: @JasonGross
+
+I'd like this to work:
+
+Set Primitive Projections.
+Record unit : Set := tt {}.
+Definition path_unit (x y : unit) : x = y := eq_refl.
+
+
+Comment author: @JasonGross
+
+
+
+*** This bug has been marked as a duplicate of bug [BZ#5291](https://github.com/coq/coq/issues?q=is%3Aissue%20%22Original%20bug%20ID%3A%20BZ%235291%22) ***
+
+

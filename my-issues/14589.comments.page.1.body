@@ -1,0 +1,65 @@
+>Unfortunately, it seems that coqc cleans up the /tmp folder eagerly (is there a way to disable this behavior?), and hence I cannot get my hands on the relevant .native file. 
+
+The `native-compiler` debug should help
+> The `native-compiler` debug should help
+
+How do I enable this?  `Set Debug NativeCompiler`, `-debug native-compiler`, `-debug=native-compiler` and `-debug-native-compiler` don't work, and I can't find anything in [a doc search for "debug"](https://coq.inria.fr/doc/search.html?q=debug&check_keywords=yes&area=default) gives nothing promising.
+https://coq.github.io/doc/master/refman/proof-engine/vernacular-commands.html#coq:opt.Debug
+The problem seems clear IMO, Coq was compiled with OCaml version X, then `coqc` calls `ocamlfind ocamlopt` which finds a different version.
+
+This is tricky to handle properly [for example embedding a path in coqc creates another problem]
+
+The ideal fix would be to be able to embed the OCaml compiler as a library, actually we are pretty close to do that IIANM.
+Likely we already have an issue for this particular problem.
+Are you saying that the issue is that I've neglected to install the right compiler?  What commands should I run to see the relevant mismatch?
+> Are you saying that the issue is that I've neglected to install the right compiler? What commands should I run to see the relevant mismatch?
+
+You can try the `file` command as Guillaume indicated, and check that the version matches the compiler found by `ocamlfind`, but interfaces mismatches can also happen on the same compiler version, as they do record the full hash of the interface IIANM.
+For the file you attached:
+```
+$ file /tmp/nativevalues.cmi 
+/tmp/nativevalues.cmi: OCaml interface file (.cmi) (Version 021)
+```
+but other details are missing, such as 32 vs 64 bit mode, flambda mode, etc....
+Looking at [the log](https://github.com/coq-community/run-coq-bug-minimizer/runs/2976087115?check_suite_focus=true),
+`which ocamlfind` gives `/root/.opamcache/4.05.0/bin/ocamlfind`
+`ocamlfind ocamlopt -v` gives
+```
+The OCaml native-code compiler, version 4.05.0
+Standard library directory: /root/.opamcache/4.05.0/lib/ocaml
+```
+`coqc -config` gives
+```
+COQLIB=/github/workspace/builds/coq/coq-passing/_install_ci/lib/coq/
+COQCORELIB=/github/workspace/builds/coq/coq-passing/_install_ci/lib/coq/../coq-core//
+DOCDIR=/github/workspace/builds/coq/coq-passing/_install_ci/share/doc/coq/
+OCAMLFIND=/root/.opamcache/4.05.0/bin/ocamlfind
+CAMLFLAGS=-thread -rectypes -w +a-4-9-27-41-42-44-45-48-58-67-68 -safe-string -strict-sequence WARN=-warn-error +a-3
+HASNATDYNLINK=true
+COQ_SRC_SUBDIRS=config lib clib kernel library engine pretyping interp gramlib parsing proofs tactics toplevel printing ide stm vernac plugins/btauto plugins/cc plugins/derive plugins/extraction plugins/firstorder plugins/funind plugins/ltac plugins/micromega plugins/nsatz plugins/ring plugins/rtauto plugins/ssr plugins/ssrmatching plugins/ssrsearch plugins/syntax
+COQ_NATIVE_COMPILER_DEFAULT=yes
+```
+According to my table at https://github.com/ocaml/ocaml/issues/10425#issuecomment-847309017, version 021 includes 4.05, so, uh, it seems like all the versions are aligned.
+
+I'm still working on getting my hands on the actual -debug output files...
+Is there a flag to make `native_compute` emit the path to the ocaml compiler it's calling (or to emit the output of passing `-v` to that compiler)?  Another random idea: Can Coq burn in the version of OCaml that it's compiled with, and emit a helpful warning when this is mismatched with the version of OCaml that it finds in the system?
+@JasonGross the code is in nativelib.ml, all that it does is to call ocamlfind set a configure time tho, maybe that's the problem?
+Still working on getting the debug artifacts, but here's an example of a call:
+```
+/root/.opamcache/4.05.0/bin/ocamlfind opt -shared -g -Oclassic -o /tmp/Coq_nativee1f8ce/Coq_nativefd15a7.cmxs -rectypes -w a -I /tmp/Coq_nativee1f8ce -I /github/workspace/builds/coq/coq-passing/_install_ci/lib/coq/../coq-core/kernel -I /github/workspace/builds/coq/coq-passing/_install_ci/lib/coq/../coq-core/kernel/.kernel.objs/byte/ -I /github/workspace/builds/coq/coq-passing/_install_ci/lib/coq/../coq-core/library -I /github/workspace/builds/coq/coq-passing/_install_ci/lib/coq/../coq-core/library/.library.objs/byte/ -I /github/workspace/builds/coq/coq-passing/_build_ci/coq_performance_tests/PerformanceExperiments/.coq-native -I /github/workspace/builds/coq/coq-passing/_install_ci/lib/coq/theories/Arith/.coq-native -I /github/workspace/builds/coq/coq-passing/_install_ci/lib/coq/theories/Bool/.coq-native -I /github/workspace/builds/coq/coq-passing/_install_ci/lib/coq/theories/Classes/.coq-native -I /github/workspace/builds/coq/coq-passing/_install_ci/lib/coq/theories/Init/.coq-native -I /github/workspace/builds/coq/coq-passing/_install_ci/lib/coq/theories/Lists/.coq-native -I /github/workspace/builds/coq/coq-passing/_install_ci/lib/coq/theories/Logic/.coq-native -I /github/workspace/builds/coq/coq-passing/_install_ci/lib/coq/theories/NArith/.coq-native -I /github/workspace/builds/coq/coq-passing/_install_ci/lib/coq/theories/Numbers/.coq-native -I /github/workspace/builds/coq/coq-passing/_install_ci/lib/coq/theories/Numbers/Integer/Abstract/.coq-native -I /github/workspace/builds/coq/coq-passing/_install_ci/lib/coq/theories/Numbers/NatInt/.coq-native -I /github/workspace/builds/coq/coq-passing/_install_ci/lib/coq/theories/Numbers/Natural/Abstract/.coq-native -I /github/workspace/builds/coq/coq-passing/_install_ci/lib/coq/theories/PArith/.coq-native -I /github/workspace/builds/coq/coq-passing/_install_ci/lib/coq/theories/Program/.coq-native -I /github/workspace/builds/coq/coq-passing/_install_ci/lib/coq/theories/QArith/.coq-native -I /github/workspace/builds/coq/coq-passing/_install_ci/lib/coq/theories/Relations/.coq-native -I /github/workspace/builds/coq/coq-passing/_install_ci/lib/coq/theories/Setoids/.coq-native -I /github/workspace/builds/coq/coq-passing/_install_ci/lib/coq/theories/Sets/.coq-native -I /github/workspace/builds/coq/coq-passing/_install_ci/lib/coq/theories/Sorting/.coq-native -I /github/workspace/builds/coq/coq-passing/_install_ci/lib/coq/theories/Strings/.coq-native -I /github/workspace/builds/coq/coq-passing/_install_ci/lib/coq/theories/Structures/.coq-native -I /github/workspace/builds/coq/coq-passing/_install_ci/lib/coq/theories/Vectors/.coq-native -I /github/workspace/builds/coq/coq-passing/_install_ci/lib/coq/theories/ZArith/.coq-native -I /github/workspace/builds/coq/coq-passing/_install_ci/lib/coq/theories/micromega/.coq-native -I /github/workspace/builds/coq/coq-passing/_install_ci/lib/coq/theories/omega/.coq-native -I /github/workspace/builds/coq/coq-passing/_install_ci/lib/coq/theories/setoid_ring/.coq-native -I /github/workspace/builds/coq/coq-passing/_install_ci/lib/coq/theories/ssr/.coq-native -impl /tmp/Coq_nativee1f8ce/Coq_nativefd15a7.native
+File "/tmp/Coq_nativee1f8ce/Coq_nativefd15a7.native", line 1:
+Error: /github/workspace/builds/coq/coq-passing/_install_ci/lib/coq/../coq-core/kernel/nativevalues.cmi
+       is not a compiled interface for this version of OCaml.
+It seems to be for an older version of OCaml.
+```
+So it does seem to be calling the 4.05 version, and hence it seems like the error message is nonsense?
+Finally got the .native file [from here](https://github.com/coq-community/run-coq-bug-minimizer/actions/runs/995314214): [tmp-artifact.zip](https://github.com/coq/coq/files/6757670/tmp-artifact.zip)
+
+Okay, I've finally made progress on tracking this down.  When I invoke `/root/.opamcache/4.05.0/bin/ocamlfind opt -v` from the command line, I get 4.05, but when I invoke it from python3, I get
+```
+The OCaml native-code compiler, version 4.12.0
+Standard library directory: /root/.opamcache/4.12.0+flambda/lib/ocaml
+```
+Argh, I guess the issue was that I forgot to run `eval $(opam env)` from the shell in which I'm invoking the minimizer >.>
+
+Sorry for the hassle

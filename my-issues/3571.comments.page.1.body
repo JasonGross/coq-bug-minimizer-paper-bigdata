@@ -1,0 +1,50 @@
+Comment author: @JasonGross
+
+Axiom foo : forall {T : Type}, Type -> Type.
+Goal exists x y, @ foo Set x = @ foo (Set -> Set) y.
+  eexists.
+  eexists.
+  reflexivity. (* Toplevel input, characters 15-26:
+In nested Ltac calls to "reflexivity", last call failed.
+Error: Unable to unify "foo ?9" with "foo ?6".
+ *)
+
+I think implicit arguments should be printed, here.
+
+Also, here:
+
+Axiom foo : forall {T : Type}, Type -> Type.
+Goal exists x, @ foo Set x = @ foo (Set -> Set) Set.
+  eexists.
+  reflexivity.
+
+
+Comment author: @aspiwack
+
+So the idea would be to consider evars as "equal" to every other terms for this purpose.
+
+I looks useful (at least your examples are convincing). But I've played with constr_expr_eq too much for my sanity the day before yesterday, so I will take a break for a few more days (but it sounds like it is simple enough).
+
+
+It's already fixed by #14672
+
+Error messages are as clear as they can possibly get now :)
+For the recod:
+```
+Axiom foo : forall {T : Type}, Type -> Type.
+Goal exists x y, @ foo Set x = @ foo (Set -> Set) y.
+eexists.
+eexists.
+reflexivity. 
+```
+Fails with `Error: Unable to unify "@foo (Set -> Set) ?y" with "@foo Set ?x".`
+```
+Axiom foo : forall {T : Type}, Type -> Type.
+Goal exists x y, @ foo Set x = @ foo (Set -> Set) y.
+eexists.
+eexists.
+reflexivity. 
+```
+Fails with `Error: Unable to unify "@foo (Set -> Set) ?y" with "@foo Set ?x".`
+
+Thanks for noticing 

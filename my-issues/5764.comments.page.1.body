@@ -1,0 +1,22 @@
+Comment author: @JasonGross
+
+Consider this situation:
+```
+Module Type A.
+  Parameter a : nat.
+End A.
+
+Module B (mA : A).
+  Ltac cbv_a := cbv [mA.a].
+End B.
+```
+I think this is perfectly legitimate code, with well-defined semantics (error 
+on running [cbv_a] if [mA] is instantiated with a module with an opaque [a], 
+unfold it otherwise).  Yet Coq complains.
+
+
+Comment author: @herbelin
+
+Not having a lot of time to think about it but a quick comment to acknowledge the report. The request seems to me indeed perfectly legitimate. A runtime check could be tried, maybe the compatibility would not be so much broken.
+
+

@@ -1,0 +1,15 @@
+Comment author: @JasonGross
+
+Here is code that I would like to work:
+
+Require Import Setoid.
+Definition dummy : forall x y : nat, x = y -> x = y := fun _ _ x => x.
+Goal forall x y : nat, x = y -> x = y.
+  intros.
+  erewrite dummy at 1 by eassumption.
+  Undo.
+  erewrite dummy by eassumption. (* no applicable tactic *)
+
+This should possibly be behind a compatibility flag.
+
+

@@ -1,0 +1,32 @@
+Comment author: @JasonGross
+
+It would be nice to have a version of [generalize_eqs] that, rather than using 
+[JMeq], used [eq_rect] to cast across the other proofs of equality that it asks 
+for.  This would be a useful first step of implementing a version of [dependent 
+destruction] that does not rely on axiom K.
+
+
+Comment author: @jonleivent
+
+It would be better if it used an equality based on nested sigTs instead of eq_rect, as such equalities are understood by the injection and discriminate tactics - and are also produced by the injection tactic.  Although, it would also be convenient to have a way to convert a nested sigT equality into a eq_rect equality, to facilitate substitution or rewriting of the non-eq_rect side.
+
+I also suggest adding a recursive notation for the nested existTs, such as:
+
+Notation "[ x  ⋮  ..  ⋮  y  ⋮  z ]" := (existT _ x .. (existT _ y z ) ..).
+
+I have been experimenting with a tactic that generates the nested sigT equality:
+
+https://github.com/jonleivent/deptacs/blob/master/sigTgen.v
+
+
+Comment author: @JasonGross
+
+Here's your tactic for converting nested sigma equality into eq_rect equality (unless the equality is used dependently, in which case you need to be fancier):
+https://github.com/mit-plv/fiat-crypto/blob/9fbef8488c746675eb873094e7f7505e1c63a913/src/Util/Sigma.v#L209
+
+
+Comment author: @mattam82
+
+It is already implemented in the Equations package which defines its own dependent destruction tactics, based on equality of telescopes, and using available instances of EqDec/UIP when necessary. There's a released version on opam/github if you want to play with it.
+
+

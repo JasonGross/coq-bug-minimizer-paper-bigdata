@@ -1,0 +1,36 @@
+Comment author: @JasonGross
+
+It's annoying that I have to do things like
+
+```coq
+  Declare Reduction foo1 := simpl @ fst.
+  Declare Reduction foo2 := cbv beta.
+  Declare Reduction foo3 := simpl @ snd.
+  
+  Ltac foo term :=
+    let term := (eval foo1 in term) in
+    let term := (eval foo2 in term) in
+    let term := (eval foo3 in term) in
+    term.
+```
+I should instead be able to do something like
+```coq
+  Declare Reduction foo := simpl @ fst; cbv beta; simpl @ snd.
+  
+  Ltac foo term := eval foo in term.
+```
+Comment author: @ppedrot
+
+Actually, it should probably be extended to any rewrite strategy.
+
+
+Comment author: @silene
+
+Extending to rewrite strategies might be overkill, since it means that the implicit specification that reductions are type-preserving would be broken. However, support for a bunch of ltac constructs could be added, e.g. "match with", "let in", etc. Tactics such as "change with" could also be supported.
+
+
+Comment author: @ppedrot
+
+I persist to think that rewrite strategies are the fittest tool for it. There is actually everything there to (dynamically) restrict it conversion-preserving transformations. It really allows one to do fine-tuned changes.
+
+

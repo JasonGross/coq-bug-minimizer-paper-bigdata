@@ -1,0 +1,21 @@
+Comment author: @JasonGross
+
+On Coq v8.6 (dabe6d0e1d1782d3e9647e04aa1bf161765ad882):
+
+Definition foo := {| a := x |}. (* Anomaly: Environment corruption for 
+records.. Please report. *)
+
+Currently building a more recent version of 8.6 to see if it's since been fixed.
+
+
+Comment author: @JasonGross
+
+Seems fixed as of fa141fa1d2df2720f84a3e2c1fc4900a47f9939f (somewhat earlier 
+than this, presumably; I haven't bothered to find which commit fixed it)
+
+
+Comment author: @silene
+
+That is strange, because commit c85e668, which I just pushed, is certainly needed to fix the issue. Anyway, thanks for the report.
+
+

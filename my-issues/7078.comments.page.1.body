@@ -1,0 +1,15 @@
+Note that this is not related to tactics nor to the tactic unification algorithm. It is only about the type inference unification and we can already observe the same behaviors by issuing the following:
+```coq
+Inductive foo (n : nat) : nat -> Type := bar (_ : foo n n) : foo n n.
+Fail Check fix a m (v : foo ?[n] m) := match v in foo _ m' return foo ?[p] m' with @bar _ v' => a ?[q] v' end.
+Check let n:=?[n] in fix a m (v : foo n m) := match v in foo _ m return foo _ m with @bar _ v' => a _ v' end.
+Fail Check fix a m (v : foo ?[n] m) := match v in foo _ m return foo ?n m with @bar _ v' => a ?[p] v' end.
+Check fix a m (v : foo _ m) := match v in foo _ m' return foo _ m with @bar _ v' => a _ v' end.
+```
+The first one looks indeed a bit disappointing, but in some sense it is also right. To solve `?p@{m:=?q@{m:=m}; m':=?q@{m:=m}} == ?p@{m:=m; m':=?q@{m:=m}}`, the solutions are different depending on how we solve `?q`. If `?q` is supposed to be `m`, `?p` can be any term depending on `m` and `m'` and the equation always hold, but if `?q` is different from `m`, `?p` is constrained to not depend on `m` and the equation holds only by restricting `?p`. I don't know what to conclude though. This is a typical case where we would need a more general form of disjunction of solutions than what we have now. But we could also adopt a heuristics telling that in the absence of information on `?q`, the only way to solve the equation is by being more restrictive than possibly necessary on `?p` and by restricting it to not depend on `m`. Finally, we could also adopt the position that since the equation has at least a solution, we succeed and keep the constraint open. In any case, thanks for the example. I'm adding it to the list of [open issues with unification](https://github.com/coq/coq/wiki/UnificationProblems).
+
+The second one works because `?n` cannot depend on `m` anymore. Hence, we can only be in the second situation above. We have to restrict `?p` and the equation `?p = ?p` becomes trivial.
+
+The third one is an issue (probably) related to CEP [#23](https://github.com/coq/ceps/pull/23/files) and still to be improved.
+
+The fourth one is a different problem since `m` is renamed into `m'` only in binding position.

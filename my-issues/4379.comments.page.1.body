@@ -1,0 +1,37 @@
+Comment author: @JasonGross
+
+Tactic Notation "myspecialize" ident(H) open_constr_list(bar) := specialize (H bar).
+
+Goal (True -> True) -> True.
+  intro H.
+  myspecialize H _. (* Anomaly: Uncaught exception Failure("out_gen"). Please report. *)
+
+
+Comment author: @herbelin
+
+Created attachment 621
+Patch to fix anomaly
+
+This is a quick (non generic) patch to avoid this 8.5 anomaly, even if, as you guess, the example would eventually not succeed, failing similarly as in [BZ#4380](https://github.com/coq/coq/issues?q=is%3Aissue%20%22Original%20bug%20ID%3A%20BZ%234380%22).
+
+Pierre-Marie has projects around this code in trunk, so I'm not committing the patch, just attaching it in case it helps in the meantime for 8.5.
+
+> Attached file: [patch.anomaly-openconstr-4379](https://coq.inria.fr/bugfiles/attachment.cgi?id=621) (text/plain, 1077 bytes)
+> Description:   Patch to fix anomaly
+
+
+Comment author: @ppedrot
+
+In trunk this now fails with a proper error. Did you wish that this code would function? I believe I am not far from allowing similar features in Ltac but in a cleaner way.
+
+
+Comment author: @JasonGross
+
+Feel free to close this bug when it gives a plain error.  Bug [BZ#4380](https://github.com/coq/coq/issues?q=is%3Aissue%20%22Original%20bug%20ID%3A%20BZ%234380%22) is the request for having it function (which I would like).
+
+
+Comment author: @maximedenes
+
+Now fails with a proper error in 8.6, so closing.
+
+

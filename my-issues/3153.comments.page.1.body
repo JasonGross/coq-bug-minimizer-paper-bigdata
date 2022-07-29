@@ -1,0 +1,18 @@
+Comment author: @JasonGross
+
+Please change
+            if lablgtkdirtmp="$(ocamlfind query lablgtk2.sourceview2 2> /dev/null)"; then
+to
+            if lablgtkdirtmp="$(ocamlfind query lablgtk2.sourceview2 2> /dev/null | tr -d '\r')"; then
+
+
+Comment author: @JasonGross
+
+Pull request to fix this bug at https://github.com/coq/coq/pull/3
+
+
+Comment author: @letouzey
+
+Thanks. Applied to trunk (commit 71bd17b). I'll apply it to 8.4 shortly...
+
+

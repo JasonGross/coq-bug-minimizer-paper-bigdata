@@ -1,0 +1,62 @@
+Comment author: @JasonGross
+```coq
+Set Universe Polymorphism.
+Set Printing Universes.
+Check Type. (* Type@ {Top.65}
+     : Type@ {Top.65+1}
+(* Top.65 |=  *) *)
+Check ltac:(exact Type). (* Type@ {Top.67}
+     : Type@ {Top.67+1}
+(* Top.67
+   Top.68 |= Top.67 < Top.68
+               *) *)
+```
+It would be nice to have a way to construct a term on the fly without the extra universe.  For example, say I want to define a notation for Type_1, which should be strictly greater than Set.  I can do
+```coq
+Notation Type1 := ltac:(let U := constr:(let U := (Type) in let gt := (Set : U) in U) in exact U) (only parsing).
+```
+but then I get an extra universe.  Or I can do 
+```coq
+Definition Type1 := Eval simpl in let U := Type in let gt := (Set : U) in U.
+```
+but then I sometimes have to unfold it.
+
+
+FTR, regarding the later part of this issue. We have:
+
+```coq
+Check Type@{Set}. (* Set : Type@{Set+1} *)
+Check Type@{Set+1}. (*Type@{Set+1} : Type@{Set+2} *)
+Fail Check Type@{Set+2}.
+```
+
+I don't know what can be done about ltac introducing an extra universe however.
+`Check ltac:(exact Type).` does not display the type of the temporary evar which is filled by exact. It is that type which needs the extra level.
+Maybe we should run universe restriction for Check?
+On the other hand `Type ltac:(exact Type).` gives:
+```coq
+Type@{issue_3423.2}
+     : Type@{issue_3423.2+1}
+(* {issue_3423.3 issue_3423.2 issue_3423.1} |=
+     issue_3423.2 < issue_3423.3
+     issue_3423.3 < issue_3423.1 *)
+```
+
+That's more universes than I expected.
+
+That's the kind of output I would expect from
+```coq
+Type (Type : Type : Type).
+```
+rather than
+```coq
+Type (Type : Type).
+```
+though they should really be
+```coq
+Type Type.
+```
+Sorry for the Type command being confusing here 0:-).
+@SkySkimmer Regarding what we run for `Check`. I think it would be useful to have attributes to control what we actually do in a `Check`. Being able to control typeclasses, coercions, evars and universes seperately would help in many cases.
+Being able to skip minimization would be interesting too.
+Actually it looks like Type doesn't minimize (Vernacentries.vernac_global_check)

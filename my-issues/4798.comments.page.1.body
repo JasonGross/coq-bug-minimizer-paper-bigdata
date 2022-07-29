@@ -1,0 +1,117 @@
+Comment author: @JasonGross
+
+Here is code that fails, but which I think should succeed (without -compat 8.4).  This blocks bug #4733.
+
+```coq
+Check match 2 with 0 => 0 | S n => n end.
+Notation "|" := 1 (compat "8.4").
+Check match 2 with 0 => 0 | S n => n end. (* fails *)
+```
+
+Comment author: @ppedrot
+
+The "compat" option seems undocumented in the manual. In the CHANGES file, it is explicitly written it behaves like an "only parsing" modifier. I think we can indeed stick to the behaviour you propose, and that is easy to implement. Any comments, coqdevs?
+
+
+Comment author: @maximedenes
+
+Yes, it seems obvious that compat notations should not introduce conflicts when 
+-compat is not used. PMP, can you fix it then?
+
+
+Comment author: @ppedrot
+
+I'm on it.
+
+
+Comment author: @maximedenes
+
+Is this going to land soon? We probably need it for beta 1, but if you're too busy, we can take care of it.
+
+
+Comment author: @ppedrot
+
+I'll try to finish it by the end of the day (UTC).
+
+
+Comment author: @ppedrot
+
+Fixed by edb55a9.
+
+As indicated in the commit comment, we should rewrite Metasyntax thoroughly, because it is intricate spaghetti code. I'm pretty much convinced that there are a lot of nasty bugs lurking around notations, due to this unmaintainable complexity. Nonetheless, this is a task way too ambitious for 8.6, so I postpone it for trunk.
+
+
+Comment author: @maximedenes
+
+I realize only now that this fix introduces a different behavior of the compat flag for syndefs and regular notations e.g.:
+
+```coq
+Notation "!" := true (compat "8.5").
+Notation mytrue := true (compat "8.5").
+
+Check mytrue. (* succeeds even without -compat *)
+Check !. (* fails without -compat *)
+```
+
+I guess the question is what should be the semantics of the compat flag? In the stdlib, there are a lot of syndefs with a compat annotation. When today they are used without a compat flag, not only it succeeds, but it doesn't even emit a warning...
+
+
+Comment author: @ppedrot
+
+> I realize only now that this fix introduces a different behavior of the
+> compat flag for syndefs and regular notations e.g.:
+
+Yep, I realized that as well when writing the code, but trying to make the two match was breaking the test-suite...
+
+> I guess the question is what should be the semantics of the compat flag? In
+> the stdlib, there are a lot of syndefs with a compat annotation. When today
+> they are used without a compat flag, not only it succeeds, but it doesn't
+> even emit a warning...
+
+It should, there is a flag Verbose Compat Notation, if it's false by default, then it's probably a bug.
+
+
+Comment author: @maximedenes
+
+Baroque option programming...
+
+In syntax_def.ml, there is a bool ref used to defined the Set Verbose Compat option, which is true by default.
+
+In toplevel.ml, there is another bool ref used to set the first one at startup time, and that one is false by default...
+
+
+Comment author: @maximedenes
+
+There is also a -no_compat_notation option which, from what I see, does... nothing!
+
+
+Comment author: @ppedrot
+
+This sort of adds up to the rewriting of Metasyntax...
+
+
+Comment author: @maximedenes
+
+Anyway, I'm removing those options because they are superseded by the warnings system, that can now be use to silence off those compatibility warnings or even turn them into errors.
+
+
+Comment author: @maximedenes
+
+The only problem is that now we see that a lot of old compatibility notations are used in the stdlib...
+
+
+Comment author: @maximedenes
+
+Ok, I won't enable those warnings after all. Otherwise, we would get a system that tells the user to replace e.g.:
+
+le_n_Sn with Nat.le_succ_diag_r
+lt_S with Nat.lt_lt_succ_r (on other types like R and and positive, the same lemma is called lt_lt_succ)
+
+In many cases, the new names will be too painful for intensive users.
+
+
+Comment author: @JasonGross
+
+Can we just drop the compat flag on such aliases, and keep the warning?
+
+

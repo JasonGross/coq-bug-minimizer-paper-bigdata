@@ -1,0 +1,36 @@
+Further reduced 
+```coq
+Set Universe Polymorphism.
+
+Definition dtree4  :=
+  match Some 0
+  with
+  | Some _ => Type
+  | None => Set
+  end
+.
+
+Definition dtree'' := Eval vm_compute in dtree4. (* segfault *)
+```
+With byte compiled Coq it says "Anomaly "Parsing virtual machine value expected universe level, got Vprod."
+Here's the extended test case that originally triggered this, and gives the anomaly even with the opt-compiled version:
+[bug_vm_segfault_07.v.txt](https://github.com/coq/coq/files/2078021/bug_vm_segfault_07.v.txt)
+
+Indeed, something seriously wrong is going on in the universe handling code introduced in 8.5. Here's a proof of `False`:
+
+```coq
+Require Import Hurkens.
+Polymorphic Inductive unit := tt.
+
+Polymorphic Definition foo :=
+  let x := id tt in (x, x, Type).
+
+Lemma bad : False.
+  refine (TypeNeqSmallType.paradox (snd foo) _).
+  vm_compute.
+  reflexivity.
+Qed.
+
+Print Assumptions bad.
+```
+`native_compute` is not impacted, it uses a less optimized but safer approach for binding local universes.

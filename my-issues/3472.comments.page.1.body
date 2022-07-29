@@ -1,0 +1,18 @@
+Comment author: @JasonGross
+
+Set Primitive Projections.
+Record prod A B := pair { fst : A ; snd : B }.
+
+Goal forall x y, @ fst Set Set x = y -> fst x = y.
+Proof.
+  intros x y H.
+  Fail rewrite H. (* Error: Found no subterm matching "@ fst Set Set x" in the current goal. *)
+  lazy delta[fst] in H. (* (fun (A B : Type) (p : prod A B) => fst p) Set Set x = y *)
+  rewrite H.
+
+
+Comment author: @mattam82
+
+No longer applicable.
+
+

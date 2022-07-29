@@ -1,0 +1,92 @@
+cc @ppedrot @MSoegtropIMC 
+Hmm, this is strange, it looks like you're missing a value for the ocamlrun command or something. In any case, there is no way on earth the mlg is going to be OCaml bytecode, so something is messed up in the shell calls.
+@ppedrot Does `coqpp` call out to the shell?  Even if I invoke it myself, I get the same error:
+```
+$ coqpp foo.mlg
+Fatal error: the file 'foo.mlg' is not a bytecode executable file
+```
+(On linux, the invocation works fine.)  There is another issue going on here, which is that the Coq installer does not seem to have installed any of the ocaml executables and also emits the wrong location for ocamlfind, which I have reported separately as https://github.com/coq/coq/issues/10922
+That's very strange to say the least. `coqpp` is literally just a script parsing a file and outputing some data, no shell involved at all. What does `ocamlrun coqpp foo.mlg` does?
+Similar error
+```
+$ ocamlc -v
+The OCaml compiler, version 4.04.2
+Standard library directory: /usr/lib/ocaml
+
+$ which ocamlrun
+/usr/bin/ocamlrun
+
+$ ocamlrun coqpp foo.mlg
+Fatal error: the file '/cygdrive/d/Coq-8.10/bin/coqpp' is not a bytecode executable file
+```
+I will have a look at it on Wednesday.
+Bump @ppedrot @MSoegtropIMC any progress on this?
+Now coqpp fails on Windows with a different error message:
+```
+the file 'src/abstraction.mlg' has not the right magic number: expected Caml1999X027, got c t
+  }
+END
+```
+This is on my Coq 8.11.2 installation:
+```
+$ coqpp -version
+The OCaml runtime, version 4.10.0
+```
+
+@andrew-appel Did you compile Coq on Windows yourself?  This looks like it might be an issue having your system OCaml be different from the one that compiled Coq.
+No, I did not compile it myself, I used the standard package:  
+[coq-8.11.2-installer-windows-i686.exe](https://github.com/coq/coq/releases/download/V8.11.2/coq-8.11.2-installer-windows-i686.exe)
+
+It's not possible to compile OCaml plugins on Windows unless you have exactly the same OCaml setup as was used to compile Coq.  The easiest thing to do here is to compile Coq from source yourself.  See also #10922
+@Andrew: I am not sure I understand what you want to achieve. If you want to compile e.g. a plugin so that it is compatible with Coq 8.11.2, the best way is to use the build script we use to compile the installer. This script sets up a fresh cygwin in a path you can configure, compiles Coq and everything and leaves you in this cygwin a build system which is at least good enough to compile Coq and all delivered plugins. The only manual work with this is that you have to give the options to this script.
+
+So the procedure is (in a command shell with git ready or do the git otherwise and just CD to the coq folder)
+```
+git clone https://github.com/coq/coq.git
+cd coq
+git checkout V8.11.2    <<<< This is important to get exactly the same ocaml and everything as in 8.11.2
+cd dev/build/windows
+
+download cygwin 64 bit setup and put it into this folder e.g.
+powershell -Command "(New-Object Net.WebClient).DownloadFile('http://www.cygwin.com/setup-x86_64.exe', 'setup-x86_64.exe')"
+
+  SET EXTRA_ADDONS=^
+    -addon=bignums ^
+    -addon=equations ^
+    -addon=mtac2 ^
+    -addon=mathcomp ^
+    -addon=menhir ^
+    -addon=compcert ^
+    -addon=extlib ^
+    -addon=quickchick ^
+    -addon=coquelicot ^
+    -addon=vst ^
+    -addon=aactactics ^
+    -addon=flocq ^
+    -addon=interval ^
+    -addon=gappa_tool ^
+    -addon=gappa
+
+MakeCoq_MinGW.bat -threads=16 ^
+  -arch=64 -installer=N -coqver="/cygdrive/c/<your coq root folder with / slashes> ^
+  -destcyg=<your cygwin destination folder (Windows)> ^
+  -destcoq=<your coq destination folder in windows format (Windows)> 
+  -cygcache=<your local cygwin cache folder> ^
+  %EXTRA_ADDONS% ^
+  -setup setup-x86_64.exe
+```
+(I hope I cut and pasted this correctly)
+
+The cygwin repo we use recently has hickups. In case you have issues with this, give a different one with the -cygrepo=url option from here: (https://cygwin.com/mirrors.html)
+
+There are also command line options to install Coq inside of the cygwin rather than in a separate folder. See the Readme.txt in the same folder as the batch file. If you install to a separate folder it is easier to zip and give to someone else.
+
+Sorry for the messy command line - historic reasons - I am working on a new one right now (opam based, will come soon).
+I was just trying to compile metacoq, which is indeed a plugin.  Now that I understand better, I see in hindsight that much confusion (and time spent by several people) could have been avoided if only the following were true:
+
+coqpp should give an error message "Your ocaml configuration does not match the ocaml configuration under which coq was compiled.  Plug-ins can only be compiled using the same ocaml configuration as coq.  The only reliable way to achieve that is to compile coq yourself."
+
+This would have been much more explanatory.
+I think this would be better as a feature request for coq_makefile.  I'll go make a separate issue for it
+@andrew-appel : it is partly also my fault - I never came up with an easy enough setup for Coq development on Windows. The CI build scripts are rather awkward to use for this purpose. Hopefully this changes with the new opam based Coq platform build scripts.
+I am closing this in favor of #12656 

@@ -1,0 +1,96 @@
+Comment author: @JasonGross
+
+$ cat foo.v
+Require Import Coq.Arith.Arith Coq.Init.Wf.
+Axiom proof_admitted : False.
+Goal exists x y z : nat, Fix
+                           Wf_nat.lt_wf
+                           (fun _ => nat -> nat)
+                           (fun x' f => match x' as x'0
+                                              return match x'0 with
+                                                       | 0 => True
+                                                       | S x'' => x'' < x'
+                                                     end
+                                                     -> nat -> nat
+                                        with
+                                          | 0 => fun _ _ => 0
+                                          | S x'' => f x''
+                                        end
+                                          (match x' with
+                                             | 0 => I
+                                             | S x'' => (Nat.lt_succ_diag_r _)
+                                           end))
+                           z
+                           y
+                         = 0.
+Proof.
+  do 3 (eexists; [ shelve.. | ]).
+  match goal with |- ?G => let G' := (eval lazy in G) in change G with G' end.
+  case proof_admitted.
+  Unshelve.
+  all:constructor.
+Defined.
+$ echo | coqtop
+Welcome to Coq 8.5beta3 (November 2015)
+
+Coq < Coq <
+$ coqc foo.v
+File "./foo.v", line 26, characters 2-22:
+Anomaly: Uncaught exception Not_found. Please report.
+
+
+Comment author: @JasonGross
+
+Also,
+$ cat foo2.v
+Require Import Coq.Arith.Arith Coq.Init.Wf.
+Axiom proof_admitted : False.
+Goal exists x y z : nat, Fix
+                           Wf_nat.lt_wf
+                           (fun _ => nat -> nat)
+                           (fun x' f => match x' as x'0
+                                              return match x'0 with
+                                                       | 0 => True
+                                                       | S x'' => x'' < x'
+                                                     end
+                                                     -> nat -> nat
+                                        with
+                                          | 0 => fun _ _ => 0
+                                          | S x'' => f x''
+                                        end
+                                          (match x' with
+                                             | 0 => I
+                                             | S x'' => (Nat.lt_succ_diag_r _)
+                                           end))
+                           z
+                           y
+                         = 0.
+Proof.
+  do 3 (eexists; [ shelve.. | ]).
+  match goal with |- ?G => let G' := (eval lazy in G) in change G with G' end.
+$ coqtop -emacs < foo2.v
+...
+<prompt>Unnamed_thm < 6 |branch| 0 < </prompt>Toplevel input, characters 2-78:
+>   match goal with |- ?G => let G' := (eval lazy in G) in change G with G' end.
+>   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Anomaly: error with no safe_id attached: Uncaught exception Not_found..
+Please report.
+
+<prompt>Unnamed_thm < 7 |branch| 0 < </prompt>
+
+
+Comment author: @ppedrot
+
+The issue seems to stem from an evar leak in Tacinterp.interp_typed_pattern.
+
+
+Comment author: @ppedrot
+
+A nice theoretically forbidden Evd.remove was added by Matthieu in commit 2d391676, while trying to fix bug [BZ#3590](https://github.com/coq/coq/issues?q=is%3Aissue%20%22Original%20bug%20ID%3A%20BZ%233590%22). Looks like a dirty workaround to the way we interpret patterns. I'll assign him the bug.
+
+
+Comment author: @mattam82
+
+Oops. I forgot to remove this hack when I fixed the problem properly a month later in a86ae4d352cc8e4ac306f04d5536d7fff04d3303 . Now fixed in 8.5.
+
+

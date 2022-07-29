@@ -1,0 +1,161 @@
+Comment author: @JasonGross
+```coq
+Axiom proof_admitted : False.
+Tactic Notation "admit" := abstract case proof_admitted.
+Goal forall (T : Type) (p : prod (prod T T) bool) (Fm : Set) (f : Fm) (k : 
+forall _ : T, Fm),
+    @ eq Fm
+        (k
+           match p return T with
+           | pair p0 swap => fst p0
+           end) f.
+  intros.
+  Fail match goal with
+       | [ |- ?f (let (a, b) := ?d in @ ?e a b) = ?rhs ]
+         => pose (let (a, b) := d in e a b) as t0
+       end. (* The command has indeed failed with message:
+In environment
+T : Type
+p : T * T * bool
+Fm : Set
+f : Fm
+k : T -> Fm
+a : T * T
+b : bool
+The term "a" has type "(T * T)%type" while it is expected to have type "bool".
+ *)
+  match goal with
+  | [ |- ?f (let (a, b) := ?d in ?e) = ?rhs ]
+    => pose (let (a, b) := d in e) as t
+  end.
+  Fail revert t; admit. (* The command has indeed failed with message:
+Ltac call to "admit" failed.
+Illegal application:
+The term "@ fst" of type "forall A B : Type, A * B -> A"
+cannot be applied to the terms
+ "T" : "Type"
+ "T" : "Type"
+ "p0" : "bool"
+The 3rd term has type "bool" which should be coercible to "(T * T)%type".
+ *)
+```
+
+Comment author: @silene
+
+It has nothing to do with function application or DeBruijn indices. Here is a reduced testcase:
+```coq
+Lemma foo (r : Prop * nat) : let (p, q) := r in p.
+match goal with |- let (a, b) := _ in ?c => idtac c end.
+(* display b, should have displayed a *)
+```
+
+Comment author: @samuelgruetter
+
+Just ran into the same (or a similar) issue.
+Here's my testcase:
+
+In the following pattern match on a destructuring `let`, all I do is to reconstruct the goal `G1` as `G2`, so I would expect `G1` and `G2` to be the same.
+
+```coq
+Goal forall (p: nat*nat), let (a, b) := p in a < b.
+intro p.
+match goal with
+| |- ?G1 =>
+  match G1 with
+  |                  (let (x1, x2) := ?c in ?body) =>
+    let G2 := constr:(let (x1, x2) :=  c in  body) in
+    assert (G1 <-> G2)
+  end
+end.
+```
+However, it opens the following subgoal:
+```coq
+(let (a, b) := p in a < b) <-> (let (b, a) := p in a < b)
+```
+As you can see, a and b were swapped!
+
+Interestingly, if I use the syntax
+
+`'pair x1 x2`
+
+instead of
+
+`(x1, x2)`
+
+it works as expected.
+
+
+Comment author: @psteckler
+
+FWIW, the pair and tuple versions mentioned in Comment 1 parse very differently. 
+
+The pair version:
+```ocaml
+Vernacexpr.vernac_expr =
+  VernacSolve (SelectNth 1, None,
+   Tacexpr.TacMatchGoal (Tacexpr.Once, false,
+    [Tacexpr.Pat ([],
+      Tacexpr.Term
+       (Constrexpr.CCases ((691,715), Misctypes.LetPatternStyle, None,
+         [(Constrexpr.CHole ((708,709), None, Misctypes.IntroAnonymous, None),
+           (None, None))],
+         [((691,715),
+           [((691,715),
+             [Constrexpr.CPatCstr ((696,704),
+               Libnames.Ident ((696,700), pair), [],
+               [Constrexpr.CPatAtom ((701,702),
+                 Some (Libnames.Ident ((701,702), a)));
+                Constrexpr.CPatAtom ((703,704),
+                 Some (Libnames.Ident ((703,704), b)))])])],
+           Constrexpr.CEvar ((713,715), c, []))])),
+      Tacexpr.TacId [Tacexpr.MsgIdent ((725,726), c)])]),
+   false)
+```
+
+The tuple version:
+```ocaml
+Vernacexpr.vernac_expr =
+  VernacSolve (SelectNth 1, None,
+   Tacexpr.TacMatchGoal (Tacexpr.Once, false,
+    [Tacexpr.Pat ([],
+      Tacexpr.Term
+       (Constrexpr.CLetTuple ((751,771),
+         [((756,757), Names.Name.Name a); ((758,759), Names.Name.Name b)],
+         (None, None),
+         Constrexpr.CHole ((764,765), None, Misctypes.IntroAnonymous, None),
+         Constrexpr.CEvar ((769,771), c, []))),
+      Tacexpr.TacId [Tacexpr.MsgIdent ((781,782), c)])]),
+   false)
+```
+
+I don't know where that difference results in the different behavior.
+
+
+Comment author: @psteckler
+
+I may have found where the tuple gets reversed.
+
+When running the match_goal in Guillaume's example, in patternops.ml, `pattern_of_glob_constr', the input `c' is:
+```coq
+c: Glob_term.glob_constr = let (a, b) := _ in ?c
+```
+The term `p' constructed by `pat_of_raw_metas [] c` is:
+```coq
+p: Pattern.constr_pattern = (let (b, a) := _ in ?c)
+```
+
+which sure looks suspicious.
+
+I'll look into this tomorrow. Hooray for ocamldebug!
+
+
+Comment author: @psteckler
+
+Created PR 641: https://github.com/coq/coq/pull/641
+
+
+Comment author: @JasonGross
+
+Pr 641 has been merged
+
+

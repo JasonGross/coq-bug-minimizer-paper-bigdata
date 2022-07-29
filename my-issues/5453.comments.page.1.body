@@ -1,0 +1,12 @@
+Comment author: @JasonGross
+
+Section foo.
+  Let x := 1.
+  Lemma foo : 1 = 2.
+  Proof using.
+  Admitted.
+  Lemma bar : x = 2.
+    subst x. rewrite foo. (* Error: foo depends on the variable x which is not 
+declared in the context. *)
+
+

@@ -1,0 +1,85 @@
+Comment author: @JasonGross
+```coq
+(* File reduced by coq-bug-finder from original input, then from 981 lines to 33 lines *)
+(* coqc version 8.5beta2 (May 2015) compiled on May 5 2015 15:20:21 with OCaml 4.01.0
+   coqtop version 8.5beta2 (May 2015) *)
+
+Axiom ap : forall {A B:Type} (f:A -> B) {x y:A} (p:x = y), f x = f y.
+
+Definition Sect {A B : Type} (s : A -> B) (r : B -> A) :=
+  forall x : A, r (s x) = x.
+
+Class IsEquiv {A B : Type} (f : A -> B) := BuildIsEquiv {
+  equiv_inv : B -> A ;
+  eisretr : Sect equiv_inv f;
+  eissect : Sect f equiv_inv;
+  eisadj : forall x : A, eisretr (f x) = ap f (eissect x)
+}.
+
+Definition Lift (A : Type@ {i}) : Type@ {j}
+  := Eval hnf in let enforce_lt := Type@ {i} : Type@ {j} in A.
+
+Definition lower {A} : Lift A -> A := fun x => x.
+
+Definition lift2 {A B} (f : forall x : A, B x) : forall x : Lift A, Lift (B (lower x))
+  := f.
+
+Global Instance lift_isequiv {A B} (f : A -> B) {H : IsEquiv f} : @ IsEquiv _ _ (lift2 f).
+(* Toplevel input, characters 95-102:
+Error:
+In environment
+A : Type
+B : Type
+f : A -> B
+H : IsEquiv f
+The term "lift2 f" has type "Lift A -> Lift B"
+while it is expected to have type "Lift A -> ?T0" (cannot instantiate
+"?T0" because "x" is not in its scope: available arguments are
+"A" "B" "f" "H"). *)
+```
+
+Comment author: @silene
+
+Just to reduce a bit the attack surface, this is not related to records, explicit type indices, nor type classes.
+```coq
+Definition IsEquiv {A B : Type} (f : A -> B) := B -> A.
+Definition Lift (A : Type) : Type := A.
+Definition lift2 {A B} (f : forall x : A, B x) : (forall y : A, Lift (B y)) := f.
+Definition lift_isequiv A B (f : A -> B) : IsEquiv (lift2 f).
+
+The term "lift2 f" has type "A -> Lift B"
+while it is expected to have type "A -> ?B"
+(cannot instantiate "?B" because "y" is not in its scope:
+available arguments are "A" "B" "f").
+
+```
+Comment author: @ppedrot
+
+What's the issue with this error? Although it is a bit difficult to understand when you don't have the correct mental model for evars, it does make sense to me: You're trying to depend on the argument of a non-dependent function.
+
+What would you like instead?
+
+
+Comment author: @JasonGross
+
+1. I expect unification to succeed; the function is not dependent
+
+2. It would be better if the message said what term it was trying to instantiate T0 with.
+
+3.  To make the error message more accessible to beginners, this message should be prefaced with something like "you are trying to unify a dependent function with a non dependent function" when that's the case.
+
+
+Comment author: @silene
+
+I agree with Jason. My reduced example is well-typed, yet Coq fails to successfully type it. I known that this is undecidable and all that. But here the situation is quite dumb. Indeed, Coq tells you that it cannot unify "A -> Lift B" and "A -> ?B", yet if you tell Coq that ?B is "Lift B", it miraculously succeeds. Sure, it is a limitation of the evar implementation. Still, Coq should not tell you that it cannot unify ?B and Lift B; it should tell you _why_ it cannot unify them.
+```coq
+Definition IsEquiv {A B : Type} (f : A -> B) := B -> A.
+Definition Lift (A : Type) : Type := A.
+Definition lift2 {A B} (f : forall x : A, B x) : (forall y : A, Lift (B y)) := f.
+Definition lift_isequiv A B (f : A -> B) : IsEquiv (B := _ _) (lift2 f).
+(* success!!! *)
+
+```
+Tested in 8.15+alpha, coq seems to accept all of it.
+
+Therefore closing.

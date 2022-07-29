@@ -1,0 +1,34 @@
+Comment author: @JasonGross
+
+Require Import Coq.ZArith.ZArith Coq.micromega.Psatz.
+Open Scope Z_scope.
+Require Import Coq.Compat.AdmitAxiom.
+
+Class Foo {x : Z} := { T : Type ; dec : T -> Z }.
+Goal forall bound {F : @ Foo bound} (x y : T), 0 <= dec x < bound -> 0 <= dec y 
+< bound -> dec x + dec y >= bound -> dec x + dec y < 2 * bound.
+Proof.
+  intros.
+  Fail lia. (* Error: Illegal application: 
+The term "@ dec" of type "forall (x : Z) (Foo : Foo), T -> Z"
+cannot be applied to the terms
+ "__z2" : "Z"
+ "F" : "Foo"
+ "y" : "T"
+The 2nd term has type "@ Foo bound" which should be coercible to "@ Foo __z2". *)
+  xlia.
+  Fail abstract admit. (* Error: Illegal application: 
+The term "@ dec" of type "forall (x : Z) (Foo : Foo), T -> Z"
+cannot be applied to the terms
+ "__z2" : "Z"
+ "F" : "Foo"
+ "y" : "T"
+The 2nd term has type "@ Foo bound" which should be coercible to "@ Foo __z2".
+ *)
+ Undo 2.
+ generalize dependent (dec x); intros.
+ generalize dependent (dec y); intros.
+ lia.
+Qed.
+
+

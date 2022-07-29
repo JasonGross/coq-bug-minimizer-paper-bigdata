@@ -1,0 +1,15 @@
+Comment author: @JasonGross
+
+I don't want to have to manually workaround [BZ#3214](https://github.com/coq/coq/issues?q=is%3Aissue%20%22Original%20bug%20ID%3A%20BZ%233214%22); it should be workaround-able in ./configure.  Also, is there any reason to not just unconditionally set READABLE_ML4=1?
+
+
+Comment author: @silene
+
+Once you set READABLE_ML4=1, you no longer get meaningful line numbers in error messages.
+
+
+Comment author: @ppedrot
+
+Although not as requested, I believe this has been fixed by b038ff00e which simply refuses to compile Coq with the debug flag on OCaml 4.01.
+
+

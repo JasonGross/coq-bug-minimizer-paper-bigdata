@@ -1,0 +1,71 @@
+Comment author: @JasonGross
+
+Consider the code:
+```coq
+Require Import Coq.Lists.List Coq.Classes.Morphisms.
+
+Definition list_caset A (P : list A -> Type) (N : P nil) (C : forall x xs, P (x::xs))
+             ls
+  : P ls
+    := match ls with
+         | nil => N
+         | x::xs => C x xs
+       end.
+
+Global Instance list_caset_Proper {A P}
+: Proper (eq
+            ==> pointwise_relation _ (pointwise_relation _ eq)
+            ==> pointwise_relation _ eq)
+         (@ list_caset A (fun _ => P)).
+Proof.
+  lazy.
+  intros ??? ?? H [|? ?]; subst; eauto.
+Qed.
+
+Global Instance list_caset_Proper' {A P}
+: Proper (eq
+            ==> pointwise_relation _ (pointwise_relation _ eq)
+            ==> eq
+            ==> eq)
+         (@ list_caset A (fun _ => P)).
+Proof.
+  lazy.
+  intros ??? ?? H [|? ?] ??; subst; eauto.
+Qed.
+
+Goal True.
+Proof.
+  let P := nat in
+  let A := nat in
+  pose proof (_ : Proper (@ eq P ==> pointwise_relation A (pointwise_relation _ eq) ==> _ ==> _) (@ list_caset A (fun _ => P))).
+  let P := nat in
+  let A := nat in
+  pose proof (_ : Proper (@ eq P ==> pointwise_relation A _ ==> _ ==> _) (@ list_caset A (fun _ => P))).
+```
+The first of these succeeds, while the second fails with
+```
+Toplevel input, characters 107-133:
+Error:
+In environment
+H : Proper
+      (eq ==>
+       pointwise_relation nat (pointwise_relation (list nat) eq) ==>
+       eq ==> eq) (list_caset nat (fun _ : list nat => nat))
+The term "list_caset nat (fun _ : list nat => nat)" has type
+ "nat -> (nat -> list nat -> nat) -> list nat -> nat"
+ while it is expected to have type "nat -> (nat -> ?121) -> ?123 -> ?124".
+```
+
+In Coq 8.5, we get a slightly more illuminating error message:
+```
+Error:
+In environment
+H : Proper (eq ==> pointwise_relation nat (pointwise_relation (list nat) eq) ==> eq ==> eq)
+      (list_caset nat (fun _ : list nat => nat))
+The term "list_caset nat (fun _ : list nat => nat)" has type "nat -> (nat -> list nat -> nat) -> list nat -> nat"
+while it is expected to have type "nat -> (nat -> ?B) -> ?T -> ?T2" (cannot instantiate "?B" because "x" is not in its scope:
+available arguments are "H").
+```
+I'm confused where `x` is coming from.
+
+

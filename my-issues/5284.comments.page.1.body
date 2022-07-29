@@ -1,0 +1,32 @@
+Comment author: @JasonGross
+
+CoInductive A := .
+Scheme Equality for A. (* Error:
+Unexpected error during scheme creation: Anomaly: Uncaught exception 
+Type_errors.TypeError(_, _).
+                                         Please report at 
+http://coq.inria.fr/bugs/.
+ *)
+
+
+Comment author: @herbelin
+
+Same comment as in [BZ#5283](https://github.com/coq/coq/issues?q=is%3Aissue%20%22Original%20bug%20ID%3A%20BZ%235283%22).
+
+I would be tempted to change the error message into something like:
+
+"Algorithm to build equality scheme not powerful enough to treat this case."
+
+so that it is clear that (at the current time) there is no support for improving the algorithm. Would that be ok?
+
+
+Comment author: @JasonGross
+
+I think in this case the error message should be "Scheme Equality cannot handle CoInductives" or similar.
+
+
+Comment author: @herbelin
+
+Granted (v8.5).
+
+

@@ -1,0 +1,8 @@
+Use the `states` target, this should be enough I think.
+It seem coqc does not depend on the right things, but IIRC, coqtop does. This probably broke when coqc was turned into a proper binary, and not just an alias for coqtop -compile 
+IMHO the current behavior makes sense, the workers are an optional dependency of `coqc`, as they are not used to compile the prelude in the coqc call so the dependency should not be there. If you need the binaries use instead:
+```bash
+$ make states coqbinaries
+$ bin/coqc bar.v ## works
+```
+But agree that in general this is a problem, so maybe we need to over approximate the deps for coqc.

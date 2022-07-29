@@ -1,0 +1,19 @@
+Comment author: @JasonGross
+
+We have:
+$(VOFILES): %.vo: %.v
+        $(SHOW)COQC $<
+        $(HIDE)$(COQC) $(COQDEBUG) $(COQFLAGS) $<
+and
+$(VFILES:.v=.vio): %.vio: %.v
+        $(COQC) -quick $(COQDEBUG) $(COQFLAGS) $<
+
+
+I think the vio targets should use $(SHOW) and $(HIDE) like the vo targets
+
+
+Comment author: @silene
+
+It seems to have been fixed with the arrival of coq_makefile v2 in 4ae2b3a.
+
+

@@ -1,0 +1,4 @@
+@ppedrot Just told me about `Print Debug GC`.  Hooking the Ltac Profiler into this sort of information (whichever statistic is the most useful, or even all of the statistics) would be quite useful
+Interesting detail here about what's being measured.  To get the net increase in the heap size from a tactic, you probably have to force garbage collections before and after each tactic.  It may be easier to get an idea how much memory a tactic allocates (including discarded items), though that would be thrown off by garbage collections in the middle of a tactic.
+
+

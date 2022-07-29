@@ -1,0 +1,6 @@
+Arbitrary lookahead isn't difficult.  See `check_for_coloneq` in `g_tactic.mlg` for a complex example.
+For this one, you'd probably want to keep a running nesting count of square brackets and then check for the final `:`.  (Though I expect that could be broken by a notation that's with an unbalanced number of square brackets.
+
+If there are other common cases that don't play well as patterns here, perhaps they should all be considered at the same time rather than one by one.
+Fixing this instance will still leave the grammar fragile, since we have arbitrary notations.
+What is more confusing to me is why we have to wrap the body of the hypothesis inside square brackets in the Ltac matching syntax...

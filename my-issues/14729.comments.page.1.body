@@ -1,0 +1,2 @@
+constructor/split first does convert_concl to the goal reduced enough to make the inductive appear, this is implemented as a refine which is what shows up in the info.
+Then it does apply of the constructor, which doesn't seem to have any info logging.

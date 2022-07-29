@@ -1,0 +1,32 @@
+Comment author: @JasonGross
+```coq
+
+Inductive A (T : Prop) := B (_ : T).
+Fail Scheme Equality for A. (* A_beq is defined
+The command has indeed failed with message:
+Error:
+Unexpected error during scheme creation: Error: No information can be deduced 
+from this equality
+                                         and the injectivity of constructors. 
+This may be because
+                                         the terms are convertible, or due to 
+pattern matching
+                                         restrictions in the sort Prop. You can 
+try to use option
+                                         Set Keep Proof Equalities.
+ *)
+Set Keep Proof Equalities.
+Scheme Equality for A. (* success *)
+
+
+```
+Comment author: @herbelin
+
+Note: There was a fix in #420 replaced by #677.
+
+
+Comment author: @Zimmi48
+
+BTW Hugo, https://github.com/coq/coq/pull/677 is awaiting action from your part.
+
+

@@ -1,0 +1,140 @@
+Comment author: @JasonGross
+
+This code works fine in 8.4, but breaks in 8.5.  This makes porting fiat-crypto to 8.5 basically impossible.
+
+(* -*- mode: coq; coq-prog-args: ("-emacs" "-R" "src" "Crypto" "-R" "Bedrock" "Bedrock" "-R" "coqprime-8.5/Coqprime" "Coqprime" "-top" "bug_broken_field_01" "-R" "." "Top") -*- *)
+(* File reduced by coq-bug-finder from original input, then from 322 lines to 37 lines, then from 51 lines to 37 lines, then from 51 lines to 36 lines, then from 50 lines to 36 lines, then from 120 lines to 89 lines, then from 103 lines to 89 lines, then from 158 lines to 89 lines, then from 221 lines to 130 lines, then from 198 lines to 130 lines, then from 396 lines to 321 lines, then from 424 lines to 321 lines, then from 698 lines to 321 lines, then from 484 lines to 321 lines, then from 728 lines to 321 lines, then from 499 lines to 321 lines, then from 575 lines to 321 lines, then from 639 lines to 321 lines, then from 632 lines to 321 lines, then from 648 lines to 322 lines, then from 1000 lines to 321 lines, then from 575 lines to 321 lines, then from 464 lines to 321 lines, then from 687 lines to 322 lines, then from 516 lines to 321 lines, then from 680 lines to 322 lines, then from 902 lines to 322 lines, then from 666 lines to 322 lines, then from 476 lines to 321 lines, then from 814 lines to 321 lines, then from 466 lines to 321 lines, then from 1121 lines to 321 lines, then from 600 lines to 321 lines, then from 468 lines to 321 lines, then from 619 lines to 321 lines, then from 811 lines to 351 lines, then from 418 lines to 351 lines, then from 995 lines to 377 lines, then from 411 lines to 198 lines, then from 966 lines to 275 lines, then from 379 lines to 336 lines, then from 590 lines to 397 lines, then from 411 lines to 396 lines, then from 411 lines to 296 lines, then from 310 lines to 296 lines, then from 344 lines to 174 lines, then from 188 lines to 174 lines, then from 167 lines to 122 lines, then from 136 lines to 122 lines *)
+(* coqc version 8.5pl1 (April 2016) compiled on Apr 18 2016 14:48:5 with OCaml 4.02.3
+   coqtop version 8.5pl1 (April 2016) *)
+Axiom proof_admitted : False.
+Tactic Notation "admit" := abstract case proof_admitted.
+Require Coq.nsatz.Nsatz.
+Import Coq.ZArith.BinInt.
+Import Coq.ZArith.Znumtheory.
+
+Definition F (modulus : BinInt.Z) : Set.
+exact { z : BinInt.Z | z = z mod modulus }.
+Defined.
+
+Section FieldOperations.
+  Context {m : BinInt.Z}.
+  Definition pow : F m -> BinNums.N -> F m.
+admit.
+Defined.
+End FieldOperations.
+Export Coq.setoid_ring.Field_tac.
+Export Coq.ZArith.ZArith.
+
+Class TwistedEdwardsParams := {
+  q : BinInt.Z;
+  a : F q;
+  d : F q
+}.
+Definition OpaqueF : Z -> Set.
+exact F.
+Defined.
+Axiom Opaqueadd : forall {p}, OpaqueF p -> OpaqueF p -> OpaqueF p.
+Axiom Opaquemul : forall {p}, OpaqueF p -> OpaqueF p -> OpaqueF p.
+Axiom Opaquesub : forall {p}, OpaqueF p -> OpaqueF p -> OpaqueF p.
+Axiom Opaquediv : forall {p}, OpaqueF p -> OpaqueF p -> OpaqueF p.
+Axiom Opaqueopp : forall {p}, OpaqueF p -> OpaqueF p.
+Axiom Opaqueinv : forall {p}, OpaqueF p -> OpaqueF p.
+Axiom OpaqueZToField : forall {p}, BinInt.Z -> OpaqueF p.
+
+Axiom OpaqueFieldTheory : forall p, @ field_theory (OpaqueF p) (OpaqueZToField 0%Z) (OpaqueZToField 1%Z) Opaqueadd Opaquemul Opaquesub Opaqueopp Opaquediv Opaqueinv eq.
+
+Ltac FIELD_SIMPL_idtac FLD lH rl :=
+  let Simpl := idtac in
+  let lemma := get_SimplifyEqLemma FLD in
+  get_FldPre FLD ();
+  Field_Scheme Simpl Ring_tac.ring_subst_niter lemma FLD lH;
+  get_FldPost FLD ().
+Ltac field_simplify_eq_idtac := let G := Get_goal in field_lookup (PackField FIELD_SIMPL_idtac) [] G.
+
+Ltac notConstant t := constr:NotConstant.
+    Context {prm:TwistedEdwardsParams}.
+
+    Add Field Ffield_notConstant : (OpaqueFieldTheory q)
+      (constants [notConstant]).
+
+Goal    forall (xA yA : OpaqueF (@ q prm))
+     (_ : @ eq (OpaqueF (@ q prm))
+            (@ Opaqueadd (@ q prm) (@ Opaquemul (@ q prm) (@ a prm) (@ pow (@ q prm) xA (Npos (xO xH)))) (@ pow (@ q prm) yA (Npos (xO xH))))
+            (@ Opaqueadd (@ q prm) (@ OpaqueZToField (@ q prm) (Zpos xH))
+               (@ Opaquemul (@ q prm) (@ Opaquemul (@ q prm) (@ d prm) (@ pow (@ q prm) xA (Npos (xO xH))))
+                  (@ pow (@ q prm) yA (Npos (xO xH)))))) (xB yB : OpaqueF (@ q prm))
+     (_ : @ eq (OpaqueF (@ q prm))
+            (@ Opaqueadd (@ q prm) (@ Opaquemul (@ q prm) (@ a prm) (@ pow (@ q prm) xB (Npos (xO xH)))) (@ pow (@ q prm) yB (Npos (xO xH))))
+            (@ Opaqueadd (@ q prm) (@ OpaqueZToField (@ q prm) (Zpos xH))
+               (@ Opaquemul (@ q prm) (@ Opaquemul (@ q prm) (@ d prm) (@ pow (@ q prm) xB (Npos (xO xH))))
+                  (@ pow (@ q prm) yB (Npos (xO xH)))))) (xC yC : OpaqueF (@ q prm))
+     (_ : @ eq (OpaqueF (@ q prm))
+            (@ Opaqueadd (@ q prm) (@ Opaquemul (@ q prm) (@ a prm) (@ pow (@ q prm) xC (Npos (xO xH)))) (@ pow (@ q prm) yC (Npos (xO xH))))
+            (@ Opaqueadd (@ q prm) (@ OpaqueZToField (@ q prm) (Zpos xH))
+               (@ Opaquemul (@ q prm) (@ Opaquemul (@ q prm) (@ d prm) (@ pow (@ q prm) xC (Npos (xO xH))))
+                  (@ pow (@ q prm) yC (Npos (xO xH)))))),
+   @ eq (OpaqueF (@ q prm))
+     (@ Opaquediv (@ q prm)
+        (@ Opaqueadd (@ q prm)
+           (@ Opaquemul (@ q prm) xA
+              (@ Opaquediv (@ q prm)
+                 (@ Opaquesub (@ q prm) (@ Opaquemul (@ q prm) yB yC) (@ Opaquemul (@ q prm) (@ Opaquemul (@ q prm) (@ a prm) xB) xC))
+                 (@ Opaquesub (@ q prm) (@ OpaqueZToField (@ q prm) (Zpos xH))
+                    (@ Opaquemul (@ q prm) (@ Opaquemul (@ q prm) (@ Opaquemul (@ q prm) (@ Opaquemul (@ q prm) (@ d prm) xB) xC) yB) yC))))
+           (@ Opaquemul (@ q prm) yA
+              (@ Opaquediv (@ q prm) (@ Opaqueadd (@ q prm) (@ Opaquemul (@ q prm) xB yC) (@ Opaquemul (@ q prm) yB xC))
+                 (@ Opaqueadd (@ q prm) (@ OpaqueZToField (@ q prm) (Zpos xH))
+                    (@ Opaquemul (@ q prm) (@ Opaquemul (@ q prm) (@ Opaquemul (@ q prm) (@ Opaquemul (@ q prm) (@ d prm) xB) xC) yB) yC)))))
+        (@ Opaqueadd (@ q prm) (@ OpaqueZToField (@ q prm) (Zpos xH))
+           (@ Opaquemul (@ q prm)
+              (@ Opaquemul (@ q prm)
+                 (@ Opaquemul (@ q prm) (@ Opaquemul (@ q prm) (@ d prm) xA)
+                    (@ Opaquediv (@ q prm) (@ Opaqueadd (@ q prm) (@ Opaquemul (@ q prm) xB yC) (@ Opaquemul (@ q prm) yB xC))
+                       (@ Opaqueadd (@ q prm) (@ OpaqueZToField (@ q prm) (Zpos xH))
+                          (@ Opaquemul (@ q prm) (@ Opaquemul (@ q prm) (@ Opaquemul (@ q prm) (@ Opaquemul (@ q prm) (@ d prm) xB) xC) yB)
+                             yC)))) yA)
+              (@ Opaquediv (@ q prm)
+                 (@ Opaquesub (@ q prm) (@ Opaquemul (@ q prm) yB yC) (@ Opaquemul (@ q prm) (@ Opaquemul (@ q prm) (@ a prm) xB) xC))
+                 (@ Opaquesub (@ q prm) (@ OpaqueZToField (@ q prm) (Zpos xH))
+                    (@ Opaquemul (@ q prm) (@ Opaquemul (@ q prm) (@ Opaquemul (@ q prm) (@ Opaquemul (@ q prm) (@ d prm) xB) xC) yB) yC))))))
+     (@ Opaquediv (@ q prm)
+        (@ Opaqueadd (@ q prm)
+           (@ Opaquemul (@ q prm)
+              (@ Opaquediv (@ q prm) (@ Opaqueadd (@ q prm) (@ Opaquemul (@ q prm) xA yB) (@ Opaquemul (@ q prm) yA xB))
+                 (@ Opaqueadd (@ q prm) (@ OpaqueZToField (@ q prm) (Zpos xH))
+                    (@ Opaquemul (@ q prm) (@ Opaquemul (@ q prm) (@ Opaquemul (@ q prm) (@ Opaquemul (@ q prm) (@ d prm) xA) xB) yA) yB)))
+              yC)
+           (@ Opaquemul (@ q prm)
+              (@ Opaquediv (@ q prm)
+                 (@ Opaquesub (@ q prm) (@ Opaquemul (@ q prm) yA yB) (@ Opaquemul (@ q prm) (@ Opaquemul (@ q prm) (@ a prm) xA) xB))
+                 (@ Opaquesub (@ q prm) (@ OpaqueZToField (@ q prm) (Zpos xH))
+                    (@ Opaquemul (@ q prm) (@ Opaquemul (@ q prm) (@ Opaquemul (@ q prm) (@ Opaquemul (@ q prm) (@ d prm) xA) xB) yA) yB)))
+              xC))
+        (@ Opaqueadd (@ q prm) (@ OpaqueZToField (@ q prm) (Zpos xH))
+           (@ Opaquemul (@ q prm)
+              (@ Opaquemul (@ q prm)
+                 (@ Opaquemul (@ q prm)
+                    (@ Opaquemul (@ q prm) (@ d prm)
+                       (@ Opaquediv (@ q prm) (@ Opaqueadd (@ q prm) (@ Opaquemul (@ q prm) xA yB) (@ Opaquemul (@ q prm) yA xB))
+                          (@ Opaqueadd (@ q prm) (@ OpaqueZToField (@ q prm) (Zpos xH))
+                             (@ Opaquemul (@ q prm)
+                                (@ Opaquemul (@ q prm) (@ Opaquemul (@ q prm) (@ Opaquemul (@ q prm) (@ d prm) xA) xB) yA) yB)))) xC)
+                 (@ Opaquediv (@ q prm)
+                    (@ Opaquesub (@ q prm) (@ Opaquemul (@ q prm) yA yB) (@ Opaquemul (@ q prm) (@ Opaquemul (@ q prm) (@ a prm) xA) xB))
+                    (@ Opaquesub (@ q prm) (@ OpaqueZToField (@ q prm) (Zpos xH))
+                       (@ Opaquemul (@ q prm) (@ Opaquemul (@ q prm) (@ Opaquemul (@ q prm) (@ Opaquemul (@ q prm) (@ d prm) xA) xB) yA) yB))))
+              yC))).
+  intros.
+  Timeout 1 field_simplify_eq_idtac.
+
+
+Comment author: @ppedrot
+
+This seems to have been fixed in trunk (59f225510). Are you willing to find where using a bissect so that we can port back the fix to 8.5?
+
+
+Comment author: @ppedrot
+
+Actually, it even looks like it is fixed in 8.5-dev (4b4397e1). I'll close it.
+
+

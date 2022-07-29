@@ -1,0 +1,83 @@
+Comment author: @JasonGross
+
+Can someone explain to me why this code worked in 8.4, and why the first [Qed] fails in 8.5 with "Error: No focused proof (No proof-editing in progress)." (Even though the [Show] right before it says "No more subgoals"!?)
+
+Require Import Setoid.
+
+Add Parametric Relation A : _ (@ eq A)
+    symmetry proved by _
+    transitivity proved by _
+      as eq_rel.
+Proof.
+  repeat intro; etransitivity; eauto.
+  Show.
+Qed.
+Proof.
+  repeat intro; symmetry; eauto.
+Qed.
+
+
+Comment author: @JasonGross
+
+Enrico, I am ccing you, because I am guessing this is an interaction of whatever the bad behavior of 8.4 is with the stm.
+
+
+Comment author: @gares
+
+Yes, it is the STM.  "Add P. R." seems not to be expected to open a goal.
+
+To fix it properly I need to know which "Add ... " may open a goal and which
+may not.  In general it would be nice if it could be possible to know it
+statically.
+
+
+Comment author: @JasonGross
+
+What are all the [Add ...] commands?  [Add Relation], [Add Parametric Relation], [Add Morphism], [Add Parametric Morphism]?  Have I missed any?
+
+It seems like [Add Parametric Relation], at least, can open arbitrarily many goals in 8.5:
+
+Add Parametric Relation A : _ (@ eq A)
+    transitivity proved by (_ id id id)
+      as eq_rel.
+
+(In 8.4, this said "Error: Refiner was given an argument "id" of type "?14 -> ?14" instead of "?14 -> ?18".")
+
+But here is one that opens 4 goals in 8.4 and 8.5:
+
+Add Parametric Relation A : _ (@ eq A)
+    transitivity proved by ((fun x y z : Set => _) _ _ _)
+      as eq_rel.
+
+[Add Relation] can do the same:
+
+Add Relation _ (@ eq Set)
+    transitivity proved by ((fun x y z : Set => _) _ _ _)
+      as eq_rel.
+
+And [Add Parametric Morphism] always(?) opens a goal.  I presume [Add Morphism] does too.
+
+
+I'm still not sure if this behavior with underscores is intended in 8.4.  Matthieu?
+
+
+Comment author: @JasonGross
+
+In particular, in 8.4,
+
+Require Import Setoid.
+Axiom R : relation Set.
+Add Parametric Relation : Set R
+    reflexivity proved by _
+    symmetry proved by _
+    transitivity proved by _
+      as eq_rel.
+
+opens 4 goals; the first has all three underscores as subgoals, and each of the following ones each have one of the underscores as the only subgoal.  This is definitely wrong.
+
+
+Comment author: @gares
+
+Let's wait for Matthieu and see where this command needs a fix.
+
+

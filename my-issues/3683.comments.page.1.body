@@ -1,0 +1,10 @@
+Comment author: @JasonGross
+
+I think it should be "Please report at https://coq.inria.fr/bugs/enter_bug.cgi.", not "Please report."
+
+
+Comment author: @maximedenes
+
+Fixed by Yves' PR#298.
+
+

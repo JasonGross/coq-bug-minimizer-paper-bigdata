@@ -1,0 +1,23 @@
+Comment author: @JasonGross
+
+In the vein of "Ltac does too much type-checking when I don't want it to", I'd 
+like to have a version of the [let C' := context C[term] in tac] that doesn't 
+do any kind of type inference or typechecking on [term], nor on [C'], i.e., it 
+deals only with uconstrs the entire time.  This is similar to the Coq 8.4 
+behavior, which was "fixed" in Coq 8.5.
+
+More generally, I'd like to be able to easily write tactic scripts that do not 
+do any typechecking or type inference except at specific locations where I 
+request it.
+
+
+Comment author: @ppedrot
+
+For the record, the corresponding fixed bug was [BZ#3455](https://github.com/coq/coq/issues?q=is%3Aissue%20%22Original%20bug%20ID%3A%20BZ%233455%22) (reported by Jason by the way). I think you can't have your cake and eat it, at least not while just writing constrs. Would you be happy if the syntax uconstr:(context C[t]) were available?
+
+
+Comment author: @JasonGross
+
+Yes, that's fine syntax.
+
+

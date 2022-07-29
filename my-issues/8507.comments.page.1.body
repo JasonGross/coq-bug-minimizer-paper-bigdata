@@ -1,0 +1,4 @@
+Up to now, these kind of issues where not necessary as the milestone should hint the RM what needs to be done, dunno about today.
+I think part of the complication here is that #8387 was merged before v8.9 was branched, but v8.9 was branched from a commit prior to #8387.
+Another complication is that #8387 was part of the 8.8.2 milestone. As soon as I put the 8.8.2 tag (hopefully tomorrow or on Monday) I'm going to open a PR backporting to v8.9 everything that is part of 8.8.2 and not in v8.9 yet.
+Fixed in #8583.

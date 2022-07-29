@@ -1,0 +1,30 @@
+[Bisecting](https://github.com/JasonGross/coq-bisect) gives:
+
+> c24bcae8dbc2ef82f72b3351783cbf73d3b12795 is the first bad commit
+commit c24bcae8dbc2ef82f72b3351783cbf73d3b12795
+Author: Hugo Herbelin <Hugo.Herbelin@inria.fr>
+Date:   Thu Jul 27 00:29:51 2017 +0200
+>
+>    Fixing one part of #5669 (unification heuristics sensitive to choice of names).
+>
+>    This surprising bug was caused by an Id.Set which was ordering
+    solutions to variable-projection problems in ascii order.
+>
+>    We fix it by re-considering the variables involved in the solutions
+    using the declaration order.
+>
+>    Note that in practice, this implies preferring a dependent solution
+    over a non-dependent one.
+>
+> ``` :040000 040000 e17e993844c23af3f7e7d30fffba00719ebcb31e cc052edf626b3537ca45ad270d508e7c66be5473 M      pretyping```
+bisect run success
+
+Thanks @JasonGross for identifying this issue, I guess the commit should be reverted soon. I have a question, why did Travis didn't detect the breakage here?
+According to the [travis log](https://travis-ci.org/coq/coq/builds/258067113?utm_source=github_status&utm_medium=notification), the build for https://github.com/coq/coq/pull/924 ran "3 months ago", which is before this particular bit of code made it into fiat-crypto.  Additionally, at that point in time, fiat-parsers was marked as allowed-failure, because it didn't know how to recognize 8.7+alpha as a version number.  Perhaps there should be a policy of needing travis to run at most 1 week (or a couple of days) before a merge? (@maximedenes?)
+Thanks @JasonGross for the details. I guess this falls pretty much down in the category of "occasional 1% benign coincidental bugs" so we shouldn't IMO worry too much about it. We cannot have a perfect CI system.
+@JasonGross: Minor comment while a fix arrives: change the name of `Hwf'` into `zHwf'` and it will fail also in 8.7.
+
+
+@herbelin ahaha, that's terrible.  So I take it your commit merely exposed whatever the underlying bug is to this case?
+@JasonGross: I put a fix at PR#6074. By the way, thanks for the small example. It was very helpful.
+

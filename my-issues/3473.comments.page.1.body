@@ -1,0 +1,44 @@
+Comment author: @JasonGross
+
+```coq
+Set Primitive Projections.
+Record prod A B := pair { fst : A ; snd : B }.
+
+Goal forall x y, @ fst Set Set x = y -> fst x = y.
+Proof.
+  intros x y H.
+  Fail rewrite H. (* Error: Found no subterm matching "@ fst Set Set x" in the current goal. *)
+  Fail progress simpl in H. (* Should probably succeed? *)
+  Fail progress lazy beta iota zeta in H.
+  lazy delta[fst] in H. (* (fun (A B : Type) (p : prod A B) => fst p) Set Set x = y *)
+  rewrite H.
+```
+
+I'm not actually completely sure about this, though...
+
+
+Comment author: @JasonGross
+
+Is there a way to specify the unfolding behavior for the eta-expanded version separately from the unfolding behavior of the non-eta-expanded-version?
+
+
+Comment author: @mattam82
+
+The non-eta-expanded has no actual "unfolding", but it respects the Arguments status of parameters after the record.
+
+
+Comment author: @JasonGross
+
+Say I want to say "the eta-expanded form of this projection should always reduce to the non-eta-expanded form on [simpl], but the non-eta-expanded-form should never reduce, even if applied to a constructor".  Is this possible to state?
+
+
+Comment author: @mattam82
+
+No, it's not possible currently, and I'm surprise you need the strategy of not reducing the primitive projection applied to a constructor, as it should be treated like a beta-redex. The problems of rewrite are linked to the current discussion on Coq-club. With H as it is it only does syntactic matching right now.
+
+
+Comment author: @JasonGross
+
+Maybe I don't need that strategy.  However, I'm currently tracking down a bug were Coq can't unify [@ morphism C s d] with [morphism _ _ _], for some concrete [C], and in particular complains about not being about to unify [s] with [object _] (in some cases), and I wonder if this is related.  But I'll make a separate issue for that when my minimizer finishes.
+
+

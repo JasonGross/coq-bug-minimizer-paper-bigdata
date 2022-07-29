@@ -1,0 +1,4 @@
+Yes, it is incomplete.  We're in the midst of revising the remainder of that chapter, which should be merged in a week or two.  Feel free to take a look at #13707, which has updated syntax for all the tactics in that chapter.  The correct syntax is:
+
+`simpl {? @delta_flag } {? {| @reference_occs | @pattern_occs } } {? @occurrences }`
+

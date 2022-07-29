@@ -1,0 +1,41 @@
+Comment author: @JasonGross
+
+Created attachment 567
+buggy file
+
+I get the error message `The term "pf" has type "?T@ {x:={| string_val := str; state_val := None |}}"
+while it is expected to have type "tts str ≤s ?s" (cannot instantiate
+"?T" because "str" is not in its scope: available arguments are
+"CharType" "String" "G" "leaf_predata" "leaf_methods'"
+"leaf_stypes'" "leaf_ftypes'" "leaf_extra_failure_data"
+"top_split_stateT" "top_methods'" "str0" "valid" "it"
+"its" "{| string_val := str; state_val := None |}").` in the attached file.
+
+> Attached file: [bug_parses_dependently_typed_sum_instance_weaker_07.v](https://coq.inria.fr/bugfiles/attachment.cgi?id=567) (application/octet-stream, 12028 bytes)
+> Description:   buggy file
+
+
+Comment author: @JasonGross
+
+I would welcome advice on how to convince Coq 8.5 to accept this definition without having to give everything explicitly; I was very glad when I managed to make 8.4 accept a slew of definitions like these without having to spell everything out verbosely.
+
+
+Comment author: @JasonGross
+
+Note that this works, but is much more verbose than I'd like:
+```coq
+  Global Program Instance sum_extra_failure_data
+  : @ parser_dependent_types_extra_failure_dataT' _ String sum_types
+    := { H_prod_split str0 valid it its := _ }.
+  Next Obligation.
+    revert str.
+    refine (option_rect_str
+              (fun str pf => _)
+              (fun str pf => _)).
+    2:refine ((@ H_prod_split _ _ _ leaf_extra_failure_data _ _ _ _ (tts str) pf)
+                ∘ (fun H => eq_rect _ _ H _ _)).
+```
+Why is it that if I separate the `refine`s, Coq can infer the types correctly, but if I combine them, Coq can't?
+
+
+Reproduction code is outdated, please reopen with it repaired if still relevant.

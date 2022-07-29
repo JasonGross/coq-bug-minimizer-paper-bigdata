@@ -1,0 +1,944 @@
+Comment author: @JasonGross
+
+In the attached files, [nsatz_compute] stack overflows.  ([nsatz] seems to be 
+stuck on [reify_goal].  The reification of equations ([list_reifyl]) takes 
+about 900 seconds.  The nsatz_compute stack overflow example starts out by 
+giving the relevant reified term.)  See also 
+https://github.com/mit-plv/fiat-crypto/issues/59.
+
+
+Comment author: @JasonGross
+
+Created attachment 763
+[nsatz] being slow
+
+> Attached file: [nsatz_slow.v](https://coq.inria.fr/bugfiles/attachment.cgi?id=763) (text/plain, 63255 bytes)
+> Description:   [nsatz] being slow
+
+
+Comment author: @JasonGross
+
+Created attachment 764
+stack overflow in [nsatz_compute]
+
+> Attached file: [nsatz_compute_stack_overflow.v](https://coq.inria.fr/bugfiles/attachment.cgi?id=764) (text/plain, 89355 bytes)
+> Description:   stack overflow in [nsatz_compute]
+
+
+Comment author: @ppedrot
+
+The stack overflow issue has been fixed by 3d9a137. Note that the computation still takes ages, because it computes a HUGE polynomial (e.g. it notably involves a multiplication between polynomials made out of about 30k and 400k monomials). Why do you need the exponentiation by 3 of the whole polynomial? It is responsible for the size of the whole expression.
+
+
+Comment author: @JasonGross
+
+Where do we cube it?
+
+
+Comment author: @ppedrot
+
+(In reply to Jason Gross from comment [BZ#4](https://github.com/coq/coq/issues?q=is%3Aissue%20%22Original%20bug%20ID%3A%20BZ%234%22))
+> Where do we cube it?
+
+In your expanded Ltac definition there is a PEpow:
+
+Ltac nsatz_compute_to_goal sugar nparams reified_goal power reified_givens :=
+  nsatz_compute (PEc sugar :: PEc nparams :: PEpow reified_goal power :: reified_givens).
+
+you later call this function with power := 3%Z.
+
+
+Comment author: @ppedrot
+
+Ah, my mistake, this is indeed the nsatz algorithm that requires this exponentiation operation. So there is no way around. Note that there is still a huge inefficiency here when using standard nsatz, because the tactic keeps recomputing the exponentiations of the polynom through the try_n tactic instead of keeping them to apply fast exponentation...
+
+
+Comment author: @JasonGross
+
+It seems like there might be a separate bug here, in that, since we are in a field, if it works with any power, it'll work with power 1, and while sage's implementation can find a solution, nsatz cannot.  But that probably deserves a separate bug report.
+
+
+Comment author: @thery
+
+Sorry, I had a quick look at this bug and I can't grasp it: it is too big for my small brain. I need help.
+
+What is the bug about?
+
+1) There is a bug in the reification : it is too slow
+
+2) the Grobner computation is uncapable to prove something that a computer algebra system does.
+
+3) nsatz finds the witness but can convert it back to a proof term.
+
+
+--
+Laurent
+
+
+Comment author: @JasonGross
+
+2 is the one I most want to see fixed.
+
+The issue as reported (stack overflow) has been fixed, but there remain two issues (which I should perhaps report as separate bugs): 1 and 2
+
+The first attachment demonstrates both issues.  The second attached file starts from the reified term, and demonstrates only issue 2.  (Both files demonstrated the stack overflow before PMP made the methods tail-recursive.)
+
+Issue 2 is more pressing.
+
+
+Comment author: @thery
+
+Just to complement I can address 2.
+
+nsatz does not understand power
+
+
+Goal forall x : Q , x == 1 -> (x - 1) ^ 2 == 0.
+intros; nsatz.
+fails 
+while
+intros; simpl; nsatz.
+succeeds
+
+
+For the kind of problem you are dealing with, grobner basis is a bit an overkilled. Grobner depends heavily on variable ordering. This could explain why it takes forever.
+
+Why don't you use ring to perform your computation that needs only simple rewriting (note I have rephrase the assumption)?
+
+Goal forall
+  x1 y1 x2 y2 x3 y3 a b : Q,
+  y1^2 == x1^3 +a*x1 + b ->
+  y2^2 == x2^3 + a*x2 + b ->
+  y3^2 == x3^3 + a*x3 + b ->
+  ((2 * x2 + x3) * (y3 - y2)) ^ 2 * (x3 - x2) * (x3 - x2) * (x3 - x2) * (x3 - x2) * x2 * x2 * (x2 - x1) *
+  (x2 - x1) * (x2 - x1) * (x2 - x1) * (x2 - x1) * (x2 - x1) +
+  2 * ((2 * x2 + x3) * (y3 - y2)) * ((2 * x2 + x3) * (y3 - y2)) * (x3 - x2) * (x3 - x2) * (x3 - x2) *
+  (x3 - x2) * x2 * x3 * (x2 - x1) * (x2 - x1) * (x2 - x1) * (x2 - x1) * (x2 - x1) * 
+  (x2 - x1) +
+  2 * ((2 * x2 + x3) * (y3 - y2)) * ((2 * x2 + x3) * (y3 - y2)) * (x3 - x2) * (x3 - x2) * (x3 - x2) *
+  (x3 - x2) * x2 * x1 * (x2 - x1) * (x2 - x1) * (x2 - x1) * (x2 - x1) * (x2 - x1) * 
+  (x2 - x1) -
+  2 * ((2 * x2 + x3) * (y3 - y2)) * ((2 * x2 + x3) * (y3 - y2)) * (x3 - x2) * (x3 - x2) * (x3 - x2) *
+  (x3 - x2) * x2 * (x2 - x1) * (x2 - x1) * (x2 - x1) * (x2 - x1) * (y2 - y1) * 
+  (y2 - y1) +
+  ((2 * x2 + x3) * (y3 - y2)) ^ 2 * (x3 - x2) * (x3 - x2) * (x3 - x2) * (x3 - x2) * x3 * x3 * (x2 - x1) *
+  (x2 - x1) * (x2 - x1) * (x2 - x1) * (x2 - x1) * (x2 - x1) +
+  2 * ((2 * x2 + x3) * (y3 - y2)) * ((2 * x2 + x3) * (y3 - y2)) * (x3 - x2) * (x3 - x2) * (x3 - x2) *
+  (x3 - x2) * x3 * x1 * (x2 - x1) * (x2 - x1) * (x2 - x1) * (x2 - x1) * (x2 - x1) * 
+  (x2 - x1) -
+  2 * ((2 * x2 + x3) * (y3 - y2)) * ((2 * x2 + x3) * (y3 - y2)) * (x3 - x2) * (x3 - x2) * (x3 - x2) *
+  (x3 - x2) * x3 * (x2 - x1) * (x2 - x1) * (x2 - x1) * (x2 - x1) * (y2 - y1) * 
+  (y2 - y1) +
+  ((2 * x2 + x3) * (y3 - y2)) ^ 2 * (x3 - x2) * (x3 - x2) * (x3 - x2) * (x3 - x2) * x1 * x1 * (x2 - x1) *
+  (x2 - x1) * (x2 - x1) * (x2 - x1) * (x2 - x1) * (x2 - x1) -
+  2 * ((2 * x2 + x3) * (y3 - y2)) * ((2 * x2 + x3) * (y3 - y2)) * (x3 - x2) * (x3 - x2) * (x3 - x2) *
+  (x3 - x2) * x1 * (x2 - x1) * (x2 - x1) * (x2 - x1) * (x2 - x1) * (y2 - y1) * 
+  (y2 - y1) +
+  ((2 * x2 + x3) * (y3 - y2)) ^ 2 * (x3 - x2) * (x3 - x2) * (x3 - x2) * (x3 - x2) * (x2 - x1) *
+  (x2 - x1) * (y2 - y1) * (y2 - y1) * (y2 - y1) * (y2 - y1) -
+  2 * ((2 * x2 + x3) * (y3 - y2)) * (x3 - x2) * (x3 - x2) * (x3 - x2) * (x3 - x2) * (x3 - x2) * y2 * x2 *
+  x2 * (x2 - x1) * (x2 - x1) * (x2 - x1) * (x2 - x1) * (x2 - x1) * (x2 - x1) -
+  2 ^ 2 * ((2 * x2 + x3) * (y3 - y2)) * (x3 - x2) * (x3 - x2) * (x3 - x2) * (x3 - x2) * (x3 - x2) * y2 *
+  x2 * x3 * (x2 - x1) * (x2 - x1) * (x2 - x1) * (x2 - x1) * (x2 - x1) * (x2 - x1) -
+  2 ^ 2 * ((2 * x2 + x3) * (y3 - y2)) * (x3 - x2) * (x3 - x2) * (x3 - x2) * (x3 - x2) * (x3 - x2) * y2 *
+  x2 * x1 * (x2 - x1) * (x2 - x1) * (x2 - x1) * (x2 - x1) * (x2 - x1) * (x2 - x1) +
+  2 ^ 2 * ((2 * x2 + x3) * (y3 - y2)) * (x3 - x2) * (x3 - x2) * (x3 - x2) * (x3 - x2) * (x3 - x2) * y2 *
+  x2 * (x2 - x1) * (x2 - x1) * (x2 - x1) * (x2 - x1) * (y2 - y1) * (y2 - y1) -
+  2 * ((2 * x2 + x3) * (y3 - y2)) * (x3 - x2) * (x3 - x2) * (x3 - x2) * (x3 - x2) * (x3 - x2) * y2 * x3 *
+  x3 * (x2 - x1) * (x2 - x1) * (x2 - x1) * (x2 - x1) * (x2 - x1) * (x2 - x1) -
+  2 ^ 2 * ((2 * x2 + x3) * (y3 - y2)) * (x3 - x2) * (x3 - x2) * (x3 - x2) * (x3 - x2) * (x3 - x2) * y2 *
+  x3 * x1 * (x2 - x1) * (x2 - x1) * (x2 - x1) * (x2 - x1) * (x2 - x1) * (x2 - x1) +
+  2 ^ 2 * ((2 * x2 + x3) * (y3 - y2)) * (x3 - x2) * (x3 - x2) * (x3 - x2) * (x3 - x2) * (x3 - x2) * y2 *
+  x3 * (x2 - x1) * (x2 - x1) * (x2 - x1) * (x2 - x1) * (y2 - y1) * (y2 - y1) -
+  2 * ((2 * x2 + x3) * (y3 - y2)) * (x3 - x2) * (x3 - x2) * (x3 - x2) * (x3 - x2) * (x3 - x2) * y2 * x1 *
+  x1 * (x2 - x1) * (x2 - x1) * (x2 - x1) * (x2 - x1) * (x2 - x1) * (x2 - x1) +
+  2 ^ 2 * ((2 * x2 + x3) * (y3 - y2)) * (x3 - x2) * (x3 - x2) * (x3 - x2) * (x3 - x2) * (x3 - x2) * y2 *
+  x1 * (x2 - x1) * (x2 - x1) * (x2 - x1) * (x2 - x1) * (y2 - y1) * (y2 - y1) -
+  2 * ((2 * x2 + x3) * (y3 - y2)) * (x3 - x2) * (x3 - x2) * (x3 - x2) * (x3 - x2) * (x3 - x2) * y2 *
+  (x2 - x1) * (x2 - x1) * (y2 - y1) * (y2 - y1) * (y2 - y1) * (y2 - y1) -
+  2 * ((2 * x2 + x3) * (y3 - y2)) * (x3 - x2) * (x3 - x2) * (x3 - x2) * (x3 - x2) * (x3 - x2) * y1 * x2 *
+  x2 * (x2 - x1) * (x2 - x1) * (x2 - x1) * (x2 - x1) * (x2 - x1) * (x2 - x1) -
+  2 ^ 2 * ((2 * x2 + x3) * (y3 - y2)) * (x3 - x2) * (x3 - x2) * (x3 - x2) * (x3 - x2) * (x3 - x2) * y1 *
+  x2 * x3 * (x2 - x1) * (x2 - x1) * (x2 - x1) * (x2 - x1) * (x2 - x1) * (x2 - x1) -
+  2 ^ 2 * ((2 * x2 + x3) * (y3 - y2)) * (x3 - x2) * (x3 - x2) * (x3 - x2) * (x3 - x2) * (x3 - x2) * y1 *
+  x2 * x1 * (x2 - x1) * (x2 - x1) * (x2 - x1) * (x2 - x1) * (x2 - x1) * (x2 - x1) +
+  2 ^ 2 * ((2 * x2 + x3) * (y3 - y2)) * (x3 - x2) * (x3 - x2) * (x3 - x2) * (x3 - x2) * (x3 - x2) * y1 *
+  x2 * (x2 - x1) * (x2 - x1) * (x2 - x1) * (x2 - x1) * (y2 - y1) * (y2 - y1) -
+  2 * ((2 * x2 + x3) * (y3 - y2)) * (x3 - x2) * (x3 - x2) * (x3 - x2) * (x3 - x2) * (x3 - x2) * y1 * x3 *
+  x3 * (x2 - x1) * (x2 - x1) * (x2 - x1) * (x2 - x1) * (x2 - x1) * (x2 - x1) -
+  2 ^ 2 * ((2 * x2 + x3) * (y3 - y2)) * (x3 - x2) * (x3 - x2) * (x3 - x2) * (x3 - x2) * (x3 - x2) * y1 *
+  x3 * x1 * (x2 - x1) * (x2 - x1) * (x2 - x1) * (x2 - x1) * (x2 - x1) * (x2 - x1) +
+  2 ^ 2 * ((2 * x2 + x3) * (y3 - y2)) * (x3 - x2) * (x3 - x2) * (x3 - x2) * (x3 - x2) * (x3 - x2) * y1 *
+  x3 * (x2 - x1) * (x2 - x1) * (x2 - x1) * (x2 - x1) * (y2 - y1) * (y2 - y1) -
+  2 * ((2 * x2 + x3) * (y3 - y2)) * (x3 - x2) * (x3 - x2) * (x3 - x2) * (x3 - x2) * (x3 - x2) * y1 * x1 *
+  x1 * (x2 - x1) * (x2 - x1) * (x2 - x1) * (x2 - x1) * (x2 - x1) * (x2 - x1) +
+  2 ^ 2 * ((2 * x2 + x3) * (y3 - y2)) * (x3 - x2) * (x3 - x2) * (x3 - x2) * (x3 - x2) * (x3 - x2) * y1 *
+  x1 * (x2 - x1) * (x2 - x1) * (x2 - x1) * (x2 - x1) * (y2 - y1) * (y2 - y1) -
+  2 * ((2 * x2 + x3) * (y3 - y2)) * (x3 - x2) * (x3 - x2) * (x3 - x2) * (x3 - x2) * (x3 - x2) * y1 *
+  (x2 - x1) * (x2 - x1) * (y2 - y1) * (y2 - y1) * (y2 - y1) * (y2 - y1) -
+  2 * ((2 * x2 + x3) * (y3 - y2)) * (x3 - x2) * (x3 - x2) * (y3 - y2) * (y3 - y2) * (y3 - y2) * x2 * x2 *
+  (x2 - x1) * (x2 - x1) * (x2 - x1) * (x2 - x1) * (x2 - x1) * (x2 - x1) -
+  2 ^ 2 * ((2 * x2 + x3) * (y3 - y2)) * (x3 - x2) * (x3 - x2) * (y3 - y2) * (y3 - y2) * (y3 - y2) * x2 *
+  x3 * (x2 - x1) * (x2 - x1) * (x2 - x1) * (x2 - x1) * (x2 - x1) * (x2 - x1) -
+  2 ^ 2 * ((2 * x2 + x3) * (y3 - y2)) * (x3 - x2) * (x3 - x2) * (y3 - y2) * (y3 - y2) * (y3 - y2) * x2 *
+  x1 * (x2 - x1) * (x2 - x1) * (x2 - x1) * (x2 - x1) * (x2 - x1) * (x2 - x1) +
+  2 ^ 2 * ((2 * x2 + x3) * (y3 - y2)) * (x3 - x2) * (x3 - x2) * (y3 - y2) * (y3 - y2) * (y3 - y2) * x2 *
+  (x2 - x1) * (x2 - x1) * (x2 - x1) * (x2 - x1) * (y2 - y1) * (y2 - y1) -
+  2 * ((2 * x2 + x3) * (y3 - y2)) * (x3 - x2) * (x3 - x2) * (y3 - y2) * (y3 - y2) * (y3 - y2) * x3 * x3 *
+  (x2 - x1) * (x2 - x1) * (x2 - x1) * (x2 - x1) * (x2 - x1) * (x2 - x1) -
+  2 ^ 2 * ((2 * x2 + x3) * (y3 - y2)) * (x3 - x2) * (x3 - x2) * (y3 - y2) * (y3 - y2) * (y3 - y2) * x3 *
+  x1 * (x2 - x1) * (x2 - x1) * (x2 - x1) * (x2 - x1) * (x2 - x1) * (x2 - x1) +
+  2 ^ 2 * ((2 * x2 + x3) * (y3 - y2)) * (x3 - x2) * (x3 - x2) * (y3 - y2) * (y3 - y2) * (y3 - y2) * x3 *
+  (x2 - x1) * (x2 - x1) * (x2 - x1) * (x2 - x1) * (y2 - y1) * (y2 - y1) -
+  2 * ((2 * x2 + x3) * (y3 - y2)) * (x3 - x2) * (x3 - x2) * (y3 - y2) * (y3 - y2) * (y3 - y2) * x1 * x1 *
+  (x2 - x1) * (x2 - x1) * (x2 - x1) * (x2 - x1) * (x2 - x1) * (x2 - x1) +
+  2 ^ 2 * ((2 * x2 + x3) * (y3 - y2)) * (x3 - x2) * (x3 - x2) * (y3 - y2) * (y3 - y2) * (y3 - y2) * x1 *
+  (x2 - x1) * (x2 - x1) * (x2 - x1) * (x2 - x1) * (y2 - y1) * (y2 - y1) -
+  2 * ((2 * x2 + x3) * (y3 - y2)) * (x3 - x2) * (x3 - x2) * (y3 - y2) * (y3 - y2) * (y3 - y2) *
+  (x2 - x1) * (x2 - x1) * (y2 - y1) * (y2 - y1) * (y2 - y1) * (y2 - y1) +
+  (x3 - x2) ^ 2 * (x3 - x2) * (x3 - x2) * (x3 - x2) * (x3 - x2) * y2 * y2 * x2 * x2 * (x2 - x1) *
+  (x2 - x1) * (x2 - x1) * (x2 - x1) * (x2 - x1) * (x2 - x1) +
+  2 * (x3 - x2) * (x3 - x2) * (x3 - x2) * (x3 - x2) * (x3 - x2) * (x3 - x2) * y2 * y2 * x2 * x3 *
+  (x2 - x1) * (x2 - x1) * (x2 - x1) * (x2 - x1) * (x2 - x1) * (x2 - x1) +
+  2 * (x3 - x2) * (x3 - x2) * (x3 - x2) * (x3 - x2) * (x3 - x2) * (x3 - x2) * y2 * y2 * x2 * x1 *
+  (x2 - x1) * (x2 - x1) * (x2 - x1) * (x2 - x1) * (x2 - x1) * (x2 - x1) -
+  2 * (x3 - x2) * (x3 - x2) * (x3 - x2) * (x3 - x2) * (x3 - x2) * (x3 - x2) * y2 * y2 * x2 * (x2 - x1) *
+  (x2 - x1) * (x2 - x1) * (x2 - x1) * (y2 - y1) * (y2 - y1) +
+  (x3 - x2) ^ 2 * (x3 - x2) * (x3 - x2) * (x3 - x2) * (x3 - x2) * y2 * y2 * x3 * x3 * (x2 - x1) *
+  (x2 - x1) * (x2 - x1) * (x2 - x1) * (x2 - x1) * (x2 - x1) +
+  2 * (x3 - x2) * (x3 - x2) * (x3 - x2) * (x3 - x2) * (x3 - x2) * (x3 - x2) * y2 * y2 * x3 * x1 *
+  (x2 - x1) * (x2 - x1) * (x2 - x1) * (x2 - x1) * (x2 - x1) * (x2 - x1) -
+  2 * (x3 - x2) * (x3 - x2) * (x3 - x2) * (x3 - x2) * (x3 - x2) * (x3 - x2) * y2 * y2 * x3 * (x2 - x1) *
+  (x2 - x1) * (x2 - x1) * (x2 - x1) * (y2 - y1) * (y2 - y1) +
+  (x3 - x2) ^ 2 * (x3 - x2) * (x3 - x2) * (x3 - x2) * (x3 - x2) * y2 * y2 * x1 * x1 * (x2 - x1) *
+  (x2 - x1) * (x2 - x1) * (x2 - x1) * (x2 - x1) * (x2 - x1) -
+  2 * (x3 - x2) * (x3 - x2) * (x3 - x2) * (x3 - x2) * (x3 - x2) * (x3 - x2) * y2 * y2 * x1 * (x2 - x1) *
+  (x2 - x1) * (x2 - x1) * (x2 - x1) * (y2 - y1) * (y2 - y1) +
+  (x3 - x2) ^ 2 * (x3 - x2) * (x3 - x2) * (x3 - x2) * (x3 - x2) * y2 * y2 * (x2 - x1) * (x2 - x1) *
+  (y2 - y1) * (y2 - y1) * (y2 - y1) * (y2 - y1) +
+  2 * (x3 - x2) * (x3 - x2) * (x3 - x2) * (x3 - x2) * (x3 - x2) * (x3 - x2) * y2 * y1 * x2 * x2 *
+  (x2 - x1) * (x2 - x1) * (x2 - x1) * (x2 - x1) * (x2 - x1) * (x2 - x1) +
+  2 ^ 2 * (x3 - x2) * (x3 - x2) * (x3 - x2) * (x3 - x2) * (x3 - x2) * (x3 - x2) * y2 * y1 * x2 * x3 *
+  (x2 - x1) * (x2 - x1) * (x2 - x1) * (x2 - x1) * (x2 - x1) * (x2 - x1) +
+  2 ^ 2 * (x3 - x2) * (x3 - x2) * (x3 - x2) * (x3 - x2) * (x3 - x2) * (x3 - x2) * y2 * y1 * x2 * x1 *
+  (x2 - x1) * (x2 - x1) * (x2 - x1) * (x2 - x1) * (x2 - x1) * (x2 - x1) -
+  2 ^ 2 * (x3 - x2) * (x3 - x2) * (x3 - x2) * (x3 - x2) * (x3 - x2) * (x3 - x2) * y2 * y1 * x2 *
+  (x2 - x1) * (x2 - x1) * (x2 - x1) * (x2 - x1) * (y2 - y1) * (y2 - y1) +
+  2 * (x3 - x2) * (x3 - x2) * (x3 - x2) * (x3 - x2) * (x3 - x2) * (x3 - x2) * y2 * y1 * x3 * x3 *
+  (x2 - x1) * (x2 - x1) * (x2 - x1) * (x2 - x1) * (x2 - x1) * (x2 - x1) +
+  2 ^ 2 * (x3 - x2) * (x3 - x2) * (x3 - x2) * (x3 - x2) * (x3 - x2) * (x3 - x2) * y2 * y1 * x3 * x1 *
+  (x2 - x1) * (x2 - x1) * (x2 - x1) * (x2 - x1) * (x2 - x1) * (x2 - x1) -
+  2 ^ 2 * (x3 - x2) * (x3 - x2) * (x3 - x2) * (x3 - x2) * (x3 - x2) * (x3 - x2) * y2 * y1 * x3 *
+  (x2 - x1) * (x2 - x1) * (x2 - x1) * (x2 - x1) * (y2 - y1) * (y2 - y1) +
+  2 * (x3 - x2) * (x3 - x2) * (x3 - x2) * (x3 - x2) * (x3 - x2) * (x3 - x2) * y2 * y1 * x1 * x1 *
+  (x2 - x1) * (x2 - x1) * (x2 - x1) * (x2 - x1) * (x2 - x1) * (x2 - x1) -
+  2 ^ 2 * (x3 - x2) * (x3 - x2) * (x3 - x2) * (x3 - x2) * (x3 - x2) * (x3 - x2) * y2 * y1 * x1 *
+  (x2 - x1) * (x2 - x1) * (x2 - x1) * (x2 - x1) * (y2 - y1) * (y2 - y1) +
+  2 * (x3 - x2) * (x3 - x2) * (x3 - x2) * (x3 - x2) * (x3 - x2) * (x3 - x2) * y2 * y1 * (x2 - x1) *
+  (x2 - x1) * (y2 - y1) * (y2 - y1) * (y2 - y1) * (y2 - y1) +
+  (x3 - x2) ^ 2 * (x3 - x2) * (x3 - x2) * (x3 - x2) * (x3 - x2) * y1 * y1 * x2 * x2 * (x2 - x1) *
+  (x2 - x1) * (x2 - x1) * (x2 - x1) * (x2 - x1) * (x2 - x1) +
+  2 * (x3 - x2) * (x3 - x2) * (x3 - x2) * (x3 - x2) * (x3 - x2) * (x3 - x2) * y1 * y1 * x2 * x3 *
+  (x2 - x1) * (x2 - x1) * (x2 - x1) * (x2 - x1) * (x2 - x1) * (x2 - x1) +
+  2 * (x3 - x2) * (x3 - x2) * (x3 - x2) * (x3 - x2) * (x3 - x2) * (x3 - x2) * y1 * y1 * x2 * x1 *
+  (x2 - x1) * (x2 - x1) * (x2 - x1) * (x2 - x1) * (x2 - x1) * (x2 - x1) -
+  2 * (x3 - x2) * (x3 - x2) * (x3 - x2) * (x3 - x2) * (x3 - x2) * (x3 - x2) * y1 * y1 * x2 * (x2 - x1) *
+  (x2 - x1) * (x2 - x1) * (x2 - x1) * (y2 - y1) * (y2 - y1) +
+  (x3 - x2) ^ 2 * (x3 - x2) * (x3 - x2) * (x3 - x2) * (x3 - x2) * y1 * y1 * x3 * x3 * (x2 - x1) *
+  (x2 - x1) * (x2 - x1) * (x2 - x1) * (x2 - x1) * (x2 - x1) +
+  2 * (x3 - x2) * (x3 - x2) * (x3 - x2) * (x3 - x2) * (x3 - x2) * (x3 - x2) * y1 * y1 * x3 * x1 *
+  (x2 - x1) * (x2 - x1) * (x2 - x1) * (x2 - x1) * (x2 - x1) * (x2 - x1) -
+  2 * (x3 - x2) * (x3 - x2) * (x3 - x2) * (x3 - x2) * (x3 - x2) * (x3 - x2) * y1 * y1 * x3 * (x2 - x1) *
+  (x2 - x1) * (x2 - x1) * (x2 - x1) * (y2 - y1) * (y2 - y1) +
+  (x3 - x2) ^ 2 * (x3 - x2) * (x3 - x2) * (x3 - x2) * (x3 - x2) * y1 * y1 * x1 * x1 * (x2 - x1) *
+  (x2 - x1) * (x2 - x1) * (x2 - x1) * (x2 - x1) * (x2 - x1) -
+  2 * (x3 - x2) * (x3 - x2) * (x3 - x2) * (x3 - x2) * (x3 - x2) * (x3 - x2) * y1 * y1 * x1 * (x2 - x1) *
+  (x2 - x1) * (x2 - x1) * (x2 - x1) * (y2 - y1) * (y2 - y1) +
+  (x3 - x2) ^ 2 * (x3 - x2) * (x3 - x2) * (x3 - x2) * (x3 - x2) * y1 * y1 * (x2 - x1) * (x2 - x1) *
+  (y2 - y1) * (y2 - y1) * (y2 - y1) * (y2 - y1) +
+  (x3 - x2) ^ 2 * (x3 - x2) * (x3 - x2) * (x3 - x2) * (x3 - x2) * x2 * x2 * x2 * x2 * x2 * (x2 - x1) *
+  (x2 - x1) * (x2 - x1) * (x2 - x1) * (x2 - x1) * (x2 - x1) +
+  (1 + 2 ^ 2) * (x3 - x2) * (x3 - x2) * (x3 - x2) * (x3 - x2) * (x3 - x2) * (x3 - x2) * x2 * x2 * x2 *
+  x2 * x3 * (x2 - x1) * (x2 - x1) * (x2 - x1) * (x2 - x1) * (x2 - x1) * (x2 - x1) +
+  3 * (x3 - x2) * (x3 - x2) * (x3 - x2) * (x3 - x2) * (x3 - x2) * (x3 - x2) * x2 * x2 * x2 * x2 * x1 *
+  (x2 - x1) * (x2 - x1) * (x2 - x1) * (x2 - x1) * (x2 - x1) * (x2 - x1) -
+  2 * (x3 - x2) * (x3 - x2) * (x3 - x2) * (x3 - x2) * (x3 - x2) * (x3 - x2) * x2 * x2 * x2 * x2 *
+  (x2 - x1) * (x2 - x1) * (x2 - x1) * (x2 - x1) * (y2 - y1) * (y2 - y1) +
+  2 * (1 + 2 ^ 2) * (x3 - x2) * (x3 - x2) * (x3 - x2) * (x3 - x2) * (x3 - x2) * (x3 - x2) * x2 * x2 * x2 *
+  x3 * x3 * (x2 - x1) * (x2 - x1) * (x2 - x1) * (x2 - x1) * (x2 - x1) * (x2 - x1) +
+  2 * (2 * 3) * (x3 - x2) * (x3 - x2) * (x3 - x2) * (x3 - x2) * (x3 - x2) * (x3 - x2) * x2 * x2 * x2 *
+  x3 * x1 * (x2 - x1) * (x2 - x1) * (x2 - x1) * (x2 - x1) * (x2 - x1) * (x2 - x1) -
+  2 ^ 3 * (x3 - x2) * (x3 - x2) * (x3 - x2) * (x3 - x2) * (x3 - x2) * (x3 - x2) * x2 * x2 * x2 * x3 *
+  (x2 - x1) * (x2 - x1) * (x2 - x1) * (x2 - x1) * (y2 - y1) * (y2 - y1) +
+  2 * (x3 - x2) * (x3 - x2) * (x3 - x2) * (x3 - x2) * (x3 - x2) * (x3 - x2) * x2 * x2 * x2 * x1 * x1 *
+  (x2 - x1) * (x2 - x1) * (x2 - x1) * (x2 - x1) * (x2 - x1) * (x2 - x1) -
+  2 ^ 2 * (x3 - x2) * (x3 - x2) * (x3 - x2) * (x3 - x2) * (x3 - x2) * (x3 - x2) * x2 * x2 * x2 * x1 *
+  (x2 - x1) * (x2 - x1) * (x2 - x1) * (x2 - x1) * (y2 - y1) * (y2 - y1) +
+  (x3 - x2) ^ 2 * (x3 - x2) * (x3 - x2) * (x3 - x2) * (x3 - x2) * x2 * x2 * x2 * (x2 - x1) * (x2 - x1) *
+  (y2 - y1) * (y2 - y1) * (y2 - y1) * (y2 - y1) +
+  2 * (1 + 2 ^ 2) * (x3 - x2) * (x3 - x2) * (x3 - x2) * (x3 - x2) * (x3 - x2) * (x3 - x2) * x2 * x2 * x3 *
+  x3 * x3 * (x2 - x1) * (x2 - x1) * (x2 - x1) * (x2 - x1) * (x2 - x1) * (x2 - x1) +
+  2 * (1 + 2 ^ 3) * (x3 - x2) * (x3 - x2) * (x3 - x2) * (x3 - x2) * (x3 - x2) * (x3 - x2) * x2 * x2 * x3 *
+  x3 * x1 * (x2 - x1) * (x2 - x1) * (x2 - x1) * (x2 - x1) * (x2 - x1) * (x2 - x1) -
+  2 * (2 * 3) * (x3 - x2) * (x3 - x2) * (x3 - x2) * (x3 - x2) * (x3 - x2) * (x3 - x2) * x2 * x2 * x3 *
+  x3 * (x2 - x1) * (x2 - x1) * (x2 - x1) * (x2 - x1) * (y2 - y1) * (y2 - y1) +
+  2 * 3 * (x3 - x2) * (x3 - x2) * (x3 - x2) * (x3 - x2) * (x3 - x2) * (x3 - x2) * x2 * x2 * x3 * x1 * x1 *
+  (x2 - x1) * (x2 - x1) * (x2 - x1) * (x2 - x1) * (x2 - x1) * (x2 - x1) -
+  2 * (2 * 3) * (x3 - x2) * (x3 - x2) * (x3 - x2) * (x3 - x2) * (x3 - x2) * (x3 - x2) * x2 * x2 * x3 *
+  x1 * (x2 - x1) * (x2 - x1) * (x2 - x1) * (x2 - x1) * (y2 - y1) * (y2 - y1) +
+  3 * (x3 - x2) * (x3 - x2) * (x3 - x2) * (x3 - x2) * (x3 - x2) * (x3 - x2) * x2 * x2 * x3 * (x2 - x1) *
+  (x2 - x1) * (y2 - y1) * (y2 - y1) * (y2 - y1) * (y2 - y1) -
+  2 * (x3 - x2) * (x3 - x2) * (x3 - x2) * (x3 - x2) * (x3 - x2) * (x3 - x2) * x2 * x2 * x1 * x1 * x1 *
+  (x2 - x1) * (x2 - x1) * (x2 - x1) * (x2 - x1) * (x2 - x1) * (x2 - x1) +
+  (x3 - x2) ^ 2 * (x3 - x2) * (x3 - x2) * (x3 - x2) * (x3 - x2) * x2 * x2 * x1 * (x2 - x1) * (x2 - x1) *
+  (y2 - y1) * (y2 - y1) * (y2 - y1) * (y2 - y1) +
+  (1 + 2 ^ 2) * (x3 - x2) * (x3 - x2) * (x3 - x2) * (x3 - x2) * (x3 - x2) * (x3 - x2) * x2 * x3 * x3 *
+  x3 * x3 * (x2 - x1) * (x2 - x1) * (x2 - x1) * (x2 - x1) * (x2 - x1) * (x2 - x1) +
+  2 * (2 * 3) * (x3 - x2) * (x3 - x2) * (x3 - x2) * (x3 - x2) * (x3 - x2) * (x3 - x2) * x2 * x3 * x3 *
+  x3 * x1 * (x2 - x1) * (x2 - x1) * (x2 - x1) * (x2 - x1) * (x2 - x1) * (x2 - x1) -
+  2 ^ 3 * (x3 - x2) * (x3 - x2) * (x3 - x2) * (x3 - x2) * (x3 - x2) * (x3 - x2) * x2 * x3 * x3 * x3 *
+  (x2 - x1) * (x2 - x1) * (x2 - x1) * (x2 - x1) * (y2 - y1) * (y2 - y1) +
+  2 * 3 * (x3 - x2) * (x3 - x2) * (x3 - x2) * (x3 - x2) * (x3 - x2) * (x3 - x2) * x2 * x3 * x3 * x1 * x1 *
+  (x2 - x1) * (x2 - x1) * (x2 - x1) * (x2 - x1) * (x2 - x1) * (x2 - x1) -
+  2 * (2 * 3) * (x3 - x2) * (x3 - x2) * (x3 - x2) * (x3 - x2) * (x3 - x2) * (x3 - x2) * x2 * x3 * x3 *
+  x1 * (x2 - x1) * (x2 - x1) * (x2 - x1) * (x2 - x1) * (y2 - y1) * (y2 - y1) +
+  3 * (x3 - x2) * (x3 - x2) * (x3 - x2) * (x3 - x2) * (x3 - x2) * (x3 - x2) * x2 * x3 * x3 * (x2 - x1) *
+  (x2 - x1) * (y2 - y1) * (y2 - y1) * (y2 - y1) * (y2 - y1) -
+  2 ^ 2 * (x3 - x2) * (x3 - x2) * (x3 - x2) * (x3 - x2) * (x3 - x2) * (x3 - x2) * x2 * x3 * x1 * x1 * x1 *
+  (x2 - x1) * (x2 - x1) * (x2 - x1) * (x2 - x1) * (x2 - x1) * (x2 - x1) +
+  2 * (x3 - x2) * (x3 - x2) * (x3 - x2) * (x3 - x2) * (x3 - x2) * (x3 - x2) * x2 * x3 * x1 * (x2 - x1) *
+  (x2 - x1) * (y2 - y1) * (y2 - y1) * (y2 - y1) * (y2 - y1) -
+  3 * (x3 - x2) * (x3 - x2) * (x3 - x2) * (x3 - x2) * (x3 - x2) * (x3 - x2) * x2 * x1 * x1 * x1 * x1 *
+  (x2 - x1) * (x2 - x1) * (x2 - x1) * (x2 - x1) * (x2 - x1) * (x2 - x1) +
+  2 ^ 2 * (x3 - x2) * (x3 - x2) * (x3 - x2) * (x3 - x2) * (x3 - x2) * (x3 - x2) * x2 * x1 * x1 * x1 *
+  (x2 - x1) * (x2 - x1) * (x2 - x1) * (x2 - x1) * (y2 - y1) * (y2 - y1) -
+  (x3 - x2) ^ 2 * (x3 - x2) * (x3 - x2) * (x3 - x2) * (x3 - x2) * x2 * x1 * x1 * (x2 - x1) * (x2 - x1) *
+  (y2 - y1) * (y2 - y1) * (y2 - y1) * (y2 - y1) +
+  (x3 - x2) ^ 2 * (x3 - x2) * (x3 - x2) * (x3 - x2) * (x3 - x2) * x3 * x3 * x3 * x3 * x3 * (x2 - x1) *
+  (x2 - x1) * (x2 - x1) * (x2 - x1) * (x2 - x1) * (x2 - x1) +
+  3 * (x3 - x2) * (x3 - x2) * (x3 - x2) * (x3 - x2) * (x3 - x2) * (x3 - x2) * x3 * x3 * x3 * x3 * x1 *
+  (x2 - x1) * (x2 - x1) * (x2 - x1) * (x2 - x1) * (x2 - x1) * (x2 - x1) -
+  2 * (x3 - x2) * (x3 - x2) * (x3 - x2) * (x3 - x2) * (x3 - x2) * (x3 - x2) * x3 * x3 * x3 * x3 *
+  (x2 - x1) * (x2 - x1) * (x2 - x1) * (x2 - x1) * (y2 - y1) * (y2 - y1) +
+  2 * (x3 - x2) * (x3 - x2) * (x3 - x2) * (x3 - x2) * (x3 - x2) * (x3 - x2) * x3 * x3 * x3 * x1 * x1 *
+  (x2 - x1) * (x2 - x1) * (x2 - x1) * (x2 - x1) * (x2 - x1) * (x2 - x1) -
+  2 ^ 2 * (x3 - x2) * (x3 - x2) * (x3 - x2) * (x3 - x2) * (x3 - x2) * (x3 - x2) * x3 * x3 * x3 * x1 *
+  (x2 - x1) * (x2 - x1) * (x2 - x1) * (x2 - x1) * (y2 - y1) * (y2 - y1) +
+  (x3 - x2) ^ 2 * (x3 - x2) * (x3 - x2) * (x3 - x2) * (x3 - x2) * x3 * x3 * x3 * (x2 - x1) * (x2 - x1) *
+  (y2 - y1) * (y2 - y1) * (y2 - y1) * (y2 - y1) -
+  2 * (x3 - x2) * (x3 - x2) * (x3 - x2) * (x3 - x2) * (x3 - x2) * (x3 - x2) * x3 * x3 * x1 * x1 * x1 *
+  (x2 - x1) * (x2 - x1) * (x2 - x1) * (x2 - x1) * (x2 - x1) * (x2 - x1) +
+  (x3 - x2) ^ 2 * (x3 - x2) * (x3 - x2) * (x3 - x2) * (x3 - x2) * x3 * x3 * x1 * (x2 - x1) * (x2 - x1) *
+  (y2 - y1) * (y2 - y1) * (y2 - y1) * (y2 - y1) -
+  3 * (x3 - x2) * (x3 - x2) * (x3 - x2) * (x3 - x2) * (x3 - x2) * (x3 - x2) * x3 * x1 * x1 * x1 * x1 *
+  (x2 - x1) * (x2 - x1) * (x2 - x1) * (x2 - x1) * (x2 - x1) * (x2 - x1) +
+  2 ^ 2 * (x3 - x2) * (x3 - x2) * (x3 - x2) * (x3 - x2) * (x3 - x2) * (x3 - x2) * x3 * x1 * x1 * x1 *
+  (x2 - x1) * (x2 - x1) * (x2 - x1) * (x2 - x1) * (y2 - y1) * (y2 - y1) -
+  (x3 - x2) ^ 2 * (x3 - x2) * (x3 - x2) * (x3 - x2) * (x3 - x2) * x3 * x1 * x1 * (x2 - x1) * (x2 - x1) *
+  (y2 - y1) * (y2 - y1) * (y2 - y1) * (y2 - y1) -
+  (x3 - x2) ^ 2 * (x3 - x2) * (x3 - x2) * (x3 - x2) * (x3 - x2) * x1 * x1 * x1 * x1 * x1 * (x2 - x1) *
+  (x2 - x1) * (x2 - x1) * (x2 - x1) * (x2 - x1) * (x2 - x1) +
+  2 * (x3 - x2) * (x3 - x2) * (x3 - x2) * (x3 - x2) * (x3 - x2) * (x3 - x2) * x1 * x1 * x1 * x1 *
+  (x2 - x1) * (x2 - x1) * (x2 - x1) * (x2 - x1) * (y2 - y1) * (y2 - y1) -
+  (x3 - x2) ^ 2 * (x3 - x2) * (x3 - x2) * (x3 - x2) * (x3 - x2) * x1 * x1 * x1 * (x2 - x1) * (x2 - x1) *
+  (y2 - y1) * (y2 - y1) * (y2 - y1) * (y2 - y1) -
+  3 * (x3 - x2) * (x3 - x2) * (x3 - x2) * (x3 - x2) * (y3 - y2) * (y3 - y2) * x2 * x2 * x2 * x2 *
+  (x2 - x1) * (x2 - x1) * (x2 - x1) * (x2 - x1) * (x2 - x1) * (x2 - x1) -
+  2 * (2 * 3) * (x3 - x2) * (x3 - x2) * (x3 - x2) * (x3 - x2) * (y3 - y2) * (y3 - y2) * x2 * x2 * x2 *
+  x3 * (x2 - x1) * (x2 - x1) * (x2 - x1) * (x2 - x1) * (x2 - x1) * (x2 - x1) -
+  2 ^ 3 * (x3 - x2) * (x3 - x2) * (x3 - x2) * (x3 - x2) * (y3 - y2) * (y3 - y2) * x2 * x2 * x2 * x1 *
+  (x2 - x1) * (x2 - x1) * (x2 - x1) * (x2 - x1) * (x2 - x1) * (x2 - x1) +
+  2 * 3 * (x3 - x2) * (x3 - x2) * (x3 - x2) * (x3 - x2) * (y3 - y2) * (y3 - y2) * x2 * x2 * x2 *
+  (x2 - x1) * (x2 - x1) * (x2 - x1) * (x2 - x1) * (y2 - y1) * (y2 - y1) -
+  2 * (1 + 2 ^ 3) * (x3 - x2) * (x3 - x2) * (x3 - x2) * (x3 - x2) * (y3 - y2) * (y3 - y2) * x2 * x2 * x3 *
+  x3 * (x2 - x1) * (x2 - x1) * (x2 - x1) * (x2 - x1) * (x2 - x1) * (x2 - x1) -
+  2 * (2 * (2 * 3)) * (x3 - x2) * (x3 - x2) * (x3 - x2) * (x3 - x2) * (y3 - y2) * (y3 - y2) * x2 * x2 *
+  x3 * x1 * (x2 - x1) * (x2 - x1) * (x2 - x1) * (x2 - x1) * (x2 - x1) * (x2 - x1) +
+  2 * (1 + 2 ^ 3) * (x3 - x2) * (x3 - x2) * (x3 - x2) * (x3 - x2) * (y3 - y2) * (y3 - y2) * x2 * x2 * x3 *
+  (x2 - x1) * (x2 - x1) * (x2 - x1) * (x2 - x1) * (y2 - y1) * (y2 - y1) -
+  2 * 3 * (x3 - x2) * (x3 - x2) * (x3 - x2) * (x3 - x2) * (y3 - y2) * (y3 - y2) * x2 * x2 * x1 * x1 *
+  (x2 - x1) * (x2 - x1) * (x2 - x1) * (x2 - x1) * (x2 - x1) * (x2 - x1) +
+  2 * (1 + 2 ^ 2) * (x3 - x2) * (x3 - x2) * (x3 - x2) * (x3 - x2) * (y3 - y2) * (y3 - y2) * x2 * x2 * x1 *
+  (x2 - x1) * (x2 - x1) * (x2 - x1) * (x2 - x1) * (y2 - y1) * (y2 - y1) -
+  3 * (x3 - x2) * (x3 - x2) * (x3 - x2) * (x3 - x2) * (y3 - y2) * (y3 - y2) * x2 * x2 * (x2 - x1) *
+  (x2 - x1) * (y2 - y1) * (y2 - y1) * (y2 - y1) * (y2 - y1) -
+  2 * (2 * 3) * (x3 - x2) * (x3 - x2) * (x3 - x2) * (x3 - x2) * (y3 - y2) * (y3 - y2) * x2 * x3 * x3 *
+  x3 * (x2 - x1) * (x2 - x1) * (x2 - x1) * (x2 - x1) * (x2 - x1) * (x2 - x1) -
+  2 * (2 * (2 * 3)) * (x3 - x2) * (x3 - x2) * (x3 - x2) * (x3 - x2) * (y3 - y2) * (y3 - y2) * x2 * x3 *
+  x3 * x1 * (x2 - x1) * (x2 - x1) * (x2 - x1) * (x2 - x1) * (x2 - x1) * (x2 - x1) +
+  2 * (1 + 2 ^ 3) * (x3 - x2) * (x3 - x2) * (x3 - x2) * (x3 - x2) * (y3 - y2) * (y3 - y2) * x2 * x3 * x3 *
+  (x2 - x1) * (x2 - x1) * (x2 - x1) * (x2 - x1) * (y2 - y1) * (y2 - y1) -
+  2 * (2 * 3) * (x3 - x2) * (x3 - x2) * (x3 - x2) * (x3 - x2) * (y3 - y2) * (y3 - y2) * x2 * x3 * x1 *
+  x1 * (x2 - x1) * (x2 - x1) * (x2 - x1) * (x2 - x1) * (x2 - x1) * (x2 - x1) +
+  2 * (2 * (1 + 2 ^ 2)) * (x3 - x2) * (x3 - x2) * (x3 - x2) * (x3 - x2) * (y3 - y2) * (y3 - y2) * x2 *
+  x3 * x1 * (x2 - x1) * (x2 - x1) * (x2 - x1) * (x2 - x1) * (y2 - y1) * (y2 - y1) -
+  2 * 3 * (x3 - x2) * (x3 - x2) * (x3 - x2) * (x3 - x2) * (y3 - y2) * (y3 - y2) * x2 * x3 * (x2 - x1) *
+  (x2 - x1) * (y2 - y1) * (y2 - y1) * (y2 - y1) * (y2 - y1) +
+  2 * (x3 - x2) * (x3 - x2) * (x3 - x2) * (x3 - x2) * (y3 - y2) * (y3 - y2) * x2 * x1 * x1 * (x2 - x1) *
+  (x2 - x1) * (x2 - x1) * (x2 - x1) * (y2 - y1) * (y2 - y1) -
+  2 * (x3 - x2) * (x3 - x2) * (x3 - x2) * (x3 - x2) * (y3 - y2) * (y3 - y2) * x2 * x1 * (x2 - x1) *
+  (x2 - x1) * (y2 - y1) * (y2 - y1) * (y2 - y1) * (y2 - y1) -
+  3 * (x3 - x2) * (x3 - x2) * (x3 - x2) * (x3 - x2) * (y3 - y2) * (y3 - y2) * x3 * x3 * x3 * x3 *
+  (x2 - x1) * (x2 - x1) * (x2 - x1) * (x2 - x1) * (x2 - x1) * (x2 - x1) -
+  2 ^ 3 * (x3 - x2) * (x3 - x2) * (x3 - x2) * (x3 - x2) * (y3 - y2) * (y3 - y2) * x3 * x3 * x3 * x1 *
+  (x2 - x1) * (x2 - x1) * (x2 - x1) * (x2 - x1) * (x2 - x1) * (x2 - x1) +
+  2 * 3 * (x3 - x2) * (x3 - x2) * (x3 - x2) * (x3 - x2) * (y3 - y2) * (y3 - y2) * x3 * x3 * x3 *
+  (x2 - x1) * (x2 - x1) * (x2 - x1) * (x2 - x1) * (y2 - y1) * (y2 - y1) -
+  2 * 3 * (x3 - x2) * (x3 - x2) * (x3 - x2) * (x3 - x2) * (y3 - y2) * (y3 - y2) * x3 * x3 * x1 * x1 *
+  (x2 - x1) * (x2 - x1) * (x2 - x1) * (x2 - x1) * (x2 - x1) * (x2 - x1) +
+  2 * (1 + 2 ^ 2) * (x3 - x2) * (x3 - x2) * (x3 - x2) * (x3 - x2) * (y3 - y2) * (y3 - y2) * x3 * x3 * x1 *
+  (x2 - x1) * (x2 - x1) * (x2 - x1) * (x2 - x1) * (y2 - y1) * (y2 - y1) -
+  3 * (x3 - x2) * (x3 - x2) * (x3 - x2) * (x3 - x2) * (y3 - y2) * (y3 - y2) * x3 * x3 * (x2 - x1) *
+  (x2 - x1) * (y2 - y1) * (y2 - y1) * (y2 - y1) * (y2 - y1) +
+  2 * (x3 - x2) * (x3 - x2) * (x3 - x2) * (x3 - x2) * (y3 - y2) * (y3 - y2) * x3 * x1 * x1 * (x2 - x1) *
+  (x2 - x1) * (x2 - x1) * (x2 - x1) * (y2 - y1) * (y2 - y1) -
+  2 * (x3 - x2) * (x3 - x2) * (x3 - x2) * (x3 - x2) * (y3 - y2) * (y3 - y2) * x3 * x1 * (x2 - x1) *
+  (x2 - x1) * (y2 - y1) * (y2 - y1) * (y2 - y1) * (y2 - y1) +
+  (x3 - x2) ^ 2 * (x3 - x2) * (x3 - x2) * (y3 - y2) * (y3 - y2) * x1 * x1 * x1 * x1 * (x2 - x1) *
+  (x2 - x1) * (x2 - x1) * (x2 - x1) * (x2 - x1) * (x2 - x1) -
+  2 * (x3 - x2) * (x3 - x2) * (x3 - x2) * (x3 - x2) * (y3 - y2) * (y3 - y2) * x1 * x1 * x1 * (x2 - x1) *
+  (x2 - x1) * (x2 - x1) * (x2 - x1) * (y2 - y1) * (y2 - y1) +
+  (x3 - x2) ^ 2 * (x3 - x2) * (x3 - x2) * (y3 - y2) * (y3 - y2) * x1 * x1 * (x2 - x1) * (x2 - x1) *
+  (y2 - y1) * (y2 - y1) * (y2 - y1) * (y2 - y1) +
+  2 * (x3 - x2) * (x3 - x2) * (x3 - x2) * (y3 - y2) * (y3 - y2) * (y3 - y2) * y2 * x2 * x2 * (x2 - x1) *
+  (x2 - x1) * (x2 - x1) * (x2 - x1) * (x2 - x1) * (x2 - x1) +
+  2 ^ 2 * (x3 - x2) * (x3 - x2) * (x3 - x2) * (y3 - y2) * (y3 - y2) * (y3 - y2) * y2 * x2 * x3 *
+  (x2 - x1) * (x2 - x1) * (x2 - x1) * (x2 - x1) * (x2 - x1) * (x2 - x1) +
+  2 ^ 2 * (x3 - x2) * (x3 - x2) * (x3 - x2) * (y3 - y2) * (y3 - y2) * (y3 - y2) * y2 * x2 * x1 *
+  (x2 - x1) * (x2 - x1) * (x2 - x1) * (x2 - x1) * (x2 - x1) * (x2 - x1) -
+  2 ^ 2 * (x3 - x2) * (x3 - x2) * (x3 - x2) * (y3 - y2) * (y3 - y2) * (y3 - y2) * y2 * x2 * (x2 - x1) *
+  (x2 - x1) * (x2 - x1) * (x2 - x1) * (y2 - y1) * (y2 - y1) +
+  2 * (x3 - x2) * (x3 - x2) * (x3 - x2) * (y3 - y2) * (y3 - y2) * (y3 - y2) * y2 * x3 * x3 * (x2 - x1) *
+  (x2 - x1) * (x2 - x1) * (x2 - x1) * (x2 - x1) * (x2 - x1) +
+  2 ^ 2 * (x3 - x2) * (x3 - x2) * (x3 - x2) * (y3 - y2) * (y3 - y2) * (y3 - y2) * y2 * x3 * x1 *
+  (x2 - x1) * (x2 - x1) * (x2 - x1) * (x2 - x1) * (x2 - x1) * (x2 - x1) -
+  2 ^ 2 * (x3 - x2) * (x3 - x2) * (x3 - x2) * (y3 - y2) * (y3 - y2) * (y3 - y2) * y2 * x3 * (x2 - x1) *
+  (x2 - x1) * (x2 - x1) * (x2 - x1) * (y2 - y1) * (y2 - y1) +
+  2 * (x3 - x2) * (x3 - x2) * (x3 - x2) * (y3 - y2) * (y3 - y2) * (y3 - y2) * y2 * x1 * x1 * (x2 - x1) *
+  (x2 - x1) * (x2 - x1) * (x2 - x1) * (x2 - x1) * (x2 - x1) -
+  2 ^ 2 * (x3 - x2) * (x3 - x2) * (x3 - x2) * (y3 - y2) * (y3 - y2) * (y3 - y2) * y2 * x1 * (x2 - x1) *
+  (x2 - x1) * (x2 - x1) * (x2 - x1) * (y2 - y1) * (y2 - y1) +
+  2 * (x3 - x2) * (x3 - x2) * (x3 - x2) * (y3 - y2) * (y3 - y2) * (y3 - y2) * y2 * (x2 - x1) * (x2 - x1) *
+  (y2 - y1) * (y2 - y1) * (y2 - y1) * (y2 - y1) +
+  2 * (x3 - x2) * (x3 - x2) * (x3 - x2) * (y3 - y2) * (y3 - y2) * (y3 - y2) * y1 * x2 * x2 * (x2 - x1) *
+  (x2 - x1) * (x2 - x1) * (x2 - x1) * (x2 - x1) * (x2 - x1) +
+  2 ^ 2 * (x3 - x2) * (x3 - x2) * (x3 - x2) * (y3 - y2) * (y3 - y2) * (y3 - y2) * y1 * x2 * x3 *
+  (x2 - x1) * (x2 - x1) * (x2 - x1) * (x2 - x1) * (x2 - x1) * (x2 - x1) +
+  2 ^ 2 * (x3 - x2) * (x3 - x2) * (x3 - x2) * (y3 - y2) * (y3 - y2) * (y3 - y2) * y1 * x2 * x1 *
+  (x2 - x1) * (x2 - x1) * (x2 - x1) * (x2 - x1) * (x2 - x1) * (x2 - x1) -
+  2 ^ 2 * (x3 - x2) * (x3 - x2) * (x3 - x2) * (y3 - y2) * (y3 - y2) * (y3 - y2) * y1 * x2 * (x2 - x1) *
+  (x2 - x1) * (x2 - x1) * (x2 - x1) * (y2 - y1) * (y2 - y1) +
+  2 * (x3 - x2) * (x3 - x2) * (x3 - x2) * (y3 - y2) * (y3 - y2) * (y3 - y2) * y1 * x3 * x3 * (x2 - x1) *
+  (x2 - x1) * (x2 - x1) * (x2 - x1) * (x2 - x1) * (x2 - x1) +
+  2 ^ 2 * (x3 - x2) * (x3 - x2) * (x3 - x2) * (y3 - y2) * (y3 - y2) * (y3 - y2) * y1 * x3 * x1 *
+  (x2 - x1) * (x2 - x1) * (x2 - x1) * (x2 - x1) * (x2 - x1) * (x2 - x1) -
+  2 ^ 2 * (x3 - x2) * (x3 - x2) * (x3 - x2) * (y3 - y2) * (y3 - y2) * (y3 - y2) * y1 * x3 * (x2 - x1) *
+  (x2 - x1) * (x2 - x1) * (x2 - x1) * (y2 - y1) * (y2 - y1) +
+  2 * (x3 - x2) * (x3 - x2) * (x3 - x2) * (y3 - y2) * (y3 - y2) * (y3 - y2) * y1 * x1 * x1 * (x2 - x1) *
+  (x2 - x1) * (x2 - x1) * (x2 - x1) * (x2 - x1) * (x2 - x1) -
+  2 ^ 2 * (x3 - x2) * (x3 - x2) * (x3 - x2) * (y3 - y2) * (y3 - y2) * (y3 - y2) * y1 * x1 * (x2 - x1) *
+  (x2 - x1) * (x2 - x1) * (x2 - x1) * (y2 - y1) * (y2 - y1) +
+  2 * (x3 - x2) * (x3 - x2) * (x3 - x2) * (y3 - y2) * (y3 - y2) * (y3 - y2) * y1 * (x2 - x1) * (x2 - x1) *
+  (y2 - y1) * (y2 - y1) * (y2 - y1) * (y2 - y1) +
+  3 * (x3 - x2) * (x3 - x2) * (y3 - y2) * (y3 - y2) * (y3 - y2) * (y3 - y2) * x2 * x2 * x2 * (x2 - x1) *
+  (x2 - x1) * (x2 - x1) * (x2 - x1) * (x2 - x1) * (x2 - x1) +
+  (1 + 2 ^ 3) * (x3 - x2) * (x3 - x2) * (y3 - y2) * (y3 - y2) * (y3 - y2) * (y3 - y2) * x2 * x2 * x3 *
+  (x2 - x1) * (x2 - x1) * (x2 - x1) * (x2 - x1) * (x2 - x1) * (x2 - x1) +
+  (1 + 2 * 3) * (x3 - x2) * (x3 - x2) * (y3 - y2) * (y3 - y2) * (y3 - y2) * (y3 - y2) * x2 * x2 * x1 *
+  (x2 - x1) * (x2 - x1) * (x2 - x1) * (x2 - x1) * (x2 - x1) * (x2 - x1) -
+  2 * 3 * (x3 - x2) * (x3 - x2) * (y3 - y2) * (y3 - y2) * (y3 - y2) * (y3 - y2) * x2 * x2 * (x2 - x1) *
+  (x2 - x1) * (x2 - x1) * (x2 - x1) * (y2 - y1) * (y2 - y1) +
+  (1 + 2 ^ 3) * (x3 - x2) * (x3 - x2) * (y3 - y2) * (y3 - y2) * (y3 - y2) * (y3 - y2) * x2 * x3 * x3 *
+  (x2 - x1) * (x2 - x1) * (x2 - x1) * (x2 - x1) * (x2 - x1) * (x2 - x1) +
+  2 * (1 + 2 * 3) * (x3 - x2) * (x3 - x2) * (y3 - y2) * (y3 - y2) * (y3 - y2) * (y3 - y2) * x2 * x3 * x1 *
+  (x2 - x1) * (x2 - x1) * (x2 - x1) * (x2 - x1) * (x2 - x1) * (x2 - x1) -
+  2 * (2 * 3) * (x3 - x2) * (x3 - x2) * (y3 - y2) * (y3 - y2) * (y3 - y2) * (y3 - y2) * x2 * x3 *
+  (x2 - x1) * (x2 - x1) * (x2 - x1) * (x2 - x1) * (y2 - y1) * (y2 - y1) +
+  (1 + 2 ^ 2) * (x3 - x2) * (x3 - x2) * (y3 - y2) * (y3 - y2) * (y3 - y2) * (y3 - y2) * x2 * x1 * x1 *
+  (x2 - x1) * (x2 - x1) * (x2 - x1) * (x2 - x1) * (x2 - x1) * (x2 - x1) -
+  2 ^ 3 * (x3 - x2) * (x3 - x2) * (y3 - y2) * (y3 - y2) * (y3 - y2) * (y3 - y2) * x2 * x1 * (x2 - x1) *
+  (x2 - x1) * (x2 - x1) * (x2 - x1) * (y2 - y1) * (y2 - y1) +
+  3 * (x3 - x2) * (x3 - x2) * (y3 - y2) * (y3 - y2) * (y3 - y2) * (y3 - y2) * x2 * (x2 - x1) * (x2 - x1) *
+  (y2 - y1) * (y2 - y1) * (y2 - y1) * (y2 - y1) +
+  3 * (x3 - x2) * (x3 - x2) * (y3 - y2) * (y3 - y2) * (y3 - y2) * (y3 - y2) * x3 * x3 * x3 * (x2 - x1) *
+  (x2 - x1) * (x2 - x1) * (x2 - x1) * (x2 - x1) * (x2 - x1) +
+  (1 + 2 * 3) * (x3 - x2) * (x3 - x2) * (y3 - y2) * (y3 - y2) * (y3 - y2) * (y3 - y2) * x3 * x3 * x1 *
+  (x2 - x1) * (x2 - x1) * (x2 - x1) * (x2 - x1) * (x2 - x1) * (x2 - x1) -
+  2 * 3 * (x3 - x2) * (x3 - x2) * (y3 - y2) * (y3 - y2) * (y3 - y2) * (y3 - y2) * x3 * x3 * (x2 - x1) *
+  (x2 - x1) * (x2 - x1) * (x2 - x1) * (y2 - y1) * (y2 - y1) +
+  (1 + 2 ^ 2) * (x3 - x2) * (x3 - x2) * (y3 - y2) * (y3 - y2) * (y3 - y2) * (y3 - y2) * x3 * x1 * x1 *
+  (x2 - x1) * (x2 - x1) * (x2 - x1) * (x2 - x1) * (x2 - x1) * (x2 - x1) -
+  2 ^ 3 * (x3 - x2) * (x3 - x2) * (y3 - y2) * (y3 - y2) * (y3 - y2) * (y3 - y2) * x3 * x1 * (x2 - x1) *
+  (x2 - x1) * (x2 - x1) * (x2 - x1) * (y2 - y1) * (y2 - y1) +
+  3 * (x3 - x2) * (x3 - x2) * (y3 - y2) * (y3 - y2) * (y3 - y2) * (y3 - y2) * x3 * (x2 - x1) * (x2 - x1) *
+  (y2 - y1) * (y2 - y1) * (y2 - y1) * (y2 - y1) +
+  (x3 - x2) ^ 2 * (y3 - y2) * (y3 - y2) * (y3 - y2) * (y3 - y2) * x1 * x1 * x1 * (x2 - x1) * (x2 - x1) *
+  (x2 - x1) * (x2 - x1) * (x2 - x1) * (x2 - x1) -
+  2 * (x3 - x2) * (x3 - x2) * (y3 - y2) * (y3 - y2) * (y3 - y2) * (y3 - y2) * x1 * x1 * (x2 - x1) *
+  (x2 - x1) * (x2 - x1) * (x2 - x1) * (y2 - y1) * (y2 - y1) +
+  (x3 - x2) ^ 2 * (y3 - y2) * (y3 - y2) * (y3 - y2) * (y3 - y2) * x1 * (x2 - x1) * (x2 - x1) * (y2 - y1) *
+  (y2 - y1) * (y2 - y1) * (y2 - y1)
+  ==
+  (x3 - x2) ^ 2 * (x3 - x2) * (x3 - x2) * (x3 - x2) * (x3 - x2) * y1 * y1 * x2 * x2 * (x2 - x1) *
+  (x2 - x1) * (x2 - x1) * (x2 - x1) * (x2 - x1) * (x2 - x1) +
+  2 * (x3 - x2) * (x3 - x2) * (x3 - x2) * (x3 - x2) * (x3 - x2) * (x3 - x2) * y1 * y1 * x2 * x3 *
+  (x2 - x1) * (x2 - x1) * (x2 - x1) * (x2 - x1) * (x2 - x1) * (x2 - x1) +
+  2 * (x3 - x2) * (x3 - x2) * (x3 - x2) * (x3 - x2) * (x3 - x2) * (x3 - x2) * y1 * y1 * x2 * x1 *
+  (x2 - x1) * (x2 - x1) * (x2 - x1) * (x2 - x1) * (x2 - x1) * (x2 - x1) +
+  (x3 - x2) ^ 2 * (x3 - x2) * (x3 - x2) * (x3 - x2) * (x3 - x2) * y1 * y1 * x3 * x3 * (x2 - x1) *
+  (x2 - x1) * (x2 - x1) * (x2 - x1) * (x2 - x1) * (x2 - x1) +
+  2 * (x3 - x2) * (x3 - x2) * (x3 - x2) * (x3 - x2) * (x3 - x2) * (x3 - x2) * y1 * y1 * x3 * x1 *
+  (x2 - x1) * (x2 - x1) * (x2 - x1) * (x2 - x1) * (x2 - x1) * (x2 - x1) +
+  (x3 - x2) ^ 2 * (x3 - x2) * (x3 - x2) * (x3 - x2) * (x3 - x2) * y1 * y1 * x1 * x1 * (x2 - x1) *
+  (x2 - x1) * (x2 - x1) * (x2 - x1) * (x2 - x1) * (x2 - x1) +
+  2 * (x3 - x2) * (x3 - x2) * (x3 - x2) * (x3 - x2) * (x3 - x2) * (x3 - x2) * y1 * x2 * x2 * y3 *
+  (x2 - x1) * (x2 - x1) * (x2 - x1) * (x2 - x1) * (x2 - x1) * (x2 - x1) -
+  2 * (x3 - x2) * (x3 - x2) * (x3 - x2) * (x3 - x2) * (x3 - x2) * (x3 - x2) * y1 * x2 * x2 *
+  ((2 * x1 + x2) * (y2 - y1)) * (x2 - x1) * (x2 - x1) * (x2 - x1) * (x2 - x1) * 
+  (x2 - x1) +
+  2 * (x3 - x2) * (x3 - x2) * (x3 - x2) * (x3 - x2) * (x3 - x2) * (x3 - x2) * y1 * x2 * x2 * (x2 - x1) *
+  (x2 - x1) * (x2 - x1) * (y2 - y1) * (y2 - y1) * (y2 - y1) +
+  2 ^ 2 * (x3 - x2) * (x3 - x2) * (x3 - x2) * (x3 - x2) * (x3 - x2) * (x3 - x2) * y1 * x2 * x3 * y3 *
+  (x2 - x1) * (x2 - x1) * (x2 - x1) * (x2 - x1) * (x2 - x1) * (x2 - x1) -
+  2 ^ 2 * (x3 - x2) * (x3 - x2) * (x3 - x2) * (x3 - x2) * (x3 - x2) * (x3 - x2) * y1 * x2 * x3 *
+  ((2 * x1 + x2) * (y2 - y1)) * (x2 - x1) * (x2 - x1) * (x2 - x1) * (x2 - x1) * 
+  (x2 - x1) +
+  2 ^ 2 * (x3 - x2) * (x3 - x2) * (x3 - x2) * (x3 - x2) * (x3 - x2) * (x3 - x2) * y1 * x2 * x3 *
+  (x2 - x1) * (x2 - x1) * (x2 - x1) * (y2 - y1) * (y2 - y1) * (y2 - y1) +
+  2 ^ 2 * (x3 - x2) * (x3 - x2) * (x3 - x2) * (x3 - x2) * (x3 - x2) * (x3 - x2) * y1 * x2 * x1 * y3 *
+  (x2 - x1) * (x2 - x1) * (x2 - x1) * (x2 - x1) * (x2 - x1) * (x2 - x1) -
+  2 ^ 2 * (x3 - x2) * (x3 - x2) * (x3 - x2) * (x3 - x2) * (x3 - x2) * (x3 - x2) * y1 * x2 * x1 *
+  ((2 * x1 + x2) * (y2 - y1)) * (x2 - x1) * (x2 - x1) * (x2 - x1) * (x2 - x1) * 
+  (x2 - x1) +
+  2 ^ 2 * (x3 - x2) * (x3 - x2) * (x3 - x2) * (x3 - x2) * (x3 - x2) * (x3 - x2) * y1 * x2 * x1 *
+  (x2 - x1) * (x2 - x1) * (x2 - x1) * (y2 - y1) * (y2 - y1) * (y2 - y1) +
+  2 * (x3 - x2) * (x3 - x2) * (x3 - x2) * (x3 - x2) * (x3 - x2) * (x3 - x2) * y1 * x3 * x3 * y3 *
+  (x2 - x1) * (x2 - x1) * (x2 - x1) * (x2 - x1) * (x2 - x1) * (x2 - x1) -
+  2 * (x3 - x2) * (x3 - x2) * (x3 - x2) * (x3 - x2) * (x3 - x2) * (x3 - x2) * y1 * x3 * x3 *
+  ((2 * x1 + x2) * (y2 - y1)) * (x2 - x1) * (x2 - x1) * (x2 - x1) * (x2 - x1) * 
+  (x2 - x1) +
+  2 * (x3 - x2) * (x3 - x2) * (x3 - x2) * (x3 - x2) * (x3 - x2) * (x3 - x2) * y1 * x3 * x3 * (x2 - x1) *
+  (x2 - x1) * (x2 - x1) * (y2 - y1) * (y2 - y1) * (y2 - y1) +
+  2 ^ 2 * (x3 - x2) * (x3 - x2) * (x3 - x2) * (x3 - x2) * (x3 - x2) * (x3 - x2) * y1 * x3 * x1 * y3 *
+  (x2 - x1) * (x2 - x1) * (x2 - x1) * (x2 - x1) * (x2 - x1) * (x2 - x1) -
+  2 ^ 2 * (x3 - x2) * (x3 - x2) * (x3 - x2) * (x3 - x2) * (x3 - x2) * (x3 - x2) * y1 * x3 * x1 *
+  ((2 * x1 + x2) * (y2 - y1)) * (x2 - x1) * (x2 - x1) * (x2 - x1) * (x2 - x1) * 
+  (x2 - x1) +
+  2 ^ 2 * (x3 - x2) * (x3 - x2) * (x3 - x2) * (x3 - x2) * (x3 - x2) * (x3 - x2) * y1 * x3 * x1 *
+  (x2 - x1) * (x2 - x1) * (x2 - x1) * (y2 - y1) * (y2 - y1) * (y2 - y1) +
+  2 * (x3 - x2) * (x3 - x2) * (x3 - x2) * (x3 - x2) * (x3 - x2) * (x3 - x2) * y1 * x1 * x1 * y3 *
+  (x2 - x1) * (x2 - x1) * (x2 - x1) * (x2 - x1) * (x2 - x1) * (x2 - x1) -
+  2 * (x3 - x2) * (x3 - x2) * (x3 - x2) * (x3 - x2) * (x3 - x2) * (x3 - x2) * y1 * x1 * x1 *
+  ((2 * x1 + x2) * (y2 - y1)) * (x2 - x1) * (x2 - x1) * (x2 - x1) * (x2 - x1) * 
+  (x2 - x1) +
+  2 * (x3 - x2) * (x3 - x2) * (x3 - x2) * (x3 - x2) * (x3 - x2) * (x3 - x2) * y1 * x1 * x1 * (x2 - x1) *
+  (x2 - x1) * (x2 - x1) * (y2 - y1) * (y2 - y1) * (y2 - y1) +
+  (x3 - x2) ^ 2 * (x3 - x2) * (x3 - x2) * (x3 - x2) * (x3 - x2) * x2 * x2 * x2 * x2 * x2 * (x2 - x1) *
+  (x2 - x1) * (x2 - x1) * (x2 - x1) * (x2 - x1) * (x2 - x1) +
+  3 * (x3 - x2) * (x3 - x2) * (x3 - x2) * (x3 - x2) * (x3 - x2) * (x3 - x2) * x2 * x2 * x2 * x2 * x3 *
+  (x2 - x1) * (x2 - x1) * (x2 - x1) * (x2 - x1) * (x2 - x1) * (x2 - x1) +
+  (1 + 2 ^ 2) * (x3 - x2) * (x3 - x2) * (x3 - x2) * (x3 - x2) * (x3 - x2) * (x3 - x2) * x2 * x2 * x2 *
+  x2 * x1 * (x2 - x1) * (x2 - x1) * (x2 - x1) * (x2 - x1) * (x2 - x1) * (x2 - x1) -
+  3 * (x3 - x2) * (x3 - x2) * (x3 - x2) * (x3 - x2) * (x3 - x2) * (x3 - x2) * x2 * x2 * x2 * x2 *
+  (x2 - x1) * (x2 - x1) * (x2 - x1) * (x2 - x1) * (y2 - y1) * (y2 - y1) +
+  2 * (x3 - x2) * (x3 - x2) * (x3 - x2) * (x3 - x2) * (x3 - x2) * (x3 - x2) * x2 * x2 * x2 * x3 * x3 *
+  (x2 - x1) * (x2 - x1) * (x2 - x1) * (x2 - x1) * (x2 - x1) * (x2 - x1) +
+  2 * (2 * 3) * (x3 - x2) * (x3 - x2) * (x3 - x2) * (x3 - x2) * (x3 - x2) * (x3 - x2) * x2 * x2 * x2 *
+  x3 * x1 * (x2 - x1) * (x2 - x1) * (x2 - x1) * (x2 - x1) * (x2 - x1) * (x2 - x1) -
+  2 ^ 3 * (x3 - x2) * (x3 - x2) * (x3 - x2) * (x3 - x2) * (x3 - x2) * (x3 - x2) * x2 * x2 * x2 * x3 *
+  (x2 - x1) * (x2 - x1) * (x2 - x1) * (x2 - x1) * (y2 - y1) * (y2 - y1) +
+  2 * (1 + 2 ^ 2) * (x3 - x2) * (x3 - x2) * (x3 - x2) * (x3 - x2) * (x3 - x2) * (x3 - x2) * x2 * x2 * x2 *
+  x1 * x1 * (x2 - x1) * (x2 - x1) * (x2 - x1) * (x2 - x1) * (x2 - x1) * (x2 - x1) -
+  2 * (2 * 3) * (x3 - x2) * (x3 - x2) * (x3 - x2) * (x3 - x2) * (x3 - x2) * (x3 - x2) * x2 * x2 * x2 *
+  x1 * (x2 - x1) * (x2 - x1) * (x2 - x1) * (x2 - x1) * (y2 - y1) * (y2 - y1) +
+  3 * (x3 - x2) * (x3 - x2) * (x3 - x2) * (x3 - x2) * (x3 - x2) * (x3 - x2) * x2 * x2 * x2 * (x2 - x1) *
+  (x2 - x1) * (y2 - y1) * (y2 - y1) * (y2 - y1) * (y2 - y1) -
+  2 * (x3 - x2) * (x3 - x2) * (x3 - x2) * (x3 - x2) * (x3 - x2) * (x3 - x2) * x2 * x2 * x3 * x3 * x3 *
+  (x2 - x1) * (x2 - x1) * (x2 - x1) * (x2 - x1) * (x2 - x1) * (x2 - x1) +
+  2 * 3 * (x3 - x2) * (x3 - x2) * (x3 - x2) * (x3 - x2) * (x3 - x2) * (x3 - x2) * x2 * x2 * x3 * x3 * x1 *
+  (x2 - x1) * (x2 - x1) * (x2 - x1) * (x2 - x1) * (x2 - x1) * (x2 - x1) -
+  2 * 3 * (x3 - x2) * (x3 - x2) * (x3 - x2) * (x3 - x2) * (x3 - x2) * (x3 - x2) * x2 * x2 * x3 * x3 *
+  (x2 - x1) * (x2 - x1) * (x2 - x1) * (x2 - x1) * (y2 - y1) * (y2 - y1) +
+  2 * (1 + 2 ^ 3) * (x3 - x2) * (x3 - x2) * (x3 - x2) * (x3 - x2) * (x3 - x2) * (x3 - x2) * x2 * x2 * x3 *
+  x1 * x1 * (x2 - x1) * (x2 - x1) * (x2 - x1) * (x2 - x1) * (x2 - x1) * (x2 - x1) -
+  2 * (2 * (2 * 3)) * (x3 - x2) * (x3 - x2) * (x3 - x2) * (x3 - x2) * (x3 - x2) * (x3 - x2) * x2 * x2 *
+  x3 * x1 * (x2 - x1) * (x2 - x1) * (x2 - x1) * (x2 - x1) * (y2 - y1) * (y2 - y1) +
+  (1 + 2 * 3) * (x3 - x2) * (x3 - x2) * (x3 - x2) * (x3 - x2) * (x3 - x2) * (x3 - x2) * x2 * x2 * x3 *
+  (x2 - x1) * (x2 - x1) * (y2 - y1) * (y2 - y1) * (y2 - y1) * (y2 - y1) +
+  2 * (1 + 2 ^ 2) * (x3 - x2) * (x3 - x2) * (x3 - x2) * (x3 - x2) * (x3 - x2) * (x3 - x2) * x2 * x2 * x1 *
+  x1 * x1 * (x2 - x1) * (x2 - x1) * (x2 - x1) * (x2 - x1) * (x2 - x1) * (x2 - x1) -
+  2 * (1 + 2 ^ 3) * (x3 - x2) * (x3 - x2) * (x3 - x2) * (x3 - x2) * (x3 - x2) * (x3 - x2) * x2 * x2 * x1 *
+  x1 * (x2 - x1) * (x2 - x1) * (x2 - x1) * (x2 - x1) * (y2 - y1) * (y2 - y1) +
+  (1 + 2 ^ 3) * (x3 - x2) * (x3 - x2) * (x3 - x2) * (x3 - x2) * (x3 - x2) * (x3 - x2) * x2 * x2 * x1 *
+  (x2 - x1) * (x2 - x1) * (y2 - y1) * (y2 - y1) * (y2 - y1) * (y2 - y1) +
+  (x3 - x2) ^ 2 * (x3 - x2) * (x3 - x2) * (x3 - x2) * (x3 - x2) * x2 * x2 * y3 * y3 * (x2 - x1) *
+  (x2 - x1) * (x2 - x1) * (x2 - x1) * (x2 - x1) * (x2 - x1) -
+  2 * (x3 - x2) * (x3 - x2) * (x3 - x2) * (x3 - x2) * (x3 - x2) * (x3 - x2) * x2 * x2 * y3 *
+  ((2 * x1 + x2) * (y2 - y1)) * (x2 - x1) * (x2 - x1) * (x2 - x1) * (x2 - x1) * 
+  (x2 - x1) +
+  2 * (x3 - x2) * (x3 - x2) * (x3 - x2) * (x3 - x2) * (x3 - x2) * (x3 - x2) * x2 * x2 * y3 * (x2 - x1) *
+  (x2 - x1) * (x2 - x1) * (y2 - y1) * (y2 - y1) * (y2 - y1) +
+  (x3 - x2) ^ 2 * (x3 - x2) * (x3 - x2) * (x3 - x2) * (x3 - x2) * x2 * x2 * ((2 * x1 + x2) * (y2 - y1)) *
+  ((2 * x1 + x2) * (y2 - y1)) * (x2 - x1) * (x2 - x1) * (x2 - x1) * (x2 - x1) -
+  2 * (x3 - x2) * (x3 - x2) * (x3 - x2) * (x3 - x2) * (x3 - x2) * (x3 - x2) * x2 * x2 *
+  ((2 * x1 + x2) * (y2 - y1)) * (x2 - x1) * (x2 - x1) * (y2 - y1) * (y2 - y1) * 
+  (y2 - y1) -
+  3 * (x3 - x2) * (x3 - x2) * (x3 - x2) * (x3 - x2) * (x3 - x2) * (x3 - x2) * x2 * x3 * x3 * x3 * x3 *
+  (x2 - x1) * (x2 - x1) * (x2 - x1) * (x2 - x1) * (x2 - x1) * (x2 - x1) -
+  2 ^ 2 * (x3 - x2) * (x3 - x2) * (x3 - x2) * (x3 - x2) * (x3 - x2) * (x3 - x2) * x2 * x3 * x3 * x3 * x1 *
+  (x2 - x1) * (x2 - x1) * (x2 - x1) * (x2 - x1) * (x2 - x1) * (x2 - x1) +
+  2 * 3 * (x3 - x2) * (x3 - x2) * (x3 - x2) * (x3 - x2) * (x3 - x2) * (x3 - x2) * x2 * x3 * x3 * x1 * x1 *
+  (x2 - x1) * (x2 - x1) * (x2 - x1) * (x2 - x1) * (x2 - x1) * (x2 - x1) -
+  2 * (2 * 3) * (x3 - x2) * (x3 - x2) * (x3 - x2) * (x3 - x2) * (x3 - x2) * (x3 - x2) * x2 * x3 * x3 *
+  x1 * (x2 - x1) * (x2 - x1) * (x2 - x1) * (x2 - x1) * (y2 - y1) * (y2 - y1) +
+  (1 + 2 ^ 2) * (x3 - x2) * (x3 - x2) * (x3 - x2) * (x3 - x2) * (x3 - x2) * (x3 - x2) * x2 * x3 * x3 *
+  (x2 - x1) * (x2 - x1) * (y2 - y1) * (y2 - y1) * (y2 - y1) * (y2 - y1) +
+  2 * (2 * 3) * (x3 - x2) * (x3 - x2) * (x3 - x2) * (x3 - x2) * (x3 - x2) * (x3 - x2) * x2 * x3 * x1 *
+  x1 * x1 * (x2 - x1) * (x2 - x1) * (x2 - x1) * (x2 - x1) * (x2 - x1) * (x2 - x1) -
+  2 * (2 * (2 * 3)) * (x3 - x2) * (x3 - x2) * (x3 - x2) * (x3 - x2) * (x3 - x2) * (x3 - x2) * x2 * x3 *
+  x1 * x1 * (x2 - x1) * (x2 - x1) * (x2 - x1) * (x2 - x1) * (y2 - y1) * (y2 - y1) +
+  2 * (1 + 2 * 3) * (x3 - x2) * (x3 - x2) * (x3 - x2) * (x3 - x2) * (x3 - x2) * (x3 - x2) * x2 * x3 * x1 *
+  (x2 - x1) * (x2 - x1) * (y2 - y1) * (y2 - y1) * (y2 - y1) * (y2 - y1) +
+  2 * (x3 - x2) * (x3 - x2) * (x3 - x2) * (x3 - x2) * (x3 - x2) * (x3 - x2) * x2 * x3 * y3 * y3 *
+  (x2 - x1) * (x2 - x1) * (x2 - x1) * (x2 - x1) * (x2 - x1) * (x2 - x1) -
+  2 ^ 2 * (x3 - x2) * (x3 - x2) * (x3 - x2) * (x3 - x2) * (x3 - x2) * (x3 - x2) * x2 * x3 * y3 *
+  ((2 * x1 + x2) * (y2 - y1)) * (x2 - x1) * (x2 - x1) * (x2 - x1) * (x2 - x1) * 
+  (x2 - x1) +
+  2 ^ 2 * (x3 - x2) * (x3 - x2) * (x3 - x2) * (x3 - x2) * (x3 - x2) * (x3 - x2) * x2 * x3 * y3 *
+  (x2 - x1) * (x2 - x1) * (x2 - x1) * (y2 - y1) * (y2 - y1) * (y2 - y1) +
+  2 * (x3 - x2) * (x3 - x2) * (x3 - x2) * (x3 - x2) * (x3 - x2) * (x3 - x2) * x2 * x3 *
+  ((2 * x1 + x2) * (y2 - y1)) * ((2 * x1 + x2) * (y2 - y1)) * (x2 - x1) * (x2 - x1) * 
+  (x2 - x1) * (x2 - x1) -
+  2 ^ 2 * (x3 - x2) * (x3 - x2) * (x3 - x2) * (x3 - x2) * (x3 - x2) * (x3 - x2) * x2 * x3 *
+  ((2 * x1 + x2) * (y2 - y1)) * (x2 - x1) * (x2 - x1) * (y2 - y1) * (y2 - y1) * 
+  (y2 - y1) +
+  (1 + 2 ^ 2) * (x3 - x2) * (x3 - x2) * (x3 - x2) * (x3 - x2) * (x3 - x2) * (x3 - x2) * x2 * x1 * x1 *
+  x1 * x1 * (x2 - x1) * (x2 - x1) * (x2 - x1) * (x2 - x1) * (x2 - x1) * (x2 - x1) -
+  2 * (2 * 3) * (x3 - x2) * (x3 - x2) * (x3 - x2) * (x3 - x2) * (x3 - x2) * (x3 - x2) * x2 * x1 * x1 *
+  x1 * (x2 - x1) * (x2 - x1) * (x2 - x1) * (x2 - x1) * (y2 - y1) * (y2 - y1) +
+  (1 + 2 ^ 3) * (x3 - x2) * (x3 - x2) * (x3 - x2) * (x3 - x2) * (x3 - x2) * (x3 - x2) * x2 * x1 * x1 *
+  (x2 - x1) * (x2 - x1) * (y2 - y1) * (y2 - y1) * (y2 - y1) * (y2 - y1) +
+  2 * (x3 - x2) * (x3 - x2) * (x3 - x2) * (x3 - x2) * (x3 - x2) * (x3 - x2) * x2 * x1 * y3 * y3 *
+  (x2 - x1) * (x2 - x1) * (x2 - x1) * (x2 - x1) * (x2 - x1) * (x2 - x1) -
+  2 ^ 2 * (x3 - x2) * (x3 - x2) * (x3 - x2) * (x3 - x2) * (x3 - x2) * (x3 - x2) * x2 * x1 * y3 *
+  ((2 * x1 + x2) * (y2 - y1)) * (x2 - x1) * (x2 - x1) * (x2 - x1) * (x2 - x1) * 
+  (x2 - x1) +
+  2 ^ 2 * (x3 - x2) * (x3 - x2) * (x3 - x2) * (x3 - x2) * (x3 - x2) * (x3 - x2) * x2 * x1 * y3 *
+  (x2 - x1) * (x2 - x1) * (x2 - x1) * (y2 - y1) * (y2 - y1) * (y2 - y1) +
+  2 * (x3 - x2) * (x3 - x2) * (x3 - x2) * (x3 - x2) * (x3 - x2) * (x3 - x2) * x2 * x1 *
+  ((2 * x1 + x2) * (y2 - y1)) * ((2 * x1 + x2) * (y2 - y1)) * (x2 - x1) * (x2 - x1) * 
+  (x2 - x1) * (x2 - x1) -
+  2 ^ 2 * (x3 - x2) * (x3 - x2) * (x3 - x2) * (x3 - x2) * (x3 - x2) * (x3 - x2) * x2 * x1 *
+  ((2 * x1 + x2) * (y2 - y1)) * (x2 - x1) * (x2 - x1) * (y2 - y1) * (y2 - y1) * 
+  (y2 - y1) -
+  (x3 - x2) ^ 2 * (x3 - x2) * (x3 - x2) * (x3 - x2) * (x3 - x2) * x3 * x3 * x3 * x3 * x3 * (x2 - x1) *
+  (x2 - x1) * (x2 - x1) * (x2 - x1) * (x2 - x1) * (x2 - x1) -
+  3 * (x3 - x2) * (x3 - x2) * (x3 - x2) * (x3 - x2) * (x3 - x2) * (x3 - x2) * x3 * x3 * x3 * x3 * x1 *
+  (x2 - x1) * (x2 - x1) * (x2 - x1) * (x2 - x1) * (x2 - x1) * (x2 - x1) +
+  (x3 - x2) ^ 2 * (x3 - x2) * (x3 - x2) * (x3 - x2) * (x3 - x2) * x3 * x3 * x3 * x3 * (x2 - x1) *
+  (x2 - x1) * (x2 - x1) * (x2 - x1) * (y2 - y1) * (y2 - y1) -
+  2 * (x3 - x2) * (x3 - x2) * (x3 - x2) * (x3 - x2) * (x3 - x2) * (x3 - x2) * x3 * x3 * x3 * x1 * x1 *
+  (x2 - x1) * (x2 - x1) * (x2 - x1) * (x2 - x1) * (x2 - x1) * (x2 - x1) +
+  (x3 - x2) ^ 2 * (x3 - x2) * (x3 - x2) * (x3 - x2) * (x3 - x2) * x3 * x3 * x3 * (x2 - x1) * (x2 - x1) *
+  (y2 - y1) * (y2 - y1) * (y2 - y1) * (y2 - y1) +
+  2 * (x3 - x2) * (x3 - x2) * (x3 - x2) * (x3 - x2) * (x3 - x2) * (x3 - x2) * x3 * x3 * x1 * x1 * x1 *
+  (x2 - x1) * (x2 - x1) * (x2 - x1) * (x2 - x1) * (x2 - x1) * (x2 - x1) -
+  2 * 3 * (x3 - x2) * (x3 - x2) * (x3 - x2) * (x3 - x2) * (x3 - x2) * (x3 - x2) * x3 * x3 * x1 * x1 *
+  (x2 - x1) * (x2 - x1) * (x2 - x1) * (x2 - x1) * (y2 - y1) * (y2 - y1) +
+  (1 + 2 ^ 2) * (x3 - x2) * (x3 - x2) * (x3 - x2) * (x3 - x2) * (x3 - x2) * (x3 - x2) * x3 * x3 * x1 *
+  (x2 - x1) * (x2 - x1) * (y2 - y1) * (y2 - y1) * (y2 - y1) * (y2 - y1) +
+  (x3 - x2) ^ 2 * (x3 - x2) * (x3 - x2) * (x3 - x2) * (x3 - x2) * x3 * x3 * y3 * y3 * (x2 - x1) *
+  (x2 - x1) * (x2 - x1) * (x2 - x1) * (x2 - x1) * (x2 - x1) -
+  2 * (x3 - x2) * (x3 - x2) * (x3 - x2) * (x3 - x2) * (x3 - x2) * (x3 - x2) * x3 * x3 * y3 *
+  ((2 * x1 + x2) * (y2 - y1)) * (x2 - x1) * (x2 - x1) * (x2 - x1) * (x2 - x1) * 
+  (x2 - x1) +
+  2 * (x3 - x2) * (x3 - x2) * (x3 - x2) * (x3 - x2) * (x3 - x2) * (x3 - x2) * x3 * x3 * y3 * (x2 - x1) *
+  (x2 - x1) * (x2 - x1) * (y2 - y1) * (y2 - y1) * (y2 - y1) +
+  (x3 - x2) ^ 2 * (x3 - x2) * (x3 - x2) * (x3 - x2) * (x3 - x2) * x3 * x3 * ((2 * x1 + x2) * (y2 - y1)) *
+  ((2 * x1 + x2) * (y2 - y1)) * (x2 - x1) * (x2 - x1) * (x2 - x1) * (x2 - x1) -
+  2 * (x3 - x2) * (x3 - x2) * (x3 - x2) * (x3 - x2) * (x3 - x2) * (x3 - x2) * x3 * x3 *
+  ((2 * x1 + x2) * (y2 - y1)) * (x2 - x1) * (x2 - x1) * (y2 - y1) * (y2 - y1) * 
+  (y2 - y1) +
+  3 * (x3 - x2) * (x3 - x2) * (x3 - x2) * (x3 - x2) * (x3 - x2) * (x3 - x2) * x3 * x1 * x1 * x1 * x1 *
+  (x2 - x1) * (x2 - x1) * (x2 - x1) * (x2 - x1) * (x2 - x1) * (x2 - x1) -
+  2 ^ 3 * (x3 - x2) * (x3 - x2) * (x3 - x2) * (x3 - x2) * (x3 - x2) * (x3 - x2) * x3 * x1 * x1 * x1 *
+  (x2 - x1) * (x2 - x1) * (x2 - x1) * (x2 - x1) * (y2 - y1) * (y2 - y1) +
+  (1 + 2 * 3) * (x3 - x2) * (x3 - x2) * (x3 - x2) * (x3 - x2) * (x3 - x2) * (x3 - x2) * x3 * x1 * x1 *
+  (x2 - x1) * (x2 - x1) * (y2 - y1) * (y2 - y1) * (y2 - y1) * (y2 - y1) +
+  2 * (x3 - x2) * (x3 - x2) * (x3 - x2) * (x3 - x2) * (x3 - x2) * (x3 - x2) * x3 * x1 * y3 * y3 *
+  (x2 - x1) * (x2 - x1) * (x2 - x1) * (x2 - x1) * (x2 - x1) * (x2 - x1) -
+  2 ^ 2 * (x3 - x2) * (x3 - x2) * (x3 - x2) * (x3 - x2) * (x3 - x2) * (x3 - x2) * x3 * x1 * y3 *
+  ((2 * x1 + x2) * (y2 - y1)) * (x2 - x1) * (x2 - x1) * (x2 - x1) * (x2 - x1) * 
+  (x2 - x1) +
+  2 ^ 2 * (x3 - x2) * (x3 - x2) * (x3 - x2) * (x3 - x2) * (x3 - x2) * (x3 - x2) * x3 * x1 * y3 *
+  (x2 - x1) * (x2 - x1) * (x2 - x1) * (y2 - y1) * (y2 - y1) * (y2 - y1) +
+  2 * (x3 - x2) * (x3 - x2) * (x3 - x2) * (x3 - x2) * (x3 - x2) * (x3 - x2) * x3 * x1 *
+  ((2 * x1 + x2) * (y2 - y1)) * ((2 * x1 + x2) * (y2 - y1)) * (x2 - x1) * (x2 - x1) * 
+  (x2 - x1) * (x2 - x1) -
+  2 ^ 2 * (x3 - x2) * (x3 - x2) * (x3 - x2) * (x3 - x2) * (x3 - x2) * (x3 - x2) * x3 * x1 *
+  ((2 * x1 + x2) * (y2 - y1)) * (x2 - x1) * (x2 - x1) * (y2 - y1) * (y2 - y1) * 
+  (y2 - y1) +
+  (x3 - x2) ^ 2 * (x3 - x2) * (x3 - x2) * (x3 - x2) * (x3 - x2) * x1 * x1 * x1 * x1 * x1 * (x2 - x1) *
+  (x2 - x1) * (x2 - x1) * (x2 - x1) * (x2 - x1) * (x2 - x1) -
+  3 * (x3 - x2) * (x3 - x2) * (x3 - x2) * (x3 - x2) * (x3 - x2) * (x3 - x2) * x1 * x1 * x1 * x1 *
+  (x2 - x1) * (x2 - x1) * (x2 - x1) * (x2 - x1) * (y2 - y1) * (y2 - y1) +
+  3 * (x3 - x2) * (x3 - x2) * (x3 - x2) * (x3 - x2) * (x3 - x2) * (x3 - x2) * x1 * x1 * x1 * (x2 - x1) *
+  (x2 - x1) * (y2 - y1) * (y2 - y1) * (y2 - y1) * (y2 - y1) +
+  (x3 - x2) ^ 2 * (x3 - x2) * (x3 - x2) * (x3 - x2) * (x3 - x2) * x1 * x1 * y3 * y3 * (x2 - x1) *
+  (x2 - x1) * (x2 - x1) * (x2 - x1) * (x2 - x1) * (x2 - x1) -
+  2 * (x3 - x2) * (x3 - x2) * (x3 - x2) * (x3 - x2) * (x3 - x2) * (x3 - x2) * x1 * x1 * y3 *
+  ((2 * x1 + x2) * (y2 - y1)) * (x2 - x1) * (x2 - x1) * (x2 - x1) * (x2 - x1) * 
+  (x2 - x1) +
+  2 * (x3 - x2) * (x3 - x2) * (x3 - x2) * (x3 - x2) * (x3 - x2) * (x3 - x2) * x1 * x1 * y3 * (x2 - x1) *
+  (x2 - x1) * (x2 - x1) * (y2 - y1) * (y2 - y1) * (y2 - y1) +
+  (x3 - x2) ^ 2 * (x3 - x2) * (x3 - x2) * (x3 - x2) * (x3 - x2) * x1 * x1 * ((2 * x1 + x2) * (y2 - y1)) *
+  ((2 * x1 + x2) * (y2 - y1)) * (x2 - x1) * (x2 - x1) * (x2 - x1) * (x2 - x1) -
+  2 * (x3 - x2) * (x3 - x2) * (x3 - x2) * (x3 - x2) * (x3 - x2) * (x3 - x2) * x1 * x1 *
+  ((2 * x1 + x2) * (y2 - y1)) * (x2 - x1) * (x2 - x1) * (y2 - y1) * (y2 - y1) * 
+  (y2 - y1) -
+  2 * (x3 - x2) * (x3 - x2) * (x3 - x2) * (x3 - x2) * (y3 - y2) * (y3 - y2) * y1 * y1 * x2 * (x2 - x1) *
+  (x2 - x1) * (x2 - x1) * (x2 - x1) * (x2 - x1) * (x2 - x1) -
+  2 * (x3 - x2) * (x3 - x2) * (x3 - x2) * (x3 - x2) * (y3 - y2) * (y3 - y2) * y1 * y1 * x3 * (x2 - x1) *
+  (x2 - x1) * (x2 - x1) * (x2 - x1) * (x2 - x1) * (x2 - x1) -
+  2 * (x3 - x2) * (x3 - x2) * (x3 - x2) * (x3 - x2) * (y3 - y2) * (y3 - y2) * y1 * y1 * x1 * (x2 - x1) *
+  (x2 - x1) * (x2 - x1) * (x2 - x1) * (x2 - x1) * (x2 - x1) -
+  2 ^ 2 * (x3 - x2) * (x3 - x2) * (x3 - x2) * (x3 - x2) * (y3 - y2) * (y3 - y2) * y1 * x2 * y3 *
+  (x2 - x1) * (x2 - x1) * (x2 - x1) * (x2 - x1) * (x2 - x1) * (x2 - x1) +
+  2 ^ 2 * (x3 - x2) * (x3 - x2) * (x3 - x2) * (x3 - x2) * (y3 - y2) * (y3 - y2) * y1 * x2 *
+  ((2 * x1 + x2) * (y2 - y1)) * (x2 - x1) * (x2 - x1) * (x2 - x1) * (x2 - x1) * 
+  (x2 - x1) -
+  2 ^ 2 * (x3 - x2) * (x3 - x2) * (x3 - x2) * (x3 - x2) * (y3 - y2) * (y3 - y2) * y1 * x2 * (x2 - x1) *
+  (x2 - x1) * (x2 - x1) * (y2 - y1) * (y2 - y1) * (y2 - y1) -
+  2 ^ 2 * (x3 - x2) * (x3 - x2) * (x3 - x2) * (x3 - x2) * (y3 - y2) * (y3 - y2) * y1 * x3 * y3 *
+  (x2 - x1) * (x2 - x1) * (x2 - x1) * (x2 - x1) * (x2 - x1) * (x2 - x1) +
+  2 ^ 2 * (x3 - x2) * (x3 - x2) * (x3 - x2) * (x3 - x2) * (y3 - y2) * (y3 - y2) * y1 * x3 *
+  ((2 * x1 + x2) * (y2 - y1)) * (x2 - x1) * (x2 - x1) * (x2 - x1) * (x2 - x1) * 
+  (x2 - x1) -
+  2 ^ 2 * (x3 - x2) * (x3 - x2) * (x3 - x2) * (x3 - x2) * (y3 - y2) * (y3 - y2) * y1 * x3 * (x2 - x1) *
+  (x2 - x1) * (x2 - x1) * (y2 - y1) * (y2 - y1) * (y2 - y1) -
+  2 ^ 2 * (x3 - x2) * (x3 - x2) * (x3 - x2) * (x3 - x2) * (y3 - y2) * (y3 - y2) * y1 * x1 * y3 *
+  (x2 - x1) * (x2 - x1) * (x2 - x1) * (x2 - x1) * (x2 - x1) * (x2 - x1) +
+  2 ^ 2 * (x3 - x2) * (x3 - x2) * (x3 - x2) * (x3 - x2) * (y3 - y2) * (y3 - y2) * y1 * x1 *
+  ((2 * x1 + x2) * (y2 - y1)) * (x2 - x1) * (x2 - x1) * (x2 - x1) * (x2 - x1) * 
+  (x2 - x1) -
+  2 ^ 2 * (x3 - x2) * (x3 - x2) * (x3 - x2) * (x3 - x2) * (y3 - y2) * (y3 - y2) * y1 * x1 * (x2 - x1) *
+  (x2 - x1) * (x2 - x1) * (y2 - y1) * (y2 - y1) * (y2 - y1) -
+  2 * (x3 - x2) * (x3 - x2) * (x3 - x2) * (x3 - x2) * (y3 - y2) * (y3 - y2) * x2 * x2 * x2 * x2 *
+  (x2 - x1) * (x2 - x1) * (x2 - x1) * (x2 - x1) * (x2 - x1) * (x2 - x1) -
+  2 ^ 2 * (x3 - x2) * (x3 - x2) * (x3 - x2) * (x3 - x2) * (y3 - y2) * (y3 - y2) * x2 * x2 * x2 * x3 *
+  (x2 - x1) * (x2 - x1) * (x2 - x1) * (x2 - x1) * (x2 - x1) * (x2 - x1) -
+  2 ^ 3 * (x3 - x2) * (x3 - x2) * (x3 - x2) * (x3 - x2) * (y3 - y2) * (y3 - y2) * x2 * x2 * x2 * x1 *
+  (x2 - x1) * (x2 - x1) * (x2 - x1) * (x2 - x1) * (x2 - x1) * (x2 - x1) +
+  2 * 3 * (x3 - x2) * (x3 - x2) * (x3 - x2) * (x3 - x2) * (y3 - y2) * (y3 - y2) * x2 * x2 * x2 *
+  (x2 - x1) * (x2 - x1) * (x2 - x1) * (x2 - x1) * (y2 - y1) * (y2 - y1) -
+  2 * (2 * 3) * (x3 - x2) * (x3 - x2) * (x3 - x2) * (x3 - x2) * (y3 - y2) * (y3 - y2) * x2 * x2 * x3 *
+  x1 * (x2 - x1) * (x2 - x1) * (x2 - x1) * (x2 - x1) * (x2 - x1) * (x2 - x1) +
+  2 * (1 + 2 ^ 2) * (x3 - x2) * (x3 - x2) * (x3 - x2) * (x3 - x2) * (y3 - y2) * (y3 - y2) * x2 * x2 * x3 *
+  (x2 - x1) * (x2 - x1) * (x2 - x1) * (x2 - x1) * (y2 - y1) * (y2 - y1) -
+  2 * (2 * 3) * (x3 - x2) * (x3 - x2) * (x3 - x2) * (x3 - x2) * (y3 - y2) * (y3 - y2) * x2 * x2 * x1 *
+  x1 * (x2 - x1) * (x2 - x1) * (x2 - x1) * (x2 - x1) * (x2 - x1) * (x2 - x1) +
+  2 * (1 + 2 ^ 3) * (x3 - x2) * (x3 - x2) * (x3 - x2) * (x3 - x2) * (y3 - y2) * (y3 - y2) * x2 * x2 * x1 *
+  (x2 - x1) * (x2 - x1) * (x2 - x1) * (x2 - x1) * (y2 - y1) * (y2 - y1) -
+  2 * 3 * (x3 - x2) * (x3 - x2) * (x3 - x2) * (x3 - x2) * (y3 - y2) * (y3 - y2) * x2 * x2 * (x2 - x1) *
+  (x2 - x1) * (y2 - y1) * (y2 - y1) * (y2 - y1) * (y2 - y1) +
+  2 ^ 2 * (x3 - x2) * (x3 - x2) * (x3 - x2) * (x3 - x2) * (y3 - y2) * (y3 - y2) * x2 * x3 * x3 * x3 *
+  (x2 - x1) * (x2 - x1) * (x2 - x1) * (x2 - x1) * (x2 - x1) * (x2 - x1) +
+  2 * (x3 - x2) * (x3 - x2) * (x3 - x2) * (x3 - x2) * (y3 - y2) * (y3 - y2) * x2 * x3 * x3 * (x2 - x1) *
+  (x2 - x1) * (x2 - x1) * (x2 - x1) * (y2 - y1) * (y2 - y1) -
+  2 * (2 * 3) * (x3 - x2) * (x3 - x2) * (x3 - x2) * (x3 - x2) * (y3 - y2) * (y3 - y2) * x2 * x3 * x1 *
+  x1 * (x2 - x1) * (x2 - x1) * (x2 - x1) * (x2 - x1) * (x2 - x1) * (x2 - x1) +
+  2 * (2 * (1 + 2 ^ 2)) * (x3 - x2) * (x3 - x2) * (x3 - x2) * (x3 - x2) * (y3 - y2) * (y3 - y2) * x2 *
+  x3 * x1 * (x2 - x1) * (x2 - x1) * (x2 - x1) * (x2 - x1) * (y2 - y1) * (y2 - y1) -
+  2 ^ 3 * (x3 - x2) * (x3 - x2) * (x3 - x2) * (x3 - x2) * (y3 - y2) * (y3 - y2) * x2 * x3 * (x2 - x1) *
+  (x2 - x1) * (y2 - y1) * (y2 - y1) * (y2 - y1) * (y2 - y1) -
+  2 ^ 3 * (x3 - x2) * (x3 - x2) * (x3 - x2) * (x3 - x2) * (y3 - y2) * (y3 - y2) * x2 * x1 * x1 * x1 *
+  (x2 - x1) * (x2 - x1) * (x2 - x1) * (x2 - x1) * (x2 - x1) * (x2 - x1) +
+  2 * (1 + 2 ^ 3) * (x3 - x2) * (x3 - x2) * (x3 - x2) * (x3 - x2) * (y3 - y2) * (y3 - y2) * x2 * x1 * x1 *
+  (x2 - x1) * (x2 - x1) * (x2 - x1) * (x2 - x1) * (y2 - y1) * (y2 - y1) -
+  2 * (2 * 3) * (x3 - x2) * (x3 - x2) * (x3 - x2) * (x3 - x2) * (y3 - y2) * (y3 - y2) * x2 * x1 *
+  (x2 - x1) * (x2 - x1) * (y2 - y1) * (y2 - y1) * (y2 - y1) * (y2 - y1) -
+  2 * (x3 - x2) * (x3 - x2) * (x3 - x2) * (x3 - x2) * (y3 - y2) * (y3 - y2) * x2 * y3 * y3 * (x2 - x1) *
+  (x2 - x1) * (x2 - x1) * (x2 - x1) * (x2 - x1) * (x2 - x1) +
+  2 ^ 2 * (x3 - x2) * (x3 - x2) * (x3 - x2) * (x3 - x2) * (y3 - y2) * (y3 - y2) * x2 * y3 *
+  ((2 * x1 + x2) * (y2 - y1)) * (x2 - x1) * (x2 - x1) * (x2 - x1) * (x2 - x1) * 
+  (x2 - x1) -
+  2 ^ 2 * (x3 - x2) * (x3 - x2) * (x3 - x2) * (x3 - x2) * (y3 - y2) * (y3 - y2) * x2 * y3 * (x2 - x1) *
+  (x2 - x1) * (x2 - x1) * (y2 - y1) * (y2 - y1) * (y2 - y1) -
+  2 * (x3 - x2) * (x3 - x2) * (x3 - x2) * (x3 - x2) * (y3 - y2) * (y3 - y2) * x2 *
+  ((2 * x1 + x2) * (y2 - y1)) * ((2 * x1 + x2) * (y2 - y1)) * (x2 - x1) * (x2 - x1) * 
+  (x2 - x1) * (x2 - x1) +
+  2 ^ 2 * (x3 - x2) * (x3 - x2) * (x3 - x2) * (x3 - x2) * (y3 - y2) * (y3 - y2) * x2 *
+  ((2 * x1 + x2) * (y2 - y1)) * (x2 - x1) * (x2 - x1) * (y2 - y1) * (y2 - y1) * 
+  (y2 - y1) +
+  2 * (x3 - x2) * (x3 - x2) * (x3 - x2) * (x3 - x2) * (y3 - y2) * (y3 - y2) * x3 * x3 * x3 * x3 *
+  (x2 - x1) * (x2 - x1) * (x2 - x1) * (x2 - x1) * (x2 - x1) * (x2 - x1) +
+  2 ^ 2 * (x3 - x2) * (x3 - x2) * (x3 - x2) * (x3 - x2) * (y3 - y2) * (y3 - y2) * x3 * x3 * x3 * x1 *
+  (x2 - x1) * (x2 - x1) * (x2 - x1) * (x2 - x1) * (x2 - x1) * (x2 - x1) -
+  2 * (x3 - x2) * (x3 - x2) * (x3 - x2) * (x3 - x2) * (y3 - y2) * (y3 - y2) * x3 * x3 * x3 * (x2 - x1) *
+  (x2 - x1) * (x2 - x1) * (x2 - x1) * (y2 - y1) * (y2 - y1) +
+  2 * (x3 - x2) * (x3 - x2) * (x3 - x2) * (x3 - x2) * (y3 - y2) * (y3 - y2) * x3 * x3 * x1 * (x2 - x1) *
+  (x2 - x1) * (x2 - x1) * (x2 - x1) * (y2 - y1) * (y2 - y1) -
+  2 * (x3 - x2) * (x3 - x2) * (x3 - x2) * (x3 - x2) * (y3 - y2) * (y3 - y2) * x3 * x3 * (x2 - x1) *
+  (x2 - x1) * (y2 - y1) * (y2 - y1) * (y2 - y1) * (y2 - y1) -
+  2 ^ 2 * (x3 - x2) * (x3 - x2) * (x3 - x2) * (x3 - x2) * (y3 - y2) * (y3 - y2) * x3 * x1 * x1 * x1 *
+  (x2 - x1) * (x2 - x1) * (x2 - x1) * (x2 - x1) * (x2 - x1) * (x2 - x1) +
+  2 * (1 + 2 ^ 2) * (x3 - x2) * (x3 - x2) * (x3 - x2) * (x3 - x2) * (y3 - y2) * (y3 - y2) * x3 * x1 * x1 *
+  (x2 - x1) * (x2 - x1) * (x2 - x1) * (x2 - x1) * (y2 - y1) * (y2 - y1) -
+  2 ^ 3 * (x3 - x2) * (x3 - x2) * (x3 - x2) * (x3 - x2) * (y3 - y2) * (y3 - y2) * x3 * x1 * (x2 - x1) *
+  (x2 - x1) * (y2 - y1) * (y2 - y1) * (y2 - y1) * (y2 - y1) -
+  2 * (x3 - x2) * (x3 - x2) * (x3 - x2) * (x3 - x2) * (y3 - y2) * (y3 - y2) * x3 * y3 * y3 * (x2 - x1) *
+  (x2 - x1) * (x2 - x1) * (x2 - x1) * (x2 - x1) * (x2 - x1) +
+  2 ^ 2 * (x3 - x2) * (x3 - x2) * (x3 - x2) * (x3 - x2) * (y3 - y2) * (y3 - y2) * x3 * y3 *
+  ((2 * x1 + x2) * (y2 - y1)) * (x2 - x1) * (x2 - x1) * (x2 - x1) * (x2 - x1) * 
+  (x2 - x1) -
+  2 ^ 2 * (x3 - x2) * (x3 - x2) * (x3 - x2) * (x3 - x2) * (y3 - y2) * (y3 - y2) * x3 * y3 * (x2 - x1) *
+  (x2 - x1) * (x2 - x1) * (y2 - y1) * (y2 - y1) * (y2 - y1) -
+  2 * (x3 - x2) * (x3 - x2) * (x3 - x2) * (x3 - x2) * (y3 - y2) * (y3 - y2) * x3 *
+  ((2 * x1 + x2) * (y2 - y1)) * ((2 * x1 + x2) * (y2 - y1)) * (x2 - x1) * (x2 - x1) * 
+  (x2 - x1) * (x2 - x1) +
+  2 ^ 2 * (x3 - x2) * (x3 - x2) * (x3 - x2) * (x3 - x2) * (y3 - y2) * (y3 - y2) * x3 *
+  ((2 * x1 + x2) * (y2 - y1)) * (x2 - x1) * (x2 - x1) * (y2 - y1) * (y2 - y1) * 
+  (y2 - y1) -
+  2 * (x3 - x2) * (x3 - x2) * (x3 - x2) * (x3 - x2) * (y3 - y2) * (y3 - y2) * x1 * x1 * x1 * x1 *
+  (x2 - x1) * (x2 - x1) * (x2 - x1) * (x2 - x1) * (x2 - x1) * (x2 - x1) +
+  2 * 3 * (x3 - x2) * (x3 - x2) * (x3 - x2) * (x3 - x2) * (y3 - y2) * (y3 - y2) * x1 * x1 * x1 *
+  (x2 - x1) * (x2 - x1) * (x2 - x1) * (x2 - x1) * (y2 - y1) * (y2 - y1) -
+  2 * 3 * (x3 - x2) * (x3 - x2) * (x3 - x2) * (x3 - x2) * (y3 - y2) * (y3 - y2) * x1 * x1 * (x2 - x1) *
+  (x2 - x1) * (y2 - y1) * (y2 - y1) * (y2 - y1) * (y2 - y1) -
+  2 * (x3 - x2) * (x3 - x2) * (x3 - x2) * (x3 - x2) * (y3 - y2) * (y3 - y2) * x1 * y3 * y3 * (x2 - x1) *
+  (x2 - x1) * (x2 - x1) * (x2 - x1) * (x2 - x1) * (x2 - x1) +
+  2 ^ 2 * (x3 - x2) * (x3 - x2) * (x3 - x2) * (x3 - x2) * (y3 - y2) * (y3 - y2) * x1 * y3 *
+  ((2 * x1 + x2) * (y2 - y1)) * (x2 - x1) * (x2 - x1) * (x2 - x1) * (x2 - x1) * 
+  (x2 - x1) -
+  2 ^ 2 * (x3 - x2) * (x3 - x2) * (x3 - x2) * (x3 - x2) * (y3 - y2) * (y3 - y2) * x1 * y3 * (x2 - x1) *
+  (x2 - x1) * (x2 - x1) * (y2 - y1) * (y2 - y1) * (y2 - y1) -
+  2 * (x3 - x2) * (x3 - x2) * (x3 - x2) * (x3 - x2) * (y3 - y2) * (y3 - y2) * x1 *
+  ((2 * x1 + x2) * (y2 - y1)) * ((2 * x1 + x2) * (y2 - y1)) * (x2 - x1) * (x2 - x1) * 
+  (x2 - x1) * (x2 - x1) +
+  2 ^ 2 * (x3 - x2) * (x3 - x2) * (x3 - x2) * (x3 - x2) * (y3 - y2) * (y3 - y2) * x1 *
+  ((2 * x1 + x2) * (y2 - y1)) * (x2 - x1) * (x2 - x1) * (y2 - y1) * (y2 - y1) * 
+  (y2 - y1) +
+  (x3 - x2) ^ 2 * (y3 - y2) * (y3 - y2) * (y3 - y2) * (y3 - y2) * y1 * y1 * (x2 - x1) * (x2 - x1) *
+  (x2 - x1) * (x2 - x1) * (x2 - x1) * (x2 - x1) +
+  2 * (x3 - x2) * (x3 - x2) * (y3 - y2) * (y3 - y2) * (y3 - y2) * (y3 - y2) * y1 * y3 * (x2 - x1) *
+  (x2 - x1) * (x2 - x1) * (x2 - x1) * (x2 - x1) * (x2 - x1) -
+  2 * (x3 - x2) * (x3 - x2) * (y3 - y2) * (y3 - y2) * (y3 - y2) * (y3 - y2) * y1 *
+  ((2 * x1 + x2) * (y2 - y1)) * (x2 - x1) * (x2 - x1) * (x2 - x1) * (x2 - x1) * 
+  (x2 - x1) +
+  2 * (x3 - x2) * (x3 - x2) * (y3 - y2) * (y3 - y2) * (y3 - y2) * (y3 - y2) * y1 * (x2 - x1) * (x2 - x1) *
+  (x2 - x1) * (y2 - y1) * (y2 - y1) * (y2 - y1) +
+  (x3 - x2) ^ 2 * (y3 - y2) * (y3 - y2) * (y3 - y2) * (y3 - y2) * x2 * x2 * x2 * (x2 - x1) * (x2 - x1) *
+  (x2 - x1) * (x2 - x1) * (x2 - x1) * (x2 - x1) +
+  (x3 - x2) ^ 2 * (y3 - y2) * (y3 - y2) * (y3 - y2) * (y3 - y2) * x2 * x2 * x3 * (x2 - x1) * (x2 - x1) *
+  (x2 - x1) * (x2 - x1) * (x2 - x1) * (x2 - x1) +
+  3 * (x3 - x2) * (x3 - x2) * (y3 - y2) * (y3 - y2) * (y3 - y2) * (y3 - y2) * x2 * x2 * x1 * (x2 - x1) *
+  (x2 - x1) * (x2 - x1) * (x2 - x1) * (x2 - x1) * (x2 - x1) -
+  3 * (x3 - x2) * (x3 - x2) * (y3 - y2) * (y3 - y2) * (y3 - y2) * (y3 - y2) * x2 * x2 * (x2 - x1) *
+  (x2 - x1) * (x2 - x1) * (x2 - x1) * (y2 - y1) * (y2 - y1) -
+  (x3 - x2) ^ 2 * (y3 - y2) * (y3 - y2) * (y3 - y2) * (y3 - y2) * x2 * x3 * x3 * (x2 - x1) * (x2 - x1) *
+  (x2 - x1) * (x2 - x1) * (x2 - x1) * (x2 - x1) +
+  2 * (x3 - x2) * (x3 - x2) * (y3 - y2) * (y3 - y2) * (y3 - y2) * (y3 - y2) * x2 * x3 * x1 * (x2 - x1) *
+  (x2 - x1) * (x2 - x1) * (x2 - x1) * (x2 - x1) * (x2 - x1) -
+  2 * (x3 - x2) * (x3 - x2) * (y3 - y2) * (y3 - y2) * (y3 - y2) * (y3 - y2) * x2 * x3 * (x2 - x1) *
+  (x2 - x1) * (x2 - x1) * (x2 - x1) * (y2 - y1) * (y2 - y1) +
+  3 * (x3 - x2) * (x3 - x2) * (y3 - y2) * (y3 - y2) * (y3 - y2) * (y3 - y2) * x2 * x1 * x1 * (x2 - x1) *
+  (x2 - x1) * (x2 - x1) * (x2 - x1) * (x2 - x1) * (x2 - x1) -
+  2 * 3 * (x3 - x2) * (x3 - x2) * (y3 - y2) * (y3 - y2) * (y3 - y2) * (y3 - y2) * x2 * x1 * (x2 - x1) *
+  (x2 - x1) * (x2 - x1) * (x2 - x1) * (y2 - y1) * (y2 - y1) +
+  3 * (x3 - x2) * (x3 - x2) * (y3 - y2) * (y3 - y2) * (y3 - y2) * (y3 - y2) * x2 * (x2 - x1) * (x2 - x1) *
+  (y2 - y1) * (y2 - y1) * (y2 - y1) * (y2 - y1) -
+  (x3 - x2) ^ 2 * (y3 - y2) * (y3 - y2) * (y3 - y2) * (y3 - y2) * x3 * x3 * x3 * (x2 - x1) * (x2 - x1) *
+  (x2 - x1) * (x2 - x1) * (x2 - x1) * (x2 - x1) -
+  (x3 - x2) ^ 2 * (y3 - y2) * (y3 - y2) * (y3 - y2) * (y3 - y2) * x3 * x3 * x1 * (x2 - x1) * (x2 - x1) *
+  (x2 - x1) * (x2 - x1) * (x2 - x1) * (x2 - x1) +
+  (x3 - x2) ^ 2 * (y3 - y2) * (y3 - y2) * (y3 - y2) * (y3 - y2) * x3 * x3 * (x2 - x1) * (x2 - x1) *
+  (x2 - x1) * (x2 - x1) * (y2 - y1) * (y2 - y1) +
+  (x3 - x2) ^ 2 * (y3 - y2) * (y3 - y2) * (y3 - y2) * (y3 - y2) * x3 * x1 * x1 * (x2 - x1) * (x2 - x1) *
+  (x2 - x1) * (x2 - x1) * (x2 - x1) * (x2 - x1) -
+  2 * (x3 - x2) * (x3 - x2) * (y3 - y2) * (y3 - y2) * (y3 - y2) * (y3 - y2) * x3 * x1 * (x2 - x1) *
+  (x2 - x1) * (x2 - x1) * (x2 - x1) * (y2 - y1) * (y2 - y1) +
+  (x3 - x2) ^ 2 * (y3 - y2) * (y3 - y2) * (y3 - y2) * (y3 - y2) * x3 * (x2 - x1) * (x2 - x1) * (y2 - y1) *
+  (y2 - y1) * (y2 - y1) * (y2 - y1) +
+  (x3 - x2) ^ 2 * (y3 - y2) * (y3 - y2) * (y3 - y2) * (y3 - y2) * x1 * x1 * x1 * (x2 - x1) * (x2 - x1) *
+  (x2 - x1) * (x2 - x1) * (x2 - x1) * (x2 - x1) -
+  3 * (x3 - x2) * (x3 - x2) * (y3 - y2) * (y3 - y2) * (y3 - y2) * (y3 - y2) * x1 * x1 * (x2 - x1) *
+  (x2 - x1) * (x2 - x1) * (x2 - x1) * (y2 - y1) * (y2 - y1) +
+  3 * (x3 - x2) * (x3 - x2) * (y3 - y2) * (y3 - y2) * (y3 - y2) * (y3 - y2) * x1 * (x2 - x1) * (x2 - x1) *
+  (y2 - y1) * (y2 - y1) * (y2 - y1) * (y2 - y1) +
+  (x3 - x2) ^ 2 * (y3 - y2) * (y3 - y2) * (y3 - y2) * (y3 - y2) * y3 * y3 * (x2 - x1) * (x2 - x1) *
+  (x2 - x1) * (x2 - x1) * (x2 - x1) * (x2 - x1) -
+  2 * (x3 - x2) * (x3 - x2) * (y3 - y2) * (y3 - y2) * (y3 - y2) * (y3 - y2) * y3 *
+  ((2 * x1 + x2) * (y2 - y1)) * (x2 - x1) * (x2 - x1) * (x2 - x1) * (x2 - x1) * 
+  (x2 - x1) +
+  2 * (x3 - x2) * (x3 - x2) * (y3 - y2) * (y3 - y2) * (y3 - y2) * (y3 - y2) * y3 * (x2 - x1) * (x2 - x1) *
+  (x2 - x1) * (y2 - y1) * (y2 - y1) * (y2 - y1) +
+  (x3 - x2) ^ 2 * (y3 - y2) * (y3 - y2) * (y3 - y2) * (y3 - y2) * ((2 * x1 + x2) * (y2 - y1)) *
+  ((2 * x1 + x2) * (y2 - y1)) * (x2 - x1) * (x2 - x1) * (x2 - x1) * (x2 - x1) -
+  2 * (x3 - x2) * (x3 - x2) * (y3 - y2) * (y3 - y2) * (y3 - y2) * (y3 - y2) *
+  ((2 * x1 + x2) * (y2 - y1)) * (x2 - x1) * (x2 - x1) * (y2 - y1) * (y2 - y1) * 
+  (y2 - y1).
+Proof.
+intros x1 y1 x2 y2 x3 y3 a b H H0 H1.
+ring [H H0 H1].
+Qed.
+
+
+Comment author: @thery
+
+Seems like bugzilla does not like big message.
+Just to complement I can address 2.
+
+nsatz does not understand power
+
+
+Goal forall x : Q , x == 1 -> (x - 1) ^ 2 == 0.
+intros; nsatz.
+fails 
+while
+intros; simpl; nsatz.
+succeeds
+
+
+For the kind of problem you are dealing with, grobner basis is a bit an overkilled. Grobner depends heavily on variable ordering. This could explain why it takes forever.
+
+Why don't you use ring to perform your computation that needs only simple rewriting (note I have rephrase the assumption)?
+
+Goal forall
+  x1 y1 x2 y2 x3 y3 a b : Q,
+  y1^2 == x1^3 +a*x1 + b ->
+  y2^2 == x2^3 + a*x2 + b ->
+  y3^2 == x3^3 + a*x3 + b ->
+  ((2 * x2 + x3) * ...) == ...
+Proof.
+intros x1 y1 x2 y2 x3 y3 a b H H0 H1.
+ring [H H0 H1].
+Qed.
+
+
+Comment author: @thery
+
+In my last comment I was wrong, nsatz do understand some notion of powers. 
+I was just mislead by the notation mechanism.
+
+Require Import Nsatz QArith.
+
+Lemma foo : forall x : Q, x == 0 -> x ^ 2%Z == 0.
+nsatz.
+
+fails
+
+but
+
+Require Import  QArith Nsatz.
+
+Lemma foo : forall x : Q, x == 0 -> x ^ 2%Z == 0.
+nsatz.
+
+succeeds
+
+
+Comment author: @maximedenes
+
+It seems that the declaration of structures used by nsatz in the stdlib would deserve a clean-up. Leaving that for after 8.6, though.
+
+

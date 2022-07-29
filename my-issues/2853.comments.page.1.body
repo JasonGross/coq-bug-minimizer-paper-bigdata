@@ -1,0 +1,27 @@
+Comment author: @JasonGross
+
+If I set a large proof goal, then [Set Printing All.], then display the proof (ctrl+c, ctrl+p in proof general in emacs), and then interrupt it (with ctrl+c, ctrl+c) before it displays anything, I get a partial display that ends with "Anomaly. Please Report."
+
+
+Comment author: @ejgallego
+
+Jason, is the anomaly gone now? If so, can you close this one?
+
+
+Comment author: @JasonGross
+
+Hmm, not sure.  There's a close variant that's still open in v8.6 as of a few weeks ago, I believe?  That one doesn't give an interrupted term, but gives an anomaly about a missing feedback_id or something.  I think I got it when interrupting [Print giganic_term] (this is the same term that native_compute generates a 25M file for).  If you can't reproduce, I can try to strum up a concrete example, but it should work on anything that takes 5+ seconds in Coq-land before it starts displaying anything.   I'll plan to take a look at this tomorrow or so and close or update this bug report, and maybe make a new one for the other anomaly.
+
+
+Comment author: @ejgallego
+
+I think the anomaly in 8.6 is going to have very different causes as the underlying code is fully different. (8.4 had no notion of feedback, etc...)
+
+I fully think we have bugs here in both cases, but maybe it is time to mark this as wontfix.
+
+
+Comment author: @ppedrot
+
+Let's mark it as WONTFIX then.
+
+

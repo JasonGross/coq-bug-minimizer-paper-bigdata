@@ -1,0 +1,29 @@
+Comment author: @JasonGross
+
+Here is code that works in 8.4 and 8.5, but not in trunk (37ab457263e980aa49e681eceb3eb382ef8b36e3):
+
+Goal False /\ False -> False.
+  repeat intros [].
+Qed.
+
+Previously, "intros []" introduced no new hypotheses.  Now it introduces both sides of the conjunction.
+
+Is there any good reason for this change?  If so, is there a compatibility option that reverts the behavior?
+
+
+Comment author: @herbelin
+
+The reason is uniformity, and in particular that "intros pat" behaves the same whether there are further patterns or not (in particular that "intros [] H" behaves the same as "intros []; intros H".
+
+I agree that the former behavior allows some idioms such as "repeat intros []" to recursively destruct nested patterns, a bit like decompose. Maybe can we think at some syntax "!pat" to tell "apply pat recursively until it is not possible anymore?
+
+About compatibility, the 8.5 behavior can be obtained with:
+
+Unset Bracketing Last Introduction Pattern.
+
+
+Comment author: @JasonGross
+
+This should also be enabled with -compat 8.4.  Merging https://github.com/coq/coq/pull/118 will fix this.
+
+

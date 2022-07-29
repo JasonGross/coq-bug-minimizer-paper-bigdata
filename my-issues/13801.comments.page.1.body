@@ -1,0 +1,1 @@
+So `simpl always` will become an alias for `/` right after the identifier, and is incompatible with `!`, `simpl nomatch`, `simpl never` and `/`?

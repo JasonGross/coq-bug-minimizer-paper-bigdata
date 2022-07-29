@@ -1,0 +1,177 @@
+Comment author: @JasonGross
+
+(* File reduced by coq-bug-finder from original input, then from 12105 lines to 142 lines, then from 83 lines to 57 lines *)
+Generalizable All Variables.
+Axiom admit : forall {T}, T.
+Inductive paths {A : Type} (a : A) : A -> Type := idpath : paths a a where "x = y" := (@ paths _ x y) : type_scope.
+Arguments idpath {A a} , [A] a.
+Definition transport {A : Type} (P : A -> Type) {x y : A} (p : x = y) (u : P x) : P y := match p with idpath => u end.
+Notation "p # x" := (transport _ p x) (right associativity, at level 65, only parsing).
+Definition ap {A B:Type} (f:A -> B) {x y:A} (p:x = y) : f x = f y := match p with idpath => idpath end.
+Definition apD {A:Type} {B:A->Type} (f:forall a:A, B a) {x y:A} (p:x=y): transport _ p (f x) = f y := admit.
+Definition Sect {A B : Type} (s : A -> B) (r : B -> A) := forall x : A, r (s x) = x.
+Class IsEquiv {A B : Type} (f : A -> B) := BuildIsEquiv {
+                                               equiv_inv : B -> A ;
+                                               eisretr : Sect equiv_inv f;
+                                               eissect : Sect f equiv_inv;
+                                               eisadj : forall x : A, eisretr (f x) = ap f (eissect x) }.
+Notation "f ^-1" := (@ equiv_inv _ _ f _) (at level 3).
+Axiom path_forall : forall {A : Type} {P : A -> Type} (f g : forall x : A, P x), (forall x, f x = g x) -> f = g.
+Axiom isequiv_adjointify : forall {A B} (f : A -> B) (g : B -> A) (isretr : Sect g f) (issect : Sect f g), IsEquiv f.
+Definition functor_forall `{P : A -> Type} `{Q : B -> Type} (f0 : B -> A) (f1 : forall b:B, P (f0 b) -> Q b)
+: (forall a:A, P a) -> (forall b:B, Q b) := (fun g b => f1 _ (g (f0 b))).
+Goal forall `{P : A -> Type} `{Q : B -> Type} `{IsEquiv B A f} `{forall b, @ IsEquiv (P (f b)) (Q b) (g b)},
+       IsEquiv (functor_forall f g).
+Proof.
+  intros.
+  refine (isequiv_adjointify (functor_forall f g)
+                             (functor_forall (f^-1)
+                                             (fun (x:A) (y:Q (f^-1 x)) => @ eisretr _ _ f _ x # (g (f^-1 x))^-1 y
+                             )) _ _);
+  intros h.
+  - abstract (
+        apply path_forall; intros b; unfold functor_forall;
+        rewrite eisadj;
+        admit
+      ).
+  - abstract (
+        apply path_forall; intros a; unfold functor_forall;
+        rewrite eissect;
+        apply apD
+      ).
+Defined.
+(* Anomaly: Uncaught exception Not_found(_). Please report. *)
+
+
+Comment author: @maximedenes
+
+This seems fixed in trunk (6346bee2). It would be good to know how it was solved by running a git bisect, though.
+
+
+Comment author: @JasonGross
+
+I've set my machine to run the following bisect script.  (Is it possible to have the [abstract] tactic work if I compile coqbinaries rather than coqlight, and run coqtop with -nois?)  I'll post another comment when it finishes.
+
+#!/bin/bash
+
+SCRIPT="$(readlink -f "${BASH_SOURCE[0]}")"
+COQ_DIR="$HOME/coq"
+
+# exit immediately and abort the bisect if killed
+trap "exit 128" SIGHUP SIGINT SIGTERM
+
+if [ "$1" = "--init" ]
+then
+    shift
+    cd "$COQ_DIR"
+    PS4='$ '
+    set -x
+    # git bisect start [--no-checkout] [<bad> [<good>...]] [--] [<paths>...]
+    git bisect start 58a01fa1dabaf4ebd25d1386e7cc9de36c82e1eb 75940a69b0151191ded0ff153ec5490436786faa
+    git bisect run "$SCRIPT" "$@ "
+    exit 128 # if git bisect run gets --init, abort immediately
+fi
+
+cd "$COQ_DIR"
+
+ARGS="-local"
+for arg in "-nodoc" "-no-native-compiler"; do
+    if [ ! -z "$(./configure -h 2>&1 | grep -- "$arg")" ]; then
+        ARGS="$ARGS $arg"
+    fi
+done
+for arg in "-coqide" "-with-doc"; do
+    if [ ! -z "$(./configure -h 2>&1 | grep -- "$arg")" ]; then
+        ARGS="$ARGS $arg no"
+    fi
+done
+git clean -xfd 2>&1 >/dev/null
+echo "./configure $ARGS"
+./configure $ARGS
+make coqlight "$@ " || exit 125
+ls ./bin
+
+
+FILE=`mktemp --suffix=.v --tmpdir tmpXXXXXXXXXX`
+
+cat > "$FILE" <<'EOF'
+(* -*- coq-prog-args: ("-emacs" "-nois") -*- *)
+(* File reduced by coq-bug-finder from original input, then from 12105 lines to 142 lines, then from 83 lines to 57 lines *)
+Generalizable All Variables.
+Notation "A -> B" := (forall _ : A, B) (right associativity, at level 99, B at level 200).
+Reserved Notation "x = y  :>  T"
+(at level 70, y at next level, no associativity).
+Reserved Notation "x = y" (at level 70, no associativity).
+Require Import Coq.Init.Logic.
+Axiom admit : forall {T}, T.
+Inductive paths {A : Type} (a : A) : A -> Type := idpath : paths a a where "x = y" := (@ paths _ x y) : type_scope.
+Arguments idpath {A a} , [A] a.
+Definition transport {A : Type} (P : A -> Type) {x y : A} (p : x = y) (u : P x) : P y := match p with idpath => u end.
+Notation "p # x" := (transport _ p x) (right associativity, at level 65, only parsing).
+Definition ap {A B:Type} (f:A -> B) {x y:A} (p:x = y) : f x = f y := match p with idpath => idpath end.
+Definition apD {A:Type} {B:A->Type} (f:forall a:A, B a) {x y:A} (p:x=y): transport _ p (f x) = f y := admit.
+Definition Sect {A B : Type} (s : A -> B) (r : B -> A) := forall x : A, r (s x) = x.
+Class IsEquiv {A B : Type} (f : A -> B) := BuildIsEquiv {
+                                               equiv_inv : B -> A ;
+                                               eisretr : Sect equiv_inv f;
+                                               eissect : Sect f equiv_inv;
+                                               eisadj : forall x : A, eisretr (f x) = ap f (eissect x) }.
+Notation "f ^-1" := (@ equiv_inv _ _ f _) (at level 3).
+Axiom path_forall : forall {A : Type} {P : A -> Type} (f g : forall x : A, P x), (forall x, f x = g x) -> f = g.
+Axiom isequiv_adjointify : forall {A B} (f : A -> B) (g : B -> A) (isretr : Sect g f) (issect : Sect f g), IsEquiv f.
+Definition functor_forall `{P : A -> Type} `{Q : B -> Type} (f0 : B -> A) (f1 : forall b:B, P (f0 b) -> Q b)
+: (forall a:A, P a) -> (forall b:B, Q b) := (fun g b => f1 _ (g (f0 b))).
+Goal forall `{P : A -> Type} `{Q : B -> Type} `{IsEquiv B A f} `{forall b, @ IsEquiv (P (f b)) (Q b) (g b)},
+       IsEquiv (functor_forall f g).
+Proof.
+  intros.
+  refine (isequiv_adjointify (functor_forall f g)
+                             (functor_forall (f^-1)
+                                             (fun (x:A) (y:Q (f^-1 x)) => @ eisretr _ _ f _ x # (g (f^-1 x))^-1 y
+                             )) _ _);
+  intros h.
+  - abstract (
+        apply path_forall; intros b; unfold functor_forall;
+        rewrite eisadj;
+        admit
+      ).
+  - abstract (
+        apply path_forall; intros a; unfold functor_forall;
+        rewrite eissect;
+        apply apD
+      ).
+Defined.
+(* Anomaly: Uncaught exception Not_found(_). Please report. *)
+EOF
+
+rm -f "${FILE%.v}.vo"
+OUTPUT="$(timeout 30 ./bin/coqtop -nois -compile "${FILE%.v}" -nois 2>&1)"
+ERR=$?
+echo "$OUTPUT"
+echo "$ERR"
+#echo "$FILE"
+rm "$FILE"
+
+if [ ! -z "$(echo "$OUTPUT" | grep -o 'Anomaly')" ]; then
+    exit 0 # good, i.e., this is a commit where the error is still present, and we're looking for the first "bad" commit, where the anomaly has disappeared
+elif [ $ERR = 0 ]; then
+    exit 1 # bad
+else
+    exit 125 # failed for other reason
+fi
+
+
+Comment author: @JasonGross
+
+The bisect script says that it was fixed by:
+
+efa3add0c03b70ecda3890cc6c69e66850605e7d is the first bad commit
+commit efa3add0c03b70ecda3890cc6c69e66850605e7d
+Author: Enrico Tassi <Enrico.Tassi@ inria.fr>
+Date:   Mon Jun 23 19:06:03 2014 +0200
+
+    Fix handling of side effects in Defined objects (Closes: HoTT#111 + 3344)
+
+    Every time you use abstract a kitten dies, please stop.
+
+

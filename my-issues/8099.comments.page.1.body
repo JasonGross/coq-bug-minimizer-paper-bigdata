@@ -1,0 +1,23 @@
+> @maximedenes Can this be turned into a proof of False?
+
+This doesn't look like kernel issues, so probably not. Hopefully unification is not part of the TCB in Coq :)
+it looks like the conversion goes (with `x; y` means head is `x` stack is `y`)
+~~~
+foo; 0 == foo; 1: unfold foo on right
+foo; 0 == (fun v => ...); [] : eta expand
+foo; 0; shift; rel 1 == rel 1; zcase ... : unfold foo on left
+rel 1; zcase ... == rel 1; zcase ...
+~~~
+then there is no difference left
+so the issue is function eta when comparing things at different types
+
+then we can reduce to
+~~~coq
+Definition foo (n:bool) := n.
+
+Goal False.
+Proof.
+  unify foo (fun v : nat => v).
+  unify (fun v : nat => v) foo.
+Abort.
+~~~

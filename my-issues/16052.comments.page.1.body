@@ -1,0 +1,6 @@
+We shouldn't even have this warning in the first place. In an ideal world we should be able to refer to absolute names, and the warning would become moot.
+So is it reasonable to disable this warning today? I've also run into it in module experiments...
+
+> In an ideal world we should be able to refer to absolute names
+
+So something does go wrong today? If this `user messages` issue is blocked on some actual bug, making the dependency explicit would be the first step of solving it, and even just understanding workarounds.

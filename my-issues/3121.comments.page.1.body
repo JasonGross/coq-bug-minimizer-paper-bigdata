@@ -1,0 +1,32 @@
+Comment author: @JasonGross
+
+I would like to have [Hint]s for [eauto] which run only once.  This is useful, for example, to break trivial cycles in typeclass instance search.
+
+The idea that I had for implementing this is to have a construction which changes the contents of a hint database for the duration of the following tactic.  For example, I could write
+
+Ltac do_tac_then_remove_tac_from_ti_in_other_tac tac other_tac self_tac :=
+  tac;
+  dblet typeclass_instances := typeclass_instances -[(self_tac tac other_tac self_tac)] in
+  other_tac.
+
+Hint Extern 0
+  => do_tac_then_remove_tac_from_ti_in_other_tac
+        ltac:(apply foo)
+        ltac:(solve [ eauto with typeclass_instances ])
+        ltac:(do_tac_then_remove_tac_from_ti_in_other_tac)
+: typeclass_instances.
+
+and then you only get to call [apply foo] once in any chain of typeclass reasoning.  Note that if some other tactic in the typeclass_instances database calls, e.g., [trivial with typeclass_instances], that invocation should not see the [apply foo] hint if it's already been used.
+
+Alternatively, perhaps there could be a kind of use-once [Hint], so that
+
+Linear Hint Extern 0 => apply foo : db.
+
+would mean that any chain of reasoning invoked by [eauto with db] can use [apply foo] at most once.  Adding [Linear Hint]s should never result in cycles that would not appear if you manually applied them.  For example, the hints
+
+Linear Hint Extern 0 => idtac; eauto with db : db.
+Linear Hint Extern 0 => idtac; idtac; eauto with db : db.
+
+should not loop forever, nor stack overflow.
+
+

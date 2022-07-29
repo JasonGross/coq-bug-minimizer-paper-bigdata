@@ -1,0 +1,10 @@
+Comment author: @JasonGross
+
+Record a := { x : nat ; x : nat }. (* Error: Two objects have the same name *)
+
+
+Comment author: @ppedrot
+
+Fixed in 6e4c45780.
+
+

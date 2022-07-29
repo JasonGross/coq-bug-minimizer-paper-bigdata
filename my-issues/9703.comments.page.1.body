@@ -1,0 +1,1 @@
+Note that `Set Printing Primitive Projection Parameters.` fixes this, but I think there should be a separate setting for printing primitive projection parameters in notations (rather than in actual primitive projections), and that setting should be on by default rather than off by default.

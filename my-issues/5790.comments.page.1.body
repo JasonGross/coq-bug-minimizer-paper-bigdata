@@ -1,0 +1,13 @@
+Comment author: @JasonGross
+
+Set Universe Polymorphism.
+Section foo.
+  Context (v : Type).
+  Axiom a : True <-> False.
+  Hint Resolve -> a. (* Error:
+Cannot mix universe polymorphic and monomorphic declarations in sections.
+ *)
+
+
+This is because Hint Resolve with arrow declares the projection constant in Extratactics.project_hint which doesn't respect Universe Polymorphism (both option and `Polymorphic Hint ...`) so the constant is always monomorphic.
+PR incoming.

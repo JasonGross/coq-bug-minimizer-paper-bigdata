@@ -1,0 +1,15 @@
+Comment author: @JasonGross
+
+Fixpoint foo {a b x : nat} {struct x} : True. (* Error: Cannot set implicit 
+argument number 2: it has no name. *)
+
+Note that removing [a] or [b], or making it structural on [a] or [b], removes 
+the error.
+
+
+Comment author: @JasonGross
+
+Fixed in trunk, I believe by Hugo (haven't bothered to find the commit that 
+fixes let-ins in a bunch of places).
+
+

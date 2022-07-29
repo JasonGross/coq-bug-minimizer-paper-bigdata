@@ -1,0 +1,155 @@
+I agree this is confusing but this is a design choice which is indeed due to multi-goal tactics.
+I already discussed this with @cmangin and was never able to propose a better way.
+Maybe multi-goal tactics should provide a sort of trace showing what are the parent goals for each new goal. If we had this, I'm sure @jfehrle would also be interested for the diff feature.
+Interesting example.  It breaks the multi-goal matching heuristic I use in https://github.com/coq/coq/pull/8247.
+> It breaks the multi-goal matching heuristic I use in #8247.
+
+I take that back.  It exposed an easily-fixable bug in my heuristic.
+I just ran into the very same issue, now using coq-8.12. Indeed, before searching for this issue, I tried to search for some documentation on how applying tactics to multiple goals reorders the goals. However, the section on [Processing multiple goals](https://coq.inria.fr/distrib/current/refman/proof-engine/ltac.html#processing-multiple-goals) does not contain any information on the matter. 
+
+@Zimmi48 :
+> I agree this is confusing but this is a design choice which is indeed due to multi-goal tactics.
+
+Would you be willing to document this design choice, in particular as it comes to (multi-goal) tactics?
+I think "design choice" gives the wrong impression.  I think it's more that the code implementing tactics doesn't keep track of goal parent-child relationships.  For #8247, I found an apparently reliable way to determine these relationships after the fact by comparing the old and new proof terms.  Perhaps that code could be adapted to make things appear in a more predictable order.  For example, we could ensure that child nodes appear in the order the parents appeared--though we'd also need to define the order of the children when a single goal generates multiple child goals.
+Let's say "design choice given the current limitations regarding goal tracking (which would be great to lift)".
+
+This behavior sure should be documented!
+> This behavior sure should be documented!
+
+Sure.  I'll submit something shortly.
+
+> "design choice given the current limitations regarding goal tracking (which would be great to lift)"
+
+But not this wording!  "we didn't consider this issue" is hardly a design choice.
+Note that in the example in #12339, `idtac` isn't even changing the proof state (as shown by Show Proof and Show Existentials).
+It's not true that this issue was not considered. It was! That's why I used "design choice" in the first place.
+Just to chime in: the "parent goal" concept doesn't make sense in general due to dependent types and unification-at-distance. For some very specific cases you can cobble together something that looks like it, but building the proof engine around this broken concept is essentially what was done before 8.5.
+
+I can believe it's infeasible to track parent/child relationships in the proof engine, but matching up parent and child by comparing the old and new proof terms seems to work almost always for the examples I tried.  It's used to match goals for showing proof diffs.
+
+As it is now, the heuristic does a depth-first search.  When the old proof term doesn't match the new proof term and the node is an evar (the parent goal), the heuristic considers any evars appearing below the corresponding node in the new proof term as child goals.  In a few cases (maybe 100 proof steps across the CI code), a small amount of the old proof term above an evar is rewritten.  I don't currently handle that case, but that's probably fixable.
+
+I'd be very interested to see examples of proof steps that completely break the heuristic.
+Heuristics that work most of the time are fine for visual stuff like the goal diffs, but it would be extremely fragile to start relying on them for goal ordering, as it could make the behavior of the system quite unpredictable. (The advantage of the current design is that it's very predictable despite not being intuitive.)
+You're being prematurely pessimistic.  Obviously first you make the heuristic as good as it can be, then make a careful decision whether that's good enough.  I think there's a good chance it could be made airtight.  You are in favor of exploring new ideas and improved methods, right?  But I'm not proposing we look into this right now.
+Sure, I'm not going to discourage anyone to attempt this. But I am pessimistic indeed regarding what we can get with heuristics for this kind of things. On the other hand, I disagree with @ppedrot that we shouldn't have a notion of "parent goal" in the engine because it does not make sense "in general". Of course, with multi-goal tactics you can have multiple parents but I don't see how you could have none. Furthermore, even if this kind of notion is not general (side-condition goals would be another notion that is not always present), it could be up to the tactics to declare them, and we could rely on these optional declarations when they are available.
+> but matching up parent and child by comparing the old and new proof terms seems to work almost always for the examples I tried. It's used to match goals for showing proof diffs.
+
+Is this actually how diffs work?  This sounds like it incurs quadratic overhead in the number of steps of a proof.  (Maybe it doesn't matter because we expect to only display diffs interactively then overhead like this doesn't matter.). In any case, this heuristic would incur unacceptable overhead if executed on every tactic step to determine goal ordering.  (Perhaps there's an equivalent one with acceptable performance though.)
+> we shouldn't have a notion of "parent goal" in the engine
+
+@Zimmi48 I didn't say we shouldn't have a notion of parent goal, it's fine to have an optional one which is only defined when it makes sense. What we shouldn't do is *build the engine around this notion*.
+
+> This sounds like it incurs quadratic overhead in the number of steps of a proof. 
+
+It's linear in the size of the proof term, so it wouldn't change the asymptotic complexity of applying a tactic, right?  In common cases, tree traversal isn't necessary based on the observation that evar ids are preserved for goals that haven't changed.  If the new evar ids are a subset of the old evar ids, then you only have goals that have been solved or preserved.  If a single old goal goes away, then any new goals are its children.  The tree traversal is needed only when multiple goals go away and one or more new evars appear.  (Looking at the number of goals was my initial heuristic before I added tree traversal.)
+
+Aside from whether we can reliably identify parent-child goal relationships, we would want to consider:
+- What behavior do we want/would users find more intuitive?
+- How we handle compatibility since a change in the ordering could break existing proofs.  I suppose enabling the new ordering could be a setting, though keeping such as setting around permanently is not so appealing.
+
+
+> It's linear in the size of the proof term, so it wouldn't change the asymptotic complexity of applying a tactic, right?
+
+It's linear in the size of the proof term, and the proof term is roughly linear in the number of tactics executed.  So if you execute this once for every tactic, then you incur roughly quadratic overhead in the number of steps.
+
+> The tree traversal is needed only when multiple goals go away and one or more new evars appear. (Looking at the number of goals was my initial heuristic before I added tree traversal.)
+
+Does this mean that `all: refine (let x := _ in _)` would incur tree traversal?  What about `split; refine (let x := _ in _)`?
+
+Please, please, please do not make traversing the proof term happen in the middle of tactics.  For example, if `foo; only 1,4: bar` (is that the right syntax) traverses the proof term, then this makes `only` completely useless for generic automation that needs to scale.  I think it's highly suboptimal to have it happen at top level, but I won't object to having a flag (on by default) which causes top-level goal selectors to do this tree traversal.  (But perhaps it will be confusing to have `1,3:...` be different from `only 1, 3: ...`)
+> So if you execute this once for every tactic, then you incur roughly quadratic overhead in the number of steps.
+
+Sure, but doing the proof is already quadratic.  The asymptotic complexity doesn't change.  One would have to measure it.  The difference is likely to be small; depth-first search is a very simple algorithm.
+
+> Does this mean that all: refine (let x := _ in _) would incur tree traversal? What about split; refine (let x := _ in _)?
+
+I tried it.  First one yes, second one no.
+
+> Please, please, please do not make traversing the proof term happen in the middle of tactics. For example, if foo; only 1,4: bar (is that the right syntax) traverses the proof term, then this makes only completely useless for generic automation that needs to scale.
+
+Isn't that part of the compatibility considerations I mentioned as a potential issue?  How would this be an issue in new code?  (Not sure I've understood what you're getting at.)
+
+> I think it's highly suboptimal to have it happen at top level
+
+We have different expectations of the performance impact as I note above.  I'm all in favor of improving performance.  I think there are many opportunities for improvement that would make far more difference than than tree traversal would cost.  Indeed, we've worked on that some together.
+
+We really should consider _What behavior do we want/would users find more intuitive?_ first.  If we can't answer that, then we might as well close this issue.  Matching parent/child relationships seems like it could be a part of a solution.  I don't see any other ideas on the table.
+> Sure, but doing the proof is already quadratic
+
+What?  This is not my experience.  Literally the only things that I've found which are linear in the size of the proof term so far are `Show Proof`, `Guarded`, and `Qed`/`Defined`.
+What's your calculation/reasoning?
+
+> Isn't that part of the compatibility considerations I mentioned as a potential issue? How would this be an issue in new code? (Not sure I've understood what you're getting at.)
+
+No, my concern here is more performance than compatibility.  One question I have is: what would trigger tree traversal?  Top-level explicit goal selectors?  Every single top-level invocation (because of the implicit `1:`?  The `only` tactic?  Every multigoal tactic?
+
+> We have different expectations of the performance impact as I note above. I'm all in favor of improving performance. I think there are many opportunities for improvement that would make far more difference than than tree traversal would cost.
+
+Indeed, my expectation is that it would turn some proof scripts that are linear in the size of the input into scripts that take quadratic time, and hence for large enough inputs it's not possible to have any optimization with a large enough impact to offset this.
+If the full proof term is generated for each tactic, that's at least linear in the size of the proof term and quadratic in the size of the proof script.
+
+If the proof term is represented as the differences between old and new proof states, that could be linear in the size of the proof script.  If this is indeed the case, it should also make the "tree traversal" linear in the size of the proof script.  The depth-first search/tree traversal is to find the diffs and then compare the evars used in the old and new expression.  If you already have the diffs then it would be linear.
+
+If the proof term data structure is mutated (not typical in Coq code AFAIK), proof scripts would be linear; the diffs would be readily available, so the "tree traversal" could also be linear.
+
+I've not read this code, but a few things suggested to me that it's probably quadratic.  _In either case, the asymptotic complexity won't change._  If it is quadratic, that may not be detectable in your measurements because the constant is very small.  Copying a data structure and splicing in a few changes is, after all, quite simple.  It may only be measurable in scripts larger than the ones you tried.
+
+Perhaps @ppedrot knows how this code works?
+The way proof terms are stored is that you maintain a map of holes/evars/goals to the terms that fill them; these terms themselves may contain holes.  The structure holding this mapping is extended on each proof step in a functional way, I believe.  So each step of the script just adds new holes and new mappings, generally.  It should be pretty easy to figure out which holes were goals in the previous state, and then compute what fills them in the new state.  But this mapping is many-to-many; you can fill multiple goals with the same hole, and a goal can be filled with a term containing multiple holes.
+
+Consider:
+
+```coq
+Arguments conj [_ _].
+Goal True /\ (True /\ True).
+  simple refine (let x : True /\ (True /\ True) := _ in _).
+  1: repeat apply conj.
+  1,3,4: [ > pose I | pose I | match goal with x := conj ?a (conj _ ?b) |- _ => unify a b; pose a; pose b end ].
+```
+  
+-------------
+
+If asymptotic complexity does not change, then I retract my objections.
+What order would you like the goals to appear in?  Should the multigoal selector not reorder goals?
+
+Looking at the example in #12339 and variations, it appears the current behavior is that selecting `all:` or a single goal doesn't reorder the goals.  Otherwise the goals are moved to the point of the lowest selected goal number and it appears the resulting child goals are kept together.  See the example below.  The order of the goal numbers in the selector doesn't matter.  Not such a simple description and not clear to me that this behavior is entirely intentional.  But I hesitate to describe that in the doc without further confirmation.
+
+```
+Goal (1=0 /\ 2=0) /\ (3=0 /\ 4=0) /\ (5=0 /\ 6=0).
+split. 2: split.
+1,3: split.
+
+5 subgoals
+______________________________________(1/5)
+1 = 0
+______________________________________(2/5)
+2 = 0
+______________________________________(3/5)
+5 = 0
+______________________________________(4/5)
+6 = 0
+______________________________________(5/5)
+3 = 0 /\ 4 = 0
+```
+
+> The structure holding this mapping is extended on each proof step in a functional way, I believe.
+
+If the mapping is updated functionally (i.e. without mutation), wouldn't that be O(n log n) in the number of evars?
+I see the goals are reordered in Proofview.tclFOCUS_LIST.  So really this PR is about whether to change that behavior, e.g. don't reorder, possibly controlled by option.
+Currently the multigoal selector ignores the order in which the goals are specified.  If the construct used that order, it would provide an easy, intuitive way to permute the goals with a single tactic.  That leaves the question of whether the multigoal selector should reorder or not (presenting a compatibility issue).  If we decide it should not reorder, then we could introduce an explicit `reorder` tactic.
+> Not such a simple description and not clear to me that this behavior is entirely intentional.
+
+Having directly discussed this with @cmangin who implemented it, I really think the behavior is intentional. Multi-goal tactics only support being applied on a set of focused consecutive goals. The majority of tactics is not multi-goal so for these single-goal tactics, applying them at once of a set of focused goals or focusing separately on each goal would have been equivalent, but the proof engine doesn't distinguish between the two types of tactics (thus preventing a different treatment in the two cases, which would have introduced some inconsistency anyway). Maybe the conclusion is that multi-goal selectors (except `all:` and `par:`) should not have been implemented until the design of the proof engine was sufficiently refined so that their behavior could better correspond to the intuition.
+> I really think the behavior is intentional.
+
+Yes, that was clear once I read the code.  I didn't update my earlier comment.
+
+> Maybe the conclusion is that multi-goal selectors (except `all:` and `par:`) should not have been implemented until the design of the proof engine was sufficiently refined so that their behavior could better correspond to the intuition.
+
+Perhaps in an ideal world.
+
+> The majority of tactics is
+
+FWIW, I'd consider "majority of tactics" plural, not singular.

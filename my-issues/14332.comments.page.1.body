@@ -1,0 +1,4 @@
+For now, try to avoid pressing "interrupt" twice, wait for the first one to return.
+Indeed, waiting a while fixes the problem.  So this is low priority
+Ah, oops, sorry, wrong issue to comment on
+I believe this is already fixed.  I made a number of fixes/changes to avoid "coqtop died badly" some time ago.  If you find a new repeatable way to get this failure, let me know.

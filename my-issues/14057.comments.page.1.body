@@ -1,0 +1,78 @@
+Don't know what to do. I guess @mattam82 is the one to know best how to address this.
+Used to work in 8.11.2
+Anyone feel like bisecting?
+I have GH Actions bisecting at https://github.com/JasonGross/coq-bisect/runs/2256586792?check_suite_focus=true.  Perhaps we should teach @coqbot how to bisect?
+Hm, I guess I should follow up on https://github.com/coq/bot/issues/11#issuecomment-665414183
+<strike>Oops, I was passing the wrong args to coqc on that bisect.  Trying again at https://github.com/JasonGross/coq-bisect/runs/2257296371?check_suite_focus=true</strike>
+
+<strike>Edit: Apparently `coqtop -compile` doesn't exist anymore, trying again at https://github.com/JasonGross/coq-bisect/actions/runs/713084139</strike>
+
+Got it wrong again, now trying at https://github.com/JasonGross/coq-bisect/runs/2257531082?check_suite_focus=true
+Bisect says:
+79bcf1c0a22e736c4e2cae3460c35b3d9fca9aa0 is the first bad commit
+```
+commit 79bcf1c0a22e736c4e2cae3460c35b3d9fca9aa0
+Author: Emilio Jesus Gallego Arias <e+git@x80.org>
+Date:   Sat Feb 29 15:25:42 2020 -0500
+
+    [lemmas] Handle mutual lemmas more uniformly.
+    
+    We split the paths for mutual / non-mutual constants, and we enforce
+    some further invariants, in particular we avoid messing around with
+    the body of saved constants, and using the indirect accessor.
+    
+    This should be almost semantically equivalent to the previous code,
+    including some questionable choices present there.
+    
+    In further cleanups we will move this code to Declare, which should
+    hopefully help clarify some of the semantics.
+
+ vernac/comFixpoint.ml   |   4 +-
+ vernac/declareDef.ml    |   4 +-
+ vernac/declareDef.mli   |   1 -
+ vernac/lemmas.ml        | 221 +++++++++++++++++++++++++++++-------------------
+ vernac/lemmas.mli       |   2 +-
+ vernac/vernacentries.ml |   2 +-
+ 6 files changed, 142 insertions(+), 92 deletions(-)
+```
+cc @ejgallego 
+In 8.12.1, the backtrace is
+Raised at file "kernel/type_errors.ml", line 154, characters 2-47
+Called from file "kernel/typeops.ml", line 647, characters 11-48
+Called from file "kernel/term_typing.ml", line 135, characters 20-44
+Called from file "kernel/term_typing.ml" (inlined), line 292, characters 4-30
+Called from file "kernel/safe_typing.ml", line 895, characters 8-53
+Called from file "library/global.ml", line 72, characters 16-31
+Called from file "vernac/declare.ml", line 476, characters 11-40
+Called from file "vernac/declare.ml", line 482, characters 11-35
+Called from file "vernac/declare.ml", line 493, characters 6-44
+Re-raised at file "clib/exninfo.ml", line 82, characters 4-38
+Called from file "vernac/declare.ml", line 923, characters 13-72
+Called from file "clib/cList.ml", line 438, characters 21-26
+Called from file "clib/cList.ml", line 446, characters 4-29
+Called from file "vernac/lemmas.ml", line 318, characters 36-80
+Called from file "vernac/vernacinterp.ml", line 230, characters 6-58
+Called from file "lib/flags.ml", line 17, characters 14-17
+Re-raised at file "clib/exninfo.ml", line 82, characters 4-38
+Called from file "vernac/vernacinterp.ml", line 253, characters 18-43
+Called from file "vernac/vernacinterp.ml", line 251, characters 6-279
+Re-raised at file "clib/exninfo.ml", line 82, characters 4-38
+Called from file "stm/stm.ml", line 2542, characters 20-77
+Called from file "stm/stm.ml", line 1006, characters 6-10
+Re-raised at file "clib/exninfo.ml", line 82, characters 4-38
+Called from file "stm/stm.ml", line 2571, characters 4-105
+Called from file "stm/stm.ml", line 2752, characters 4-60
+Re-raised at file "clib/exninfo.ml", line 82, characters 4-38
+Called from file "toplevel/vernac.ml", line 68, characters 31-52
+Re-raised at file "clib/exninfo.ml", line 82, characters 4-38
+Called from file "toplevel/vernac.ml" (inlined), line 122, characters 2-60
+Called from file "toplevel/coqloop.ml", line 428, characters 17-62
+Called from file "toplevel/coqloop.ml", line 465, characters 4-39
+Called from file "toplevel/coqloop.ml", line 471, characters 6-34
+> commit 79bcf1c0a22e736c4e2cae3460c35b3d9fca9aa0
+> Author: Emilio Jesus Gallego Arias <e+git@x80.org>
+> Date:   Sat Feb 29 15:25:42 2020 -0500
+
+Yup, this was a prime candidate, thanks for confirming.
+
+Shouldn't be too hard to fix, but code before was tricky.

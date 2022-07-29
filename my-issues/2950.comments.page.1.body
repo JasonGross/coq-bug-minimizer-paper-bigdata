@@ -1,0 +1,99 @@
+Comment author: @JasonGross
+
+Created attachment 380
+Partial patch for quoting in coq_makefile
+
+coq_makefile generates code such as
+
+COQSRCLIBS?=-I $(COQLIB)kernel -I $(COQLIB)lib \
+  -I $(COQLIB)library -I $(COQLIB)parsing \
+  -I $(COQLIB)pretyping -I $(COQLIB)interp \
+  -I $(COQLIB)proofs -I $(COQLIB)tactics \
+  -I $(COQLIB)toplevel \
+  -I $(COQLIB)plugins/cc \
+  -I $(COQLIB)plugins/decl_mode \
+  -I $(COQLIB)plugins/extraction \
+  -I $(COQLIB)plugins/field \
+  -I $(COQLIB)plugins/firstorder \
+  -I $(COQLIB)plugins/fourier \
+  -I $(COQLIB)plugins/funind \
+  -I $(COQLIB)plugins/micromega \
+  -I $(COQLIB)plugins/nsatz \
+  -I $(COQLIB)plugins/omega \
+  -I $(COQLIB)plugins/quote \
+  -I $(COQLIB)plugins/ring \
+  -I $(COQLIB)plugins/romega \
+  -I $(COQLIB)plugins/rtauto \
+  -I $(COQLIB)plugins/setoid_ring \
+  -I $(COQLIB)plugins/subtac \
+  -I $(COQLIB)plugins/subtac/test \
+  -I $(COQLIB)plugins/syntax \
+  -I $(COQLIB)plugins/xml
+
+
+when compiling https://github.com/braibant/Timing-plugin.  This is not valid if COQLIB is, e.g., D:\Program Files (x86)\coq\lib.  Attached is a partial patch (untested) that does some simple quoting which should hopefully fix this problem (and quoting problems in a few other places in coq_makefile).  It doesn't catch the case where the paths include the " character.  Apologies if the patch file is wrong.
+
+> Attached file: [patch.diff](https://coq.inria.fr/bugfiles/attachment.cgi?id=380) (application/octet-stream, 9074 bytes)
+> Description:   Partial patch for quoting in coq_makefile
+
+
+Comment author: @JasonGross
+
+Created attachment 381
+Partial patch for quoting in coq_makefile
+
+Fix quoting in some echos, hopefully
+
+> Attached file: [patch.diff](https://coq.inria.fr/bugfiles/attachment.cgi?id=381) (text/plain, 8925 bytes)
+> Description:   Partial patch for quoting in coq_makefile
+
+
+Comment author: @pirbo
+
+It is r16119 in trunk but I changed stuff so I'll backport only if genrated makefiles works for you.
+
+
+Comment author: @JasonGross
+
+The trunk version does not have the quoting problem   Thanks.  (The generated makefile works fine for me on a machine where coqtop -config gives me
+
+LOCAL=0
+COQLIB=/afs/csail.mit.edu/u/j/jgross/.local64/lib/coq/
+DOCDIR=/afs/csail.mit.edu/u/j/jgross/.local64/share/doc/coq/
+OCAMLDEP=ocamldep
+OCAMLC=ocamlc
+OCAMLOPT=ocamlopt
+OCAMLDOC=ocamldoc
+CAMLBIN=/afs/csail.mit.edu/u/j/jgross/.local64/bin/
+CAMLLIB=/afs/csail.mit.edu/u/j/jgross/.local64/lib/ocaml/
+CAMLP4=camlp5
+CAMLP4O=camlp5o
+CAMLP4BIN=/afs/csail.mit.edu/u/j/jgross/.local64/bin/
+CAMLP4LIB=/afs/csail.mit.edu/u/j/jgross/.local64/lib/ocaml/camlp5
+CAMLP4OPTIONS=-loc loc
+HASNATDYNLINK=true
+
+but doesn't work on a machine where coqtop -config gives me
+
+LOCAL=0
+COQLIB=D:\Program Files (x86)\Coq/lib/
+DOCDIR=/share/doc/coq/
+OCAMLDEP=ocamldep
+OCAMLC=ocamlc
+OCAMLOPT=ocamlopt
+OCAMLDOC=ocamldoc
+CAMLBIN=/usr/bin/
+CAMLLIB=The system cannot find the path specified./
+CAMLP4=camlp5
+CAMLP4BIN=/usr/bin/
+CAMLP4LIB=/dev/null
+HASNATDYNLINK=true
+
+because "The system cannot find the path specified./" is not a valid path to pass to -I.  The latter is Coq 8.4pl1, the former is the HoTT coq.)
+
+
+Comment author: @pirbo
+
+I tried to do the backport. Let's see if there are still issues
+
+

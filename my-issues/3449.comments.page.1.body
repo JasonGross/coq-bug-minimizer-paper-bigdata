@@ -1,0 +1,130 @@
+Comment author: @JasonGross
+
+Created attachment 493
+HoTT development compiling with trunk
+
+In the attached development, the [Require Import] statements in theories/categories/PseudonaturalTransformation/Core.v take about 6s total, where before (in HoTT/coq, though I imagine also 8.4 if it would compile there) they took about 1.6 s total.
+
+What's it spending time doing, and is it possible to fix this?
+
+> Attached file: [HoTT-trunk.zip](https://coq.inria.fr/bugfiles/attachment.cgi?id=493) (application/x-zip-compressed, 472378 bytes)
+> Description:   HoTT development compiling with trunk
+
+
+Comment author: @JasonGross
+
+To make the contents attached file, run
+
+$ ./autogen.sh
+$ ./configure COQBIN="/path/to/coq-trunk/bin/" # or leave out COQBIN if trunk is the default on the system
+$ make theories/categories/PseudonaturalTransformation/Core.vo
+
+
+You'll also get a theories/categories/PseudonaturalTransformation/Core.timing file from the build which is the output of coqc -time.
+
+
+Comment author: @ppedrot
+
+I can't compile it on my machine. The autogen script does not generate any Makefile.
+
+
+Comment author: @JasonGross
+
+The autogen.sh script generates a configure script, which generates the Makefile.  Also, this might be unnoticeable (or fixed?) now that Matthieu has made it so that hashconsing of universes (or universe substitutions?) only happens when things are added to the global environment.
+
+
+Comment author: @JasonGross
+
+Which is to say, I haven't tested it since Matthieu pushed that patch, and the HoTT library got ~4x faster with that patch.
+
+
+Comment author: @ppedrot
+
+Is this bug fixed then?
+
+
+Comment author: @JasonGross
+
+The bug is still open in trunk.  I'm seeing some bizarre timings on imports, such as 13.934 secs (0.068u,4.76s) on theories/categories/Utf8.  (Where is the time, if not user nor system?)
+
+In any case, the slowest imports in trunk are:
+
+5.111 secs ./categories/Functor/Composition/Functorial.timing:Chars 0 - 44 [Require~Functor.Composition.Fu...] (0.056u,1.784s)
+5.196 secs ./hit/epi.timing:Chars 0 - 135 [Require~Import~Overture~hit.mi...] (0.016u,1.304s)
+5.232 secs ./TruncType.timing:Chars 84 - 261 [Require~Import~Overture~PathGr...] (0.032u,1.3s)
+5.373 secs ./hit/Spheres.timing:Chars 86 - 228 [Require~Import~Overture~PathGr...] (0.048u,1.3s)
+5.38 secs ./categories/LaxComma/Utf8.timing:Chars 48 - 77 [Require~Import~LaxComma.Core.] (0.056u,1.94s)
+5.433 secs ./categories/Adjoint/Notations.timing:Chars 0 - 40 [Require~Adjoint.Composition.Co...] (0.052u,1.524s)
+5.485 secs ./categories/Functor/Prod/Functorial.timing:Chars 46 - 254 [Require~Import~Category.Core~F...] (0.08u,2.092s)
+5.52 secs ./categories/Functor/Attributes.timing:Chars 79 - 274 [Require~Import~Category.Core~F...] (0.044u,1.56s)
+5.694 secs ./categories/LaxComma/LaxComma.timing:Chars 119 - 153 [Require~Export~LaxComma.Notati...] (0.092u,1.988s)
+5.724 secs ./categories/NaturalTransformation/NaturalTransformation.timing:Chars 135 - 182 [Require~Export~NaturalTransfor...] (0.036u,1.712s)
+5.77 secs ./categories/ExponentialLaws/Law1/Law.timing:Chars 54 - 258 [Require~Import~Category.Core~F...] (0.044u,1.72s)
+5.855 secs ./categories/KanExtensions/KanExtensions.timing:Chars 46 - 73 [Require~KanExtensions.Core.] (0.04u,2.18s)
+6.107 secs ./categories/Profunctor/Representable.timing:Chars 35 - 226 [Require~Import~Category.Core~F...] (0.072u,1.712s)
+6.501 secs ./categories/Limits/Limits.timing:Chars 51 - 71 [Require~Limits.Core.] (0.044u,2.232s)
+6.513 secs ./categories/NaturalTransformation/Utf8.timing:Chars 55 - 97 [Require~Export~Category.Utf8~F...] (0.068u,3.224s)
+6.734 secs ./categories/FunctorCategory/Utf8.timing:Chars 50 - 119 [Require~Export~Category.Utf8~F...] (0.072u,3.588s)
+6.793 secs ./categories/FunctorCategory/Functorial.timing:Chars 56 - 233 [Require~Import~Category.Core~F...] (0.064u,1.944s)
+7.103 secs ./categories/Limits/Functors.timing:Chars 113 - 170 [Require~Import~KanExtensions.C...] (0.06u,2.544s)
+7.232 secs ./categories/Notations.timing:Chars 69 - 102 [Require~Export~Functor.Notatio...] (0.048u,2.464s)
+7.55 secs ./categories/categories.timing:Chars 465 - 481 [Require~Functor.] (0.048u,2.9s)
+7.71 secs ./categories/Functor/Notations.timing:Chars 32 - 72 [Require~Functor.Composition.Co...] (0.108u,2.92s)
+7.784 secs ./categories/Functor/Composition/Composition.timing:Chars 142 - 181 [Require~Functor.Composition.Fu...] (0.044u,3.252s)
+8.568 secs ./categories/Functor/Functor.timing:Chars 106 - 139 [Require~Export~Functor.Notatio...] (0.076u,2.804s)
+10.694 secs ./categories/Functor/Utf8.timing:Chars 40 - 106 [Require~Export~Category.Notati...] (0.056u,3.872s)
+13.934 secs ./categories/Utf8.timing:Chars 42 - 83 [Require~Export~HoTT.categories...] (0.068u,4.76s)
+
+
+And in HoTT/coq:
+1.125 secs ./Misc.timing:Chars 907 - 1064 [Require~Import~Overture~PathGr...] (0.032u,0.444s)
+1.14 secs ./categories/ExponentialLaws/Law1/Law1.timing:Chars 86 - 124 [Require~ExponentialLaws.Law1.F...] (0.076u,0.504s)
+1.147 secs ./categories/ExponentialLaws/Law1/Functors.timing:Chars 79 - 239 [Require~Import~Category.Core~F...] (0.048u,0.444s)
+1.173 secs ./categories/ExponentialLaws/Law3/Law3.timing:Chars 103 - 141 [Require~ExponentialLaws.Law3.F...] (0.056u,0.548s)
+1.174 secs ./categories/Comma/Comma.timing:Chars 112 - 143 [Require~Export~Comma.Notations...] (0.06u,0.448s)
+1.187 secs ./categories/Cat/Cat.timing:Chars 67 - 84 [Require~Cat.Core.] (0.064u,0.468s)
+1.192 secs ./hit/Spheres.timing:Chars 86 - 228 [Require~Import~Overture~PathGr...] (0.04u,0.46s)
+1.201 secs ./categories/categories.timing:Chars 428 - 445 [Require~Category.] (0.052u,0.46s)
+1.215 secs ./Tests.timing:Chars 0 - 20 [Require~Import~HoTT.] (0.052u,0.544s)
+1.295 secs ./categories/Cat/Core.timing:Chars 51 - 221 [Require~Import~Category.Core~C...] (0.032u,0.6s)
+1.328 secs ./categories/ExponentialLaws/Law2/Functors.timing:Chars 69 - 353 [Require~Import~Category.Core~F...] (0.04u,0.608s)
+1.331 secs ./categories/ExponentialLaws/Law2/Law2.timing:Chars 96 - 134 [Require~ExponentialLaws.Law2.F...] (0.064u,0.516s)
+1.337 secs ./categories/Profunctor/Representable.timing:Chars 35 - 226 [Require~Import~Category.Core~F...] (0.056u,0.608s)
+1.407 secs ./categories/FunctorCategory/Utf8.timing:Chars 50 - 119 [Require~Export~Category.Utf8~F...] (0.2u,0.908s)
+1.413 secs ./categories/KanExtensions/KanExtensions.timing:Chars 46 - 73 [Require~KanExtensions.Core.] (0.092u,0.852s)
+1.445 secs ./categories/Functor/Composition/Functorial/Attributes.timing:Chars 130 - 206 [Require~Import~Functor.Composi...] (0.084u,0.628s)
+1.474 secs ./categories/Profunctor/Core.timing:Chars 21 - 121 [Require~Import~Category.Core~F...] (0.036u,0.556s)
+1.475 secs ./categories/NaturalTransformation/NaturalTransformation.timing:Chars 135 - 182 [Require~Export~NaturalTransfor...] (0.052u,0.628s)
+1.522 secs ./categories/Adjoint/HomCoercions.timing:Chars 145 - 245 [Require~Import~Adjoint.Core~Ad...] (0.06u,0.736s)
+1.539 secs ./categories/Limits/Functors.timing:Chars 113 - 170 [Require~Import~KanExtensions.C...] (0.128u,0.944s)
+1.59 secs ./categories/Functor/Prod/Functorial.timing:Chars 46 - 254 [Require~Import~Category.Core~F...] (0.068u,0.628s)
+1.661 secs ./categories/ProductLaws.timing:Chars 39 - 283 [Require~Import~Category.Core~F...] (0.084u,0.66s)
+1.687 secs ./categories/ExponentialLaws/Law1/Law.timing:Chars 54 - 258 [Require~Import~Category.Core~F...] (0.084u,0.872s)
+1.71 secs ./categories/NaturalTransformation/Utf8.timing:Chars 55 - 97 [Require~Export~Category.Utf8~F...] (0.124u,0.992s)
+1.772 secs ./categories/Functor/Utf8.timing:Chars 40 - 106 [Require~Export~Category.Notati...] (0.144u,1.1s)
+1.932 secs ./categories/Functor/Functor.timing:Chars 106 - 139 [Require~Export~Functor.Notatio...] (0.108u,1.244s)
+1.942 secs ./categories/FunctorCategory/Functorial.timing:Chars 56 - 233 [Require~Import~Category.Core~F...] (0.084u,0.684s)
+1.995 secs ./categories/Functor/Composition/Composition.timing:Chars 142 - 181 [Require~Functor.Composition.Fu...] (0.096u,1.116s)
+2.198 secs ./categories/Functor/Notations.timing:Chars 32 - 72 [Require~Functor.Composition.Co...] (0.136u,1.048s)
+2.404 secs ./categories/Notations.timing:Chars 69 - 102 [Require~Export~Functor.Notatio...] (0.1u,0.8s)
+2.607 secs ./categories/categories.timing:Chars 465 - 481 [Require~Functor.] (0.136u,0.98s)
+4.447 secs ./categories/Utf8.timing:Chars 42 - 83 [Require~Export~HoTT.categories...] (0.22u,1.64s)
+
+
+Comment author: @ppedrot
+
+I can't reproduce your slow timings... For instance, Utf8 compiles instantaneously on my machine.
+
+
+Comment author: @JasonGross
+
+I wonder if it's some unlucky filesystem contention when I'm doing a parallel build on AFS...
+
+Anyway, I can't seem to reproduce it now, once I've updated trunk, so either it's a quirk of parallel builds on AFS (or something), or it's been fixed in the last few days.  I'll see if I can figure out which one it is...
+
+
+Comment author: @ppedrot
+
+I close it then.
+
+

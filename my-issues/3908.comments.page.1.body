@@ -1,0 +1,51 @@
+Comment author: @JasonGross
+
+Here is some code that works in 8.4 and trunk as of a few weeks ago, but currently fails:
+
+(* -*- mode: coq; coq-prog-args: ("-emacs" "-nois") -*- *)
+(* File reduced by coq-bug-finder from original input, then from 8235 lines to 5893 lines, then from 5575 lines to 74 lines, then from 503 lines to 37 lines *)
+(* coqc version trunk (January 2015) compiled on Jan 4 2015 19:26:10 with OCaml 4.01.0
+   coqtop version cagnode15:/afs/csail.mit.edu/u/j/jgross/coq-trunk,trunk (c146a313b5eeee2bb567553810d57c6a8548bd9a) *)
+Reserved Notation "x -> y" (at level 99, right associativity, y at level 200).
+Reserved Notation "x = y" (at level 70, no associativity).
+Reserved Notation "{ x : A  & P }" (at level 0, x at level 99).
+Open Scope type_scope.
+Notation "A -> B" := (forall (_ : A), B) : type_scope.
+Set Implicit Arguments.
+Record sigT {A} (P : A -> Type) := existT { projT1 : A ; projT2 : P projT1 }.
+Notation "{ x : A  & P }" := (sigT (fun x:A => P)) : type_scope.
+Notation "( x ; y )" := (existT _ x y) : fibration_scope.
+Open Scope fibration_scope.
+Inductive paths {A : Type} (a : A) : A -> Type := idpath : paths a a where "x = y" := (@ paths _ x y) : type_scope.
+Class IsEquiv {A B : Type} (f : A -> B) := { equiv_inv : B -> A ; eisretr : forall x, f (equiv_inv x) = x }.
+Arguments eisretr {A B} f {_} _.
+Notation "f ^-1" := (@ equiv_inv _ _ f _) (at level 3, format "f '^-1'") : equiv_scope.
+Class Contr(A : Type) := { center : A ; contr : (forall y : A, center = y) }.
+Local Open Scope equiv_scope.
+Generalizable Variables A B f.
+Definition fcontr_isequiv `(f : A -> B)
+: IsEquiv f -> (forall b:B, Contr {a : A & f a = b}).
+Proof.
+  intros ? b.
+  exists (f^-1 b ; eisretr f b).
+(* Toplevel input, characters 15-45:
+Error:
+In environment
+A : Type
+B : Type
+f : A -> B
+X : IsEquiv f
+b : B
+The term "(f^-1 b; eisretr f b)" has type "{_ : A & f (f^-1 b) = b}"
+while it is expected to have type "{a : A & f a = b}". *)
+
+I will bisect this.
+
+
+Comment author: @herbelin
+
+The change is due to commit e893a02f6438 which in principle enhances the use of heuristic to solve remaining evars. However, these heuristics should not be used to early. A patch supporting improved heuristics while still suporting your example will be done for 8.6.
+
+For 8.5, the commit mentioned above has been reverted a couple of days ago. So this "bug" is no longer valid since fails30cc3ba051dba9ab.
+
+

@@ -1,0 +1,41 @@
+Comment author: @JasonGross
+
+$ bin/coqtop -debug
+Welcome to Coq cagnode4:/afs/csail.mit.edu/u/j/jgross/coqanomaly,(no branch) (4c1ccb9e2a4b219ac5180115bc4267e1b059cdd1)
+
+Coq < Class foo : Prop := { bar :> Set }.
+foo is defined
+Warning: bar cannot be defined because it is informative and foo is not.
+Anomaly: Uncaught exception Option.IsNone(_). Please report.
+frame @  file "toplevel/vernac.ml", line 349, characters 6-16
+raise @  file "toplevel/vernac.ml", line 341, characters 18-19
+frame @  file "toplevel/vernac.ml", line 333, characters 14-104
+raise @  file "library/states.ml", line 39, characters 45-46
+frame @  file "library/states.ml", line 37, characters 4-7
+raise @  file "toplevel/vernacentries.ml", line 1809, characters 12-13
+frame @  file "toplevel/vernacentries.ml", line 1798, characters 4-12
+frame @  file "toplevel/vernacentries.ml", line 540, characters 10-85
+frame @  file "toplevel/record.ml", line 399, characters 10-127
+frame @  file "toplevel/record.ml", line 363, characters 2-13
+frame @  file "list.ml", line 75, characters 12-15
+frame @  file "pretyping/typeclasses.ml", line 383, characters 45-62
+raise @  file "lib/option.ml", line 38, characters 15-21
+
+Coq <
+
+
+Comment author: @JasonGross
+
+A bit of source diving suggests that add_class in pretyping/typeclasses.ml assumes that all projections have valid bodies, but the code for constructing the projections removes the bodies if they are informative when the class in is Prop.
+
+
+Comment author: @mattam82
+
+Turned into a proper error message explaining that a non-definable projection can't be declared as a subinstance.
+
+
+Comment author: @JasonGross
+
+Should a regression test be added for this bug?
+
+

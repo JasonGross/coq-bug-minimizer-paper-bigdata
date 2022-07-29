@@ -1,0 +1,43 @@
+There is a pattern matching, it's introduced by unification somehow unfolding `fix Homs`.
+~~~coq
+Check fun (Homs_cps_ind : forall {n tA tB}, (telescope n -> Type) -> @Homs n tA tB -> Type) =>
+        forall {n} A P B Q cont Hom,
+          (forall (a : A) (b : B), @Homs_cps_ind n (P a) (Q b) (fun t => cont (pr1 (Hom a b); (fun _ => t))) (pr2 (Hom a b)))
+-> @Homs_cps_ind (n.+1) (A; P) (B; Q) cont Hom.    
+(* 
+
+fun
+  Homs_cps_ind : forall (n : nat) (tA tB : telescope n), (telescope n -> Type) -> Homs tA tB -> Type
+=>
+forall (n : nat) (A : Type) (P : A -> telescope n) (B : Type) (Q : B -> telescope n)
+  (cont : {x : Type | x -> telescope n} -> Type)
+  (Hom : forall (x : A) (x0 : B),
+         {_ : Type
+         | (fix Homs (n0 : nat) : telescope n0 -> telescope n0 -> Type :=
+              match n0 as n1 return (telescope n1 -> telescope n1 -> Type) with
+              | 0 => fun 'tt 'tt => unit
+              | n1.+1 =>
+                  fun '(A0; P0) '(B0; Q0) =>
+                  forall (a : A0) (b : B0), {_ : Type | Homs n1 (P0 a) (Q0 b)}
+              end) n (P x) (Q x0)}),
+(forall (a : A) (b : B),
+ Homs_cps_ind n (P a) (Q b) (fun t : telescope n => cont (pr1 (Hom a b); fun _ : pr1 (Hom a b) => t))
+   (pr2 (Hom a b))) -> Homs_cps_ind n.+1 (A; P) (B; Q) cont Hom
+*)
+~~~
+Ah, I guess the unfolding is not surprising; this always happens when performing pattern matching on binders whose types are fixpoints applied to a constructor, and that's morally what I'm doing here.  Still confused by the error message here though
+Indeed if I fill in all the folded types, I get the more expected
+```coq
+#[universes(template)]
+ Monomorphic Inductive Homs_cps_ind : forall {n tA tB}, (telescope n -> Type) -> @Homs n tA tB -> Type :=
+| Homs0 : forall F, F tt -> @Homs_cps_ind 0 tt tt F tt
+| HomsS : forall {n} A (P : A -> telescope n) B (Q : B -> telescope n) cont
+                 (Hom : @Homs (n.+1) (exist (fun A => A -> telescope n) A P) (exist (fun A => A -> telescope n) B Q)),
+    (forall (a : A) (b : B), @Homs_cps_ind n (P a) (Q b) (fun t => cont (pr1 (Hom a b); (fun _ => t))) (pr2 (Hom a b)))
+    -> @Homs_cps_ind (n.+1) (exist (fun A => A -> telescope n) A P) (exist (fun A => A -> telescope n) B Q) cont Hom
+.
+(* Error: Ill-formed template inductive declaration: not polymorphic on any universe. *)
+```
+Seems to be not a bug, reopen if incorrect @JasonGross 
+I think the error message is misleading and would prefer the world where matches delayed inference of their return sort universe.
+It's possible that this is a duplicate of some other report/enhancement request for better return clause sort inference.

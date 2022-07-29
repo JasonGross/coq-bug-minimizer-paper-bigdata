@@ -1,0 +1,4 @@
+Note that this causes an issue with the bug minimizer (https://github.com/JasonGross/coq-tools/issues/63), which relies on `-time` for parsing.  I can work around this issue, but it would be nice to have it fixed, too.
+Since they're run twice what's wrong with printing twice?
+That's a good question, and I guess there's more of a design question here than I realized.  I think that the time should be considered part of `Qed`, not part of these separate commands.  Perhaps this is related to https://github.com/coq/coq/issues/8236
+Said another way, I think that replaying the global side effects should be considered part of "running the command Qed", rather than the `Qed` vernacular being secretly syntactic sugar for rerunning all the vernaculars of the proof and also saving the proof.

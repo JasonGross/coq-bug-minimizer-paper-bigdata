@@ -1,0 +1,27 @@
+Comment author: @JasonGross
+
+Here is code that works in both 8.4 and 8.5:
+
+Class Foo {x} := foo : x -> Type.
+Instance: @ Foo nat := fun _ => nat -> Set.
+Axiom bar : forall {f : Foo}, f 0.
+Goal Set.
+  let c := constr:(bar 1) in
+  apply c.
+
+Here is code that works only in 8.4:
+
+Class Foo {x} := foo : x -> Type.
+Instance: @ Foo nat := fun _ => nat -> Set.
+Axiom bar : forall {f : Foo}, f 0.
+Goal Set.
+  apply (bar 1). (* in 8.5, Error: Illegal application (Non-functional construction): 
+The expression "bar" of type "?f 0" cannot be applied to the term
+ "1" : "nat" *)
+
+
+Comment author: @JasonGross
+
+Also, [eapply].
+
+

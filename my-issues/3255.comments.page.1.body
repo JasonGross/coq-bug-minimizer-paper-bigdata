@@ -1,0 +1,110 @@
+Comment author: @JasonGross
+
+In ProofGeneral, I get the following
+
+Goal True.
+   idtac "a". (* no output *)
+   idtac "aa". (* no output *)
+   idtac "aaa". (* no output *)
+   idtac "aaaa". (* prints aaaa *)
+
+In CoqIDE, there is no dependence on the length of the string, but if there is no text after the current idtac line and I use "goto cursor", the text flashes on the screen, and if I am at the end and click "next step"/"down", the idtac text disappears.
+
+
+Comment author: @pirbo
+
+I don't see the problem in Coqide. Do next "next step" at the end of a buffer works as I expected it to work. It will try to do the next step so it cleans the message area of the previous command as alwais then it does nothing as there is no next step...
+
+For proof general, I've checked that coqtop -emacs prints the a as it should so I would say that the problem is in the emacs side ...
+
+
+Comment author: @pirbo
+
+Translated message from Pierre Courtieu:
+
+The four idtac have the same behavior on my machine: the 'a's are all printed by coqtop but none is transmitted neither to the "messages" nor to the "goal" buffer. This is a known bug in Proof General.
+
+
+Comment author: @Matafou
+
+Actually the detection of a message together with a goal is a mess in PG. One solution is to put in your message something that it can detect as a warning tag:
+
+try for example:
+
+idtac "<infomsg>This is a warning</infomsg>"
+
+or:
+
+idtac "Warning: This is a warning******"  <-- 6 stars exactly
+
+
+Yes this is dirty hack. Hopefully all this will be cleaned up when we take time to suppor the new protocol in trunk. Maybe this summer.
+
+
+Comment author: @JasonGross
+
+> I don't see the problem in Coqide. Do next "next step" at the end of a buffer works as I expected it to work. It will try to do the next step so it cleans the message area of the previous command as alwais then it does nothing as there is no next step...
+
+I would argue that this gives rise to unexpected behavior with the "Go to cursor" and, possibly, the "Go to end".  If I understand correctly, the "Go to end" button currently will always clean the message area after finishing.  This is potentially unexpected.  More worrisome, if I click "Go to cursor" and the cursor happens to be at the end, then the message area is cleared.  Here are three examples; place the cursor at the end of the second line, after the period, and click "Go to cursor":
+
+These examples result in a cleared buffer:
+------------ example 1 - cleared buffer -----------
+Goal True.
+idtac "aaaaaa".
+a
+---------------------------------------------------
+
+------------ example 2 - cleared buffer -----------
+Goal True.
+idtac "aaaaaa".
+a..
+---------------------------------------------------
+
+
+------------ example 3 - cleared buffer -----------
+Goal True.
+idtac "aaaaaa".
+---------------------------------------------------
+
+
+Here are some that don't clear the buffer
+
+
+------------ example 1 - buffer not cleared -------
+Goal True.
+idtac "aaaaaa".
+a.
+---------------------------------------------------
+
+
+------------ example 2 - buffer not cleared -------
+Goal True.
+idtac "aaaaaa".
+a...
+---------------------------------------------------
+
+
+------------ example 3 - buffer not cleared -------
+Goal True.
+idtac "aaaaaa".
+(* a *)
+---------------------------------------------------
+
+
+
+I don't think the details of Coq IDE's parsing should be exposed in this way; and I think the behavior of "Go to cursor", and maybe also "Go to end", are unexpected; hence I'm reopening this issue (I'll change the title slightly).
+
+
+Comment author: @pirbo
+
+Sorry, I did not realize that you were talking about coqide v8.4 where I can confirm these very weird behaviors !
+Anyway, Coqide v8.4 segfault on my Mac so it is far from usable in any case and I won't spend a minute in the mess Coqide used to be ...
+
+In coqide trunk, all the examples work as expected.
+
+
+Comment author: @JasonGross
+
+I see.  I've labeled it as next 8.x and closed it as resolved.  But perhaps it should instead be marked as WONTFIX?
+
+

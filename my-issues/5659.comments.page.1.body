@@ -1,0 +1,36 @@
+Comment author: @JasonGross
+
+I would like the following to work:
+
+Goal exists x, x = 5 + 5.
+Proof.
+  eexists.
+  vm_compute.
+  reflexivity.
+
+Currently, I have to do a work-around like this:
+
+Goal exists x, x = 5 + 5.
+Proof.
+  eexists.
+  lazymatch goal with
+  | [ |- ?e = ?v ]
+    => let v' := (eval vm_compute in v) in
+       unify e v';
+         vm_cast_no_check (eq_refl v')
+  end.
+
+This is annoying, and I wonder if the call to unify introduces overhead when 
+the context or the goal is extremely large.
+
+
+Comment author: @ppedrot
+
+See https://github.com/coq/coq/pull/935.
+
+
+Comment author: @ppedrot
+
+*** Bug [BZ#2885](https://github.com/coq/coq/issues?q=is%3Aissue%20%22Original%20bug%20ID%3A%20BZ%232885%22) has been marked as a duplicate of this bug. ***
+
+

@@ -1,0 +1,5 @@
+Comment author: @JasonGross
+
+It's almost never helpful to know that something is a universe inconsistency without seeing the universes printed.  When the error is a universe inconsistency, the term should probably be printed with set printing universes on.  At the very least, the error message should mention that the user can [Set Printing Universes] to get more information.
+
+

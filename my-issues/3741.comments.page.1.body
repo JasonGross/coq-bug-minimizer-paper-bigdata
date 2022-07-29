@@ -1,0 +1,55 @@
+Comment author: @JasonGross
+
+This code works in 8.4, but errors in trunk:
+```coq
+(* File reduced by coq-bug-finder from original input, then from 2012 lines to 19 lines *)
+(* coqc version trunk (October 2014) compiled on Oct 11 2014 1:13:41 with OCaml 4.01.0
+   coqtop version cagnode16:/afs/csail.mit.edu/u/j/jgross/coq-trunk,trunk (d65496f09c4b68fa318783e53f9cd6d5c18e1eb7) *)
+Require Import Coq.Lists.List.
+Section IndexBound.
+
+  Context {A : Set}.
+
+  Class IndexBound (a : A) (Bound : list A) :=
+    { ibound :> nat;
+      boundi : nth_error Bound ibound = Some a}.
+
+  Global Instance IndexBound_tail
+         (a a' : A) (Bound : list A)
+         {sB' : IndexBound a Bound}
+  : IndexBound a (a' :: Bound) :=
+    {| ibound := S ibound;
+       boundi := boundi |}.
+(* Toplevel input, characters 198-204:
+Error:
+In environment
+A : Set
+a : A
+a' : A
+Bound : list A
+sB' : IndexBound a Bound
+The term "boundi" has type "nth_error Bound ibound = Some a"
+while it is expected to have type "nth_error ?l (S ibound) = Some ?a".
+ *)
+```
+
+Comment author: @silene
+
+
+
+*** This bug has been marked as a duplicate of bug [BZ#3529](https://github.com/coq/coq/issues?q=is%3Aissue%20%22Original%20bug%20ID%3A%20BZ%233529%22) ***
+
+
+I'm reopening this bug as a proper type classes wish in the sense that #3529 (of which it was marked as a duplicate) is fixed by #7369, but not this issue.
+I think you missed the reopen button.
+> I think you missed the reopen button.
+
+I don't know. This family of bugs is confusing and I was not very able to say it the issue here was intended like it was intended in #3749, and as told in 5830f58, or it was a non-intended type class behavior. So, maybe it has to be opened, maybe not. So, let's keep it open, it is not wrong in the absence of further informations.
+> I'm reopening this bug
+
+> I think you missed the reopen button.
+
+> I don't know. (...) So, maybe it has to be opened, maybe not.
+
+Sometimes, I'm having a hard time interpreting your words :laughing: 
+The perils of constructive thinking AKA lack of excluded middle XD

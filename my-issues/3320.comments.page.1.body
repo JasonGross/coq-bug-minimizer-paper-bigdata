@@ -1,0 +1,28 @@
+Comment author: @JasonGross
+
+If you execute the following script in ProofGeneral, and Qed will give an ill-formedness error, as expected.  If you then try to back up using the "undo the previous proof command" in PG, you get
+Toplevel input, characters 0-18:
+Anomaly: error with no safe_id attached:
+Uncaught exception Stm.Vcs_aux.Expired.. Please report.
+
+Script:
+
+Goal forall x : nat, True.
+  fix 1.
+  assumption.
+Qed.
+
+
+CoqIDE jumps to the top of the proof on this error.  (It seems like this might get frustrating to the user who's doing a long proof, and wants to see where they went wrong without having to compile the entire proof again and again, but that's a separate concern.)
+
+
+Comment author: @JasonGross
+
+This bug has been closed in trunk.  Is there a way to add it to the test-suite?
+
+
+Comment author: @maximedenes
+
+Not sure how to make this a file for the test-suite, so let's close the bug meanwhile.
+
+

@@ -1,0 +1,61 @@
+Comment author: @JasonGross
+
+Consider this stretch of code: 
+https://github.com/JasonGross/fiat/blob/d1778d77d7c7919f37f8cdcd8dedcec32b045e65/src/Parsers/Refinement/SharpenedJavaScriptAssignmentExpression.v#L35-L42
+
+(run `make parsers` to get the dependencies built)
+
+      Time pose (string_stringlike_properties : @ StringLikeProperties ascii 
+string_stringlikemin string_stringlike). (* 0.024 *)
+      Undo.
+      Time pose (ltac:(exact string_stringlike_properties) : 
+@ StringLikeProperties ascii string_stringlikemin string_stringlike).
+      Undo.
+      Time pose (ltac:(typeclasses eauto) : @ StringLikeProperties ascii 
+string_stringlikemin string_stringlike).
+      Undo.
+      (*** HERE *)
+      Time pose (_ : @ StringLikeProperties ascii string_stringlikemin 
+string_stringlike). (* 1.232 *)
+
+the `pose (_ : ...)` should not be taking so long.  Is it 
+evarmap-normalization, perhaps?
+
+
+Comment author: @JasonGross
+
+Smaller example:
+Require Import Coq.ZArith.ZArith.
+Existing Class True.
+Existing  Instance I.
+Definition big := (Z.div_eucl, Z.div_eucl, Z.div_eucl, Z.div_eucl, Z.div_eucl, 
+Z.div_eucl, Z.div_eucl).
+Notation hide := (_, _).
+Goal exists P, P.
+  eexists.
+  pose big as b1.
+  pose big as b2.
+  vm_compute in b1, b2.
+  assert (LEM : nat -> Prop) by admit.
+  unshelve (do 150 refine (let x := _ : LEM _ in _)).
+  Focus 2.
+  Time pose (_ : True). (* 3s *)
+
+
+Comment author: @mattam82
+
+I tracked this down to the do_split option of typeclasses in class_tactics.ml:
+
+When we want to try and solve potentially independent components of typeclass resolution problems we do a dependency analysis on the evar_map to figure out which evars depend on which. This crawls all the undefined evars currently.
+
+
+Comment author: @mattam82
+
+Fix is here: https://github.com/coq/coq/pull/892
+
+
+Comment author: @ppedrot
+
+Fixed by 1517d56.
+
+

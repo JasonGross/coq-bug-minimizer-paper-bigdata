@@ -1,0 +1,7 @@
+Indeed, we should do that!
+Do we actually use PATH? I thought configure put the absolute path in coq_config for this kind of stuff.
+Oh, I missed the `PATH` part. We take `ocamlfind` from `coq_config` and ask it where is ocamlopt IIRC.
+So @JasonGross what is the scenario to reproduce this?
+@maximedenes we already do that, but it doesn't work. ocamlfind will gladly take the wrong ocaml compiler even if their paths don't match.
+The scenario is using `opam switch` (but it seems that you already got that on gitter)
+Duplicate of #7303.

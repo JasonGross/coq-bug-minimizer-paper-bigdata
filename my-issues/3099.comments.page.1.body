@@ -1,0 +1,12 @@
+Comment author: @JasonGross
+
+The default priority of typeclass instances at http://coq.inria.fr/refman/Reference-Manual022.html should be documented.
+
+
+Comment author: @ppedrot
+
+For your information, and after examination of the code, the default priority is the number of arguments of the instance, as for the Hint Resolve commmand which shares the very same code.
+
+Not sure if this is worth to be documented, though, as typeclasses are meant to be somewhat experimental.
+
+

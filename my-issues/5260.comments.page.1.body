@@ -1,0 +1,22 @@
+Comment author: @JasonGross
+```coq
+Record lattice T := { carrier := T; top : carrier ; bottom : carrier }.
+Record latticenc T := { topnc : T ; bottomnc : T }.
+Scheme Equality for latticenc. (* success *)
+Scheme Equality for lattice. (* fails *)
+```
+
+Note that this works:
+```coq
+Section lattice.
+  Context T
+          (eq_T : T -> T -> bool)
+          (T_bl : forall x y : T, eq_T x y = true -> x = y)
+          (T_lb : forall x y : T, x = y -> eq_T x y = true).
+  Let carrier := T.
+  Let eq_carrier := eq_T.
+  Record lattice' := { top' : carrier ; bottom' : carrier }.
+  Scheme Equality for lattice'.
+End lattice.
+```
+

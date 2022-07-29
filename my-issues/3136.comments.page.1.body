@@ -1,0 +1,36 @@
+Comment author: @JasonGross
+
+Goal forall A B C D (x : A) (y : B) (z : C x y) (w : D x y z), True.
+  intros.
+  match type of D with
+    | forall x y, @ ?C y x -> Type => pose C as C'
+  end.
+  unify C C'. (* should not fail *)
+
+
+
+Goal forall x, match inl True with inl x' => x = x' | inr x' => x = x' end.
+  lazymatch goal with
+    | [ |- forall x, match ?y with | inl x' => @ ?f x' x | inr x' => @ ?g x' x end ]
+      => pose f as f';
+        pose g as g'
+  end.
+  match goal with
+    | [ |- forall x, match ?y with | inl x' => f' x' x | inr x' => g' x' x end ]
+      => idtac
+  end. (* should not fail *)
+
+
+
+(It's not clear to me what the semantics of
+  match type of D with
+    | forall x y, @ ?C x x y -> Type => pose C
+  end.
+should be)
+
+
+Comment author: @ppedrot
+
+Not too difficult to fix. I may be the one having introduced this behaviour, though I don't know about the previous one.
+
+

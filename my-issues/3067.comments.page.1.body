@@ -1,0 +1,31 @@
+Comment author: @JasonGross
+
+The code
+```coq
+Local Reserved Notation "'F'".
+Record Foo :=
+  {
+    Foo_VeryLongFieldNameOfFoo :> Type where "'F'" := Foo_VeryLongFieldNameOfFoo;
+    Foo_Law : F = F
+  }.
+```
+gives the warning "Warning: This notation will not be used for printing as it is bound to a single variable.".  However, as far as I know, there is no way to silence this warning.  Normally, I could silence it by using the '(only parsing)' attribute, but this does not work in record 'where' clauses.  Additionally, as per #3066, I can't (yet) replace "'F'" with F, because 'where' clauses don't support aliases.
+
+The following two examples do not work.
+```coq
+Local Reserved Notation "'F'".
+Record Foo :=
+  {
+    Foo_VeryLongFieldNameOfFoo :> Type where "'F'" := Foo_VeryLongFieldNameOfFoo (only parsing);
+    Foo_Law : F = F
+  }.
+```
+```coq
+Local Reserved Notation "'F'".
+Record Foo :=
+  {
+    Foo_VeryLongFieldNameOfFoo :> Type where "'F'" (only parsing) := Foo_VeryLongFieldNameOfFoo;
+    Foo_Law : F = F
+  }.
+```
+

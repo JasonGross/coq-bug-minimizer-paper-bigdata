@@ -1,0 +1,17 @@
+Ah, I figured out the trailing newline issue @ejgallego 
+
+> Umm, `fatal_error` does indeed print a newline:
+> ```ocaml
+> let fatal_error info anomaly =
+>   flush_all (); Format.eprintf "@[Fatal Error: @[%a@]@]@\n%!" Pp.pp_with info; flush_all ();
+>   exit (if anomaly then 129 else 1)
+> ```
+
+That is not actually the code of `fatal_error` in `checker.ml`!  If you look very carefully at https://github.com/coq/coq/blob/aec63ba9c8f6840d98ba731640a786138d836343/checker/checker.ml#L20-L22
+you will discover that you have already fixed the bug in your mistranscription by transposing `@\n` and `%!`!  Perhaps you pulled the code from some branch you are working on where you have already fixed this issue?
+
+(Note that this still leaves the missing newline in `arg n=`)
+Oh indeed I had swapped it unconsciously O_O I am too used to `Format` I guess and tend to do that.
+
+Yup, the whole printing code of the checker needs a small cleanup. 
+@JasonGross #6800 should clarify printing rules a bit and fix this. IMHO that should be a good base if you want to improve the checker output [I can't really tell as I am not dealing with it myself].

@@ -1,0 +1,189 @@
+Comment author: @JasonGross
+
+Goal forall A B C (f g : forall (x : A) (y : B x), C x y), (forall x y, f x y = g x y) -> True.
+Proof.
+  intros A B C f g H.
+  apply functional_extensionality_dep in H.
+(* Success in 8.4, Error: Unable to unify. in trunk *)
+
+The same thing happens with [eapply].
+
+
+Comment author: @ppedrot
+
+Unification was changed in trunk. This may explain this behaviour. Do you have the exact commit which introduced that?
+
+
+Comment author: @JasonGross
+
+I don't.  I can run [git bisect] if you'd like, though.
+
+
+Comment author: @JasonGross
+
+I think it is not the unification engine, but instead the timing of inferring maximally inserted implicit arguments; replacing [functional_extensionality_dep] with [@ functional_extensionality_dep] makes it work in trunk.  I will go bisect.
+
+
+Comment author: @JasonGross
+
+git bisect says
+f5bbb5ce34bb1ee2165086b0fdb3ee5f3d96a44e is the first bad commit
+commit f5bbb5ce34bb1ee2165086b0fdb3ee5f3d96a44e
+Author: msozeau <msozeau@ 85f007b7-540e-0410-9357-904b9bb8a0f7>
+Date:   Fri Jul 19 14:50:48 2013 +0000
+
+    - Fix uncaught exception NotASort from reductionops, moving decomp_sort to retyping.ml
+    - In unification's w_merge, assign the evars in the same order they were found. Might
+    create rare incompatibilities.
+
+
+    git-svn-id: svn+ssh://scm.gforge.inria.fr/svn/coq/trunk@ 16632 85f007b7-540e-0410-9357-904b9bb8a0f7
+
+I haven't tested it, but it seems plausible.
+
+
+Comment author: @JasonGross
+
+Here is the bisect script I used:
+
+
+#!/bin/bash
+
+cd ~/coq
+
+git clean -xfd 2>&1 >/dev/null
+CONFIGURE_ARGS="-local -coqide no"
+if [ ! -z "$(./configure -help 2>&1 | grep 'nodoc')" ]; then
+    CONFIGURE_ARGS="$CONFIGURE_ARGS -nodoc"
+else
+    CONFIGURE_ARGS="$CONFIGURE_ARGS -with-doc no"
+fi
+if [ ! -z "$(./configure -help 2>&1 | grep 'no-native-compilter')" ]; then
+    CONFIGURE_ARGS="$CONFIGURE_ARGS -no-native-compiler"
+fi
+./configure $CONFIGURE_ARGS
+make coqbinaries "$@ " || exit 125
+ls ./bin
+
+
+CODE='Notation "A -> B" := (forall _ : A, B) (right associativity, at level 99, B at level 200).
+Inductive eq {A} (x : A) : A -> Prop := eq_refl : eq x x.
+Inductive True : Prop := I.
+Notation "a = b" := (@ eq _ a b) (at level 70, right associativity, b at next level).
+Axiom functional_extensionality_dep :
+  forall {A : Type} {B : A -> Type} (f g : forall x : A, B x),
+    (forall x : A, f x = g x) -> f = g.
+
+Goal forall A B C (f g : forall (x : A) (y : B x), C x y), (forall x y, f x y = g x y) -> True.
+Proof.
+  intros A B C f g H.
+  apply functional_extensionality_dep in H.
+Admitted.'
+
+FILE=`mktemp --suffix=.v --tmpdir tmpXXXXXXXXXX`
+
+echo "$CODE" > "$FILE"
+if [ ! -z "$(./bin/coqtop -help 2>&1 | grep noinit)" ]
+then
+    ./bin/coqtop -boot -compile "${FILE%.v}" -noinit
+    ERR=$?
+else
+    ./bin/coqtop -boot -compile "${FILE%.v}" -nois
+    ERR=$?
+fi
+rm "$FILE"
+
+if [ $ERR = 0 ]; then
+    exit 0 # good
+else
+    exit 1 # bad
+fi
+
+
+Comment author: @mattam82
+
+This does "work" but it produces ill-formed terms referring to an unbound de Bruijn index. The result should be forall x : A, eq (f x) (g x) but the forall is missing, maybe Hugo knows how to achieve that result.
+
+
+Comment author: @herbelin
+
+There are several issues afaiu:
+
+It should a priori behave the same whether we say "apply @ functional_extensionality_dep in H" or "apply functional_extensionality_dep in H".
+
+When it works, the result, whether it is in 8.4 or trunk, is:
+
+  H : (fun y : B ?23 => f ?23 y) = (fun y : B ?23 => g ?23 y)
+
+where ?23 is an evar. Since "e" has not been given, "apply" would have to fail here. With "eapply", this looks a correct behavior to me.
+
+Obtaining H : forall x, (fun y : B x => f x y) = (fun y : B x => g x y) is asking too much of "apply in" I think, since the policy of apply in, like the one of apply, is that dependencies are treated as evars.
+
+So, in summary: I see two problems:
+- "apply in" does not properly check if evars are created;
+- unification should work the same whether using @ functional_extensionality_dep or functional_extensionality_dep.
+
+Otherwise said, it should work the same in 8.4 and trunk producing the H above with eapply and failing with a "cannot instantiate x" in with 8.4 and trunk when using apply.
+
+OK for being assigned to it in any case (though I don't know when it will come on top of my priority list).
+
+
+Comment author: @mattam82
+
+I think it should always fail. The ?23 existential refers to an UNBOUND de Bruijn index, i.e. it's ill-typed:
+  
+  A : Type
+  B : forall _ : A, Type
+  C : forall (x : A) (_ : B x), Type
+  f : forall (x : A) (y : B x), C x y
+  g : forall (x : A) (y : B x), C x y
+  H : @ eq
+        (forall x : B ?20 (* [A, B, C, f, g, H, _UNBOUND_REL_1] *),
+         C ?20 (* [A, B, C, f, g, H, x] *) x)
+        (fun y : B ?20 (* [A, B, C, f, g, H, _UNBOUND_REL_1] *) =>
+         f ?20 (* [A, B, C, f, g, H, y] *) y)
+        (fun y : B ?20 (* [A, B, C, f, g, H, _UNBOUND_REL_1] *) =>
+         g ?20 (* [A, B, C, f, g, H, y] *) y)
+  ============================
+   True
+
+
+Comment author: @herbelin
+
+The unbound rel indeed shows a bug (supposingly in unification). Note that there were no such unbound rel in 8.4 (*). So, I see this as a hint of why it works in 8.4 and not in trunk.
+
+Another bug is the presence of H in the signature in both 8.4 and trunk, which shows a collision between the old H that has been overwritten with a new H.
+
+Hugo
+
+8.4 gives :
+
+  A : Type
+  B : A -> Type
+  C : forall x : A, B x -> Type
+  f : forall (x : A) (y : B x), C x y
+  g : forall (x : A) (y : B x), C x y
+  H : @ Logic.eq
+        (forall x : B ?37 (* [A, B, C, f, g, H] *),
+         C ?37 (* [A, B, C, f, g, H] *) x)
+        (fun y : B ?37 (* [A, B, C, f, g, H] *) =>
+         f ?37 (* [A, B, C, f, g, H] *) y)
+        (fun y : B ?37 (* [A, B, C, f, g, H] *) =>
+         g ?37 (* [A, B, C, f, g, H] *) y)
+  ============================
+   True
+
+
+Comment author: @herbelin
+
+Unbould rel problem fixed in trunk, v8.4 and v8.3.
+
+The two other problems are fixed in trunk.
+
+The clear problem does not seem so critical so I don't propagate it to 8.4.
+
+The "apply" working even if evar remains could be propagated to 8.4 but I'm afraid it break scripts using this "bug". I let this pending...
+
+Note that 8.3 was ok for "apply functional_extensionality_dep in H" but not ok for "apply @ functional_extensionality_dep in H" because of the unbould rel bug.
+
+

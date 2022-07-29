@@ -1,0 +1,29 @@
+Comment author: @JasonGross
+
+$ cat A.v
+Require Import Coq.Strings.String.
+Open Scope string.
+$ cat B.v
+Require Import A.
+$ coqc -R . Top A B
+File "/tmp/foo/B.v", line 1, characters 0-17:
+Error: Scope string is not declared.
+
+This occurs in both 8.4 and 8.5.
+
+
+Comment author: @silene
+
+Thanks for the report. Fixed by commit f3ff16a.
+
+
+Comment author: @JasonGross
+
+Can this be backported to 8.4 (and earlier, inasmuch as it's valid)?
+
+
+Comment author: @JasonGross
+
+Also, thanks!
+
+

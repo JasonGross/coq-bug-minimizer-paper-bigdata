@@ -1,0 +1,205 @@
+I guess the fix for this is to change `MANDIR` at
+https://github.com/coq/coq/blob/51bc092b19f85934e4c37046fe75a36d81da4293/Makefile.install#L66-L68
+to something including the prefix that is set at
+https://github.com/coq/coq/blob/51bc092b19f85934e4c37046fe75a36d81da4293/Makefile.install#L45-L54 as it used to be before the dune PR in
+https://github.com/coq/coq/blob/ab98d847d237af3cd0e46edef42218be65cfc98f/Makefile.install#L40-L56
+Actually if the only user of this machinery are the Debian packages, I'd just remove it altogether from the makefiles as dune is already configured there to install things in the right place.
+What do you mean by "configured to install things in the right place"?  I guess I also have the question: is Coq fully relocatable, or does some of the build need to know the final prefix under which it will get installed?  Because we need to install it to a different prefix than the one that will be used on the user's system.
+> What do you mean by "configured to install things in the right place"?
+
+I mean that for OCaml packages, `dune install` does the right thing regarding filesystem locations, if not, that is a bug in dune. There is not need to duplicate that logic in each OCaml package, that's the job of the build system.
+
+I removed all that stuff because it was pretty horrible honestly, and mostly unused, but we can add it back; but my preference is to try to converge towards standard OCaml packaging conventions.
+
+> is Coq fully relocatable, or does some of the build need to know the final prefix under which it will get installed?
+
+That's a tricky question for OCaml packages, but if your package uses Dune usually you don't have to care about that.
+
+The concrete answer is that Coq is relocatable enough as to indeed build in place and still be installed in another; #14059 will make this more formal for the coq-side part.
+> I mean that for OCaml packages, `dune install` does the right thing regarding filesystem locations, if not, that is a bug in dune. There is not need to duplicate that logic in each OCaml package, that's the job of the build system.
+> [...]
+> That's a tricky question for OCaml packages, but if your package uses Dune usually you don't have to care about that.
+
+I'm not sure I've communicated clearly.  When building packages on launchpad, the files are installed to `/<<BUILDDIR>>/<<PACKAGENAME>>/debian/tmp/`.  The packaging recipe then bundles them up from there, and on the user's system they get installed in `/`.  Quoting [the Ubuntu packaging guide](https://packaging.ubuntu.com/html/debian-dir-overview.html#the-install-file):
+> When a source package is producing multiple binary packages `dh` will install the files into `debian/tmp` rather than directly into `debian/<package>`. Files installed into `debian/tmp` can then be moved into separate binary packages using multiple `$package_name.install` files.
+
+In particular, I think it's an antipattern to install files under `/` when building a package, because then it's hard to catch cases where the package build succeeded on your system just because you had the relevant file present globally.  (I think I've seen at least one package that I was unable to backport because it was looking for files under `/` rather than locally.)
+
+So I need to somehow tell `dune install` to install to this location while also telling it that the ultimate install location is elsewhere.
+
+Alternatively, I suppose, if `dune` is capable of generating these install files (and in particular separate ones for [coq](https://packages.ubuntu.com/focal/amd64/coq/filelist) (the binaries and manpages and template files like CoqMakefile.in and coqdoc.css), [coq-theories](https://packages.ubuntu.com/focal/amd64/coq-theories/filelist) (standard library, plugins, stdlib doc), [libcoq-ocaml](https://packages.ubuntu.com/focal/amd64/libcoq-ocaml/filelist) (runtime libraries for Coq, which seems to be the .cmo and .cmxs files for plugins, as well as dllcoqrun.so), [coq-doc-html](https://packages.ubuntu.com/focal/all/coq-doc-html/filelist) (the refman HTML), [coq-doc-pdf](https://packages.ubuntu.com/focal/all/coq-doc-pdf/filelist) (refman pdf), [coqide](https://packages.ubuntu.com/focal/amd64/coqide/filelist) (coqide binary and associated .lang and .png files) and [libcoq-ocaml-dev](https://packages.ubuntu.com/focal/amd64/libcoq-ocaml-dev/filelist) (development libraries and tools for Coq, all the .cmi and .cmx files for Coq sources)), then I could just use those without installing the files.
+
+Otherwise, @ejgallego, how would you suggest I replace the current build-script in a way that generates the same files in the same locations?  (Current [log here](https://launchpadlibrarian.net/537038061/buildlog_ubuntu-hirsute-amd64.coq_8.master~git~202105041445+22272-0~daily347-6d08729ab5~ubuntu21.04.1_BUILDING.txt.gz))  Currently I'm running roughly:
+```
+./configure -arch Linux -prefix /usr -mandir /usr/share/man -configdir /etc/xdg/coq -browser "/usr/bin/x-www-browser %s &" -with-doc no
+make world STRIP=true
+make byte STRIP=true
+make doc-stdlib-html HTMLSTYLE=simple
+CAML_LD_LIBRARY_PATH=$(shell pwd)/kernel/byterun COQLIB=$(shell pwd) make test-suite COMPLEXITY= PRINT_LOGS=1
+make install install-byte COQINSTALLPREFIX=$(CURDIR)/debian/tmp OLDROOT= 
+```
+
+cc also @glondu who I believe maintains the official Coq package for Ubuntu and @smimram who I believe wrote the original recipe, according to git history, and @bbarenblat who I believe also maintains the debian/ubuntu Coq packages.
+Hi @JasonGross , thanks for detailed writeup, I'm familiar with Debian packaging; `dune install` uses --destdir for that case.
+
+So what I mean, if you are using debian's dune, most options related to install location are not needed, just `--destdir` to your temporal build dir, indeed there should be something such as `dh_dune` that should fully automate the build at some point.
+
+Assuming a pure dune package, you just do:
+```
+$ dune build -p pkg1,pkg2,...
+$ dune install --destdir=debian/tmp pkg1 pkg2 
+```
+So my question is, can we just have makefiles understand `DESTDIR` which seems standard?
+For 8.14 + Dune 2.9, we can indeed have a fully built Coq using dune, so all the install files you mention should be generated, and I would expect Debian packaging to be something as simple as `dh_dune pkg1 pkg2 CONF="-native ...."`
+How to make the transition best is a bit open tho, we can bring the old variables back, or support `DESTDIR` for `make install` instead; let me know your preference.
+The [current rules file from the newly released impish for Coq 8.12](http://archive.ubuntu.com/ubuntu/pool/universe/c/coq/coq_8.12.0-3build3.debian.tar.xz) is:
+```makefile
+#!/usr/bin/make -f
+# debian/rules for coq
+
+# Uncomment this to turn on verbose mode.
+#export DH_VERBOSE=1
+
+# Build cache (for accelerating Debian debugging)
+BUILDCACHE := $(wildcard ../coq.cache)
+
+# This has to be exported to make some magic below work.
+export CAML_LD_LIBRARY_PATH = $(shell pwd)/kernel/byterun
+
+# Show full commands when building Coq
+export VERBOSE=1
+
+include /usr/share/ocaml/ocamlvars.mk
+
+HTMLDOC := doc/stdlib/html/index.html
+
+COQPREF := $(CURDIR)/debian/tmp
+ADDPREF := COQINSTALLPREFIX=$(COQPREF) OLDROOT=
+
+PACKAGES := $(shell dh_listpackages)
+
+COQ_VERSION := 8.12.0
+COQ_ABI := $(COQ_VERSION)+$(OCAML_ABI)
+
+ARCH := $(shell dpkg-architecture -q DEB_TARGET_ARCH)
+ifeq ($(ARCH),$(filter $(ARCH),amd64 i386))
+NATIVE_COMPUTE :=
+else
+NATIVE_COMPUTE := -native-compiler no
+endif
+ifeq ($(ARCH),s390x)
+BUILD_VM := -bytecode-compiler no
+else
+BUILD_VM :=
+endif
+
+CONFIGUREOPTS := -arch Linux -prefix /usr -mandir /usr/share/man \
+  -configdir /etc/xdg/coq \
+  -browser "/usr/bin/x-www-browser %s &" \
+  -with-doc no \
+  $(NATIVE_COMPUTE) \
+  $(BUILD_VM)
+
+export OCAMLINIT_SED += \
+  -e 's%@CoqVersion@%$(COQ_VERSION)%' \
+  -e 's%@CoqABI@%$(COQ_ABI)%'
+
+%:
+	+dh $@ --with ocaml,python3
+
+# There is already a file named "build" in upstream sources, so the
+# above rule is never called. We make it explicitly a phony rule here.
+.PHONY: build
+build:
+	+dh $@ --with ocaml,python3
+
+.PHONY: override_dh_auto_configure
+override_dh_auto_configure:
+	./configure $(CONFIGUREOPTS)
+
+.PHONY: override_dh_auto_build
+override_dh_auto_build:
+ifeq ($(BUILDCACHE),)
+
+# VALIDOPTS are the options given to coqchk; the value given here is
+# the default one without -silent (-silent maybe cause buildd to
+# timeout because of lack of output)
+
+# Don't combine `make world` and `make byte`--doing so triggers a race
+# in the build system. See upstream's CHANGES.
+	$(MAKE) world STRIP=true
+	$(MAKE) byte STRIP=true
+	$(MAKE) DOC_TARGETS=$(HTMLDOC) $(HTMLDOC) HTMLSTYLE=simple
+else
+	rsync -a --exclude=debian --exclude=.git $(BUILDCACHE)/ .
+endif
+# Check that $(COQ_VERSION) has the right value
+	ACTUAL_COQ_VERSION="$$(./bin/coqc --version | awk '/version/{print $$6}')"; \
+	if [ "$$ACTUAL_COQ_VERSION" != "$(COQ_VERSION)" ]; then \
+	  echo "Please set COQ_VERSION to $$ACTUAL_COQ_VERSION in debian/rules"; \
+	  exit 2; \
+	fi
+
+.PHONY: override_dh_auto_test
+override_dh_auto_test:
+ifeq (,$(filter nocheck,$(DEB_BUILD_OPTIONS)))
+	CAML_LD_LIBRARY_PATH=$(shell pwd)/kernel/byterun COQLIB=$(shell pwd) \
+	  $(MAKE) test-suite COMPLEXITY= PRINT_LOGS=1
+endif
+
+.PHONY: override_dh_auto_install
+override_dh_auto_install:
+	$(MAKE) $(ADDPREF) install install-byte
+	cp debian/coq.xpm debian/coqide/usr/share/pixmaps/coqide.xpm
+	find debian/tmp -regextype posix-awk \
+	  -regex '.*\.(cmi|cmx|cmxa|[ao])$$' \
+	  | grep -v coq-native \
+	  >> debian/libcoq-ocaml-dev.install
+	find debian/tmp -regextype posix-awk \
+	  -regex '.*\.(v|vo|vos|glob)$$' \
+	  >> debian/coq-theories.install
+	find debian/tmp -name '.coq-native' -printf '%P\n' \
+	  >> debian/coq-theories.install
+
+.PHONY: override_dh_install
+override_dh_install:
+	chmod +x debian/coq.install
+	dh_install
+
+.PHONY: override_dh_fixperms
+override_dh_fixperms:
+	dh_fixperms
+	chmod -x debian/tmp/usr/lib/coq/tools/TimeFileMaker.py
+
+.PHONY: override_dh_ocaml
+override_dh_ocaml:
+	dh_ocaml
+	for f in debian/*substvars; do echo $$f; cat $$f; done
+
+.PHONY: override_dh_gencontrol
+override_dh_gencontrol:
+	for u in $(PACKAGES); do \
+	  echo 'F:OCamlABI=$(OCAML_ABI)' >> debian/$$u.substvars; \
+	  echo 'F:CoqABI=$(COQ_ABI)' >> debian/$$u.substvars; \
+	done
+	dh_gencontrol
+```
+(Note that in my version of this file I've replaced the `HTMLDOC` stuff with the new `doc-stdlib-html` target.)
+
+Most of my debian packaging is cargo-culting, so I don't know what's available, don't know what to modify to switch to dune, and don't know what's preferred.  I'm happy to switch entirely to dune (though I think I'd rather defer to @bbarenblat / @glondu / the official maintainers, so as to keep my backports packaging more in sync with the official packages), but in the meantime I think it would be best to bring back the old variables so that I can test, e.g., fiat-crypto against Coq master again on CI.
+I see, I think that can be simplified quite a bit; I'd suggest we just use `DESTDIR` as it is done in coq_makefile, IMHO seems cleaner than the oldroot newroot hack. WDYT?
+
+Note that in this case https://manpages.debian.org/jessie/debhelper/dh_auto_install.1.en.html will just use DESTDIR so things should work out-of-the-box.
+@ejgallego Sure, if `DESTDIR` serves this purpose and does not change any paths baked into the compiled files, that sounds good.  It seems that `DESTDIR` is not currently used in Coq's build system; do I need to wait for some PR to be merged to make use of it?
+> @ejgallego Sure, if `DESTDIR` serves this purpose and does not change any paths baked into the compiled files, that sounds good. It seems that `DESTDIR` is not currently used in Coq's build system; do I need to wait for some PR to be merged to make use of it?
+
+Yup, we need to add `DESTDIR`, let me do a PR for it; this will be actually useful as for example if we manage to finish #13890 , coq_makefile does use DESTDIR so that's one discrepancy we get rid of now.
+Ok, using #14258 you should be able to replace this line:
+```
+$(MAKE) $(ADDPREF) install install-byte
+```
+with
+```
+$(MAKE) DESTDIR=$(CURDIR)/debian/tmp install
+```
+or even maybe just `DESTDIR=$(DESTDIR)` [not sure the override for dh_auto_install sets it.

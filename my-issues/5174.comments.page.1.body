@@ -1,0 +1,14 @@
+Comment author: @JasonGross
+
+Consider
+  Arguments pred {!_}, !_.
+I am told "Syntax error: '.' expected after [vernac:gallina_ext] (in 
+[vernac_aux])."  I should actually be told something like "simplification 
+modifiers are only permitted in the first arguments list"
+
+
+Comment author: @maximedenes
+
+Fixed in v8.6 branch.
+
+

@@ -1,0 +1,3 @@
+We should separate ci-A into ci-A-main and ci-A-extra, then both ci-A-extra and ci-B depend on ci-A-main (or some such scheme)
+The ci-A job could still run both ci-A targets, or could also be split in 2 jobs
+That seems good.  The relevant targets currently are ci-coq_performance_tests, ci-iris, and ci-hott.  I'm not sure if we have anything depending on them, but it's probably good to split them preemptively.

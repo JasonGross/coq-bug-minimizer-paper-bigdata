@@ -1,0 +1,22 @@
+Possibly relevant: all times that I've seen this have come from me retrying a single failed job
+Unfortunately we still do manual cleanup of old/stale docker images; at some point we may automate this, but still, out-of-date branches may need a merge/rebase to run successfully.
+
+This is in general hard to avoid without introducing a non-trivial startup penalty on the CI side. 
+To be clear, what happens is that your PR is using an out-of-date docker image version; the solution is to rebase it, or run the job with `SKIP_DOCKER=false`
+I don't think that's the issue here.  Perhaps this was true of the first time I got it, but the second time I got it, I retried it just a couple hours after the pushing, and no commits have been merged into master in the meantime, so the branch is still up to date
+That's bizarre, indeed that docker image is actually OK and available in the registry
+Interestingly, I retried two different jobs from https://github.com/coq/coq/pull/11029 at the same time, and one went through, and the other failed with this error.
+Maybe some gitlab mirroring problem?
+And, in fact, it keeps failing again and again on engine-bench in this way, almost every time I retry: https://gitlab.com/coq/coq/-/jobs/565574321
+Edit: and again: https://gitlab.com/coq/coq/-/jobs/565575500
+Edit: and again: https://gitlab.com/coq/coq/-/jobs/565576594
+Edit: this retry it worked: https://gitlab.com/coq/coq/-/jobs/565578339
+Edit: and again: https://gitlab.com/coq/coq/-/jobs/565594342
+Edit: and again: https://gitlab.com/coq/coq/-/jobs/565594963
+Edit: and again: https://gitlab.com/coq/coq/-/jobs/565595701
+Looks like it happens iff the runner is `VM-07e3a7b9-6845-48d2-a942-2899dd2e5f73 (#857051)` (at least I've seen multiple shared runner jobs and 1 pyrolise job succeed, and the first VM-XXX job I found failed https://gitlab.com/coq/coq/-/jobs/565943260.)
+Since gitlab detects it as a "runner system failure" it gets auto-retried and I guess we only see it if the retry gets the same runner.
+So IIUC this runner never works? Then a quick fix is to just pause it (https://gitlab.com/coq/coq/-/settings/ci_cd) since it is one of our own runners.
+Closing this as it seems like a transient bug.
+
+@Zimmi48 would be maybe nice to have either a `resolved: transient` or `kind: transient` tag?

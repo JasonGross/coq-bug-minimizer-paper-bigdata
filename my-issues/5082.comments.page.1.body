@@ -1,0 +1,107 @@
+Comment author: @JasonGross
+
+I'd like to see [abstract] as a node in the profile.  What's the reason that 
+[abstract] is a primitive in the tactic syntax tree, anyway?
+
+Require Coq.ZArith.BinInt.
+Ltac sleep := idtac; let sleep := (eval vm_compute in 
+Coq.ZArith.BinInt.Z.div_eucl) in idtac.
+Goal True.
+  Set Ltac Profiling.
+  abstract (do 20 sleep; tauto).
+  Show Ltac Profile.
+(*                                                                              
+                                                                                
+                                                  
+total time:      0.208s                                                         
+                                                                                
+                                                  
+                                                                                
+                                                                                
+                                                  
+ tactic                                   local  total   calls       max        
+                                                                                
+                                                  
+────────────────────────────────────────┴──────┴──────┴───────┴─────────┘       
+                                                                                
+                                                  
+─sleep --------------------------------- 100.0% 100.0%      20    0.016s        
+                                                                                
+                                                  
+─t_tauto_intuit ------------------------   0.0%   0.0%       1    0.000s        
+                                                                                
+                                                  
+─constructor (int_or_var) --------------   0.0%   0.0%       1    0.000s        
+                                                                                
+                                                  
+─<Coq.Init.Tauto.with_uniform_flags> ---   0.0%   0.0%       1    0.000s        
+                                                                                
+                                                  
+─<Coq.Init.Tauto.tauto_intuitionistic> -   0.0%   0.0%       1    0.000s        
+                                                                                
+                                                  
+─<Coq.Init.Tauto.tauto_gen> ------------   0.0%   0.0%       1    0.000s        
+                                                                                
+                                                  
+─<Coq.Init.Tauto.simplif> --------------   0.0%   0.0%       1    0.000s        
+                                                                                
+                                                  
+─<Coq.Init.Tauto.not_dep_intros> -------   0.0%   0.0%       1    0.000s        
+                                                                                
+                                                  
+─<Coq.Init.Tauto.is_unit_or_eq> --------   0.0%   0.0%       1    0.000s        
+                                                                                
+                                                  
+─<Coq.Init.Tauto.is_conj> --------------   0.0%   0.0%       1    0.000s        
+                                                                                
+                                                  
+                                                                                
+                                                                                
+                                                  
+ tactic                                   local  total   calls       max        
+                                                                                
+                                                  
+────────────────────────────────────────┴──────┴──────┴───────┴─────────┘       
+                                                                                
+                                                  
+─sleep --------------------------------- 100.0% 100.0%      20    0.016s        
+                                                                                
+                                                  
+─<Coq.Init.Tauto.with_uniform_flags> ---   0.0%   0.0%       1    0.000s        
+                                                                                
+                                                  
+└<Coq.Init.Tauto.tauto_gen> ------------   0.0%   0.0%       1    0.000s        
+                                                                                
+                                                  
+└<Coq.Init.Tauto.tauto_intuitionistic> -   0.0%   0.0%       1    0.000s        
+                                                                                
+                                                  
+└t_tauto_intuit ------------------------   0.0%   0.0%       1    0.000s        
+                                                                                
+                                                  
+ ├─constructor (int_or_var) ------------   0.0%   0.0%       1    0.000s        
+                                                                                
+                                                  
+ ├─<Coq.Init.Tauto.simplif> ------------   0.0%   0.0%       1    0.000s        
+                                                                                
+                                                  
+ │ ├─<Coq.Init.Tauto.not_dep_intros> ---   0.0%   0.0%       1    0.000s        
+                                                                                
+                                                  
+ │ └─<Coq.Init.Tauto.is_conj> ----------   0.0%   0.0%       1    0.000s        
+                                                                                
+                                                  
+ └─<Coq.Init.Tauto.is_unit_or_eq> ------   0.0%   0.0%       1    0.000s        
+                                                                                
+                                                  
+                                                                                
+                                                                                
+                                                  
+*)
+
+
+Comment author: @gares
+
+The plan of making all tactic equal, ie not in the primitive AST, is in the pipeline...
+
+

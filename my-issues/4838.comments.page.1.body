@@ -1,0 +1,38 @@
+Comment author: @JasonGross
+
+Here is code that works in 8.4 and 8.5pl1 and the tip of the v8.5 branch, but fails in trunk.
+
+Require Import Coq.Classes.RelationPairs Coq.Classes.Morphisms.
+Goal forall (Value T : Type) (P : T -> T -> Prop), Proper ((fun p p' : T * Value => P (fst p) (fst p') /\ snd p = snd p') ==> P) fst.
+Proof.
+  intros.
+  solve [ eauto with typeclass_instances ].
+Qed.
+
+
+Comment author: @mattam82
+
+This is to avoid inefficient proof search in typeclass resolution, RelCompProd and RelCompFun are declared Opaque in 8.6, so that the associated instances do not make resolution loop. I can declare them transparent in Compat85.v though. Your goal should now rather be Proper (RelCompProd P eq ==> P) fst...
+
+
+Comment author: @mattam82
+
+To give you an idea, the standard library compiles in 15m10s with these transparent and 14m30s when they're Opaque (the library doesn't need them transparent).
+
+
+Comment author: @mattam82
+
+I'm not sure what to do here. Would you prefer to have a Setoid8.5.v 
+compatibility file or something similar?
+
+
+Comment author: @mattam82
+
+Postponing the fix if any for beta2.
+
+
+Comment author: @Zimmi48
+
+Please reopen if you still want to discuss this issue.
+
+

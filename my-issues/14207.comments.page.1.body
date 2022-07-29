@@ -1,0 +1,54 @@
+Yes, this is due to several possible `return` types being tried when compiling. Thanks for telling. Fixed in #14261.
+Thanks!  Though I don't think that PR fully fixes this issue; the variable `s` does not in fact catch multiple cases
+Ah I see, the PR only fixes the repetition.
+
+About a more precise detection, this is more complicated, as the dependency is in an existential variable...
+> About a more precise detection, this is more complicated, as the dependency is in an existential variable...
+
+It's not the dependency I'm complaining about (I think the computation there is correct), but the claim that it matches multiple cases.
+
+When I `Set Printing All. Print default.`, the code I see is
+```coq
+default =
+fix default (t : B.type base_type) : @interp base_type base_interp t :=
+  match t as t0 return (@interp base_type base_interp t0) with
+  | base x => @admit (@interp base_type base_interp (@base base_type x))
+  | arrow s d =>
+      fun
+        _ : (fix interp (base_type : Type) (base_interp : forall _ : base_type, Type) (t0 : B.type base_type) {struct t0} : Type :=
+               match t0 return Type with
+               | base t1 => base_interp t1
+               | arrow s0 d0 => forall _ : interp base_type base_interp s0, interp base_type base_interp d0
+               end) base_type base_interp s => default d
+  end
+     : forall t : B.type base_type, @interp base_type base_interp t
+
+Arguments default {t}
+```
+I thought that maybe it's complaining about `s` being matched on, but in fact getting rid of the bare `fix` with
+```coq
+  Fixpoint default {t} : interp base_interp t
+    := match t with
+       | base x => admit
+       | arrow s d => fun _ : interp _ _ => @default d
+       end.
+  Set Printing All.
+  Print default.
+```
+gives
+```coq
+default =
+fix default (t : B.type base_type) : @interp base_type base_interp t :=
+  match t as t0 return (@interp base_type base_interp t0) with
+  | base x => @admit (@interp base_type base_interp (@base base_type x))
+  | arrow s d => fun _ : @interp base_type base_interp s => default d
+  end
+     : forall t : B.type base_type, @interp base_type base_interp t
+
+Arguments default {t}
+```
+If I annotate the `return` type myself with `interp _ t` then the warning goes away, without changing the final code.  While the "is the variable used" can depend on which things are evars and which are not, I expect the detection of multiple cases vs single case to only depend on the spine(?) of the `match`, or at the very least to only depend on the final code and not on which things are evars and which are not.  Am I mistaken?
+Sorry for being slow in understanding. The wrong reporting is also due to side effects (there is a backtracking inside the algorithm which is counting `s` twice).
+
+I updated #14261 so that it does not use a side effect.
+Awesome, thanks!

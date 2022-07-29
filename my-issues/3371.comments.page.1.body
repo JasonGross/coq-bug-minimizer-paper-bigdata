@@ -1,0 +1,55 @@
+Comment author: @JasonGross
+
+COQC      theories/Arith/Arith.v
+CHECK revision
+COQC      theories/NArith/NArith.v
+Fatal error: exception Out_of_memory
+make[1]: *** [theories/Arith/Arith.vo] Error 2
+make[1]: *** Waiting for unfinished jobs....
+Fatal error: exception Out_of_memory
+make[1]: *** [theories/NArith/NArith.vo] Error 2
+make[1]: Leaving directory `/afs/csail.mit.edu/u/j/jgross/coq-trunk'
+make: *** [submake] Error 2
+
+
+Comment author: @ppedrot
+
+I works on my machine...
+
+
+Comment author: @gares
+
+Which version of OCaml are you using and on which architecture?
+
+
+Comment author: @JasonGross
+
+jgross@ cagnode17:~$ ocamlc -v
+The OCaml compiler, version 4.01.0
+Standard library directory: /afs/csail.mit.edu/u/j/jgross/.local64/lib/ocaml
+jgross@ cagnode17:~$ camlp4 -v
+Camlp4 version 4.01.0
+jgross@ cagnode17:~$ camlp5 -v
+Camlp5 version 6.11 (ocaml 4.01.0)
+jgross@ cagnode17:~$ uname -a
+Linux cagnode17 2.6.32-5-xen-amd64 [BZ#1](https://github.com/coq/coq/issues?q=is%3Aissue%20%22Original%20bug%20ID%3A%20BZ%231%22) SMP Sun Sep 23 13:49:30 UTC 2012 x86_64 GNU/Linux
+(I'm pretty sure this was on my linux box)
+
+But it works now, so maybe there's just an unfortunate race condition somewhere that gets triggered with make -j16?
+
+
+Comment author: @gares
+
+Ho much memory do you have (divided by 16)?
+
+
+Comment author: @JasonGross
+
+htop tells me I have a total of 16079MB Mem and 3506MB Swp
+
+
+Comment author: @ppedrot
+
+If this is not reproducible even on your machine, I propose to close this bug.
+
+

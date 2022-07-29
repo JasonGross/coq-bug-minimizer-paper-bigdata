@@ -1,0 +1,14 @@
+Comment author: @JasonGross
+
+The only paragraph on sort-polymorphism / template-polymorphism in the reference manual is buried deep in the section on the CiC:
+
+> Sort-polymorphism of inductive types.
+
+> Inductive types declared in Type are polymorphic over their arguments in Type. If A is an arity of some sort and s is a sort, we write A/s for the arity obtained from A by replacing its sort with s. Especially, if A is well-typed in some global environment and local context, then A/s is typable by typability of all products in the Calculus of Inductive Constructions. The following typing rule is added to the theory.
+
+There are some examples further down, but you wouldn't know that these are examples of sort-polymorphism without already knowing what it is; they're under the "Ind-Family" section.  The examples should have a clear heading, or be joined with the sort-polymorphism heading, and this section should be linked to from (or included in) the chapter on full universe polymorphism, which doesn't even allude to sort-polymorphism.
+
+
+That's a TODO for after a decision is taken on the future of template polymorphism (which I hope will be soon).
+There's more doc on template poly these days I think.
+Where? And if that's the case, we should make this doc more easily discoverable.

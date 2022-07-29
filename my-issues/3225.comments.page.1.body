@@ -1,0 +1,222 @@
+Comment author: @JasonGross
+
+The following is a list of tactics printed by [Print Grammar tactic] which don't show up in http://coq.inria.fr/refman/tactic-index.html nor under Ltac in http://coq.inria.fr/refman/general-index.html:
+````
+ipattern (IDENT "ipattern"; ":"; tactic:simple_intropattern)
+poseq (IDENT "poseq"; prim:ident; constr:constr)
+fauto (IDENT "fauto"; tactic:tactic | IDENT "fauto")
+finduction (IDENT "finduction"; prim:ident; OPT prim:natural)
+soft functional induction (IDENT "soft"; IDENT "functional"; IDENT "induction"; LIST1 constr:constr; tactic:fun_ind_using; tactic:with_names)
+functional inversion (IDENT "functional"; IDENT "inversion"; tactic:quantified_hypothesis; OPT prim:reference)
+gintuition (IDENT "gintuition"; OPT tactic:tactic)
+now (IDENT "now"; tactic:tactic)
+rewrite_all (IDENT "rewrite_all"; "<-"; constr:constr | IDENT "rewrite_all"; constr:constr)
+decide (IDENT "decide"; constr:constr; "with"; constr:constr)
+myapply (IDENT "myapply"; constr:global; LIST0 constr:constr)
+fold_matches (IDENT "fold_matches"; constr:constr)
+fold_match (IDENT "fold_match"; constr:constr)
+implify (IDENT "implify"; prim:var)
+setoid_etransitivity (IDENT "setoid_etransitivity")
+rew (IDENT "rew"; tactic:orient; tactic:glob_constr_with_bindings; "in"; prim:var; "at"; tactic:occurrences | IDENT "rew"; tactic:orient; tactic:glob_constr_with_bindings; "in"; prim:var | IDENT "rew"; tactic:orient; tactic:glob_constr_with_bindings; "at"; tactic:occurrences; "in"; prim:var | IDENT "rew"; tactic:orient; tactic:glob_constr_with_bindings; "at"; tactic:occurrences | IDENT "rew"; tactic:orient; tactic:glob_constr_with_bindings)
+substitute (IDENT "substitute"; tactic:orient; tactic:glob_constr_with_bindings)
+rewrite_strat (IDENT "rewrite_strat"; tactic:rewstrategy; "in"; prim:var | IDENT "rewrite_strat"; tactic:rewstrategy)
+rewrite_db (IDENT "rewrite_db"; prim:preident; "in"; prim:var | IDENT "rewrite_db"; prim:preident)
+autoapply (IDENT "autoapply"; constr:constr; "using"; prim:preident)
+is_ground (IDENT "is_ground"; constr:constr)
+not_evar (IDENT "not_evar"; constr:constr)
+head_of_constr (IDENT "head_of_constr"; prim:ident; constr:constr)
+typeclasses eauto (IDENT "typeclasses"; IDENT "eauto"; "with"; LIST1 prim:preident | IDENT "typeclasses"; IDENT "eauto")
+progress_evars (IDENT "progress_evars"; tactic:tactic)
+convert_concl_no_check (IDENT "convert_concl_no_check"; constr:constr)
+autounfoldify (IDENT "autounfoldify"; constr:constr)
+autounfold_one (IDENT "autounfold_one"; tactic:hintbases; "in"; prim:var | IDENT "autounfold_one"; tactic:hintbases)
+dfs eauto (IDENT "dfs"; IDENT "eauto"; OPT tactic:int_or_var; tactic:auto_using; tactic:hintbases)
+new auto (IDENT "new"; IDENT "auto"; OPT tactic:int_or_var; tactic:auto_using; tactic:hintbases)
+prolog (IDENT "prolog"; "["; LIST0 tactic:open_constr; "]"; tactic:int_or_var)
+is_fix (IDENT "is_fix"; constr:constr)
+destauto (IDENT "destauto"; "in"; prim:var | IDENT "destauto")
+hget_evar (IDENT "hget_evar"; tactic:int_or_var)
+hresolve_core (IDENT "hresolve_core"; "("; prim:ident; ":="; constr:constr; ")"; "at"; tactic:int_or_var; "in"; constr:constr | IDENT "hresolve_core"; "("; prim:ident; ":="; constr:constr; ")"; "in"; constr:constr)
+specialize_eqs (IDENT "specialize_eqs"; prim:var)
+generalize_eqs_vars (IDENT "generalize_eqs_vars"; prim:var)
+generalize_eqs (IDENT "generalize_eqs"; prim:var)
+stepr (IDENT "stepr"; constr:constr; "by"; tactic:tactic | IDENT "stepr"; constr:constr)
+stepl (IDENT "stepl"; constr:constr; "by"; tactic:tactic | IDENT "stepl"; constr:constr)
+autorewrite * with (IDENT "autorewrite"; "*"; "with"; LIST1 prim:preident; tactic:in_arg_hyp; "using"; tactic:tactic | IDENT "autorewrite"; "*"; "with"; LIST1 prim:preident; tactic:in_arg_hyp)
+exact_no_check (IDENT "exact_no_check"; constr:constr)
+vm_cast_no_check (IDENT "vm_cast_no_check"; constr:constr)
+apply <- (IDENT "apply"; "<-"; constr:constr; "in"; prim:var | IDENT "apply"; "<-"; constr:constr)
+apply -> (IDENT "apply"; "->"; constr:constr; "in"; prim:var | IDENT "apply"; "->"; constr:constr)
+casetype (IDENT "casetype"; constr:constr)
+debug eauto (IDENT "debug"; IDENT "eauto"; OPT tactic:int_or_var; OPT tactic:int_or_var; tactic:auto_using; tactic:hintbases)
+debug trivial (IDENT "debug"; IDENT "trivial"; auto_using; hintbases)
+debug auto (IDENT "debug"; IDENT "auto"; OPT tactic:int_or_var; auto_using; hintbases)
+rewrite * (IDENT "rewrite"; "*"; tactic:orient; tactic:open_constr; "in"; prim:var; "at"; tactic:occurrences; tactic:by_arg_tac | IDENT "rewrite"; "*"; tactic:orient; tactic:open_constr; "in"; prim:var; tactic:by_arg_tac | IDENT "rewrite"; "*"; tactic:orient; tactic:open_constr; "at"; tactic:occurrences; "in"; prim:var; tactic:by_arg_tac | IDENT "rewrite"; "*"; tactic:orient; tactic:open_constr; "at"; tactic:occurrences; tactic:by_arg_tac | IDENT "rewrite"; "*"; tactic:orient; tactic:open_constr; tactic:by_arg_tac)
+simple subst (IDENT "simple"; IDENT "subst")
+```
+Comment author: @forestjulien
+
+functional induction is now refenced in the manual (v8.4 and trunk).
+Concerning soft functional induction, this tactic is only for debuging purposes and won't be documented.
+
+
+Comment author: @JasonGross
+
+Another undocumented tactic (https://coq.inria.fr/bugs/show_bug.cgi?id=3268) breadth-first search for eauto - "use eauto <non_important_integer> <max_depth> .... to use  bfs instead of dfs."
+
+
+Comment author: @cpitclaudel
+
+The prolog tactic is actually commented out in the documentation, so that one should be an easy fix :) It's at the begining of Automatizing in `RefMan-tac.tex`
+
+% EXISTE ENCORE ?
+%
+% \subsection{\tt Prolog [ \term$_1$ \dots\ \term$_n$ ] \num}
+% \tacindex{Prolog}\label{Prolog}
+% This tactic, implemented by Chet Murthy, is based upon the concept of
+% existential variables of Gilles Dowek, stating that resolution is a
+% kind of unification. It tries to solve the current goal using the {\tt
+%   Assumption} tactic, the {\tt intro} tactic, and applying hypotheses
+% of the local context and terms of the given list {\tt [ \term$_1$
+%   \dots\ \term$_n$\ ]}.  It is more powerful than {\tt auto} since it
+% may apply to any theorem, even those of the form {\tt (x:A)(P x) -> Q}
+% where {\tt x} does not appear free in {\tt Q}.  The maximal search
+% depth is {\tt \num}.
+
+% \begin{ErrMsgs}
+% \item \errindex{Prolog failed}\\
+%   The Prolog tactic was not able to prove the subgoal.
+% \end{ErrMsgs} 
+
+
+It does seem to still exist, only in lower case:
+
+Coq < Lemma test: forall P Q, P -> (P -> Q) -> Q.
+1 subgoal
+  
+  ============================
+   forall P Q : Type, P -> (P -> Q) -> Q
+
+test < prolog [] 6.
+No more subgoals.
+
+test < Qed.
+
+
+Comment author: @Matafou
+
+Removed poseq fauto and finduction.
+May be it is time to re-check undocumented tactics.
+
+By the way how did you check?
+
+P.
+
+
+Comment author: @cpitclaudel
+
+Pierre: Not sure if you meant to ask Jason or me :) I used a small script that I wrote for that, here: https://github.com/cpitclaudel/company-coq/blob/master/find-missing-tactics.py
+
+
+Comment author: @JasonGross
+
+Tactics which don't seem to be documented in 8.5:
+
+autoapply
+autounfold_one
+debug auto
+debug eauto
+debug trivial
+dependent generalize_eqs
+dependent generalize_eqs_vars
+destauto
+destruct_with_eqn
+dfs eauto
+generalize_eqs
+generalize_eqs_vars
+gintuition
+goal
+guard
+head_of_constr
+hget_evar
+hresolve_core
+info
+info_auto
+info_eauto
+infoH
+info_trivial
+new auto
+now
+progress_evars
+prolog
+rec
+reverse goal
+rewrite_all
+rewrite_db
+setoid_etransitivity
+simple subst
+soft functional induction
+specialize_eqs
+substitute
+typeclasses eauto
+unshelve
+
+Generated via
+  echo "Print Grammar tactic." | ~/.local64/coq/coq-8.5/bin/coqtop | grep -o 'IDENT ".*' | sed s'/"; IDENT "/ /g' | sed s'/^IDENT "//g' | grep -o '^[^"]*' | sort | uniq > /tmp/tactics
+and setting the variable x in a python shell to the string literal contents of https://coq.inria.fr/refman/tactic-index.html, and then running
+  doc=[i[:i.index(',')] for i in x.split('\n') if ',' in i]
+  exist = open('/tmp/tactics', 'r').read()
+  print('\n'.join([i for i in exist.split('\n') if i not in doc and not any(j[:len(i)] == i for j in doc)]))
+
+
+Comment author: @Zimmi48
+
+Thanks for the script Jason.
+Here's a (partially curated) list for 8.6:
+
+autounfold_one
+dependent generalize_eqs
+dependent generalize_eqs_vars
+destauto
+destruct_with_eqn
+eintros
+generalize_eqs
+generalize_eqs_vars
+gintuition
+head_of_constr
+hget_evar
+infoH
+now
+progress_evars
+rewrite_all
+rewrite_db
+setoid_etransitivity
+simple injection
+simple subst
+soft functional induction
+specialize_eqs
+substitute
+unshelve
+
+Some are documented but do not appear in the tactic index:
+
+debug auto
+debug eauto
+debug trivial
+info_auto
+info_eauto
+info_trivial
+typeclasses eauto bfs
+
+Some which are not documented because they are probably doomed:
+
+dfs eauto
+info
+new auto
+prolog
+
+But even in the first list above, the status of many of these is probably unclear. So rather than documenting all of them, the removal of some of them could be discussed instead.
+
+
+It would be nice if these tactics were documented.
+For instance, today I wanted to look up the documentation for (lowercase) `unshelve`, but couldnt' find anything.

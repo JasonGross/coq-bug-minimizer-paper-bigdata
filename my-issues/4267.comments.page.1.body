@@ -1,0 +1,27 @@
+Comment author: @JasonGross
+
+$ cat Notations.v
+Reserved Notation "Γ ▻ x" (at level 55, right associativity).
+Reserved Notation "x ‘‘→’’ y" (at level 99, right associativity, y at level 200).
+Reserved Notation "x ‘→’ y" (at level 99, right associativity, y at level 200).
+Reserved Notation "x ‘’ y" (at level 15, left associativity).
+Reserved Notation "Γ ▻ x" (at level 55, right associativity).
+Reserved Notation "□ T" (at level 0).
+Reserved Notation "x [ 0 ↦ y ]" (at level 0, no associativity).
+
+$ /cygdrive/d/Coq-8.5beta2/bin/coqtop.exe -R . Lob -compile Notations
+
+$ /cygdrive/d/Coq-8.5beta2/bin/coqtop.exe -R . Lob
+Welcome to Coq 8.5beta2 (April 2015)
+
+Coq < Require Import Coq.Setoids.Setoid Coq.Classes.Morphisms.
+Coq < Require Export Lob.Notations.
+      0 [main] coqtop 19788 D:\Coq-8.5beta2\bin\coqtop.exe: *** fatal error - MapViewOfFileEx '(null)'(0x70), Win32 error 6.  Terminating.
+    220 [main] coqtop 19788 cygwin_exception::open_stackdumpfile: Dumping stack trace to coqtop.exe.stackdump
+
+
+Comment author: @maximedenes
+
+I'll try to reproduce it once I get a Windows machine, but meanwhile we decided to disable native_compute by default on Windows due to command line size limitations. So I'm marking this bug as non-blocking for 8.5.
+
+

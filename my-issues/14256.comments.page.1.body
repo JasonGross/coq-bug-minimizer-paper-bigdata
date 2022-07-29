@@ -1,0 +1,52 @@
+> I'm not sure who knows about Hakell extraction
+
+My impression is that all but unmaintained ; maybe we should do a call for maintainers ? 
+It looks like `GHC.Prim.Any` is now `GHC.Types.Any`.
+
+Fixing this for any particular version of GHC is straightforward enough, I imagine, but it's not clear how to make this backwards-compatible.  Maybe we need the Coq extraction machinery know what version of GHC is the target?  Or maybe we need to maintain a small Haskell library that implements the things we need from Haskell, and the implementation of that library differs for different versions of GHC?
+
+I'm not sure I have a whole lot of time to contribute to address this problem in the near future, unfortunately..
+> Maybe we need the Coq extraction machinery know what version of GHC is the target? Or maybe we need to maintain a small Haskell library that implements the things we need from Haskell, and the implementation of that library differs for different versions of GHC?
+
+Both options look reasonable, tho having the small library on the Coq side will give some headaches to get the GHC tooling setup in the Coq side.
+I believe the correct backwards-compatible solution here is to case on the relevant versions of GHC in the extracted code.  According to [stack overflow](https://stackoverflow.com/a/28292585/377022), we can do things like `#if __GLASGOW_HASKELL__ >= xyy`
+So all we need to do is figure out the right version numbers for `Any` and `unsafeCoerce#`, and add conditionals on those version numbers
+In any case, once it is clear what is the right `#if __GLASGOW_HASKELL__` incantation to give, this is to be written in file [plugins/extraction/haskell.ml](https://github.com/coq/coq/blob/master/plugins/extraction/haskell.ml) of the archive.
+According to https://github.com/ghc/ghc/commit/74ad75e87317196c600dfabc61aee1b87d95c214, `GHC.Base.unsafeCoerce#` should be `GHC.Exts.unsafeCoerce#` in versions >= 9.0.1-rc1, which seems to be the same as versions >= 9.0.\* according to https://github.com/ghc/ghc/tags
+According to https://github.com/ghc/ghc/commit/24d761531cfc18152598becc0aeb90376fd19198, `GHC.Prim.Any` should be replaced by `GHC.Types.Any` in versions >= ghc-8.2.1-rc1, which seems to be the same as versions >= 8.2.\*
+> ```
+> /tmp/foo.hs:26:12: error:
+>     Not in scope: type constructor or class ‘GHC.Prim.Any’
+>     Perhaps you meant ‘GHC.Prim.Int#’ (imported from GHC.Prim)
+>     Module ‘GHC.Prim’ does not export ‘Any’.
+>    |
+> 26 | type Any = GHC.Prim.Any
+>    |            ^^^^^^^^^^^^
+>  ```
+
+The `GHC.Prim.Any` was already addressed in #6023 from Coq 8.7 (2017). The patch could easily be backported to the dev branch of Coq 8.6 if needed but I'm afraid there would be no further release of the 8.6 branch...
+
+I made #14346 to fix unsafeCoerce (not tested).
+There are two PRs opened for this issue. Could you close one of them? I will review the remaining one next week.
+> The `GHC.Prim.Any` was already addressed in #6023 from Coq 8.7 (2017). The patch could easily be backported to the dev branch of Coq 8.6 if needed but I'm afraid there would be no further release of the 8.6 branch...
+
+Indeed, I'm a bit confused now how I got the error message, since I've not been using Coq older than 8.9.  Maybe I still had a very old build output around?  Note, however, `GHC.Base.Any` no longer exists now, and the new place is `GHC.Types.Any`, and I fix this in #14345 in a backwards-compatible way
+(And I tested the change of #14345 in fiat-crypto, though I admit I haven't tested the change in the build of Coq itself)
+Hm, perhaps I'm wrong, and #6023 in fact already resolves the issue.  Should I revert the conditional `Any` code?
+@herbelin Maybe we should keep your PR, since in fact we only need the unsafecoerce fix?  It needs a changelog and some test-suite updates though.  (I'm having some trouble building the test-suite locally since `./configure -local && make && make test-suite` doesn't work since the dune PR)
+cc also @tchajed , who solved the Any issue in #6023 and might want to review whichever PR we settle on, and might have a preference between them?
+Could someone point out the reason why we need `unsafeCoerce#` here? I mean, why not `unsafeCoerce`? FTR, git-blame didn't help me: https://github.com/coq/coq/commit/3d95c838af3d648e4c32b0b4402e78bccdfa449f. (I stopped using Haskell on a daily basis 10 years ago. So sorry for potentially a silly question. My impression is that we need another reviewer for PR #14345.)
+> I mean, why not `unsafeCoerce`?
+
+No idea (this should be asked to @letouzey). Apparently, a "mega-hack" should be used to use `unsafeCoerce#` (according to http://hackage.haskell.org/package/base-4.14.1.0/docs/src/Unsafe.Coerce.html#unsafeCoerce), so indeed, using `unsafeCoerce` may ensure that the "hack" is used (???).
+
+I'm not familiar with Haskell, are you proposing to replace `unsafeCoerce = GHC.Base.unsafeCoerce#` with `unsafeCoerce = GHC.Unsafe.Coerce.unsafeCoerce` (in `plugins/extraction/haskell.ml`)?
+> > I mean, why not `unsafeCoerce`?
+> 
+> No idea (this should be asked to @letouzey). Apparently, a "mega-hack" should be used to use `unsafeCoerce#` (according to http://hackage.haskell.org/package/base-4.14.1.0/docs/src/Unsafe.Coerce.html#unsafeCoerce), so indeed, using `unsafeCoerce` may ensure that the "hack" is used (???).
+
+IIUC, that "mega-hack" is a hack required to implement `unsafeCoerce` (but which I don't understand in detail). I think what we should look at is the [documentation of `unsafeCoerce#`](https://hackage.haskell.org/package/base-4.15.0.0/docs/GHC-Exts.html#v:unsafeCoerce-35-), which says "Highly, terribly dangerous coercion from one representation type to another. Misuse of this function can invite the garbage collector to trounce upon your data and then laugh in your face. You don't want this function. Really."
+
+> I'm not familiar with Haskell, are you proposing to replace `unsafeCoerce = GHC.Base.unsafeCoerce#` with `unsafeCoerce = GHC.Unsafe.Coerce.unsafeCoerce` (in `plugins/extraction/haskell.ml`)?
+
+If it works, yes. We may save a case analysis `#if ... #endif` this way, since `Unsafe.Coerce.unsafeCoerce` has not been relocated at least from [base-4.0.0.0](https://hackage.haskell.org/package/base-4.0.0.0/docs/Unsafe-Coerce.html) (2009-02-10).

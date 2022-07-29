@@ -1,0 +1,47 @@
+Comment author: @JasonGross
+
+$ cat Helper.v
+Require Import List.
+Axiom length_id : forall T (l : list T), length (id l) = length l.
+Hint Rewrite length_id.
+jgross@ cagnode13:/tmp/foo$ cat Test.v
+Require Import List.
+Require Import Helper.
+Hint Rewrite seq_length.
+Theorem t: length (seq 0 2) = 2.
+  autorewrite with core.
+  Undo.
+  rewrite_strat topdown (hints core).
+Admitted.
+$ coqc Helper.v Test.v; echo $?
+0
+$ coqc Helper.v; coqc Test.v; echo $?
+File "./Test.v", line 7, characters 2-37:
+Error: Tactic failure: setoid rewrite failed: Nothing to rewrite.
+1
+
+They generate the same .vo file, so I guess it must be that when I pass multiple files on the command line, Coq handles its internal state?
+
+
+Comment author: @silene
+
+I can't reproduce it and I don't see anything that explains how it could have been fixed in the last few days. Was your version of Coq recent?
+
+
+Comment author: @JasonGross
+
+I'm using 1b3759e78f227eb85a128c58b8ce8c11509dd8c3.  Can you reproduce with that version?
+
+
+Comment author: @silene
+
+My mistake, I had miscopied the testcase. I can indeed reproduce it with the current head.
+
+
+Comment author: @ppedrot
+
+
+
+*** This bug has been marked as a duplicate of bug [BZ#3815](https://github.com/coq/coq/issues?q=is%3Aissue%20%22Original%20bug%20ID%3A%20BZ%233815%22) ***
+
+

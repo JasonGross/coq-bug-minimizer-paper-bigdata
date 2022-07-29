@@ -1,0 +1,22 @@
+Comment author: @JasonGross
+
+Monomorphic Record Ty := { x : Type }.
+Set Printing Universes.
+Check Build_Ty Ty. (* Toplevel input, characters 15-17:
+Error:
+The term "Ty" has type "Type@ {Top.6+1}" while it is expected to have type
+ "Type@ {Top.6}". *)
+
+I think this should tell me that the issue is that there's a universe inconsistency, and it can't satisfy "Top.6+1 < Top.6" because "Top.6 < Top.6+1".
+
+
+Comment author: @mattam82
+
+Indeed, it should output that info, sadly that's a non trivial change of the interface and the compiler won't help fixing call site. I'll try to get it fixed before 8.5
+
+
+Comment author: @mattam82
+
+Actually, with an optional argument it's not that hard :) Fixed in 8.5
+
+

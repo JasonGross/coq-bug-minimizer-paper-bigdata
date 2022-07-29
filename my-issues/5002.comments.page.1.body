@@ -1,0 +1,17 @@
+Comment author: @JasonGross
+
+If I do
+
+[Arguments f / .]
+
+the section on [simpl] does not say how to restore the default [simpl] behavior 
+of [f].  Since I'm not sure that there is a way to do this at all, I'm 
+categorizing this under Main rather than Doc; if there is, in fact, a way to do 
+this, please change the component of this bug.
+
+
+Comment author: @gares
+
+I believe there is no way to clear simpl flags.
+
+

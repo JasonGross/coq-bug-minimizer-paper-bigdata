@@ -1,0 +1,77 @@
+cc @ppedrot @andres-erbsen
+The timings are very similar on a recent-ish master (d8cd9ba6d56d32eb8aa383bca9198a18517e82d3)
+Interestingly, Ltac2 is significantly faster than Ltac1 at this.  Though there is an enormous jump from 9000 to 10000:
+```coq
+Require Import Ltac2.Ltac2.
+Require Import Ltac2.Control.
+Require Import Ltac2.Notations.
+
+Goal True.
+  Time do 100 (let x := '(_ : True) in ()). (* Finished transaction in 0.002 secs (0.u,0.004s) (successful) *)
+  Undo. Time do 100  (let x := '(_ : True) in ()). (* Finished transaction in 0.002 secs (0.u,0.003s) (successful) *)
+  Undo. Time do 100  (let x := '(_ : True) in ()). (* Finished transaction in 0.002 secs (0.u,0.s) (successful) *)
+  
+  Undo. Time do 1000 (let x := '(_ : True) in ()). (* Finished transaction in 0.022 secs (0.02u,0.s) (successful) *)
+  
+  Undo. Time do 2000 (let x := '(_ : True) in ()). (* Finished transaction in 0.061 secs (0.06u,0.s) (successful) *)
+  
+  Undo. Time do 3000 (let x := '(_ : True) in ()). (* Finished transaction in 0.109 secs (0.107u,0.004s) (successful) *)
+  Undo. Time do 4000 (let x := '(_ : True) in ()). (* Finished transaction in 0.21 secs (0.196u,0.011s) (successful) *)
+  Undo. Time do 5000 (let x := '(_ : True) in ()). (* Finished transaction in 0.329 secs (0.327u,0.s) (successful) *)
+  Undo. Time do 6000 (let x := '(_ : True) in ()). (* Finished transaction in 0.478 secs (0.479u,0.s) (successful) *)
+  Undo. Time do 7000 (let x := '(_ : True) in ()). (* Finished transaction in 0.477 secs (0.476u,0.s) (successful) *)
+  Undo. Time do 8000 (let x := '(_ : True) in ()). (* Finished transaction in 0.876 secs (0.876u,0.s) (successful) *)
+  Undo. Time do 9000 (let x := '(_ : True) in ()). (* Finished transaction in 0.831 secs (0.831u,0.s) (successful) *)
+  Undo. Time do 10000 (let x := '(_ : True) in ()). (* Finished transaction in 1.576 secs (1.575u,0.s) (successful) *)
+  Undo. Time do 11000 (let x := '(_ : True) in ()). (* Finished transaction in 1.434 secs (1.432u,0.004s) (successful) *)
+  Undo. Time do 12000 (let x := '(_ : True) in ()). (* Finished transaction in 2.384 secs (2.38u,0.s) (successful) *)
+```
+This is due to the naming mechanism for evars that tries to find a fresh name for every single evar that is created through the `evar` tactic. I'll see if there is a simple way to make this at most O(n log n) instead of quadratic.
+@herbelin you introduced in a8ad3ab the feature that the `evar` tactic gives a name to the evar created by it, but the current semantics seems a bit strange to me. It tries indeed to create a fresh name for it, which does not necessarily correspond to the name provided by the user if there is a clash. This is not documented, we could probably still try to decouple the name given to the local hypothesis and the name given to the evar.
+@ppedrot If that is the case (and I was wondering about that), then why is the performance the same as it is for `refine (let x : True := _ in _); clear x` (where the evars are "named" with `Goal`)?
+Hm, it seems there is a confounding factor, I will make a new bug report for another slowness I just found.
+@JasonGross The difference is that refine tries to call typeclass resolution on a growing number of evars.
+Wait, so #8233 is that Coq spends multiple seconds trying to call TC resolution on evars of type `True`? o.O  Or is this just `refine (let x : True := _ in _)` and not `let y := open_constr:(_ : True) in refine (let x := y in _)`?
+@ppedrot  I can believe that TC resolution is responsible for `refine (let x : True := _ in _); clear x`, but it does not seem to explain #8233
+It doesn't reach full TC resolution, as it fails realizing that the goal is not a class. But still, it crawls through all the undefined evars in the global proof state before that, which is O(n) for every call to refine.
+Right.  It seems like there should perhaps be a cache.  Maintain the set of evars which might trigger TC separately from the evars which don't.  (In any case, it can't be responsible for #8233, because doing `Existing Class True. Existing Instance I.` (and changing from `Goal True.` to `Goal False.`) does not change the performance nor behavior.)
+I'm unconvinced that this (crawling the global evar state) is sane behavior, though.  Why would TC resolution happen on evars which neither depend on the current goal nor appear in the context of the current goal?
+This is a well-known bug I think, which is at the heart the same as #6583. @mattam82 had plans for it, but I don't know if there has been progress.
+@JasonGross I don't get why setting True to be a typeclass would change anything in #8233. The cost is actually payed before getting to TC resolution proper, just because you happen to be folding over the set of undefined evars to check if they satisfy the TC filter requirements...
+Ah, so you're saying that some evars are marked as "resolvable", and some are not, and every time we do a `refine`, we fold over the set of all global evars to check which ones are marked "resolvable"?
+Yes, that's the idea.
+@mattam82 We could probably use the `future_goal` mechanism to actually retrieve goals that were generated by the call to the pretyper instead of blindly checking that unrelated goals should be solved. I don't know about the consequences on backwards compatibility though.
+@ppedrot:
+> @herbelin you introduced in a8ad3ab the feature that the evar tactic gives a name to the evar created by it, but the current semantics seems a bit strange to me. It tries indeed to create a fresh name for it, which does not necessarily correspond to the name provided by the user if there is a clash. This is not documented, we could probably still try to decouple the name given to the local hypothesis and the name given to the evar.
+
+What do you suggest? That the user give two names?
+Do we have `epose` yet?  What about adding a warning in the manual, and suggesting replacing `evar (x : T)` with `epose (x := _ : T)` or `epose (x := ?[x] : T)` or something
+@herbelin I'd rather not give a name to the evar generated by the `evar` tactic, and implement a naming hint mechanism rather than an absolute name. That is, the evar could carry an optional identifier that would be used only for printing, and `evar (x : nat)` would give the name `x` to the generated evar rather than trying to come up with a fresh name.
+
+My impression is that the evar naming mechanism tries to solve two distinct problems:
+1. giving a way to access evars inside a script by some handle which happens to be a name;
+2. providing the user with a meaningful printing heuristic for evars instead of the horrible old `?1234` style.
+
+There is no reason that the two should be sharing the same data. In practice, generating name for evars has already been at the root of other complexity issues (I don't remember the exact bug number though), and the fact that the `evar` tactic generates fresh evar names means that they're essentially unusable for tactic automation, so this is clearly an instance of 2. above.
+
+@JasonGross what is the expected semantics of `epose` regarding TC? I think it is better to provide really atomic tactics, and relying on pose for evar creation looks anything but atomic...
+The intended semantics of `epose` are the ones given by
+```coq
+Tactic Notation "epose" open_constr(c) := pose c.
+Tactic Notation "epose" "(" ident(h) ":=" open_constr(c) ")" := pose (h := c).
+Tactic Notation "epose" open_constr(c) "as" ident(h) := pose c as h.
+```
+and similarly if there are more variants of `pose`.
+@ppedrot: ok to have mechanism 2 (a name used as hint for printing, with no cost at creation time). But what user API for mechanism 1? Do you have in mind another kind of handle than a name? Why not a name otherwise, with the policy that if the name already exists, this is a failure, so that a) we are sure that the name is a stable handle b) this is also no cost at creation time?
+
+BTW, `epose` already exists.
+@herbelin Well, there *is* already a handle for evars: their unique id. We could perfectly provide it as an opaque type (as it is already the case in Ltac2 btw), which would be just what we need for writing automatic tactic. The only loss would be that the user cannot refer to them by absolute name, but I am not even sure that makes much sense currently. We are hiding complexity of the mechanism to our users (e.g. by not showing them the evar instance), making things more abstract would probably help in that regard.
+@ppedrot how could we gracefully handle use case 1 though?
+
+I don’t think there is a convincing design yet either. I suspect for tactic implementation one could rely on the unique (key) identifier of the evar and provide a new_evar primitive returning it, e.g in Ltac 2.
+I see you answered exactly that :)
+
+What about the interactive use case? Typically I’d like a design that allows me to names holes in a refine step and then focus on them using the hole name.
+Maybe the restricted mode of checking uniqueness at creation time would suffice for interaction actually.
+I think that for the bug we're currently discussing, there is an easy fix: do not generate a unique name for the evar. As I said, there is little point because you can't access it if it's fresh. In the meantime, we can keep the naming mechanism for the interactive use, and introduce the name hint alongside.
+Is this bug still alive?

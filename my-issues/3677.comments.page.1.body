@@ -1,0 +1,29 @@
+Comment author: @JasonGross
+
+I want something like
+
+Ltac eval_in tac_in H :=
+  let ret := constr:($(let H' := fresh in
+                       pose H as H';
+                       tac_in H';
+                       [ exact H' ])$) in
+  let T := type of ret in
+  let ret' := (lazymatch ret with
+              | let x := ?x' in @ ?P x => constr:(P x')
+               end) in
+  let ret'' := (eval cbv beta in ret') in
+  constr:(ret'' : T).
+
+Goal forall A B : Set, A = B -> A -> B.
+  intros A B H a.
+  let x := (eval_in ltac:(fun H' => rewrite H in H') a) in
+  pose x.
+
+However, I want the syntax, e.g., [eval rewrite H in a], and I don't want automatic beta/zeta reduction except for the single top-level let-in, and I don't want the extra cast ([: T]) to show up in the term.  I think this nicely extends syntax like [eval pattern foo in bar].
+
+
+Comment author: @ppedrot
+
+Maybe we could provide such an interface for the rewriting strategies? Otherwise, in general it does not make much sense...
+
+

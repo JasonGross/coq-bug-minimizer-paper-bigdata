@@ -1,0 +1,92 @@
+Comment author: @JasonGross
+
+Here is some code that works in 8.4, but not trunk:
+Goal True /\ True.
+  split.
+  2:constructor.
+  1:idtac.
+  Undo.
+  Undo.
+  2:idtac. (* Toplevel input, characters 0-8:
+Error: No such goals. *)
+
+
+Comment author: @gares
+
+If you put "Undo" in the document, then it is part of it.  And the second Undo undoes the first one. Either you Back 2, or you use Stm Command Undo (so that Undo is not part of the document, it is like the back button in CoqIDE).
+
+
+Comment author: @JasonGross
+
+This should probably be documented in CHANGES as a change in behavior of [Undo], then?
+
+
+Comment author: @silene
+
+It works for me on v8.5. Enrico, could you clarify what is the intended behavior of "Undo. Undo."? If the second one is supposed to cancel the first one now, then there is a new bug.
+
+
+Comment author: @gares
+
+IIRC I made it work in coqtop as in 8.4, but only in coqtop.
+
+Did you test it in coqtop?
+
+
+Comment author: @silene
+
+Yes, and indeed the behavior is different in CoqIDE.
+
+I think it is a really bad idea to have a different behavior of the commands depending on the toplevel. I know this is not the first instance, but it would be great if we could stop adding new ones. I don't really care whether we preserve or not the behavior of Undo from 8.4, but the behavior should be uniform across all the toplevels. (And it is especially important for Undo seeing how prevalent it is in tutorials about Coq.)
+
+
+Comment author: @gares
+
+Two remarks:
+- Undo was behaving the same, then Hugo complained at a GT and I added the
+  quirk.  In coqtop you can't easily know how many steps you have to go
+  backward, so "repeating Undo enough times" seems reasonable to me.
+  Another way to put it: CoqIDE gives you a notion of document, and Undo
+  can be done via a side channel; coqtop does not.
+- Undo in tutorials is clearly useful, but there you can easily write
+  "Undo n", ant it works as expected.  What does not work as before
+  is "Undo. Undo. .. Undo.".
+
+There is an entry about Undo in CHANGES, but does not mention this behavior.
+I'm fixing it, then I think we should really close the bug.
+
+
+Comment author: @silene
+
+What makes you think than Undo n works any better? It obviously suffers from the same issue as Undo. Consider the following tutorial; it works in coqtop, but not in coqide.
+
+Goal True /\ True.
+Proof.
+(* a conjunction can be separated into two subgoals using the following tactic *)
+split.
+(* now we have to prove the first True, which has a canonical proof named I *)
+exact I.
+(* but True is just an inductive type with a single constructor, so we can ask Coq to apply it *)
+Undo.
+constructor.
+(* but a conjunction is also an inductive type with a single constructor, so we could have done the same earlier *)
+Undo 2.
+constructor.
+constructor.
+
+
+Comment author: @gares
+
+It works if you count the right number of sentences to "remove" from the document (you also have to count Undo).  I have not tried, but Undo 4 should do what you want. Before the 2 was referring to 2 tactics (so no +1 Undo and no +1 for the already undo-ed tactic).
+
+
+Comment author: @silene
+
+Sure, but you missed the point. What I am saying is that it is no longer possible to write a script that uses overlapping Undo, even when using Undo n. As you point out, depending on the toplevel, the user will have to use either Undo 2 or Undo 4 for the tutorial to go through.
+
+
+Comment author: @gares
+
+That's a good point.  I'll see tomorrow if I can reproduce the old semantics and close this bug once and for all.
+
+

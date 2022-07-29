@@ -1,0 +1,78 @@
+Comment author: @JasonGross
+
+I believe it is folklore that this restriction is bogus, and currently exists 
+only because it was easier to write the OCaml code to apply coercions that 
+respected this condition.  For example, I'd like this code to work:
+
+```
+Class Funext := {}.
+
+Axioms A B : Type.
+Axiom f : forall {_ : Funext}, A -> B.
+Coercion f : A >-> B.
+
+Definition f' {_ : Funext} (a : A) : B := a.
+```
+
+Comment author: @JasonGross
+
+*** Bug [BZ#4635](https://github.com/coq/coq/issues?q=is%3Aissue%20%22Original%20bug%20ID%3A%20BZ%234635%22) has been marked as a duplicate of this bug. ***
+
+
+Comment author: @herbelin
+
+*** Bug [BZ#2927](https://github.com/coq/coq/issues?q=is%3Aissue%20%22Original%20bug%20ID%3A%20BZ%232927%22) has been marked as a duplicate of this bug. ***
+
+
+Here's another example showing that lifting this restriction would be useful:
+
+```coq
+Require Coq.Init.Byte Coq.Strings.Byte.
+Require Coq.Vectors.Vector.
+
+Notation FourBytes := (Vector.t Byte.byte 4).
+
+Axiom word: Type.
+Axiom fourBytesToWord: FourBytes -> word.
+Coercion fourBytesToWord: FourBytes >-> word.
+(* Warning: fourBytesToWord does not respect the uniform inheritance condition
+   [uniform-inheritance,typechecker] *)
+
+Check (fun x: FourBytes => (fourBytesToWord x : word)).
+Check (fun x: FourBytes => (x : word)).
+(* Error: In environment
+   x : FourBytes
+   The term "x" has type "FourBytes" while it is expected to have type "word". *)
+```
+And I found some explanation [here](https://github.com/coq/coq/issues/5222#issuecomment-337549423) about Jason's comment "it was easier to write the OCaml code".
+There seem to be several requests to me, depending on whether pattern-matching on the type of the source is needed or not, and depending on whether the target is a variable or not:
+
+- #4593 (initial) and #2927: Extra arguments unbound in the type of the source as in `Axiom f : forall {_ : Funext}, A -> B. Coercion f : A >-> B.` (above) or as in `Coercion coerce_p_to_d : forall (s0 : second_model) (w : W s0), P s0 -> D (s s0 w)` (#2927).
+
+  This seems independent of the coercion mechanism: there is an argument which cannot be inferred by unification with the type of the source (but type classes or unification with the type of the target would allow to infer it).
+
+- #2828, #4141, #4635, #4593 (previous comment), #4507 (presumably): Coercion source is a constant but not of atomic form as in `Coercion fourBytesToWord: Vector.t Byte.byte 4 >-> word`
+
+  This is a case where the coercion mechanism needs to look at more than the head constant of the source to know if the coercion applies. So, I would say that it is about generalizing the matching of a coercion source from a pattern of the form `head ?arg1 ... ?argn` to an arbitrary (say applicative) pattern. This raises the following questions:
+  - How to compute the transitive closure of coercions? This would require unification between the source of a coercion and the target of another. A priori possible.
+  - How to disambiguate when several coercions apply? Either by allowing only one coercion by pair of source-head/target-head (as of now) but that seems restrictive. Or an order on the precision of the pattern?
+
+- Yes another issue would be to accept coercions where the target type is bound in the type of the source as in `Coercion FST A B (p : prod A B) := fst p.`. This may require an additional notion of coercion class, say `ParamClass`??
+
+Wondering about the opinion of @coq/pretyper-maintainers. Wondering also whether outside help would be required. Wondering about whether such issues are already studied somewhere else?
+The general issue with coercions is Coq is that there were designed as if elaborations (type inference and unification) did not exist. The code assumes you can synthesize the coerced term without running type inference.
+
+> This seems independent of the coercion mechanism: there is an argument which cannot be inferred by unification with the type of the source (but type classes or unification with the type of the target would allow to infer it).
+
+in Matita, but also in Russel (Program) coercion arguments which can't be inferred become subgoals. Eg ex_intro is morally a coercion from x:T to (x:T, ?p:P x):ex T P
+
+> about generalizing the matching of a coercion source from a pattern
+
+This is also what we did in Matita, we used the same discrimination trees/nets we used for automation also for indexing coercions.
+The closure was computed statically, rather than dynamically, and using type inference. It's not very different from the code to check for non convertible paths @pi8027 wrote.
+
+Something I believe is easy to do is to standardise a notation `\uparrow` a la Lean, which hides a generic constant `cast : forall Params, {cast A B} -> A -> B`, where cast is a TC. It would not be inserted automatically, but at least one could use TC to infer a cast (using type inference).
+Extending source classes to patterns seems an interesting problem to work on. I'm not knowledgeable on this topic (HO unification and elaboration), but I hope that:
+- the uniform inheritance condition can be extended to patterns naturally, and it preserves some good properties discussed in (Saïbi 1997),
+- by disallowing coercion paths of `S >-> T` where `T` is strictly included in `S` in some sense (syntactically or definitionally), we can still compute the inheritance graph statically (I'm not sure if this is the same idea as what @gares says), and
+- coherence checking requires computing (FO or HO) unifiers of source classes but it is still decidable.

@@ -1,0 +1,2 @@
+SerAPI does certainly support this but I am unsure if interactively in the main branch yet, as the plan was to include it in the fix for https://github.com/ejgallego/coq-serapi/issues/49 ; adding such support is trivial so please open an issue in the coq-serapi repos and I will push the fix for #49 including the save command.
+Note that sercomp & friends do already have the ability to generate .vo files.

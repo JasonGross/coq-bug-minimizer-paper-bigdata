@@ -1,0 +1,28 @@
+Could you use Lemma + parameter syntax instead of Goal + intros? Much more readable imo
+> Could you use Lemma + parameter syntax instead of Goal + intros? Much more readable imo
+
+Updated the code block
+> what's the slowness in pattern selection?
+
+Very well-known fact that setoid_rewrite pattern selection relies on full-blown conversion on closed terms (which is crazy). This is basically impossible to change without breaking everything out there, although there is #15508 which attempts to provide a knob to selectively disable the craziest possible conversion problems. But it's sorcerer's apprentice tier, in my opinion. Relatedly, see #15466.
+
+This is not `setoid_rewrite`, though, because I'm not using `at` anywhere, only `in`.  This is just plain `rewrite`, which should not be modulo conversion, right?  Furthermore, the head symbol in every `rewrite` lemma is `ident_interp`, which only appears in the goal as an argument to higher-order functions, and does not appear unapplied anywhere.  Hence assuming we are not performing conversion on the head of the application (which we should not be, as this is not `setoid_rewrite`), failure should be nearly instantaneous.
+> This is not setoid_rewrite, though, because I'm not using at anywhere, only in
+
+Indeed, you're right. That said, the Leibniz rewrite also sets `modulo_conv_on_closed_terms` to `Some` so it will try to perform conversion as well. It's a bit less violent than the setoid variant because it does not set the `modulo_betaiota` flag, but still. Note also that  `Set Keyed Unification` makes your example a bit more than twice faster.
+
+I confirm that removing the up-to-conversion flag in Leibniz rewrite makes this example much faster (from ~3.5s to ~0.6s on my machine).
+What's responsible for the diff between `Set Keyed Unification` and "up-to-conversion flag"?  (Does #15508 expose this?)
+These are two orthogonal things.
+- Keyed unification makes the pattern selection faster because it skips some unification subproblems, by first using a syntactic criterion, even before calling unification proper.
+- Up-to-conversion is always on for rewriting, is slow in general, and #15508 does not expose anything for the Leibniz rewrite tactic.
+The syntactic criterion will fix slowness in cases where there is no match of the head symbol applied to terms, right?
+
+Can up-to-conversion for Leibniz rewrite be exposed?
+> The syntactic criterion will fix slowness in cases where there is no match of the head symbol applied to terms, right?
+
+That's my understanding.
+
+> Can up-to-conversion for Leibniz rewrite be exposed?
+
+Yes, it's not very hard to do.

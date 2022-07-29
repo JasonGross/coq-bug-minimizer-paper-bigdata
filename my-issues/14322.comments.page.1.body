@@ -1,0 +1,5 @@
+Note that this behavior makes the debugger practically useless in fiat-crypto.
+`r number` has the same issue, btw
+Funny you should run into this just after I was after I looking at the relevant part of the code Wednesday.  IIUC, TacInterp.eval_tactic_ist is called to evaluate values such as your `constr:(ltac:`.  If so, the issue is that the call to db_initialize resets the breakpoint string.
+
+In addition, the parsing for `r 123` was broken from the initial commit many years ago; it would be interpreted as matching the literal string "123" rather than skipping 123 steps.  This is fixed in master.

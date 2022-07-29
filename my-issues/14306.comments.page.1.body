@@ -1,0 +1,94 @@
+The full list is
+```
+dh_install: coq missing files: usr/lib/coq/revision
+dh_install: coq missing files: usr/lib/coq/plugins/micromega/csdpcert
+dh_install: coq missing files: usr/lib/coq/tools/coqdoc/coqdoc.css
+dh_install: coq missing files: usr/lib/coq/tools/coqdoc/coqdoc.sty
+dh_install: coq missing files: usr/lib/coq/tools/CoqMakefile.in
+dh_install: coq missing files: usr/lib/coq/tools/TimeFileMaker.py
+dh_install: coq missing files: usr/lib/coq/tools/make-both-time-files.py
+dh_install: coq missing files: usr/lib/coq/tools/make-one-time-file.py
+dh_install: coq missing files: usr/lib/coq/tools/make-both-single-timing-files.py
+dh_install: coq missing files: usr/share/texmf/tex/latex/misc/coqdoc.sty
+dh_install: coq-theories missing files: doc/stdlib/html
+dh_install: libcoq-ocaml missing files: usr/lib/coq/kernel/byterun/dllcoqrun.so
+dh_install: libcoq-ocaml missing files: usr/lib/coq/META
+dh_install: usr/doc/coq-core/README.md exists in debian/tmp but is not installed to anywhere
+dh_install: usr/doc/coq-core/LICENSE exists in debian/tmp but is not installed to anywhere
+dh_install: usr/doc/coqide-server/README.md exists in debian/tmp but is not installed to anywhere
+dh_install: usr/doc/coqide-server/LICENSE exists in debian/tmp but is not installed to anywhere
+dh_install: usr/lib/stublibs/dllcoqrun_stubs.so exists in debian/tmp but is not installed to anywhere
+dh_install: usr/lib/coqide-server/META exists in debian/tmp but is not installed to anywhere
+dh_install: usr/lib/coqide-server/opam exists in debian/tmp but is not installed to anywhere
+dh_install: usr/lib/coqide-server/dune-package exists in debian/tmp but is not installed to anywhere
+dh_install: usr/lib/coqide-server/core/document.cmti exists in debian/tmp but is not installed to anywhere
+dh_install: usr/lib/coqide-server/core/document.ml exists in debian/tmp but is not installed to anywhere
+dh_install: usr/lib/coqide-server/core/document.mli exists in debian/tmp but is not installed to anywhere
+dh_install: usr/lib/coqide-server/core/document.cmt exists in debian/tmp but is not installed to anywhere
+dh_install: usr/lib/coqide-server/protocol/richpp.mli exists in debian/tmp but is not installed to anywhere
+dh_install: usr/lib/coqide-server/protocol/xml_lexer.cmti exists in debian/tmp but is not installed to anywhere
+dh_install: usr/lib/coqide-server/protocol/xml_parser.mli exists in debian/tmp but is not installed to anywhere
+dh_install: usr/lib/coqide-server/protocol/serialize.ml exists in debian/tmp but is not installed to anywhere
+dh_install: usr/lib/coqide-server/protocol/richpp.cmt exists in debian/tmp but is not installed to anywhere
+dh_install: usr/lib/coqide-server/protocol/xml_lexer.mli exists in debian/tmp but is not installed to anywhere
+dh_install: usr/lib/coqide-server/protocol/xml_printer.cmt exists in debian/tmp but is not installed to anywhere
+dh_install: usr/lib/coqide-server/protocol/xml_lexer.cmt exists in debian/tmp but is not installed to anywhere
+dh_install: usr/lib/coqide-server/protocol/serialize.mli exists in debian/tmp but is not installed to anywhere
+dh_install: usr/lib/coqide-server/protocol/serialize.cmt exists in debian/tmp but is not installed to anywhere
+dh_install: usr/lib/coqide-server/protocol/xmlprotocol.ml exists in debian/tmp but is not installed to anywhere
+dh_install: usr/lib/coqide-server/protocol/xml_parser.ml exists in debian/tmp but is not installed to anywhere
+dh_install: usr/lib/coqide-server/protocol/xml_printer.ml exists in debian/tmp but is not installed to anywhere
+dh_install: usr/lib/coqide-server/protocol/xml_printer.cmti exists in debian/tmp but is not installed to anywhere
+dh_install: usr/lib/coqide-server/protocol/richpp.cmti exists in debian/tmp but is not installed to anywhere
+dh_install: usr/lib/coqide-server/protocol/interface.ml exists in debian/tmp but is not installed to anywhere
+dh_install: usr/lib/coqide-server/protocol/xmlprotocol.cmt exists in debian/tmp but is not installed to anywhere
+dh_install: usr/lib/coqide-server/protocol/xmlprotocol.cmti exists in debian/tmp but is not installed to anywhere
+dh_install: usr/lib/coqide-server/protocol/xml_printer.mli exists in debian/tmp but is not installed to anywhere
+dh_install: usr/lib/coqide-server/protocol/xml_parser.cmti exists in debian/tmp but is not installed to anywhere
+dh_install: usr/lib/coqide-server/protocol/xml_parser.cmt exists in debian/tmp but is not installed to anywhere
+dh_install: usr/lib/coqide-server/protocol/xmlprotocol.mli exists in debian/tmp but is not installed to anywhere
+dh_install: usr/lib/coqide-server/protocol/richpp.ml exists in debian/tmp but is not installed to anywhere
+dh_install: usr/lib/coqide-server/protocol/serialize.cmti exists in debian/tmp but is not installed to anywhere
+dh_install: usr/lib/coqide-server/protocol/interface.cmt exists in debian/tmp but is not installed to anywhere
+dh_install: usr/lib/coqide-server/protocol/xml_lexer.ml exists in debian/tmp but is not installed to anywhere
+dh_install: usr/share/coq-core/texmf/tex/latex/misc/coqdoc.sty exists in debian/tmp but is not installed to anywhere
+dh_install: usr/bin/coqidetop.byte exists in debian/tmp but is not installed to anywhere
+dh_install: usr/bin/coqnative exists in debian/tmp but is not installed to anywhere
+dh_install: usr/bin/csdpcert exists in debian/tmp but is not installed to anywhere
+dh_install: usr/bin/fake_ide exists in debian/tmp but is not installed to anywhere
+```
+Hi @JasonGross , thanks for the overview, @gares was kind enough to do an analysis already in https://github.com/coq/coq/pull/13617#issuecomment-811209194 ,
+
+- changes to coq => coq-core are intended, and part of the split plan
+- `csdpcert` : indeed this is related to #10613 , I'd be happy indeed to extend #14059 to handle private binaries better
+- fake_ide , indeed we should fix this, I added it to the public binary to ease the test-suite, but it should go away
+- /usr/share/texmf/tex/latex/misc/coqdoc.sty => /usr/share/coq-core/texmf/tex/latex/misc/coqdoc.sty : oh indeed this is a bug, I used the wrong section for the `install` fix at #14038 it seems
+- doc/stdlib/html: I don't understand this one, let me have a look
+Another one: `/usr/share/doc/coq/FAQ-CoqIde` seems to be missing, is this deliberate?
+@JasonGross please don't assign other people to issues, it just leads to bullshit assignments.
+Ah, okay, sorry
+> Another one: `/usr/share/doc/coq/FAQ-CoqIde` seems to be missing, is this deliberate?
+
+It should live now in `/usr/share/doc/coqide` , tho now that I realize we may not be handling the FAQ properly, packages generated by dune-release do handle it, but I'm not sure about the raw dune setup, let me see.
+
+For the rest, they don't seem critical to me in any way [on the Coq side, Debian side may need updating]
+
+Biggest question is what to do with `fake_ide`, I will do a patch to install it to libexec, as without it, it is not possible to run the test suite from an installed Coq, and for some reason this is the way the CI is setup; before dune we did a super hack to actually copy fake_ide by hand.
+> It should live now in `/usr/share/doc/coqide`
+
+It looks like #14434 tried to do this, but ended up placing it in `/usr/doc/coqide` instead? (Reported separately as #14467)
+> It looks like #14434 tried to do this, but ended up placing it in `/usr/doc/coqide` instead? (Reported separately as #14467)
+
+This seems a bug in your dune package, not in Coq.
+In addition to `fake_ide`, another file that seems like it should never have made its way to `bin/` is `ocamllibdep`.
+> In addition to `fake_ide`, another file that seems like it should never have made its way to `bin/` is `ocamllibdep`.
+
+Are you sure about this one? AFAICT it is used in Coq Makefile.
+
+
+Indeed, my mistake, it is already present in 8.13. But not in 8.11. So, this is a somewhat recent addition. In my opinion, Coq should never have installed a binary named `ocamlfoo` in the user's PATH.
+I agree, hopefully we are moving towards a cleaner setup.
+
+`fake_ide` will be fixed soon in master, but will require too deep changes as it is going to be installed in `libexec` which is the correct solution.
+
+I'd suggest to just use a `8.14`only patch that disables `fake_ide`'s `(public_name ...)` declaration.

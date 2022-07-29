@@ -1,0 +1,6 @@
+@ppedrot Is this evar allocation or something else?
+So, it's not so much evar allocation, but it's indeed indirectly due to the fact that the evar contexts are linear. The problem is that the old unification checks that a term is closed before deciding what to do (in `Unification.matchrec`), and rewrite relies on unification to apply the lemma. I had a patch somewhere that probably solved this problem which was even turned into a PR, but closed because no observable effect.
+
+EDIT: this is #14253.
+I confirm that #14253 solves the issue.
+@ppedrot #14253 only fixed this when the rewriting lemma has no evars, right?

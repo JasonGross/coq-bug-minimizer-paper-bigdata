@@ -1,0 +1,38 @@
+Looking in NZOrder.v, I also see three Instances lt_strorder : StrictOrder lt, le_preorder : PreOrder le and le_partialorder : PartialOrder _ le. Would it make sense to make those transparent too?
+Are there still people opposing to more transparent lemmas by default? If yes, what are the alternatives? I still have in mind the idea of implementing a command to un-opacify a definition, but little time for it...
+See PR #7060 which actually already implements the wish.
+@herbelin I was looking at the module subtyping code today, and I think that allowing to unopacify definitions without changing that code is unsound. The rule considers that any opaque constant is a supertype of any definitions.
+>  I was looking at the module subtyping code today, and I think that allowing to unopacify definitions without changing that code is unsound. The rule considers that any opaque constant is a supertype of any definitions.
+
+It was my conclusion also that the module system was needing a change before allowing unopacifying a constant.
+> the module system
+
+Dangerous territory!
+> Dangerous territory!
+
+Because of composing substitutions correctly? Because of propagating universe constraints correctly? :smile:
+
+Would we loose something important at asking that only a definition with same body can be seen as an opaque definition with some body?
+What's the relationship between this bug/feature request and unopacifying things from modules?
+> What's the relationship between this and unopacifying things from modules?
+
+Assuming an unopacification command and the current subtyping rules, one could derive an inconsistency:
+```coq
+Module Type T. Theorem b : bool. exact true. Qed. Axiom bf : b = false. End T.
+Module N : T. Definition b := false. Theorem bf : b = false. reflexivity. Qed. End N.
+Module F (X:T).
+  Unopacify X.b.
+  Theorem bt : X.b = true. reflexivity. Qed.
+  Theorem btf : true = false. rewrite <- bt, X.bf. reflexivity. Qed.
+  End F.
+Module P := F N.
+```
+To prevent this, we would need to make the opaque subtyping rule stricter, by demanding that the two bodies are the same. My feeling is that the need for an unopacification command is stronger than the need for hiding a definition behind an opaque constant. But if really needed, for the purpose of module subtyping, we could also add a new attribute to tell when a constant really has to be thought as existence of a body rather than having a specified but opaque body.
+
+[More generally, but in a longer term view than this discussion, we should at some time investigate whether opaque proofs of an equality on hsets could not simply be considered as being the reflexivity.]
+> More generally, but in a longer term view than this discussion, we should at some time investigate whether opaque proofs of an equality on hsets could not simply be considered as being the reflexivity.
+
+Should there be an issue for that?
+> Should there be an issue for that?
+
+Good idea. I just opened #8438 about it.

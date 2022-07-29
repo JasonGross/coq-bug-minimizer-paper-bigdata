@@ -1,0 +1,21 @@
+With 3000=12, your example takes 8.5 seconds on my workstation.  I didn't wait for 3000=13 to finish; it seems to go up exponentially.  The `lazymatch` version is indeed much faster; at 3000=500 it takes 0.25 seconds (at higher values of 3000, the first line `cbv; intro x; intros.` starts to be unmanageably slow).
+An example where I expect behavior to change (untested):
+```coq
+Section __.
+  Variable (x : nat).
+
+  Definition T := x = x.
+  Definition t : T := eq_refl.
+  Let y (v : x = x) : Prop := True.
+  Let z : y t /\ x = x := conj I eq_refl.
+  Definition w : Prop := z = z.
+
+  Goal y t -> y t /\ w = w -> True.
+  Proof.
+    intros.
+    clear dependent x.
+```
+If I have run the tactics right in my head (and this is uncertain to me; this is the most complicated tactic problem I've ever tried to generate/run without coqc in front of me), then it should succeed with the current version, but fail if we swap out match for lazymatch.  I think this is okay, as long as it is marked in the changelog.  (Note that by changing all the Definitions to Lets we should be able to make the tactic work fine by having it search in the bodies of things and not just in the types.  But I don't see any way to get it to work nicely when you don't know which definitions make use of which variables.)
+
+Edit: now tested, change in behavior confirmed.
+Note that the version of https://github.com/coq/coq/issues/11691#issuecomment-598863282 takes 25.687 seconds on my machine for 3000=500, while the lazymatch version here takes 0.145 s.  To be faster while still retaining the extra power, we'd need to move to Ltac2, I believe.

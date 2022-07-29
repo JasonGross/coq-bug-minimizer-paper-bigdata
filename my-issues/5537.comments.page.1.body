@@ -1,0 +1,124 @@
+Comment author: @JasonGross
+
+This breaks company-coq; see 
+https://github.com/cpitclaudel/company-coq/issues/168.
+
+Since [Print Grammar constr.] does not cause the goal to be printed, [Timeout 1 
+Print Grammar constr.] shouldn't, either (at least, not if it succeeds).
+
+
+Comment author: @psteckler
+
+I'm not seeing the goal-printing with today's trunk, using vanilla PG and using the latest company-coq installed via MELPA.
+
+Can you print the contents of the *coq* buffer for the Timeout and no-Timeout cases (or just the difference between them)?
+
+
+Comment author: @JasonGross
+
+$ ~/.local64/coq/coq-trunk/bin/coqtop -emacs
+Welcome to Coq jgross-Leopard-WS:/home/jgross/Downloads/coq/coq-trunk,trunk 
+(8e6d03830e9c53f641626e29886eb07c705f7608)
+
+<prompt>Coq < 3 || 0 < </prompt>Goal True.
+1 subgoal (ID 1)
+
+  ============================
+  True
+
+(dependent evars: (printing disabled) )
+
+<prompt>Unnamed_thm < 4 |branch| 0 < </prompt>Print Grammar tactic.
+Entry tactic:tactic_expr is
+[ "5" RIGHTA
+  [ tactic:binder_tactic ]
+| "4" LEFTA
+  [ SELF; ";"; tactic:binder_tactic
+  | SELF; ";"; SELF
+  | SELF; ";"; tactic_then_locality; tactic_then_gen; "]" ]
+| "3" RIGHTA
+  [ IDENT "try"; SELF
+...
+  | IDENT "ident"; ":"; "("; prim:ident; ")"
+  | IDENT "string"; ":"; "("; prim:string; ")"
+  | IDENT "integer"; ":"; "("; prim:integer; ")"
+  | tactic:constr_eval ] ]
+
+
+<prompt>Unnamed_thm < 5 |branch| 0 < </prompt>Timeout 1 Print Grammar tactic.
+Entry tactic:tactic_expr is
+[ "5" RIGHTA
+  [ tactic:binder_tactic ]
+| "4" LEFTA
+  [ SELF; ";"; tactic:binder_tactic
+  | SELF; ";"; SELF
+  | SELF; ";"; tactic_then_locality; tactic_then_gen; "]" ]
+| "3" RIGHTA
+  [ IDENT "try"; SELF
+  | IDENT "do"; tactic:int_or_var; SELF
+  | IDENT "timeout"; tactic:int_or_var; SELF
+  | IDENT "time"; OPT prim:string; SELF
+  | IDENT "repeat"; SELF
+...
+  | IDENT "reference"; ":"; "("; prim:reference; ")"
+  | IDENT "ident"; ":"; "("; prim:ident; ")"
+  | IDENT "string"; ":"; "("; prim:string; ")"
+  | IDENT "integer"; ":"; "("; prim:integer; ")"
+  | tactic:constr_eval ] ]
+
+1 subgoal (ID 1)
+
+  ============================
+  True
+
+(dependent evars: (printing disabled) )
+
+<prompt>Unnamed_thm < 6 |branch| 0 < </prompt>
+
+Is it that my version of trunk is outdated?
+
+
+Comment author: @psteckler
+
+My copy of trunk has latest commit c64a28ee5a6643449f7c77ed7b8737e8f01ede52 (May 17 2017).
+
+
+Comment author: @psteckler
+
+Bah, maybe I wasn't running trunk.
+
+I just tried this again, and indeed, the goal is printed if there's a Timeout. Bug reproduced.
+
+
+Comment author: @psteckler
+
+"Print nat." (no goal is printed) and "Timeout 1 Print nat." (goal is printed) makes the same distinction.
+
+
+Comment author: @psteckler
+
+The problem appears to be in `vernac.ml', around line 150, where the expression `is_query v' is true for, say, "Print Nat.", so the goal is hidden, but false for "Timeout 1 Print Nat.", so the goal is shown.
+
+
+Comment author: @psteckler
+
+The problem does not exist in 8.6, so my PR will be against trunk.
+
+
+Comment author: @ejgallego
+
+This and other problems are fixed by PR#640 (slow merging...)
+
+However we still have a design problem, `-emacs` should never print goals IMO.
+
+
+Comment author: @psteckler
+
+OK, I've submitted PR [BZ#656](https://github.com/coq/coq/issues?q=is%3Aissue%20%22Original%20bug%20ID%3A%20BZ%23656%22), but if [BZ#640](https://github.com/coq/coq/issues?q=is%3Aissue%20%22Original%20bug%20ID%3A%20BZ%23640%22) obviates the need for this change, it can be closed.
+
+
+Comment author: @ejgallego
+
+Closed by [BZ#640](https://github.com/coq/coq/issues?q=is%3Aissue%20%22Original%20bug%20ID%3A%20BZ%23640%22)
+
+

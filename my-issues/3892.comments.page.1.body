@@ -1,0 +1,30 @@
+Comment author: @JasonGross
+
+Both of these should succeed.
+
+Notation "A <-> B" := ((A -> B) * (B -> A))%type : type_scope.
+
+Module Success.
+  Notation compose := (fun g' f' x => g' (f' x)).
+  Notation "g 'o' f" := (compose g f) (at level 40, left associativity).
+  Definition iff_compose {A B C : Type} (g : B <-> C) (f : A <-> B)
+  : A <-> C
+    := (fst g o fst f , snd f o snd g).
+End Success.
+
+Module Failure.
+  Notation compose := (fun g f x => g (f x)).
+  Notation "g 'o' f" := (compose g f) (at level 40, left associativity).
+  Definition iff_compose {A B C : Type} (g : B <-> C) (f : A <-> B)
+  : A <-> C
+    := (fst g o fst f , snd f o snd g).
+  (* Toplevel input, characters 86-91:
+Error: This expression should be a name. *)
+End Failure.
+
+
+Comment author: @herbelin
+
+Now fixed in v8.4 and trunk.
+
+

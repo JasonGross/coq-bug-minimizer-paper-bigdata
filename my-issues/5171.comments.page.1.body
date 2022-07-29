@@ -1,0 +1,69 @@
+Comment author: @JasonGross
+
+Apparently typeclass resolution unfolds opaque constants before looking for 
+instances?
+
+Class Decidable (P : Prop) := dec : {P} + {~P}.
+Arguments dec P {_}. 
+Definition dec_bool {P} {Pdec : Decidable P} (H : (if dec P then true else 
+false) = true)
+  : P.
+Proof.
+  destruct (dec P); [ assumption | exfalso; congruence ].
+Qed.
+Definition dec_True : Decidable True := left I.
+Hint Extern 0 (Decidable True) => apply dec_True : typeclass_instances.
+Definition really_opaque_pair : True * True. Proof. repeat constructor. Qed.
+Definition opaque_pair := (I, I).
+Typeclasses Opaque opaque_pair.
+Opaque opaque_pair.
+Goal (let '(I, I) := really_opaque_pair in True).
+Proof.
+  Fail progress compute. (* no change *)
+  refine (@ dec_bool _ _ _).
+  Fail reflexivity. (* as expected, we can't find an instance for [Decidable 
+(match _ with ... end)] *)
+Abort.
+Goal (let '(I, I) := opaque_pair in True).
+Proof.
+  Fail progress compute. (* no change *)
+  Typeclasses eauto := debug.
+  refine (@ dec_bool _ _ _).
+  reflexivity. (* um, what?  Apparently we bypassed [Typeclasses Opaque]? *)
+Qed.
+
+
+Comment author: @mattam82
+
+Will try to look into it for beta2 indeed.
+
+
+Comment author: @mattam82
+
+It's the refine which reduces the goal to True apparently
+
+
+Comment author: @mattam82
+
+Hmm, it's a heuristic in unification that does it in the end:
+
+let apprec_nohdbeta ts env evd c =
+  let (t,sk as appr) = Reductionops.whd_nored_state evd (c, []) in
+  if Stack.not_purely_applicative sk
+  then Stack.zip (fst (whd_betaiota_deltazeta_for_iota_state
+		   ts env evd Cst_stack.empty appr))
+  else c
+
+We reduce the [let '(I, I) := opaque_pair in True] and find out it's not 
+producing a purely applicative stack, 
+hence we betaiota_deltazeta normalize and get down to True.
+
+Moving resolution to 8.7, we need time to evaluate the impact of changing that 
+kind of code.
+
+
+Comment author: @JasonGross
+
+Ugh, really?  What might go wrong if this heuristic was made to respect [Opaque]?  (More systematically, can we get an alternate version of [Opaque] that everything in the kernel and the VM and the native compiler actually respects, as per Bug [BZ#3389](https://github.com/coq/coq/issues?q=is%3Aissue%20%22Original%20bug%20ID%3A%20BZ%233389%22)?)
+
+

@@ -1,0 +1,4 @@
+That's the stm calling dot to draw the "debug document"
+Maybe coqtop should check early and emit a warning at startup, and then not try to call `dot` if it doesn't exist?
+Also 8.13, 8.14 and 8.15.
+The code is at stm.ml `print_dag`

@@ -1,0 +1,15 @@
+This is due to `refine` performing a βι-normalization of the goal, for a mix of compatibility and intuitiveness. If you don't want that, use the dedicated `simple refine` tactic. In particular, I think this bug report is invalid.
+The description of `simple refine` says:
+> It does not perform any beta-reduction either. 
+
+Why does this succeed:
+
+```
+Goal ((fun x => x) True).
+  simple refine I.
+Qed.
+```
+
+@psteckler This is correct, as `I : (fun x => x) True`, and there wouldn't any sane way to prevent that thankfully. What the documentation means is that *the generated subgoals* are not in βι normal form.
+I see, thanks.
+Ah, indeed, using simple refine makes sense.  There seems to be no way to use it from Ltac2, though?

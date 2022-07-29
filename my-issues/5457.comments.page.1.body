@@ -1,0 +1,28 @@
+Comment author: @JasonGross
+
+This code works fine in 8.4pl6, fails in 8.5 on the [abstract] with
+```
+  Error: Illegal application (Non-functional construction): 
+  The expression "b" of type "nat" cannot be applied to the term
+   "0" : "nat"
+```
+and fails on [revert] in 8.6 with "Anomaly: error with no safe_id attached: Not 
+a sort.. Please report at http://coq.inria.fr/bugs/."
+```coq
+Goal let x := fun (a : nat -> Prop) (b : nat) (c : a 0) (d : nat) => (b + 
+b)%nat in True.
+  intro x.
+  lazymatch (eval cbv delta [x] in x) with
+  | fun a b c _ => @ ?C a b c => pose C as y
+  end.
+  revert y.
+  abstract exact I.
+Qed.
+```
+
+Comment author: @ejgallego
+
+Just a guess here on the safe_id part, `safe_id`s are usually lost as some exception handler in coq like to reraise a different exception, and info may not be preserved.
+
+
+Seems to work in 8.9

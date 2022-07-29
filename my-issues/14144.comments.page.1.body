@@ -1,0 +1,70 @@
+Didn't it use to be the case, until quite recently, that stack overflow were catchable exceptions? I think this was changed by @SkySkimmer and argued for.
+Oh, is this that you want your tactics to have the same behavior on all machines, assuming they succeed at all?
+It was to make it easier to test buggy stack overflows from commands which are supposed to fail (so if stack overflow were a normal failure it would be undistinguishable from correct behaviour)
+I can confirm that this behavior is already the case in 8.11. The problem with making `Stack_overflow` critical is that it can cause auto searches to crash. Maybe it would be an idea to put `Stack_overflow` somewhere in between critical and `noncritical`, so that it can be caught by a select number of tactics that are known to stack overflow often?
+Or perhaps, if @SkySkimmer´s main use case is to detect stack overflows that are bugs, maybe it would be an idea to put ´`Stack_overflow` being critical´ behind a flag that is enabled in CI and the test-suite.
+I would love to resolve this somehow. Can I get some opinions as to the right approach, so that I can work on a PR?
+I think perhaps this should be user-configurable.  If you want your proof to be more robust, or you want to catch things in the test-suite, you `Set StackOverflow Critical` or something.  Otherwise you can unset it for your use-cases.
+I find it a bit dangerous to allow to catch it by default. It makes the scripts not robust across various machines without a way to realize it. Indeed, non-robust tactics like `timeout` are opt-in, but here it would allow having non-monotonous, machine-dependent behaviours virtually everywhere.
+What if the default setting is that stackoverflow is critical, so you have to opt-in to make it non-critical?
+It makes little sense to catch stack overflows, in the current Coq architecture likely a hard reset of the state is needed so I prefer this default; would be properly handle async exceptions maybe we could try again.
+
+Users should never see stack overflows tho, in the sense that they either come from:
+- too small stack size
+- non-tail rec implementation in Coq which should be fixed
+> you have to opt-in to make it non-critical?
+
+That would indeed be suitable enough for me (as long as I can programmatically set and unset it). Perhaps it would make sense to have a tactical `allow_stack_overflow tac`?
+
+> in the current Coq architecture likely a hard reset of the state is needed
+
+I assume you say this because of global state that might become invalid? I agree in principle, but I think the actual chance that this will happen is fairly small. Tactics, like reduction tactics, that are likely to overflow don´t seem to be likely to modify the global state.
+
+> non-tail rec implementation in Coq which should be fixed
+
+I´m not familiar enough with the code of the reduction tactics. Do you see it as a realistic undertaking to rewrite that code? Modifying it to use some kind of CPS-style seems like it could be a rather major task.
+> I think the actual chance that this will happen is fairly small.
+
+How do you estimate the chance here?
+Not scientifically/mathematically of course. I just don´t see how reduction tactics would modify the global state. Do you have an example where they do? Additionally, the `timeout` tactic will have the same problem, and through my benchmarking I have not yet found a case where the global state is poisoned to the degree that an error is produced (though that is no guarantee that no poisoning happened).
+I believe that we may end up in an inconsistent state if ocamlopt stack overflows (or is interrupted by timeout) while compiling libraries to native code as a result of the `-native-compiler ondemand` flag being passed.  I recently hit a case that I think was this one by interrupting `native_compute` with `C-c C-c`, the result was a type error from OCaml, I think (dynamic linking?), that stuck around until I removed the stale files in the file system.
+
+I agree with you though about the other reduction tactics, which I believe do not modify the global state.
+The thing is that in the case of reduction tactics you can guarantee that, but the exception may well handled much above; until very recently [when reified pstate to be functional] there were a lot of cases, but even today, if you push the async-exception handing point a bit lower, I can't understand what effects is gonna have, very likely will introduce new bugs.
+
+So I much prefer to make the code safe and then relax the status of async exceptions wrt criticallity, than to add something that is likely broken and have a bunch of bug reports adding to the significant list of bugs already due to bad code API design, or due to priming the inclusion of a feature when not all cases are handled.
+
+I can certainly understand the wish to be conservative (although having bug reports might also help to pinpoint the most problematic areas of global state).
+
+But does that mean you are also against introducing the `allow_stack_overflow tac` idea? That seems quite conservative to me, because it is local and catches exceptions early, and can come with a big fat warning in the documentation.
+Can this tactic be implemented in Ltac2?  What about a general footgun "catch and discriminate on even critical errors" in Ltac2?
+I don´t think it can (in any tactic language). Because tactics are compiled into a (CPS-like) backtracking monad, tactics _build_ a monadic expression that is _executed_ at a later point. Hence, if you put a `try ... with` in a tactic (even on the OCaml level), it will only catch exceptions thrown when the monadic expression was built.
+
+The only way I see of implementing this is to modify `CErrors.noncritical` to classify `Stack_overflow` as critical/noncritical based on the current circumstances (correct me if I´m wrong). So either it would use global state to determine that (which comes with the obvious downside that it would interact badly with async exceptions), or it would take the flag as a parameter (which means modifying all call-sites).
+Note that I´m not unsympathetic to the async exceptions issue. I expect it will be quite difficult to properly thread all the needed state through the monad. An interesting simple example I recently encountered is `Dumpglob` and `CWarnings`. Changing its settings in a tactic and then having async exceptions can screw with its internal state.
+
+However, at the same time, I´m just looking for a practical solution to an annoying problem that is causing me quite some headaches...
+@JasonGross' comment gave me the idea that although we cannot directly implement `catch_stack_overflow`, we can add a new primitive to the logic monad that does allow this. See #14291 for a draft.
+This is playing with the fire, some other parts of the API expect that a critical error is never caught by the tactic layer. It may work in practice, but it's a hack.
+Sure I agree it is not beautiful but I cannot think of a way this can actually break an API that expects critical errors not to be caught. It is already common in code outside of the tactic layer to have `try .. with`'s, and it is up to them to make sure they only catch `noncritical` errors. This function is completely analogous: It is your responsibility to catch the "right" errors.
+
+Sure, you can call catching `Stack_overflow` "playing with fire" in general because it is an asynchronous exception (just like `Timeout` is), but to me, this is by far the "least fiery" solution.
+I don't oppose the addition of this combinator but it needs to be explicitly documented as potentially dangerous. At the same time, I wonder whether we shouldn't instead handle gracefully stack overflows where they can arise in a relatively safe way and wrap that in a non-asynchronous exception. Reduction functions are one of those (aren't they?).
+> I don't oppose the addition of this combinator but it needs to be explicitly documented as potentially dangerous.
+
+Sure, I'm happy to do that.
+
+> At the same time, I wonder whether we shouldn't instead handle gracefully stack overflows where they can arise in a relatively safe way and wrap that in a non-asynchronous exception.
+
+I thought you did not want to do this because it would lead to nondeterminism over different machines with different stack sizes (which is actually a fair point).
+
+>  it would lead to nondeterminism
+
+In an opt-in way, that is.
+You propose to have two reduction tactics, `cbv` and `cbv_catch_overflow`? I don't oppose that, but for my use, it would not be enough since I need to be able to run arbitrary tactics without hard failure.
+This could be guarded by a global flag, maybe?
+Maybe, but the `catch_stack_overflow` idea seems better to me for two reasons: (1) It localizes the nondeterminism behavior to a single tactic expression instead of an entire (region of a) file. (2) It is a completely functional solution without additional state.
+
+The upside of a global flag is that it allows tactics like `auto` to automatically use stack-overflow reduction tactics if the user enables that.
+
+Perhaps both approaches are useful at the same time.

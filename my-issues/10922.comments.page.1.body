@@ -1,0 +1,38 @@
+>which should maybe be added to the CI for the windows installer
+
+Wouldn't it need to be run on another machine to test anything useful?
+> Wouldn't it need to be run on another machine to test anything useful?
+
+Ah, that's true.  (Unless you clean the build intermediates or somthing.)  Can there be a CI pass that takes the artifact from the Windows installer build and installs that fresh?
+The reason for not installing OCaml is that last time I tried this it was pretty much impossible to use OCaml tools without a posix shell. I am working on a developer Coq installation for Windows and I would recommend to use that one if OCaml is needed. Unfortunately this is not ready yet, but meanwhile one can use the scripts which build the installer and setup a complete environment.
+
+In case the posix shell dependency changed and it looks feasible to use OCaml without a shell (dune should improve the situation substantially) or if there are significant use cases (e.g. teaching some course which needs this) I will revisit this decision.
+Do the OCaml tools care which POSIX shell you have?  As long as the tools are compatible with cygwin, MinGW, the shell (MinGW-based, I think) installed by GitHub For Windows, etc, I think it's much better than the status quo to include a checkbox that permits installing the OCaml tools, with a warning that the user needs to install their own POSIX shell.  (And once you complete your POSIX shell replacement, that can be used instead.)
+
+The use-case I have is "I'm traveling without good internet and want to work on Coq code while traveling and the Linux Subsystem for Windows doesn't seem to let me use opam2 because it has trouble with bubblewrap."
+@JasonGross : I see. Any objections against using the upcomming developer environemnt setup scripts and meanwhile the installer creation scripts? The main downside of this is that everything is compiled from sources, so it takes 2 hours or so, while using an installer is fairly instantaneous. But both is just one call to a batch file with a few path and plugin options.
+
+I still think that the need for a bash will be substantially reduced with dune, so I am not so sure if it is worthwhile to invest time onto supplying a shell and fully working OCaml.
+
+When do you need this?
+> the Linux Subsystem for Windows doesn't seem to let me use opam2 because it has trouble with bubblewrap
+
+You need to turn sandboxing off. Cf. https://github.com/coq/coq/wiki/Installation%20of%20Coq%20on%20Windows#installation-of-coq-in-wsl
+@MSoegtropIMC Yeah, I'd rather it not take two hours to get everything set up.
+> When do you need this?
+
+I wanted this when I was traveling last weekend, but I don't have any planned travel in the near future when I expect to need this.
+
+@Zimmi48 
+> You need to turn sandboxing off. Cf.
+
+Ah, great, thanks!
++1:  I just ran into the "coq_makefile in Windows binary installation uses nonexistent path for ocamlfind" problem myself.   Indeed, I can handle the fact that the Coq Windows binary installation does not install ocamlfind, I installed it myself, but at a more conventional path: /usr/local/bin/ocamlfind
+
++1:  I also just ran into the problem of coqpp failing, but this failure seems to be a bit different:
+```
+the file 'g_template_coq.mlg' has not the right magic number: expected Caml1999X027, got  end) }
+END
+```
+
+

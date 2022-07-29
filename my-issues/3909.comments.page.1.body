@@ -1,0 +1,65 @@
+Comment author: @JasonGross
+
+(* File reduced by coq-bug-finder from original input, then from 2352 lines to 162 lines, then from 138 lines to 50 lines *)
+(* coqc version trunk (January 2015) compiled on Jan 10 2015 10:54:47 with OCaml 4.01.0
+   coqtop version cagnode15:/afs/csail.mit.edu/u/j/jgross/coq-trunk,trunk (b858f939f33dc4bc4c8e470ed62310ef15c59a99) *)
+
+Notation compose g f := (fun x => g (f x)).
+Notation "g 'o' f" := (compose g f) (at level 40, left associativity) : function_scope.
+Open Scope function_scope.
+Inductive paths {A : Type} (a : A) : A -> Type := idpath : paths a a.
+Arguments idpath {A a} , [A] a.
+Notation "x = y :> A" := (@ paths A x y) : type_scope.
+Notation "x = y" := (x = y :>_) : type_scope.
+Definition ap {A B:Type} (f:A -> B) {x y:A} (p:x = y) : f x = f y := match p with idpath => idpath end.
+Class IsEquiv {A B : Type} (f : A -> B) := { equiv_inv : B -> A }.
+Notation "f ^-1" := (@ equiv_inv _ _ f _) (at level 3, format "f '^-1'") : equiv_scope.
+Local Open Scope equiv_scope.
+Generalizable Variables A B C f g.
+Global Instance isequiv_compose `{IsEquiv A B f} `{IsEquiv B C g}
+: IsEquiv (compose g f) | 1000
+  := Build_IsEquiv A C (compose g f) (compose f^-1 g^-1).
+Definition isequiv_homotopic {A B} (f : A -> B) {g : A -> B} `{IsEquiv A B f} (h : forall x, f x = g x) : IsEquiv g
+  := Build_IsEquiv _ _ g (f ^-1).
+Global Instance isequiv_inverse {A B} (f : A -> B) `{IsEquiv A B f} : IsEquiv f^-1 | 10000
+  := Build_IsEquiv B A f^-1 f.
+Axiom eisretr : forall {A B} (f : A -> B) `{IsEquiv A B f} x, f (f^-1 x) = x.
+Definition cancelR_isequiv {A B C} (f : A -> B) {g : B -> C}
+           `{IsEquiv A B f} `{IsEquiv A C (g o f)}
+: IsEquiv g.
+Proof.
+  assert (IsEquiv g) by admit.
+  refine (isequiv_homotopic (compose (compose g f) f^-1)
+                            (fun b => ap g (eisretr f b))).
+  all:try exact _; exact _. (* solves all goals successfully *)
+
+  Undo.
+  Fail all:((try exact _; exact _) || fail "foo"). (* wtf? The command has indeed failed with message:
+=> Error: Tactic failure: foo. *)
+  2:exact _. (* success when we solve the second one first *)
+  exact _. (* successfully solves the remaining goal *)
+  Undo 2.
+  exact _. (* Toplevel input, characters 15-23:
+Error:
+Unable to satisfy the following constraints:
+In environment:
+A : Type
+B : Type
+C : Type
+f : A -> B
+g : B -> C
+H : IsEquiv f
+H0 : IsEquiv (g o f)
+X : IsEquiv g
+
+?i : "IsEquiv (fun x : B => g (f (f^-1 x)))"
+ *)
+
+
+Comment author: @aspiwack
+
+As in 3910: the second goal is not unrelated to the first one, since its solution is mentioned in the first one (hidden by implicit arguments).
+
+*** This bug has been marked as a duplicate of bug [BZ#3910](https://github.com/coq/coq/issues?q=is%3Aissue%20%22Original%20bug%20ID%3A%20BZ%233910%22) ***
+
+

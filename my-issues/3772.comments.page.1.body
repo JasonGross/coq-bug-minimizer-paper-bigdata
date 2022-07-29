@@ -1,0 +1,143 @@
+Comment author: @JasonGross
+
+Here is some code that I expect to work:
+(* File reduced by coq-bug-finder from original input, then from 9012 lines to 366 lines, then from 378 lines to 163 lines, then from\
+ 143 lines to 96 lines, then from 70 lines to 33 lines *)
+(* coqc version trunk (October 2014) compiled on Oct 25 2014 19:2:39 with OCaml 4.01.0
+   coqtop version cagnode15:/afs/csail.mit.edu/u/j/jgross/coq-trunk,trunk (0397aa549645df23cc50c9018b543e6c0b346d62) *)
+Definition compose {A B C : Type} (g : B -> C) (f : A -> B) := fun x => g (f x).
+Notation "g 'o' f" := (compose g f) (at level 40, left associativity).
+Class Foo := Build_Foo : Set.
+Module MoreProgress.
+  Definition path_universe {A B : Type} (f : A -> B) {feq : Foo} : (A = B).
+    admit.
+  Defined.
+  Goal forall (H : Foo) (H0 H1 : Type) (H2 : H1 -> H0)
+              (H3 : Type) (H4 : H1 -> H3) (H5 : H1 = H3 -> H3 -> H1)
+              (H7 : (H3 -> H0) -> H3 -> Type) (H9 : H3) (H12 : Type),
+         (forall (k : H1 = H3) (x : H3), H7 (H2 o H5 k) x = H12) ->
+         H7 (fun y : H3 => H2 (H5 (path_universe H4) y)) H9.
+    intros.
+    let H0 := match goal with H : _ |- _ => constr:H end in
+    rename H0 into H'.
+    Set Printing Implicit.
+    evar (T : Type).
+    evar (e : T).
+    subst T.
+    let y := constr:(H' (@ path_universe _ _ H4 _)) in
+    rewrite y || fail "too early".
+    Undo.
+    unfold compose in *;
+      let e' := (eval unfold e in e) in
+      let y := constr:(H' (@ path_universe _ _ H4 e')) in
+      rewrite y || fail "too early".
+    Undo.
+    let e' := (eval unfold e in e) in
+    let y := constr:(H' (@ path_universe _ _ H4 e')) in
+    rewrite y. (* N.B. The evar is dropped during unfolding, because
+                       [path_universe]'s body doesn't mention it, so
+                       we aren't left with uninstantiated evars in
+                       rewriting *)
+    Undo.
+    exfalso; clear; admit.
+    Grab Existential Variables.
+    admit. admit.
+  Defined.
+End MoreProgress.
+Module LessProgress.
+  Definition path_universe {A B : Type} (f : A -> B) {feq : Foo} : (A = B).
+    refine (_ feq).
+    admit.
+  Defined.
+  Goal forall (H : Foo) (H0 H1 : Type) (H2 : H1 -> H0)
+              (H3 : Type) (H4 : H1 -> H3) (H5 : H1 = H3 -> H3 -> H1)
+              (H7 : (H3 -> H0) -> H3 -> Type) (H9 : H3) (H12 : Type),
+         (forall (k : H1 = H3) (x : H3), H7 (H2 o H5 k) x = H12) ->
+         H7 (fun y : H3 => H2 (H5 (path_universe H4) y)) H9.
+    intros.
+    let H0 := match goal with H : _ |- _ => constr:H end in
+    rename H0 into H'.
+    Set Printing Implicit.
+    evar (T : Type).
+    evar (e : T).
+    subst T.
+    let y := constr:(H' (@ path_universe _ _ H4 _)) in
+    rewrite y || fail "too early".
+    Undo.
+    unfold compose in *;
+      let e' := (eval unfold e in e) in
+      let y := constr:(H' (@ path_universe _ _ H4 e')) in
+      rewrite y || fail "too early".
+    Undo.
+    let e' := (eval unfold e in e) in
+    let y := constr:(H' (@ path_universe _ _ H4 e')) in
+    rewrite y. (* Toplevel input, characters 93-102:
+Error:
+Found no subterm matching "H7
+                             (H2
+                              o H5 (@ path_universe H1 H3 H4 ?Goal1@ {T:=Foo}))
+                             ?M190" in the current goal. *)
+    Undo.
+    exfalso; clear; admit.
+    Grab Existential Variables.
+    admit. admit.
+  Defined.
+End LessProgress.
+
+
+
+It seems that [rewrite] has the behavior that you get either unfolding or unification of evars, but not both.  That is, it seems to only notice that [H2 o H5 (@ path_universe H1 H3 H4 ?Goal1)] and [fun y : H3 => H2 (H5 (@ path_universe H1 H3 H4 H))] are unifiable when unfolding [path_universe] results in the [?Goal1]/[H] argument being dropped.  This seems like a bug.
+
+
+Comment author: @herbelin
+
+Your example combines different issues:
+- what constants to unfold and when (here "compose")
+- using unification or matching
+
+Both are open questions and, for instance, non-setoid rewrite and setoid rewrite behaves differently wrt both questions (see recent discussion on coqdev).
+
+So, this is not properly a bug, but typical examples are welcome of when you want conversion and when you don't, and when you want existing evars to be instantiated and when you don't.
+
+I set it as invalid as a "bug", though it raises completely relevant questions.
+
+
+Comment author: @JasonGross
+
+It seems wrong to permit "conversion that does not instantiate evars" and "evar instantiation up to matching" but not "conversion that also instantiates evars".  I expect "whether to use conversion or matching" and "whether or not to instantiate evars" to be independent axes, and it is confusing to have [rewrite] fail only when you combine these two seemingly independent axes.
+
+
+Comment author: @herbelin
+
+Hi Jason,
+
+As discussed on coqdev recently [thread subterm selection], rewrite uses a restricted form of "closed step-by-step conversion", meaning that full conversion is used only on closed subterms, progressively taking into account the instances of the holes that are already known following a left-to-right processing of subterms. [However, contrarily to what I believed and to what I wrote in this message and in my previous comment, rewrite do solve preexisting evars by unification as soon as the term to rewrite has holes. It is only when the term to rewrite has no holes that it does not solve evars as in "Goal forall f, exists x, f 0 = 0 -> f x = 0. eexists. intro H. Fail rewrite H." (I've been misled by this). I tried a patch to make this more uniform).]
+
+In particular, "closed step-by-step conversion" directly implies that "to use conversion or matching" is not regular on its own.
+
+The question about whether we wish to instantiate evars on the fly or not is accordingly independent, but if we continue to accept it, it will not be independent of whether we use conversion or not.
+
+Explaining your examples, in the first and fourth case of "rewrite y", "H2 (H5 (path_universes H))" and "compose H2 H5 (path_universes H)" are hole-free and convertible, so it succeeds.
+
+In the second and fifth case, unifying "H2 (H5 (path_universes ?Goal0))" with "H2 (H5 (path_universes H))" reduces to unifying ?Goal0 and H without needing any conversion, so it succeeds.
+
+In the third case, "H2 (H5 (path_universes ?Goal))" and "compose H2 H5 (path_universes H)" are hole-free and convertible (because of the K-redex in path_universes), so it succeeds.
+
+In the sixth case, "H2 (H5 (path_universes ?Goal))" and "compose H2 H5 (path_universes H)" are hole-free but not convertible, so it fails.
+
+In practice, small changes to the current behavior might easily result into incompatilities, efficiency problems, or even other unexpected results, and before stabilizing an hopefully "optimal" behavior of rewrite, I think that we need to collect examples of the different behaviors we'd like to obtain.
+
+With respect to conversion, what is the ideal amount we would like in "rewrite"? With full convertibility, the risk is to be exposed sometimes to combinatoric explosion or unexpected matches. But a bit of convertibility is convenient. 
+
+I believe that "keyed unification" (terminology taken from Ssreflect "rewrite") is an important component of what we want. I believe that full conversion on implicit arguments (the strict ones, which are canonically defined, not the user-level ones) is part of what we want to. But I'm skeptical about whether we really want full convertibility (i.e. full delta-expansion) in general.
+
+For example, I wonder whether we should not classify constants into "abbreviations" (like compose), "functions" (like plus), "projections" (like fst, snd) and to allow delta-conversion say only on abbreviations and projections?
+
+About evar instantiation, I'm perplex about whether we want it in its full generality too. Your example is an example where we might wish it, but for instance, at the current time, I don't know what we might prefer in a situation like:
+
+Goal forall f, exists x y, (forall z, f x z = 0) -> f 0 y + f x 0 = x + y.
+intro f. eexists. eexists. intro H. rewrite H.
+
+Do we want both subterms to match individually (with ?x instantiated by 0 in the first case), or only the second, or both at the same time (with both ?x and ?y instantiated by 0)?
+
+

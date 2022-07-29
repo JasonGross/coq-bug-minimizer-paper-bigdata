@@ -1,0 +1,5 @@
+Comment author: @JasonGross
+
+In some cases, like [setoid_rewrite], it seems that error messages would be more helpful if some goals were instantiated, so I could see exactly where things actually failed.
+
+

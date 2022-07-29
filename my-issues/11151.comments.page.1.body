@@ -1,0 +1,295 @@
+Oops, I was wrong when I said that HOAS made the quadratic behavior disappear.  I think it was just masked by the fact that in HOAS, `cbv` and `lazy` are much faster than the vm (why is this?!).  Here is the code I used to profile HOAS:
+```coq
+Require Import Coq.Lists.List.
+Inductive type := NAT | LIST (t : type) | ARROW (A B : type).
+Fixpoint interpt (t : type) : Set
+  := match t with
+     | NAT => nat
+     | LIST t => list (interpt t)
+     | ARROW A B => interpt A -> interpt B
+     end.
+Notation var := interpt.
+Inductive expr {ident : type -> Type} : type -> Type :=
+| LetIn {A B} : expr A -> (var A -> expr B) -> expr B
+| App {A B} : expr (ARROW A B) -> expr A -> expr B
+| Ident {A} : ident A -> expr A
+| Var {A} : var A -> expr A.
+Inductive ident : type -> Type :=
+| ident_literal : nat -> ident NAT
+| ident_cons : ident (ARROW NAT (ARROW (LIST NAT) (LIST NAT)))
+| ident_nil : ident (LIST NAT)
+| ident_f : ident (ARROW NAT (ARROW NAT NAT)).
+Axiom Let_In : forall {A B : Set}, A -> (A -> B) -> B.
+Axiom f : nat -> nat -> nat.
+Fixpoint interp (ident_interp : forall t, ident t -> interpt t) {T} (v : expr T) : interpt T
+  := match v with
+     | LetIn v f => Let_In (interp ident_interp v) (fun v => interp ident_interp (f v))
+     | App f x => interp ident_interp f (interp ident_interp x)
+     | Var v => v
+     | Ident idc => ident_interp _ idc
+     end.
+Definition ident_interp {t} (idc : ident t) : interpt t
+  := match idc with
+     | ident_literal x => x
+     | ident_cons => fun x xs => cons x xs
+     | ident_nil => nil
+     | ident_f => fun x y => f x y
+     end.
+
+Definition map_double_cps {T} (ls : list (expr (ident:=ident) NAT)) (k : list (expr (ident:=ident) NAT) -> expr (ident:=ident) T) :=
+  list_rect
+    (fun _ => (list (expr NAT) -> expr T) -> _)
+    (fun k => k nil)
+    (fun x xs rec k
+     => LetIn (App (App (Ident ident_f) x) x)
+              (fun y =>
+                 rec (fun ys => k (cons (Var y) ys))))
+    ls
+    k.
+
+Definition make_cps {T} (n : nat) (m : nat) (v : expr (ident:=ident) NAT) (k : list (expr NAT) -> expr T)
+  := nat_rect
+       _
+       (fun k => k (List.repeat v n))
+       (fun _ rec k => rec (fun ls => map_double_cps ls k))
+       m
+       k.
+Fixpoint reify_list (ls : list (expr NAT)) : expr (LIST NAT)
+  := match ls with
+     | nil => Ident ident_nil
+     | cons x xs => App (App (Ident ident_cons) x) (reify_list xs)
+     end.
+
+Ltac do_up_to tac n :=
+  lazymatch n with
+  | O => idtac n; tac 0 0
+  | S (S (S (S (S ?n')))) => do_up_to tac n'; idtac n; tac n n
+  | S ?n' => do_up_to tac n'; idtac n; tac n n
+  end.
+Ltac mk n m :=
+  let preterm := (eval vm_compute in (fun x => make_cps (T:=LIST NAT) n m (Ident (ident_literal x)) (@reify_list))) in
+  let term := constr:(fun x => interp (@ident_interp) (preterm x)) in
+  term.
+Ltac do_time_cbv n m:=
+  let term := mk n m in
+  try (once (time "cbv" (idtac; let res := (eval cbv in term) in idtac)); fail).
+Ltac do_time_lazy n m:=
+  let term := mk n m in
+  try (once (time "lazy" (idtac; let res := (eval lazy in term) in idtac)); fail).
+Ltac do_time_vm_compute n m:=
+  let term := mk n m in
+  try (once (time "vm_compute" (idtac; let res := (eval vm_compute in term) in idtac)); fail).
+Ltac do_time_native_compute n m:=
+  let term := mk n m in
+  try (once (time "native_compute" (idtac; let res := (eval native_compute in term) in idtac)); fail).
+Goal True.
+  do_up_to do_time_vm_compute 150.
+  do_up_to do_time_cbv 150.
+  do_up_to do_time_lazy 150.
+Abort.
+```
+(Note that here we go up to 150 rather than 120, for better data, because this code is much faster.)
+This code gives the table
+
+
+n | binders | vm | cbv | lazy
+-- | -- | -- | -- | --
+0 | 0 | 0.003 | 0 | 0
+5 | 25 | 0 | 0 | 0.003
+10 | 100 | 0 | 0 | 0
+15 | 225 | 0.004 | 0.004 | 0.003
+20 | 400 | 0.032 | 0.003 | 0.012
+25 | 625 | 0.016 | 0.008 | 0.004
+30 | 900 | 0.031 | 0.007 | 0.007
+35 | 1225 | 0.035 | 0.007 | 0.015
+40 | 1600 | 0.068 | 0.012 | 0.015
+45 | 2025 | 0.06 | 0.019 | 0.019
+50 | 2500 | 0.084 | 0.023 | 0.024
+55 | 3025 | 0.111 | 0.032 | 0.027
+60 | 3600 | 0.172 | 0.075 | 0.076
+65 | 4225 | 0.219 | 0.044 | 0.072
+70 | 4900 | 0.168 | 0.056 | 0.064
+75 | 5625 | 0.308 | 0.076 | 0.056
+80 | 6400 | 0.284 | 0.115 | 0.139
+85 | 7225 | 0.328 | 0.12 | 0.268
+90 | 8100 | 0.439 | 0.104 | 0.183
+95 | 9025 | 0.592 | 0.132 | 0.14
+100 | 10000 | 0.608 | 0.163 | 0.184
+105 | 11025 | 0.799 | 0.183 | 0.211
+110 | 12100 | 1.187 | 0.163 | 0.219
+115 | 13225 | 1.039 | 0.192 | 0.328
+120 | 14400 | 1.352 | 0.215 | 0.259
+125 | 15625 | 1.472 | 0.268 | 0.311
+130 | 16900 | 1.619 | 0.631 | 0.299
+135 | 18225 | 1.808 | 0.256 | 0.484
+140 | 19600 | 2.032 | 0.356 | 0.323
+145 | 21025 | 2.759 | 0.332 | 0.363
+150 | 22500 | 2.451 | 0.292 | 0.612
+
+which when plotted is
+
+![vm, cbv and lazy](https://user-images.githubusercontent.com/396076/69303446-0bb73e80-0beb-11ea-8daa-30002ea9b9fb.png)
+
+The profiles seem widely different for the PHOAS example.
+- The VM is slow because of compilation
+- cbv/lazy are slow because of suspicious substitutions
+My understanding so far is that the cbv / lazy reduction machine are completely broken performance-wise on open terms. The explicit substitutions for the CBV machine for instance seem to be enforcing a call-by-name behaviour for lifts, as every time we access a variable we have to crawl the substitution and recompute the lifted result.
+
+Compare this to the VM which uses an accumulator, where closures are represented by mere arrays. I think that the NbE approach is inherently more efficient because object-language values are indeed represented by meta-language values.
+
+If anything, this is probably a theoretical issue that requires more pondering.
+
+@JasonGross I have a quick-n-dirty patch available at https://github.com/ppedrot/coq/tree/lazy-subst-kernel. It uses a clever representation for substitutions that makes variable access in O(log n) and both lift and push in O(1). It solves the quadratic behaviour on this particular example. I am running a bench to see if this has a reasonable overhead on the small examples that are quite common in conversion problems. Can you check what it does on your real-life instances?
+@ppedrot Thanks!  Can you edit your bench job to add `coq-rewriter-perf` and `coq-rewriter-perf-extra` (note that both need to come after `coq-rewriter`)?  I just added the former to the default bench config, and I would add the latter, except that it takes about 12 hours to run.  But it stresses this part of the machinery, so I think it's worth running on this job.  I'll try to gather together a couple of representative examples from fiat-crypto, but I wouldn't be surprised if we already see some improvement in fiat-crypto and fiat-crypto legacy.
+Please do.
+I can't seem to edit the job; clicking the ![little notepad](https://user-images.githubusercontent.com/396076/69738289-ddae8e80-1103-11ea-9409-618700a6eb57.png) just sends me back to https://ci.inria.fr/coq/view/opam/job/benchmark-part-of-the-branch/#.  Can you edit it, or does one of us have to cancel and restart?
+
+You have to cancel yes.
+I've canceled and made a new job.  Btw, trying to copy build parameters from an existing job is *extremely* frustrating.
+Hmmm, I can't seem to find the bench from this.  I've started a new one which will eventually be available at https://ci.inria.fr/coq/view/opam/job/benchmark-part-of-the-branch/846/console .
+
+@ppedrot Any updated on this?
+The bench showed a small slowdown on mathcomp developments and coq-geocoq (I think?), and was neutral everywhere else. There are still potential optimizations though, so I am not completely hopeless to get an algorithmically faster substitution representation that doesn't affect performance on small examples.
+Hm, the bench seems to fail at `coq-rewriter`, which is required for the relevant test.  Maybe it needs to be rebased?  Anyway, the bench so far is:
+```
+┌────────────────────────┬─────────────────────────┬─────────────────────────────────────────────┬─────────────────────────────────────────────┬───────────────────────────────┬───────────────────┐
+│                        │      user time [s]      │                 CPU cycles                  │              CPU instructions               │     max resident mem [KB]     │    mem faults     │
+│                        │                         │                                             │                                             │                               │                   │
+│           package_name │     NEW     OLD PDIFF   │               NEW               OLD PDIFF   │               NEW               OLD PDIFF   │        NEW        OLD PDIFF   │  NEW  OLD PDIFF   │
+├────────────────────────┼─────────────────────────┼─────────────────────────────────────────────┼─────────────────────────────────────────────┼───────────────────────────────┼───────────────────┤
+│            coq-bignums │   64.09   64.42 -0.51 % │      177366016438      178028487378 -0.37 % │      248981484199      250483707273 -0.60 % │     500204     494960 +1.06 % │    0    0  +nan % │
+├────────────────────────┼─────────────────────────┼─────────────────────────────────────────────┼─────────────────────────────────────────────┼───────────────────────────────┼───────────────────┤
+│              coq-flocq │  242.93  243.02 -0.04 % │      675328243286      674769251918 +0.08 % │      908668384236      907543631339 +0.12 % │    1017556     926188 +9.86 % │    0    0  +nan % │
+├────────────────────────┼─────────────────────────┼─────────────────────────────────────────────┼─────────────────────────────────────────────┼───────────────────────────────┼───────────────────┤
+│  coq-mathcomp-fingroup │   48.94   48.89 +0.10 % │      135840041344      135436750004 +0.30 % │      188657079835      187444761971 +0.65 % │     560124     560508 -0.07 % │    0    0  +nan % │
+├────────────────────────┼─────────────────────────┼─────────────────────────────────────────────┼─────────────────────────────────────────────┼───────────────────────────────┼───────────────────┤
+│ coq-mathcomp-ssreflect │   48.95   48.89 +0.12 % │      134497466953      134154726822 +0.26 % │      172687235848      171922658554 +0.44 % │     575452     574708 +0.13 % │    0    0  +nan % │
+├────────────────────────┼─────────────────────────┼─────────────────────────────────────────────┼─────────────────────────────────────────────┼───────────────────────────────┼───────────────────┤
+│ coq-fiat-crypto-legacy │ 6467.41 6453.26 +0.22 % │    18011431164787    17970061317538 +0.23 % │    30235970612511    30211514544750 +0.08 % │    2468832    2387320 +3.41 % │    0    0  +nan % │
+├────────────────────────┼─────────────────────────┼─────────────────────────────────────────────┼─────────────────────────────────────────────┼───────────────────────────────┼───────────────────┤
+│               coq-hott │  337.40  336.06 +0.40 % │      918777587279      913839931512 +0.54 % │     1480553513496     1474938572226 +0.38 % │     637420     594064 +7.30 % │    0    0  +nan % │
+├────────────────────────┼─────────────────────────┼─────────────────────────────────────────────┼─────────────────────────────────────────────┼───────────────────────────────┼───────────────────┤
+│       coq-math-classes │  555.61  552.80 +0.51 % │     1548618361182     1541362091569 +0.47 % │     2148858325031     2148482538177 +0.02 % │     637892     637192 +0.11 % │    0    0  +nan % │
+├────────────────────────┼─────────────────────────┼─────────────────────────────────────────────┼─────────────────────────────────────────────┼───────────────────────────────┼───────────────────┤
+│       coq-fiat-parsers │  699.48  695.48 +0.58 % │     1956295483715     1945504609662 +0.55 % │     2994169820884     2984089218161 +0.34 % │    3213684    3214084 -0.01 % │    0    0  +nan % │
+├────────────────────────┼─────────────────────────┼─────────────────────────────────────────────┼─────────────────────────────────────────────┼───────────────────────────────┼───────────────────┤
+│  coq-mathcomp-solvable │  180.27  179.22 +0.59 % │      502072472238      499039149355 +0.61 % │      713789408410      706553011894 +1.02 % │     788396     788508 -0.01 % │    0    0  +nan % │
+├────────────────────────┼─────────────────────────┼─────────────────────────────────────────────┼─────────────────────────────────────────────┼───────────────────────────────┼───────────────────┤
+│ coq-mathcomp-character │  171.58  170.57 +0.59 % │      477388975218      473911900399 +0.73 % │      666592459441      657680314257 +1.36 % │     852764     803536 +6.13 % │    0    0  +nan % │
+├────────────────────────┼─────────────────────────┼─────────────────────────────────────────────┼─────────────────────────────────────────────┼───────────────────────────────┼───────────────────┤
+│           coq-bedrock2 │  423.29  420.19 +0.74 % │     1176429169274     1168168851667 +0.71 % │     2008412181595     1997051922839 +0.57 % │    1118364    1118260 +0.01 % │    0    0  +nan % │
+├────────────────────────┼─────────────────────────┼─────────────────────────────────────────────┼─────────────────────────────────────────────┼───────────────────────────────┼───────────────────┤
+│           coq-coqprime │   83.77   83.13 +0.77 % │      230682323146      228842981577 +0.80 % │      327652173061      325816567092 +0.56 % │     816012     814232 +0.22 % │    0    0  +nan % │
+├────────────────────────┼─────────────────────────┼─────────────────────────────────────────────┼─────────────────────────────────────────────┼───────────────────────────────┼───────────────────┤
+│              coq-color │ 2863.90 2840.71 +0.82 % │     7985679925890     7920330663909 +0.83 % │     9625424061908     9617705366553 +0.08 % │    1554020    1554084 -0.00 % │    0    0  +nan % │
+├────────────────────────┼─────────────────────────┼─────────────────────────────────────────────┼─────────────────────────────────────────────┼───────────────────────────────┼───────────────────┤
+│               coq-corn │ 1494.94 1482.82 +0.82 % │     4168450501276     4130711548797 +0.91 % │     6387458208782     6360219993117 +0.43 % │     855528     855220 +0.04 % │    0    0  +nan % │
+├────────────────────────┼─────────────────────────┼─────────────────────────────────────────────┼─────────────────────────────────────────────┼───────────────────────────────┼───────────────────┤
+│          coq-fiat-core │  118.86  117.43 +1.22 % │      335305134842      332811293926 +0.75 % │      440209794227      438256770221 +0.45 % │     508688     508384 +0.06 % │    0    0  +nan % │
+├────────────────────────┼─────────────────────────┼─────────────────────────────────────────────┼─────────────────────────────────────────────┼───────────────────────────────┼───────────────────┤
+│            coq-coqutil │   60.03   59.28 +1.27 % │      166087646179      164855690308 +0.75 % │      210650094584      209861343124 +0.38 % │     547136     544420 +0.50 % │    0    0  +nan % │
+├────────────────────────┼─────────────────────────┼─────────────────────────────────────────────┼─────────────────────────────────────────────┼───────────────────────────────┼───────────────────┤
+│   coq-mathcomp-algebra │  161.78  158.88 +1.83 % │      449246855912      442708933678 +1.48 % │      587424257465      576728734787 +1.85 % │     623568     623104 +0.07 % │    0    0  +nan % │
+├────────────────────────┼─────────────────────────┼─────────────────────────────────────────────┼─────────────────────────────────────────────┼───────────────────────────────┼───────────────────┤
+│             coq-geocoq │ 1556.34 1527.76 +1.87 % │     4337066041923     4262038866229 +1.76 % │     6617855680575     6543308585506 +1.14 % │    1363008    1362444 +0.04 % │    0    0  +nan % │
+├────────────────────────┼─────────────────────────┼─────────────────────────────────────────────┼─────────────────────────────────────────────┼───────────────────────────────┼───────────────────┤
+│ coq-mathcomp-odd-order │ 1393.59 1366.82 +1.96 % │     3886320315662     3811895699146 +1.95 % │     6868615723024     6831788860461 +0.54 % │    1307740    1304520 +0.25 % │    0    0  +nan % │
+├────────────────────────┼─────────────────────────┼─────────────────────────────────────────────┼─────────────────────────────────────────────┼───────────────────────────────┼───────────────────┤
+│  coq-performance-tests │   11.80   11.57 +1.99 % │       32352816829       31862614375 +1.54 % │       55804241590       55214662590 +1.07 % │     456912     424080 +7.74 % │    0    0  +nan % │
+├────────────────────────┼─────────────────────────┼─────────────────────────────────────────────┼─────────────────────────────────────────────┼───────────────────────────────┼───────────────────┤
+│     coq-mathcomp-field │  276.64  270.92 +2.11 % │      770850408658      754708922278 +2.14 % │     1179695544788     1151409107085 +2.46 % │     794976     793216 +0.22 % │    0    0  +nan % │
+└────────────────────────┴─────────────────────────┴─────────────────────────────────────────────┴─────────────────────────────────────────────┴───────────────────────────────┴───────────────────┘
+```
+Here's an updated table from https://github.com/coq/coq/issues/11151#issuecomment-556911485 including `native_compute`, based on #11963.  Note that to get reasonable times for `native_compute`, I had to remove the early computation of `make_cps` in `mk` (which I did just for `native_compute`, that is, I used
+```coq
+Ltac mk_native n m :=
+  let preterm := constr:(fun x => make_cps (T:=LIST NAT) n m (Ident (ident_literal x)) (@reify_list)) in
+  let term := constr:(fun x => interp (@ident_interp) (preterm x)) in
+  term.
+Ltac do_time_native_compute n m:=
+  let term := mk_native n m in
+  try (once (time "native_compute" (idtac; let res := (eval native_compute in term) in idtac)); fail).
+```
+
+n | binders | vm_compute (real) | cbv (real) | lazy (real) | native_compute (Conversion to native code) | native_compute (Compilation) | native_compute (Evaluation) | native_compute (Reification) | native_compute (real)
+-- | -- | -- | -- | -- | -- | -- | -- | -- | --
+0 | 0 | 0. | 0. | 0. | 0.00030 | 0.14181 | 0.00060 | 0.00007 | 0.143
+5 | 25 | 0. | 0. | 0. | 0.00051 | 0.09968 | 0.00036 | 0.00040 | 0.101
+10 | 100 | 0.002 | 0. | 0. | 0.00052 | 0.10515 | 0.00039 | 0.00133 | 0.107
+15 | 225 | 0.004 | 0.001 | 0.001 | 0.00054 | 0.11495 | 0.00039 | 0.00287 | 0.119
+20 | 400 | 0.028 | 0.002 | 0.003 | 0.00048 | 0.10764 | 0.00041 | 0.00484 | 0.113
+25 | 625 | 0.013 | 0.004 | 0.005 | 0.00058 | 0.11341 | 0.00026 | 0.00309 | 0.117
+30 | 900 | 0.031 | 0.007 | 0.036 | 0.00024 | 0.11222 | 0.00021 | 0.00445 | 0.117
+35 | 1225 | 0.03 | 0.01 | 0.01 | 0.00025 | 0.11314 | 0.00020 | 0.00606 | 0.119
+40 | 1600 | 0.065 | 0.011 | 0.013 | 0.00026 | 0.11063 | 0.00036 | 0.01548 | 0.126
+45 | 2025 | 0.06 | 0.026 | 0.026 | 0.00026 | 0.11242 | 0.00030 | 0.01776 | 0.13
+50 | 2500 | 0.082 | 0.046 | 0.044 | 0.00031 | 0.11332 | 0.00028 | 0.01348 | 0.127
+55 | 3025 | 0.109 | 0.041 | 0.04 | 0.00026 | 0.10216 | 0.00039 | 0.02246 | 0.125
+60 | 3600 | 0.189 | 0.052 | 0.042 | 0.00028 | 0.10561 | 0.00026 | 0.01834 | 0.124
+65 | 4225 | 0.146 | 0.037 | 0.038 | 0.00028 | 0.10900 | 0.00032 | 0.05449 | 0.164
+70 | 4900 | 0.208 | 0.042 | 0.052 | 0.00025 | 0.10044 | 0.00021 | 0.02493 | 0.126
+75 | 5625 | 0.287 | 0.048 | 0.11 | 0.00026 | 0.09967 | 0.00038 | 0.03718 | 0.137
+80 | 6400 | 0.394 | 0.071 | 0.104 | 0.00027 | 0.10380 | 0.00037 | 0.05146 | 0.156
+85 | 7225 | 0.461 | 0.112 | 0.139 | 0.00028 | 0.10327 | 0.00022 | 0.03902 | 0.142
+90 | 8100 | 0.55 | 0.137 | 0.172 | 0.00029 | 0.09874 | 0.00037 | 0.05072 | 0.15
+95 | 9025 | 0.558 | 0.143 | 0.155 | 0.00028 | 0.10368 | 0.00019 | 0.05329 | 0.157
+100 | 10000 | 1.003 | 0.163 | 0.181 | 0.00028 | 0.10286 | 0.00020 | 0.05012 | 0.153
+105 | 11025 | 0.867 | 0.167 | 0.21 | 0.00028 | 0.10655 | 0.00037 | 0.07519 | 0.182
+110 | 12100 | 1.176 | 0.194 | 0.199 | 0.00029 | 0.10530 | 0.00037 | 0.09052 | 0.196
+115 | 13225 | 1.027 | 0.303 | 0.198 | 0.00029 | 0.10092 | 0.00023 | 0.06620 | 0.167
+120 | 14400 | 1.265 | 0.179 | 0.267 | 0.00029 | 0.10118 | 0.00036 | 0.53508 | 0.637
+125 | 15625 | 1.883 | 0.216 | 0.22 | 0.00023 | 0.08684 | 0.00036 | 0.07932 | 0.166
+130 | 16900 | 1.599 | 0.214 | 0.32 | 0.00028 | 0.09092 | 0.00017 | 0.11316 | 0.204
+135 | 18225 | 2.471 | 0.423 | 0.295 | 0.00028 | 0.08634 | 0.00036 | 0.13559 | 0.222
+140 | 19600 | 2.081 | 0.286 | 0.525 | 0.00028 | 0.09078 | 0.00017 | 0.13465 | 0.226
+145 | 21025 | 2.552 | 0.328 | 0.383 | 0.00029 | 0.08879 | 0.00036 | 0.11365 | 0.203
+150 | 22500 | 2.423 | 0.369 | 0.385 | 0.00029 | 0.08977 | 0.00036 | 0.14865 | 0.239
+
+This was generated with
+```python
+#!/usr/bin/env python
+import re
+import fileinput
+from collections import OrderedDict
+
+REG_N = re.compile(r'^([0-9]*)$')
+REG_TAC = re.compile(r'^Tactic call ([^ ]*) ran for ([0-9\.]*) secs .([0-9\.]*)u,([0-9\.]*)s.*$')
+REG_NAT = re.compile(r'native_compute: (.*?) done in ([0-9\.]*)\s*$')
+def make_table(lines):
+    ret = OrderedDict()
+    cur_n = None
+    for line in lines:
+        if line.strip() == '': continue
+        mat_n = REG_N.match(line)
+        mat_tac = REG_TAC.match(line)
+        mat_nat = REG_NAT.match(line)
+        if mat_n:
+            cur_n = mat_n.groups()[0]
+            if cur_n not in ret.keys(): ret[cur_n] = OrderedDict([('n', cur_n), ('binders', str(int(cur_n)**2))])
+        elif mat_tac:
+            tac, real, user, syst = mat_tac.groups()
+            ret[cur_n][tac + ' (real)'] = real
+#            ret[cur_n][tac + ' (user)'] = user
+#            ret[cur_n][tac + ' (sys)'] = syst
+        elif mat_nat:
+            kind, t = mat_nat.groups()
+            ret[cur_n]['native_compute (%s)' % kind] = t
+        else:
+            print('None: %s' % line)
+    return ret
+
+if __name__ == '__main__':
+    tbl = make_table(fileinput.input())
+    keys = []
+    for row in tbl.values():
+        for k in row.keys():
+            if k not in keys: keys.append(k)
+    print(' | '.join(keys))
+    print(' | '.join('--' for i in keys))
+    for row in tbl.values():
+        print(' | '.join(row[k] for k in keys))
+```
+
+It looks like `native_compute` perhaps does not suffer from this quadratic behavior?
+@ppedrot I was rereading https://gitter.im/coq/coq?at=5ddbf1ee4517d002b2eecc83 and I still don't understand the quadratic behavior in the VM ("VM is quadratic on closure compilation but linear on closure runtime").  What exactly is closure compilation, and why is the VM quadratic on it?
+The lazy and cbv parts have been fixed by #13537. @JasonGross maybe you should reopen a bug only about the vm and close this one?

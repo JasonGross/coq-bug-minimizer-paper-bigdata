@@ -1,0 +1,27 @@
+Comment author: @JasonGross
+
+Tactic Notation "basicapply" open_constr(R) "using" tactic3(tac) "sideconditions" tactic0(tacfin) := idtac.
+Tactic Notation "basicapply" open_constr(R) := basicapply R using (fun Hlem => idtac) sideconditions autounfold with spred; idtac.
+(* segfault in coqtop *)
+
+
+Comment author: @ppedrot
+
+This is a proper segfault, as far as I can witness it. It seems that there is some unsound parsing rule somewhere.
+
+
+Comment author: @ppedrot
+
+For the record, it comes from the use of the tactic0 rule. The simple code below does segfault.
+
+Tactic Notation "basicapply" tactic0(tacfin) := idtac.
+
+Goal True.
+basicapply subst.
+
+
+Comment author: @herbelin
+
+Fixed in trunk, 8.4 and 8.3.
+
+

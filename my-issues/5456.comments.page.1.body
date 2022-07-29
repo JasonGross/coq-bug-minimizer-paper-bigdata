@@ -1,0 +1,21 @@
+Comment author: @JasonGross
+
+I see no mention of open_constr, for example:
+```
+tactic_argument_type	::=	ident | simple_intropattern | reference
+ 	|	hyp | hyp_list | ne_hyp_list
+ 	|	constr | uconstr | constr_list | ne_constr_list
+ 	|	integer | integer_list | ne_integer_list
+ 	|	int_or_var | int_or_var_list | ne_int_or_var_list
+ 	|	tactic | tacticn     (for 0≤ n≤ 5)
+```
+Comment author: @herbelin
+
+BTW, maybe could we also have an explicit "open_constr_with_classes"?
+
+
+This is sort of a dupe of https://github.com/coq/coq/issues/3081.
+
+Additionally, I ran into this recently in some code I was reading and was amazed by the power of open_constr, so I'd really love to see it documented! At one point I thought reading the manual was all I needed to at least know *of* all of Coq's features, but this is apparently not true...
+@ppedrot You were the historical assignee here. Would you be OK to take care of documenting this?
+Duplicate of #3081

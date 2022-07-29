@@ -1,0 +1,121 @@
+Comment author: @JasonGross
+
+CoInductive Inf := S (_ : Inf).
+Definition expand_Inf (x : Inf) := match x with S x' => S x' end.
+Lemma expand_Inf_eq x : x = expand_Inf x.
+Proof. destruct x; reflexivity. Defined.  
+CoFixpoint inf := S inf.
+Inductive Inf_eq x := make (pf : x = S x).
+Definition have : Inf_eq inf := make _ (expand_Inf_eq inf).
+Definition lost := Eval cbv in have. (* Error: Illegal application: 
+The term "make" of type "forall x : Inf, x = S x -> Inf_eq x"
+cannot be applied to the terms
+ "cofix inf  : Inf := S inf" : "Inf"
+ "eq_refl" : "S (cofix inf  : Inf := S inf) = S (cofix inf  : Inf := S inf)"
+The 2nd term has type "S (cofix inf  : Inf := S inf) = S (cofix inf  : Inf := S 
+inf)"
+which should be coercible to "(cofix inf  : Inf := S inf) = S (cofix inf  : Inf 
+:= S inf)". *)
+
+Example modified from https://coq.inria.fr/files/coq5-slides-sacchini.pdf
+
+
+Comment author: @ppedrot
+
+There is a simple solution for this one, but which is going to break retro-compatibility. Simply put, never use the constructor-based form for coinductive datatypes, but rather use the primitive projection one. That is, write:
+
+Set Primitive Projections.
+CoInductive Inf := { S : Inf }.
+
+This is the copattern-style which is the only one semantically correct (i.e. coinductive types are negative, not positive), and this will prevent subject reduction failure.
+
+
+Comment author: @silene
+
+Given that cbv does not work properly with primitive projections and coinductive records (see bug [BZ#5286](https://github.com/coq/coq/issues?q=is%3Aissue%20%22Original%20bug%20ID%3A%20BZ%235286%22)), I am not convinced the solution you suggest is that simple.
+
+CoInductive Inf := S { projS : Inf }.
+Definition expand_Inf (x : Inf) := S (projS x).
+Lemma expand_Inf_eq x : x = expand_Inf x.
+Proof. destruct x; reflexivity. Defined.
+CoFixpoint inf := S inf.
+Inductive Inf_eq x := make (pf : x = S x).
+Definition have : Inf_eq inf := make _ (expand_Inf_eq inf).
+Definition lost := Eval cbv in have.
+
+Error: Illegal application: 
+The term "make" of type "forall x : Inf, x = {| projS := x |} -> Inf_eq x"
+cannot be applied to the terms
+ "cofix inf  : Inf := {| projS := inf |}" : "Inf"
+ "eq_refl"
+   : "{| projS := cofix inf  : Inf := {| projS := inf |} |} =
+      {| projS := cofix inf  : Inf := {| projS := inf |} |}"
+The 2nd term has type
+ "{| projS := cofix inf  : Inf := {| projS := inf |} |} =
+  {| projS := cofix inf  : Inf := {| projS := inf |} |}"
+which should be coercible to
+ "(cofix inf  : Inf := {| projS := inf |}) =
+  {| projS := cofix inf  : Inf := {| projS := inf |} |}".
+
+
+Comment author: @ppedrot
+
+That's a bug of cbv, not a foundational issue. By opposition, the loss of subject reduction *in the kernel* is due to a fundamental mishandling of coinductive types in CIC.
+
+
+Comment author: @silene
+
+I never meant to say that this was not a bug in cbv. I just wanted to point out that, given that developers got it wrong for all three of cbv, vm_compute, and native_compute, this is not as simple as you make it sound (and certainly not possible currently).
+
+
+Comment author: @herbelin
+
+@ PMP: Do I understand correctly that your view is that the problem behind the lost of subject reduction for coinductive types in CIC (whether one uses cbv, cbn, or whatever reduction strategy for CIC, or simply the conversion algorithm) is eta-expansion (surjective pairing) for coinductive types (and indirectly dependent pattern-matching, since dependent pattern-matching can be obtained from non-dependent pattern-matching using eta)?
+
+@ Guillaume: If you add the "Set Primitive Projections" in your example, you cannot indeed prove "x = expand_Inf x" anymore and the problem disappears (in 8.6).
+
+@ PMP: Do you intend then that "x = expand_Inf x" should not be provable?
+
+
+Comment author: @ppedrot
+
+(In reply to Hugo Herbelin from comment [BZ#5](https://github.com/coq/coq/issues?q=is%3Aissue%20%22Original%20bug%20ID%3A%20BZ%235%22))
+> @ PMP: Do I understand correctly that your view is that the problem behind
+> the lost of subject reduction for coinductive types in CIC (whether one uses
+> cbv, cbn, or whatever reduction strategy for CIC, or simply the conversion
+> algorithm) is eta-expansion (surjective pairing) for coinductive types (and
+> indirectly dependent pattern-matching, since dependent pattern-matching can
+> be obtained from non-dependent pattern-matching using eta)?
+
+Yes.
+
+> @ PMP: Do you intend then that "x = expand_Inf x" should not be provable?
+
+Yes, mistaking equality for bisimilarity is the root of all evil (©).
+
+
+Comment author: @JasonGross
+
+> > @ PMP: Do you intend then that "x = expand_Inf x" should not be provable?
+> Yes, mistaking equality for bisimilarity is the root of all evil (©).
+
+What?  Really?  Shouldn't there be some sort of co-univalence that lets you identify bisimilarity and equality?  And it seems a bit strange to me to say that we shouldn't be able to prove that [forall x y, projS x = projS y -> x = y]...
+
+
+Comment author: @ppedrot
+
+(In reply to Jason Gross from comment [BZ#7](https://github.com/coq/coq/issues?q=is%3Aissue%20%22Original%20bug%20ID%3A%20BZ%237%22))
+> What?  Really?  Shouldn't there be some sort of co-univalence that lets you
+> identify bisimilarity and equality?
+
+That might be a consequence of univalence, even though I'm unsure about this. In any case, it is valid, because there is no way to observe this in the theory, but it's not going to compute how you expect it to (otherwise that would break subject reduction). Maybe parametricity would help here.
+
+> And it seems a bit strange to me to say that we shouldn't be able to prove
+> that [forall x y, projS x = projS y -> x = y]...
+
+In our latest paper, we provide a syntactic model that readily negates this theorem (https://www.pédrot.fr/articles/cpp2017.pdf, section IV).
+
+
+Let's close this as a duplicate of #6768.
+Duplicate of #6768
+Apparently it needs a comment whose contents is just "Duplicate of #nnnn" for GitHub to register duplication.

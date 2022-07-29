@@ -1,0 +1,8 @@
+Comment author: @JasonGross
+
+There's enough information for Coq to automatically give a line number/state number/tactic name for where guardedness was first observably broken.  There should be a command that does this, by walking the states backward (or doing binary search) to find where guardedness was violated.  CoqIDE should be able to automatically jump to the location where guardedness was violated, if instructed to do so.  (It would be nice if ProofGeneral could do this too.)
+
+Similarly if wish/bug [BZ#3569](https://github.com/coq/coq/issues?q=is%3Aissue%20%22Original%20bug%20ID%3A%20BZ%233569%22) is granted, the same should be possible for universe inconsistencies.
+
+
+Component IDE is used by CoqIDE-related issues.

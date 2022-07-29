@@ -1,0 +1,120 @@
+Comment author: @JasonGross
+
+This code works in Coq 8.4 and breaks in Coq 8.5.  Note that "etransitivity; [ t | reflexivity ]" succeeds in both, which suggests that is a genuine bug in 8.5, and not just an innocuous change in the unification algorithm.
+```coq
+(* File reduced by coq-bug-finder from original input, then from 657 lines to 25 lines, then from 1325 lines to 33 lines, then from 495 lines to 49 lines, then from 353 lines to 67 lines, then from 235 lines to 77 lines, then from 1900 lines to 80 lines, then from 94 lines to 80 lines *)
+(* coqc version 8.5 (March 2016) compiled on Mar 21 2016 18:39:8 with OCaml 4.02.3
+   coqtop version jgross-Leopard-WS:/home/jgross/Downloads/coq/coq-v8.5,v8.5 (09c2011fbdbb2ac1ce33e5abe52d93b907b21a3c) *)
+Axiom proof_admitted : False.
+Tactic Notation "admit" := case proof_admitted.
+Require Export Coq.Classes.Morphisms.
+Require Import Coq.Lists.List.
+
+Global Set Implicit Arguments.
+
+Definition list_caset A (P : list A -> Type) (N : P nil) (C : forall x xs, P (x::xs))
+           ls
+  : P ls
+  := match ls with
+     | nil => N
+     | x::xs => C x xs
+     end.
+
+Axiom list_caset_Proper'
+  : forall {A P},
+    Proper (eq
+              ==> pointwise_relation _ (pointwise_relation _ eq)
+              ==> eq
+              ==> eq)
+           (@ list_caset A (fun _ => P)).
+Goal forall (T T' : Set) (a3 : list T), exists y2, forall (a4 : T' -> bool),
+        match a3 with
+        | nil => 0
+        | (_ :: _)%list => 1
+        end = y2 a4.
+  clear; eexists; intros.
+  reflexivity. Undo.
+  Local Ltac t :=
+    lazymatch goal with
+    | [ |- match ?v with nil => ?N | cons x xs => @ ?C x xs end = _ :> ?P ]
+      => let T := type of v in
+         let A := match (eval hnf in T) with list ?A => A end in
+         refine (@ list_caset_Proper' A P _ _ _ _ _ _ _ _ _
+                 : @ list_caset A (fun _ => P) N C v = match _ with nil => _ | cons x xs => _ end)
+    end.
+  (etransitivity; [ t | reflexivity ]) || fail 0 "too early".
+  Show Proof.
+  Undo.
+  t. (* In nested Ltac calls to "t", "t" and
+"refine (list_caset_Proper' _ _ _
+         :
+         list_caset (fun _ => P) N C v =
+         match _ with
+         | nil => _
+         | x :: xs => _
+         end)", last call failed.
+Error:
+In environment
+T, T' : Set
+a3 : list T
+a4 : T' -> bool
+The term
+ "list_caset_Proper' ?e ?p ?e0
+  :
+  list_caset (fun _ : list T => nat) 0 (fun (_ : T) (_ : list T) => 1) a3 =
+  match ?y with
+  | nil => ?n
+  | x :: xs => ?n0 x xs
+  end" has type
+ "list_caset (fun _ : list T => nat) 0 (fun (_ : T) (_ : list T) => 1) a3 =
+  match ?y with
+  | nil => ?n
+  | x :: xs => ?n0 x xs
+  end" while it is expected to have type
+ "match a3 with
+  | nil => 0
+  | _ :: _ => 1
+  end = ?y2 a4".
+ *)
+
+```
+Comment author: @silene
+
+Here is a reduced testcase:
+```coq
+Lemma foo (a : unit) :
+  exists b, match a with tt => tt end = b tt.
+Proof.
+eexists.
+Fail refine (_ : _ = match _ with tt => _ end).
+refine (_ : _ = (fun _ => match _ with tt => _ end) _).
+reflexivity.
+Qed.
+```
+The refine fails because you are trying to unify a case analysis with an application. I have absolutely no idea whether this is actually a bug.
+
+
+Comment author: @herbelin
+
+Initial example fixed (5ea2539d4a7).
+
+In Guillaume's example, "refine" now works, but the next "reflexivity" does not work because unification.ml is not powerful enough (like in 8.4). Also, this enters in the scope of 8.5's "refine" leaving unresolved constraints.
+
+Note that the "refine" is buggy also in 8.4, as it does not instantiate the variable.
+```coq
+Lemma foo (a : unit) :
+  exists b, match a with tt => tt end = b tt.
+Proof.
+eexists.
+refine (_ : _ = match _ with tt => _ end).
+(*
+  a : unit
+  ============================
+   match a with
+   | tt => tt
+   end = ?9 tt
+*)
+```
+Because of the latter, I let the report open.
+
+

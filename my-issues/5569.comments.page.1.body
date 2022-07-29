@@ -1,0 +1,38 @@
+Comment author: @JasonGross
+
+What is its purpose?  I get it, e.g., on
+
+  Reserved Notation "{ { xL | xR // xcut } }" (at level 0, xR at level 39, 
+format "{ {  xL  |  xR  //  xcut  } }").
+
+But the spaces here are very important; if I instead do
+
+  Reserved Notation "{{ xL | xR // xcut }}" (at level 0, xR at level 39).
+
+then this interferes with the double-close-curly in something like
+  Definition foo@ {i} (x : Type@ {i}} := x.
+
+So what does this warning mean?
+
+
+Comment author: @JasonGross
+
+Er, I meant
+  Definition foo@ {i} {x : Type@ {i}} := x.
+
+
+Comment author: @Zimmi48
+
+I wasn't able to see the warning in 8.6 but I see it in trunk so I guess this was just classified too fast.
+
+
+Comment author: @herbelin
+
+The warning is post-8.6 and was related to the fix of bugzilla report [BZ#5469](https://github.com/coq/coq/issues?q=is%3Aissue%20%22Original%20bug%20ID%3A%20BZ%235469%22). However with PR#916 (partly fixing bugzilla [BZ#5608](https://github.com/coq/coq/issues?q=is%3Aissue%20%22Original%20bug%20ID%3A%20BZ%235608%22)), this warning is actually not any more relevant. I amended PR#916 to remove it. This will eventually close [BZ#5569](https://github.com/coq/coq/issues?q=is%3Aissue%20%22Original%20bug%20ID%3A%20BZ%235569%22).
+
+
+Comment author: @ppedrot
+
+Fixed by 9326b046.
+
+

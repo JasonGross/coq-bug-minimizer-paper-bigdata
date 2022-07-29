@@ -1,0 +1,39 @@
+Comment author: @JasonGross
+
+In both 8.4 and 8.5:
+```coq
+Require Import Program.
+Goal nat -> Type.
+  intro x.
+  lazymatch goal with
+  | [ x : nat |- _ ] => dependent destruction x (* Error: Ltac variable x is bound to x which cannot be coerced to
+a fresh identifier. *)
+  end.
+```
+
+Comment author: @herbelin
+
+I made a fix by using "hyp" instead of "ident" for the argument of "dependent destruction", which was presumably the intent of Matthieu. The same could be done for "destruct exist" and "destruct or" but they are not documented so I did nothing.
+
+
+Comment author: @maximedenes
+
+Had to revert the fix because of [BZ#4093](https://github.com/coq/coq/issues?q=is%3Aissue%20%22Original%20bug%20ID%3A%20BZ%234093%22).
+
+
+Comment author: @maximedenes
+
+*** Bug [BZ#3784](https://github.com/coq/coq/issues?q=is%3Aissue%20%22Original%20bug%20ID%3A%20BZ%233784%22) has been marked as a duplicate of this bug. ***
+
+
+Comment author: @herbelin
+
+Long time ago (18 July 2007), I introduced an upstream check that "ident" should be fresh in intro, fresh, move, rename, fix, cofix, generalize, pose and co, as well as "ident" arguments of tactic notations or ml tactics. In the case of the primitive tactics above, this is "excès de zèle" in the sense that these primitive tactics anyway check the freshness.
+
+In the case of "TACTIC EXTEND" ml tactics and tactic notations, the check is not done (clause Not_found of interp_ident_gen) unless the tactic is called with an ltac variable (as in the current report), so relaxing the freshness test would simply align the calls via an ltac variable to the call made directly.
+
+So, I'm reverting this old freshness test, hoping I'm not overlooking something. 
+
+This closes this report, even if this does not solve the question of unifying the syntax of destruct and dependent destruction, since "dependent destruction term" is e.g. not supported, and using `Tactic Notation "dependent" "induction" constr(H) := ...' would not solve the problem since it would not cover the case of H is a quantified variable.
+
+

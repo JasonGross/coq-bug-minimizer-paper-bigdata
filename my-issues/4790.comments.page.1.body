@@ -1,0 +1,5 @@
+Comment author: @JasonGross
+
+Some of my developments unavoidably have large transparent definitions that blow up on -native-code.  It would be nice to have the ability to selectively disable native code compilation for these definitions, while leaving it enabled for the rest of the project.  (Suggested syntaxes: [Local Unset Native Code Extraction]; and/or "-no-native-code-for name.v" in _CoqProject and coq_makefile.)
+
+

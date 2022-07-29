@@ -1,0 +1,46 @@
+Comment author: @JasonGross
+
+I have some code (in 8.4) where I have
+
+Section section.
+  Definition foo : bar.
+  Proof.
+    Time foo_tac. (* about 7 minutes *)
+  Time Defined. (* about 2 minutes *)
+
+  Definition baz : qux.
+  Proof.
+    Time baz_tac. (* about 20 seconds *)
+  Time Defined. (* about 0.1 seconds *)
+Time End section. (* about 30 seconds *)
+
+What does [End section] do that takes so long?  (And might it have been fixed in 8.5?  (My code doesn't currently build in 8.5, yet.))
+
+
+Comment author: @JasonGross
+
+Created attachment 686
+`make src/Parsers/Refinement/SharpenedJSON.vo`
+
+The [Time End IndexedImpl.] in src/Parsers/Refinement/SharpenedJSON.v takes about 30 seconds.  I'll throw it at my bug minimizer and see if I get something small.
+
+> Attached file: [bug_4640.zip](https://coq.inria.fr/bugfiles/attachment.cgi?id=686) (application/x-zip-compressed, 953061 bytes)
+> Description:   `make src/Parsers/Refinement/SharpenedJSON.vo`
+
+
+Comment author: @JasonGross
+
+Created attachment 692
+`make src/Parsers/Refinement/SharpenedJSON.vo`
+
+> Attached file: [bug_4640.zip](https://coq.inria.fr/bugfiles/attachment.cgi?id=692) (application/x-zip-compressed, 999072 bytes)
+> Description:   `make src/Parsers/Refinement/SharpenedJSON.vo`
+
+
+Comment author: @silene
+
+When at the end of a section, the Section mechanism reverts to the state at the start, then for every reverted definition, it substitutes all the section variables with the corresponding binders, but also all the previously reverted definitions, as they have themselves been reverted and replaced with different definitions, before introducing them in a new state. So ending a section causes a massive substitution and type-checking process.
+
+I agree that Coq could detect that the section did not contain any variable and thus did not need any reverting, but I sincerely doubt anyone will ever focus on improving this use case. So I am closing this report.
+
+

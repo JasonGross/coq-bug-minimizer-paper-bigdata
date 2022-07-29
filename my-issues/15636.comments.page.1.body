@@ -1,0 +1,8 @@
+No idea how to do that, and even if it makes sense at all. There is no such thing as a clear-cut component, e.g. universe checking is interleaved with tactic interpretation and such. I agree that enabling Ltac profiling would be interesting but it would change the semantics of tactics in weird ways so that we may end up measuring unrelated performances.
+Presumably we would need to choose an ocaml profiler. Here is one I came across recently: https://github.com/LexiFi/landmarks. We would need to modify each of the dune files in the repo, similar to what @ejgallego did for code coverage. It should then give us some useful data about various code paths. We could probably combine it with the bench somehow.
+> I agree that enabling Ltac profiling would be interesting but it would change the semantics of tactics in weird ways so that we may end up measuring unrelated performances.
+
+What do you mean by this?  I don't believe it really changes the semantics of any tactics, but it does add a bit of overhead across the board.
+> There is no such thing as a clear-cut component, e.g. universe checking is interleaved with tactic interpretation and such.
+
+But surely most of the components form a DAG, right?  Universe checking should never invoke tactic interpretation, nor should reduction, etc.  It's only the mutually-recursive components that are hard to profile, right?

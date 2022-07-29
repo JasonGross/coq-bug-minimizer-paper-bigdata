@@ -1,0 +1,61 @@
+Comment author: @JasonGross
+
+The following code causes "Anomaly: Uncaught exception Not_found. Please report."
+
+  Goal True.
+    evar (pfT : Type).
+    cut pfT.
+    subst pfT.
+    intro pf.
+    refine ((fun A : Set => pf A) unit).
+
+Replacing [refine] with [exact] makes the anomaly not occur.
+
+
+Comment author: @aspiwack
+
+Amusingly enough, it may or may not be a bug of refine. In my branch, where refine has been reimplemented, I get another anomaly: Non-functional construction.
+
+I'm not sure what can cause that, but in the case of my branch, it very much looks like an existential variable instantiation that gets forgotten.
+
+
+Comment author: @JasonGross
+
+If it's at all helpful, the backtrace on trunk (30302a47d06b3d92238524e7727b380f90960d40), thanks to Pierre-Marie Pédrot's fancy backtrace printing with the -debug flag.
+
+Anomaly: Uncaught exception Not_found(_). Please report.
+frame @  file "tactics/tacinterp.ml", line 72, characters 6-11
+frame @  file "proofs/refiner.ml", line 107, characters 13-78
+frame @  file "proofs/refiner.ml", line 85, characters 6-134
+frame @  file "lib/cList.ml", line 313, characters 19-24
+frame @  file "proofs/refiner.ml", line 43, characters 16-35
+raise @  file "lib/flags.ml", line 15, characters 10-11
+frame @  file "lib/flags.ml", line 11, characters 14-17
+frame @  file "proofs/refiner.ml", line 27, characters 21-67
+frame @  file "proofs/logic.ml", line 626, characters 29-59
+frame @  file "proofs/logic.ml", line 370, characters 2-33
+frame @  file "proofs/logic.ml", line 439, characters 10-36
+frame @  file "pretyping/typing.ml", line 269, characters 10-33
+frame @  file "pretyping/typing.ml", line 223, characters 17-39
+frame @  file "pretyping/typing.ml", line 58, characters 5-46
+frame @  file "pretyping/evarconv.ml", line 904, characters 8-46
+raise @  unknown
+frame @  file "pretyping/evarsolve.ml", line 1385, characters 10-54
+raise @  unknown
+frame @  file "pretyping/evarsolve.ml", line 1287, characters 6-47
+frame @  file "pretyping/evarsolve.ml", line 1085, characters 12-28
+raise @  file "map.ml", line 118, characters 16-25
+
+This seems to support your guess that it's an evar that gets forgotten, as the not_found comes from "let evi = Evd.find evd evk in" in
+
+let solve_candidates conv_algo env evd (evk,argsv as ev) rhs =
+  let evi = Evd.find evd evk in
+  let args = Array.to_list argsv in
+  match evi.evar_candidates with
+
+
+Comment author: @ppedrot
+
+This fixed in trunk.
+
+

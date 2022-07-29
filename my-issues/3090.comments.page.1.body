@@ -1,0 +1,73 @@
+Comment author: @JasonGross
+
+It's very nice that Notations can be overloaded based on scope, and that scopes can be bound to types, so that notations can be transparently overloaded from the top down.  It would be even nicer if notations could also be overloaded from the bottom up.
+
+This is tricker, and so I suspect that it will require priority and backtracking.  It is currently possible to fake this using typeclasses.  The only problem is that there remains a transparent dummy constant until you do [simpl].  Here is an example of how to overload an infix 'o' to deal with four different variants of compose:
+
+Set Implicit Arguments.
+Generalizable All Variables.
+
+Parameters T1 T2 : Type.
+Parameter Compose11 : T1 -> T1 -> T1.
+Parameter Compose12 : T1 -> T2 -> T1.
+Parameter Compose21 : T2 -> T1 -> T1.
+Parameter Compose22 : T2 -> T2 -> T2.
+
+(* Represents the assertion that [a o b = c] *)
+Class ComposeTo A B C (a : A) (b : B) (c : C) := {}.
+Definition composition `{@ ComposeTo A B C a b c} := c.
+Arguments composition / .
+Instance ComposeTo11 x y : ComposeTo x y (Compose11 x y) | 10.
+Instance ComposeTo12 x y : ComposeTo x y (Compose12 x y) | 100.
+Instance ComposeTo21 x y : ComposeTo x y (Compose21 x y) | 100.
+Instance ComposeTo22 x y : ComposeTo x y (Compose22 x y) | 1000.
+
+Notation "x 'o' y"
+  := (@ composition _ _ _ x y _ _)
+       (at level 40, left associativity).
+
+Unset Printing Notations.
+Check (_ o _). (* composition : T1 *)
+Eval simpl in (_ o _). (* Compose11 ?72 ?73 : T1 *)
+Check ((_ : T2) o _). (* composition : T1 *)
+Eval simpl in ((_ : T2) o _). (* Compose21 ?86 ?87 : T1 *)
+Eval simpl in (_ o (_ : T2)). (* Compose12 ?93 ?94 : T1 *)
+Eval simpl in ((_ : T2) o (_ : T2)). (* Compose22 ?100 ?101 : T2 *)
+Eval simpl in ((_ : T2) o (_ : T2) o (_ : T1) o (_ : T1) o (_ : T2) o (_ : T2)).
+(* Compose12
+         (Compose12 (Compose11 (Compose21 (Compose22 ?119 ?120) ?123) ?126)
+            ?129) ?132
+     : T1 *)
+
+
+This serves my purposes, and nests nicely.  However, it would be nice to be able to do this without the typeclass boilerplate, and without needing the [Eval simpl].
+
+I propose that Coq be extended so that the following produces the same behavior as the above, except that [Check] outputs what [Eval simpl in] outputted before:
+
+Parameters T1 T2 : Type.
+Parameter Compose11 : T1 -> T1 -> T1.
+Parameter Compose12 : T1 -> T2 -> T1.
+Parameter Compose21 : T2 -> T1 -> T1.
+Parameter Compose22 : T2 -> T2 -> T2.
+
+Reserved Infix "o" (at level 40, left associativity).
+
+Infix "o" := ComposeTo11 | 10.
+Infix "o" := ComposeTo12 | 100.
+Infix "o" := ComposeTo21 | 100.
+Infix "o" := ComposeTo22 | 1000.
+
+
+Alternatively, perhaps require that [Infix] or [Notation] be prefixed with [Overloaded] or something.  Or perhaps require that if you specify a notation in a certain scope with a priority ([| num] syntax, or whatever), then all examples of that notation must be specified in that scope with that priority.  Or pick a default priority, with the semantics that the most recent notation is checked before older ones.
+
+
+Comment author: @JasonGross
+
+Note that one downside to this is that notations don't fail as quickly.  E.g., notations won't fail in [Check], only [Let] or [Definition].
+
+
+Comment author: @ejgallego
+
+IMO this is a WONTFIX in practice, as IIANM it would imply calling the pretyper from the notation code which is a purely syntactical pass.
+
+

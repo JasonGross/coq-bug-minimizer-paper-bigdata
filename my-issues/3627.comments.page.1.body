@@ -1,0 +1,56 @@
+Comment author: @JasonGross
+
+(* File reduced by coq-bug-finder from original input, then from 1924 lines to 58 lines, then from 48 lines to 37 lines *)
+(* coqc version trunk (September 2014) compiled on Sep 15 2014 9:34:0 with OCaml 4.01.0
+   coqtop version cagnode17:/afs/csail.mit.edu/u/j/jgross/coq-trunk,trunk (708f0634b75b784f9196d063edd19274bbb43425) *)
+Set Primitive Projections.
+Inductive paths {A : Type} (a : A) : A -> Type := idpath : paths a a where "x = y" := (@ paths _ x y) : type_scope.
+Arguments idpath {A a} , [A] a.
+Axiom concat : forall {A : Type} {x y z : A} (p : x = y) (q : y = z), x = z.
+Notation "1" := idpath : path_scope.
+Notation "p @  q" := (concat p q) (at level 20) : path_scope.
+Axiom ap : forall {A B:Type} (f:A -> B) {x y:A} (p:x = y), f x = f y.
+Definition Sect {A B : Type} (s : A -> B) (r : B -> A) := forall x : A, r (s x) = x.
+Class IsEquiv {A B : Type} (f : A -> B) :=
+  { equiv_inv : B -> A ;
+    eisretr : Sect equiv_inv f;
+    eissect : Sect f equiv_inv }.
+Arguments equiv_inv {A B} f {_} / _.
+Arguments eisretr {A B} f {_} _.
+Arguments eissect {A B} f {_} _.
+Notation "f ^-1" := (@ equiv_inv _ _ f _) (at level 3, format "f '^-1'") : equiv_scope.
+Local Open Scope path_scope.
+Axiom concat_1p : forall {A : Type} {x y : A} (p : x = y), 1 @  p = p.
+Local Open Scope equiv_scope.
+Generalizable Variables A B C f g.
+Section EquivInverse.
+  Context `{IsEquiv A B f}.
+  Theorem other_adj (b : B) : eissect f (f^-1 b) = ap f^-1 (eisretr f b).
+  Proof.
+    rewrite <- (concat_1p (eissect _ _)).
+    simpl.
+    Show. (* Toplevel input, characters 0-6:
+Anomaly: Uncaught exception Failure("List.chop", _). Please report. *)
+
+
+Comment author: @forestjulien
+
+Cannot reproduce (rev 9ec08ac299faf6acdfd6)
+
+
+Comment author: @JasonGross
+
+I believe this is resolved fixed (or, perhaps more accurately, resolved no-longer-applies), as I think it came from the special printing of primitive projections, removed with
+
+commit c5ecebf6fefbaa673dda506175a2aa4a69d79807
+Author: Matthieu Sozeau <matthieu.sozeau@ inria.fr>
+Date:   Wed Sep 17 00:03:46 2014 +0200
+
+    Revert specific syntax for primitive projections, avoiding ugly
+    contortions in internalization/externalization. It uses a fully typed
+    version of detyping, requiring the environment, to move from
+    primitive projection applications to regular applications of
+    the eta-expanded version. The kernel is unchanged, and only
+    constrMatching needs compatibility code now.
+
+

@@ -1,0 +1,20 @@
+git bisect says c93d5094bff73498ec8fc02837e16cc5ce9103b6 is the first bad commit
+
+> commit c93d5094bff73498ec8fc02837e16cc5ce9103b6
+Author: Gaëtan Gilbert <gaetan.gilbert@skyskimmer.net>
+Date:   Thu Sep 7 16:56:34 2017 +0200
+>
+>    Make restrict_universe_context stronger.
+>
+>    This fixes BZ #5717.
+>
+>    Also add a test and fix a changed test.
+>
+>     :040000 040000 e93fb984ae425820eeb3fc292ce77cd6e8144109 b079addfc3c6274297aa0be4ccf2079346e5bcc6 M      engine
+>     :040000 040000 88b1be7b11ec77e06c3dbe86b3c9fc60a3ac8d31 f50cb517b9e8d3888970b8576c4fd72247e63d67 M      proofs
+>     :040000 040000 02611f92cef6e790d931f887c5e46f3a55115a55 2f76666e10b0b46638b71ad53e94c341d32d8d23 M      test-suite
+
+Of course it is.
+Saying it worked on 12/1 fooled me though.
+Yeah, sorry about that, the Jenkins CI that alerted me of this build failure seems to lag behind github a few days.  It build fine with the version of master the CI was running on Dec 1, and I wasn't careful enough and swapped the build date of successful fiat-crypto (Dec 1) with the nearest pull date of Coq master (Dec 2).  The pull of Coq on Nov 28 didn't build, so it was actually running Coq from Nov 25.  Lesson learned: Always go by the Coq commit versions the scripts print out, not by dates.
+Have possible fix, building stdlib / test suite.

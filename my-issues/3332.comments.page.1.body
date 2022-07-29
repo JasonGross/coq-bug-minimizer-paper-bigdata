@@ -1,0 +1,14 @@
+Comment author: @JasonGross
+
+$ cat foo.v
+Definition foo : True.
+Proof.
+Abort.
+$ coqc foo.v
+$ coqc -time foo.v
+Chars 0 - 22 [Definition~foo~:~True.] 0. secs (0.u,0.s)
+Chars 23 - 29 [Proof.] 0. secs (0.u,0.s)
+Chars 30 - 36 [Abort.] File "./foo.v", line 3, characters 0-6:
+Anomaly: VernacAbort not handled by Stm. Please report.
+
+

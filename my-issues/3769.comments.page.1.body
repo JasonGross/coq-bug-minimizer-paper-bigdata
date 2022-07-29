@@ -1,0 +1,88 @@
+Comment author: @JasonGross
+
+Here is some code that works in 8.4 and trunk of a few months/weeks ago, but loops in most recent trunk.
+
+Section foo.
+  Hypothesis H : 1 = 1.
+  Goal True.
+    repeat match goal with
+             | [ H : _ = _ |- _ ] => induction H
+           end.
+
+Doing [induction H] once gives
+
+  n := 1 : nat
+  H : n = n
+
+which seems rather wrong.  The [H] should go away.
+
+
+Comment author: @herbelin
+
+As far as I can judge, 8.3 and 8.4 already behave the same (i.e. a loop). So maybe you had another example in mind.
+
+
+Comment author: @JasonGross
+
+Ah, yes.  Sorry about that  Here is the change:
+
+Section foo.
+  Variables x y : Type.
+  Variable H : x = y.
+  Goal True.
+    induction H. (* Error: H is used in hypothesis e., but only in 8.4 *)
+
+I seem to recall that I may have reported this as a bug.  (And perhaps this bug has been fixed in the past month?)  (Has it been documented in CHANGES?)
+
+I do still think that the loop is wrong, though, even if it has been looping since 8.3 or before.  Is there a reason that section variables should be special in this respect?
+
+
+Comment author: @herbelin
+
+Yes, the trunk is now working on your example.
+
+> Is there a reason that section variables should be special in this respect?
+
+Probably no, but I would not dare a change, which would change the naming of hypotheses.
+
+
+Comment author: @aspiwack
+
+It is unsafe to clear section variables, though. It won't allow you to prove anything wrong, but it allows (very easily and unwillingly) to create proofs which fail at QED time (mostly because the other lemmas in the section which use [H] may believe that a newly introduced [H] is actually the section's one).
+
+Generally speaking the fact that goal hypothesis and section hypothesis are implemented the same seems in retrospect an improper implementation choice. Unfortunately we're stuck with it until someone gets on working on a more robust alternative.
+
+
+Comment author: @herbelin
+
+PS:
+
+> I seem to recall that I may have reported this as a bug.  (And perhaps this
+> bug has been fixed in the past month?)  (Has it been documented in CHANGES?)
+
+Up to now, we are generally not documenting bug fixes in the CHANGES file. But maybe should we? But if we do, shall we also document the bug fixes which do not correspond to reported bugs? I'm afraid this would require some manpower which I don't know where to find at this time.
+
+
+Comment author: @JasonGross
+
+> Up to now, we are generally not documenting bug fixes in the CHANGES file. But maybe should we? But if we do, shall we also document the bug fixes which do not correspond to reported bugs?
+
+Perhaps, perhaps not.  I think this one is on the edge; there are tactic scripts that worked fine before which will run into infinite loops now, and this seems like an incompatibility worth documenting.  On the other hand, it resulted from a rightful bug fix, and the loop could already happen in other circumstances.
+
+
+Comment author: @herbelin
+
+> I think this one is on the edge; there are tactic scripts that worked fine
+> before which will run into infinite loops now, and this seems like an 
+> incompatibility worth documenting.
+
+I'm sorry. I think I missed the example where a bug fix introduced a loop.
+
+
+Comment author: @JasonGross
+
+> I'm sorry. I think I missed the example where a bug fix introduced a loop.
+
+Ah, right.  The other half of why I think this one is on the edge is that the given tactic script would already loop in some cases (such as the first one I originally gave), but now loops in more cases (such as the second example I gave).
+
+

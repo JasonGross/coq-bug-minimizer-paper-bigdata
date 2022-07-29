@@ -1,0 +1,101 @@
+The checker errors on this btw
+Indeed, here's a proof of False:
+```coq
+Require Import Coq.Logic.Hurkens.
+Module Type T.
+  Parameter Inline bad : False.
+End T.
+Module T1.
+  Unset Universe Checking.
+  Definition bad := PropNeqType.paradox eq_refl.
+  Set Universe Checking.
+End T1.
+Module T2 (F : T).
+  Definition bad := F.bad.
+End T2.
+Module T3 := T2 T1.
+Print T3.bad.
+(* T3.bad = PropNeqType.paradox eq_refl
+     : False *)
+Print Assumptions T3.bad.
+(* Closed under the global context *)
+```
+and `coqchk` gives:
+```
+$ coqchk -silent Top.foo -R . Top
+====== ill-typed term ====
+application head= Cst((Coq.Logic.Hurkens.PropNeqType.paradox)(*Coq.Logic.Hurkens.88
+  Coq.Logic.Hurkens.87*))
+head type= (Cst((Coq.Init.Logic.not))
+            (Ind(Coq.Init.Logic.eq,0) Type(Coq.Logic.Hurkens.88) Prop
+             Type(Coq.Logic.Hurkens.87)))
+arguments:
+arg 1= (Constr(Coq.Init.Logic.eq,0,1) Type(Coq.Logic.Hurkens.88) Prop),type=
+ (Ind(Coq.Init.Logic.eq,0) Type(Coq.Logic.Hurkens.88) Prop Prop)
+
+====== type error ====@
+(Ind(Coq.Init.Logic.eq,0) Type(Coq.Logic.Hurkens.88) Prop Prop)
+is not convertible with
+(Ind(Coq.Init.Logic.eq,0) Type(Coq.Logic.Hurkens.88) Prop
+ Type(Coq.Logic.Hurkens.87))
+
+====== universes ====
+Prop < Set
+Set < Coq.Init.Datatypes.1
+    < Coq.Init.Logic.1
+    < Coq.Init.Logic_Type.1
+    < Coq.Init.Wf.1
+    < Coq.Init.Byte.2
+    < Coq.Init.Datatypes.2
+    < Coq.Init.Decimal.2
+    < Coq.Init.Logic.2
+    < Coq.Init.Logic_Type.2
+    < Coq.Init.Specif.2
+    < Coq.Init.Wf.2
+    < Coq.Init.Datatypes.3
+    < Coq.Init.Logic.3
+[...]
+                    <= Coq.Init.Logic.17
+                    <= Coq.Init.Specif.23
+                    <= Coq.Init.Specif.27
+                    <= Coq.Init.Specif.28
+                    <= Coq.Init.Specif.391
+Coq.Init.Specif.407 <= Coq.Init.Specif.6
+                    <= Coq.Init.Logic.13
+                    <= Coq.Init.Specif.23
+                    <= Coq.Init.Specif.27
+                    <= Coq.Init.Specif.28
+                    <= Coq.Init.Specif.379
+                    <= Coq.Init.Specif.381
+                    <= Coq.Init.Specif.384
+                    <= Coq.Init.Specif.393
+Coq.Init.Specif.426 <= Coq.Init.Specif.6
+                    <= Coq.Init.Logic.13
+                    <= Coq.Init.Specif.407
+Coq.Init.Specif.436 <= Coq.Init.Specif.6
+                    <= Coq.Init.Logic.13
+                    <= Coq.Init.Specif.426
+Coq.Init.Specif.442 <= Coq.Init.Specif.2
+                    <= Coq.Init.Specif.6
+                    <= Coq.Init.Logic.13
+                    <= Coq.Init.Logic.15
+                    <= Coq.Init.Specif.27
+                    <= Coq.Init.Specif.395
+Coq.Init.Specif.446 <= Coq.Init.Specif.6
+                    <= Coq.Init.Logic.13
+                    <= Coq.Init.Specif.23
+                    <= Coq.Init.Specif.27
+                    <= Coq.Init.Specif.28
+                    <= Coq.Init.Logic.184
+                    <= Coq.Init.Specif.393
+Coq.Init.Specif.451 <= Coq.Init.Logic.13
+Coq.Init.Specif.452 <= Coq.Init.Specif.6
+                    <= Coq.Init.Logic.13
+                    <= Coq.Init.Logic.14
+                    <= Coq.Init.Specif.23
+                    <= Coq.Init.Specif.27
+                    <= Coq.Init.Specif.28
+Coq.Init.Specif.473 <= Coq.Init.Datatypes.14
+
+Fatal Error: Type error: CantApplyBadType at argument 1
+```

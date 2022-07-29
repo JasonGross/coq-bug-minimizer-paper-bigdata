@@ -1,0 +1,24 @@
+Comment author: @JasonGross
+
+This bug dates all the back to pre-8.4pl6:
+```coq
+Goal exists n : nat, n = 5 /\ n = n.
+Proof.
+  clear; eexists.
+  split.
+  set (k := 5).
+  change k with (id k).
+  evar (n' : nat).
+  let ev := (eval cbv delta [n'] in n') in
+  instantiate (1 := ev).
+  let ev := match goal with |- ?ev = _ => ev end in
+  unify ev k; reflexivity.
+  pattern 1. (* Error: The abstracted term "fun _ : nat => k = k" is not well 
+typed.
+No such section variable or assumption: k. *)
+```
+I don't think this should fail, given that if I drop the `instantiate` line, it 
+succeeds.  In any case, it certainly shouldn't fail on `pattern`.
+
+
+Duplicate of #5378.

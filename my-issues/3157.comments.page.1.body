@@ -1,0 +1,15 @@
+Comment author: @JasonGross
+
+Currently, if I run
+  "/cygdrive/d/Documents/GitHub/coq HoTT/bin/coqdep" -nois -coqlib "./coq" -R "./theories" HoTT -R "./coq/theories" Coq coq/theories/Init/Logic.v
+I get
+  coq/theories/Init\Logic.vo coq/theories/Init\Logic.glob coq/theories/Init\Logic.v.beautified: coq/theories/Init\Logic.v ./coq/theories\Init\Notations.vo
+
+However, make is very bad at back-slashes; it treats .\foo as different from foo (even though it treats ./foo and foo the same), and it treats foo\bar as different from foo/bar.  So coqdep should make sure that it uses forward slashes (as they work on windows, mac, and linux).
+
+
+Comment author: @pirbo
+
+commit a665fd808b7fdaa11f84b35a87e0b8066cce1eda
+
+

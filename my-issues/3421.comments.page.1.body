@@ -1,0 +1,67 @@
+Comment author: @JasonGross
+
+This is with 200333fdc90a61665c04aca5fe58005e96738937.
+
+$ cat foo.v
+Lemma f : True.
+Proof.
+  assert (H : True).
+  constructor.
+  Goal False = Set.
+  exact H.
+
+$ coqtop < foo.v
+Welcome to Coq cagnode17:/afs/csail.mit.edu/u/j/jgross/coq-trunk,trunk (200333fdc90a61665c04aca5fe58005e96738937)
+
+Coq < 1 subgoal
+
+  ============================
+   True
+
+f < 1 subgoal
+
+  ============================
+   True
+
+f < 2 subgoals
+
+
+  ============================
+   True
+subgoal 2 is:
+ True
+
+f < 1 subgoal
+
+  H : True
+  ============================
+   True
+
+f < Toplevel input, characters 15-18:
+>   Goal False = Set.
+>                ^^^
+Error:
+The term "Set" has type "Type" while it is expected to have type "Prop".
+
+f < Toplevel input, characters 8-9:
+>   exact H.
+>         ^
+Error: The reference H was not found in the current environment.
+
+f <
+
+
+Note that the failure has undone the [assert] and its proof.  This shows up in PG as "Anomaly: error with no safe_id attached:
+Uncaught exception Stm.Vcs_aux.Expired.. Please report."
+
+
+Comment author: @JasonGross
+
+Enrico, are you the right assignee for this?  (The "error with no safe_id attached" anomalies are particularly annoying because they can easily get Coq into a state where the only way to fix it is to kill Coq and restart it.)
+
+
+Comment author: @gares
+
+Nesting lemmas is not supported.
+
+

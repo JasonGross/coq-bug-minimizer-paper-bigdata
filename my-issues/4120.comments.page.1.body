@@ -1,0 +1,31 @@
+Comment author: @JasonGross
+
+Here is code that works in 8.4pl5 and, I think, 8.5beta1, but not in current 8.5/trunk:
+
+Definition id {T} (x : T) := x.
+Goal sigT (fun x => id x)%type.
+  change (fun x => ?f x) with f.
+  exists Type. exact Set.
+Defined. (* Error: Attempt to save a proof with shelved goals (in proof Unnamed_thm) *)
+
+
+Comment author: @JasonGross
+
+Bisecting says:
+
+2d3916766d3f145643a994aa83174c98394d5baa is the first bad commit
+commit 2d3916766d3f145643a994aa83174c98394d5baa
+Author: Matthieu Sozeau <matthieu.sozeau@ inria.fr>
+Date:   Tue Mar 3 21:45:42 2015 +0100
+
+    Fix bug [BZ#3590](https://github.com/coq/coq/issues?q=is%3Aissue%20%22Original%20bug%20ID%3A%20BZ%233590%22), keeping evars that are not turned into named metas by
+    pattern_of_constr in an evar_map, as they can appear in the context
+    of said named metas, which is used by change. Not sure what to do in
+    the PEvar case, which never matches anyway according to Constr_matching.matches.
+
+
+Comment author: @mattam82
+
+Fixed in 8.5 branch.
+
+

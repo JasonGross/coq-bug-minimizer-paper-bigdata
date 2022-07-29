@@ -1,0 +1,30 @@
+Comment author: @JasonGross
+
+(* File reduced by coq-bug-finder from 1127 lines to 74 lines, then from 85 lines to 38 lines. *)
+Require Coq.Setoids.Setoid.
+
+Axiom Comp : Type -> Type.
+Axiom refineEquiv : forall {A B} (old : @ Comp A) (new : @ Comp B), Prop.
+
+Axiom foo : forall T, T.
+Axiom bar : forall T, T.
+
+Axiom refineEquiv_split_ex : forall {A B}, @ refineEquiv A B (foo _) (bar _).
+
+Definition refineEquiv_split_func_ex {A B} y : @ refineEquiv A B (foo _) y.
+Proof.
+  setoid_rewrite refineEquiv_split_ex.
+(* Toplevel input, characters 15-50:
+Anomaly: Uncaught exception Reduction.NotConvertible. Please report. *)
+
+
+Occurs in trunk (8089dc960c9e8caf778907fd87be48d77b066433) and in 8.4.
+
+The example here is obviously nonsensical, but it originated from what should be valid code.
+
+
+Comment author: @ppedrot
+
+Fixed in trunk.
+
+

@@ -1,0 +1,18 @@
+Comment author: @JasonGross
+
+This code succeeds in cf5baeccf3cf7c24ccc69aa728bfe836fba5230a, but it should fail.
+
+Record TruncType := BuildTruncType {
+  trunctype_type : Type
+}.
+
+Arguments BuildTruncType _ _ {_}.
+
+
+Comment author: @JasonGross
+
+This correctly fails in coqtop, but the error is masked in PG.
+
+*** This bug has been marked as a duplicate of bug [BZ#4784](https://github.com/coq/coq/issues?q=is%3Aissue%20%22Original%20bug%20ID%3A%20BZ%234784%22) ***
+
+

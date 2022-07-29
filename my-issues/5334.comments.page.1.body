@@ -1,0 +1,50 @@
+Comment author: @JasonGross
+
+It's cool that [match _, _ with] with use typing information from the first one 
+in matching on the second one.  It's neat (albeit perhaps a bit 
+counter-intuitive) that this works:
+```coq
+Inductive vector T : nat -> Type :=
+| nil : vector T 0
+| cons {n} : T -> vector T n -> vector T (S n).
+Definition tl {T n} (v : vector T (S n)) : vector T n
+  := match v with
+     | cons _ x xs => xs
+     end.
+Definition hd {T n} (v : vector T (S n)) : T
+  := match v with
+     | cons _ x xs => x
+     end.
+Fixpoint pointwise_eq {T n} (x y : vector T n) : Prop :=
+  match x, y with
+  | nil, _ => True
+  | cons _ x xs, _ => x = hd y /\ @ pointwise_eq _ _ xs (tl y) (* apparently Coq 
+figures out typing information on y *)
+  end.
+```
+
+However, it's really not cool that this fails:
+```coq
+Axiom proof_admitted : False.
+Inductive foo : nat -> Type := bar (t : nat) : foo t.
+Notation check x y :=
+  (let x' := x in
+   let y' := y in
+   match x', y' with
+   | bar _, bar _ => True
+   end).
+Goal forall (t : nat) (f : foo t -> foo t), check (bar t) (f (bar t)).
+Proof.
+  (*   forall (t : nat) (f : foo t -> foo t),
+  let x' := bar t in
+  let y' := f (bar t) in match x' with
+                         | bar t0 => let y'0 := f (bar t0) in match y'0 with
+                                                              | bar _ => True
+                                                              end
+                         end *)
+  abstract case proof_admitted. (* Error: Illegal application:
+The term "f" of type "foo t -> foo t" cannot be applied to the term
+ "bar t0" : "foo t0"
+This term has type "foo t0" which should be coercible to "foo t". *)
+```
+

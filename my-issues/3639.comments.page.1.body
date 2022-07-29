@@ -1,0 +1,15 @@
+Comment author: @JasonGross
+
+Goal True -> True.
+  intro H.
+  Fail let x := H in fail 0 x. (* Error: Tactic failure: H. *)
+  Fail fail 0 H. (* Error: Error: H not found. *)
+
+
+Comment author: @aspiwack
+
+This has always been the behaviour as far as I'm aware. The "message" part of idtac and fail take a list of ltac identifiers which unfold to integers or terms (can also be integer and string literals).
+
+I don't think it's bound to change, so I'll close this request.
+
+

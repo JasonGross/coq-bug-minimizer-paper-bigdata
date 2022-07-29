@@ -1,0 +1,40 @@
+Comment author: @JasonGross
+
+Require Import Setoid.
+Hint Extern 0 => apply reflexivity : typeclass_instances.
+Goal forall (B : Type) (P : B -> Prop), exists y : B, P y.
+  intros.
+  reflexivity. (* Anomaly: Uncaught exception Not_found. Please report. *)
+
+
+Comment author: @ppedrot
+
+This is already fixed in trunk.
+
+
+Comment author: @JasonGross
+
+No chance of a back-fix for 8.4?
+
+Should I (or you, or someone else) make a test-suite case for this?
+
+
+Comment author: @ppedrot
+
+IMHO this is at most a display bug. I am not sure it is worth a test.
+
+
+Comment author: @ppedrot
+
+*** Bug [BZ#3188](https://github.com/coq/coq/issues?q=is%3Aissue%20%22Original%20bug%20ID%3A%20BZ%233188%22) has been marked as a duplicate of this bug. ***
+
+
+Comment author: @JasonGross
+
+It is a bit worse than a display bug; anomalies (rightly) break Ltac backtracking.  This means that this can break my tactics if I add something like
+
+Hint Extern 0 => solve [ reflexivity ].
+
+Then I will get errors in unrelated tactics, like [intuition], as in https://coq.inria.fr/bugs/show_bug.cgi?id=3188.  So I think it probably deserves a test-suite case.  I can go make one.
+
+

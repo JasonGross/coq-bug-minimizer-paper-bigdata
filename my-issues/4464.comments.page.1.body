@@ -1,0 +1,69 @@
+Comment author: @JasonGross
+
+Goal True -> True.
+Proof.
+  intro H'.
+  let H := H' in destruct H; try destruct H.
+
+The more common case is:
+
+Goal True -> True.
+Proof.
+  intro H'.
+  match goal with
+    | [ H : _ |- _ ] => repeat first [ progress idtac "some other tactic"
+                                     | destruct H ]
+  end.
+
+
+Comment author: @JasonGross
+
+This is with Coq 8.5rc1
+
+
+Comment author: @ppedrot
+
+
+
+*** This bug has been marked as a duplicate of bug [BZ#3460](https://github.com/coq/coq/issues?q=is%3Aissue%20%22Original%20bug%20ID%3A%20BZ%233460%22) ***
+
+
+Comment author: @ppedrot
+
+This is another example of a kernel term being ill-typed in the context of its application.
+
+
+Comment author: @JasonGross
+
+I don't think this is a duplicate of bug [BZ#3460](https://github.com/coq/coq/issues?q=is%3Aissue%20%22Original%20bug%20ID%3A%20BZ%233460%22).  3460 is that the error should be caught before [Qed].  The bug here is that there should be no anomaly (an error is fine).  In particular, the error should be catchable by [try]; sorry I was not more clear.
+
+(Perhaps the underlying cause is the same, but I think anomalies should only be used in cases where it's genuinely expected that the code will never reach that case.)
+
+
+Comment author: @ppedrot
+
+
+> I don't think this is a duplicate of bug [BZ#3460](https://github.com/coq/coq/issues?q=is%3Aissue%20%22Original%20bug%20ID%3A%20BZ%233460%22).  3460 is that the error
+> should be caught before [Qed].  The bug here is that there should be no
+> anomaly (an error is fine).  In particular, the error should be catchable by
+> [try]; sorry I was not more clear.
+> 
+> (Perhaps the underlying cause is the same, but I think anomalies should only
+> be used in cases where it's genuinely expected that the code will never
+> reach that case.)
+
+All right, we should indeed work towards making this a dynamic, catchable error. Please note that IMHO failing at Qed should be morally considered as an anomaly, as it means you've been doing dirty things with tactics, which are reputed « safe » (whatever that may signify).
+
+
+Comment author: @JasonGross
+
+> IMHO failing at Qed should be morally considered as an anomaly
+
+Sure.  (Well, except for guardedness/productivity and modulo use of *_no_check tactics.)  I guess I view anomalies at Qed-time as somewhat less annoying than anomalies at tactic-running time.  Possibly because anomalies at tactic-running time are frequently things that should fail as errors rather than failing as anomalies, and so now I need to figure out a way to get my tactic script to notice the error before it happens.
+
+
+Comment author: @ppedrot
+
+Fixed by d93e8a7.
+
+

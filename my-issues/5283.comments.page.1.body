@@ -1,0 +1,221 @@
+Comment author: @JasonGross
+
+Definition UNIT := unit.
+Opaque UNIT.
+Inductive A := B (_ : UNIT).
+Scheme Equality for A.
+(* Error:
+Unexpected error during scheme creation: Error:
+                                         Attempt to save an incomplete proof 
+(in proof temporary_proof2) *)
+
+
+Comment author: @herbelin
+
+Scheme Equality works for a limited number of types and it is not robust wrt errors. I'm not aware of projects to improve Scheme Equality, so I would be tempted to change the error message into something like:
+
+"Algorithm to build equality scheme not powerful enough to treat this case."
+
+so that it is clear that (at the current time) there is no support for improving the algorithm. Would that be ok?
+
+Note that twice "decide equality" as well as "dde" in Jonathan Leivent's deptacs do the job for decidability of the equality in this example.
+
+
+Comment author: @JasonGross
+
+Sure, that seems fine.  It'd be nice to have some indication of what about the case makes it unsupported, though, and I think then these issues should be renamed and recategorized as feature requests rather than being closed (or there should be a new feature request that aggregates all of the cases that Scheme Equality doesn't support, so if someone decides to improve it, they have a helpful list).
+
+
+Comment author: @herbelin
+
+Hi Jason,
+
+I quickly took some time yesterday to review the code for _beq schemes. Basically, the current algorithm expects inductive types with parameters of the form
+
+Inductive I (A1 ... An : Type) := ...
+
+which is very limitating, while we know that _beq schemes can be built by induction on the structure of types (a bit like we can build logical relations by induction on the structure of terms), thus handling, say parameters of types such as "Type->Type", or "nat -> Type", or dependent parameters, etc., etc.
+
+To my opinion, the Scheme Equality layout could be reused, but the exact algorithms to build the type of equality schemes and proofs of them should be redone from scratch (in either ocaml with de Bruijn indices, or ocaml with names, or eventually Ltac2 or MetaCoq - but Ltac would probably be too weak for the fine manipulation of terms needed).
+
+So, if I fully agree that Scheme Equality should be improved, I'm unsure that incremental improvements are possible. To give another example, the beq scheme for prod has type 
+
+forall A B : Type, (A -> A -> bool) -> (B -> B -> bool) -> A * B -> A * B -> bool
+
+but for a correct scalable treatment of dependencies, it should be
+
+forall A, (A -> A -> bool) -> forall B : Type, (B -> B -> bool) -> A * B -> A * B -> bool
+
+in the same way as the scheme for sigT, because of dependencies, can only be of type
+
+forall A, (A -> A -> bool) -> forall B : A -> Type, (forall x1 x2:A, B x1 -> B x2 -> bool) -> {x:A & B x} -> {x:A & B x} -> bool
+
+Similarly, Scheme Equality would be unable to generate without being rebuilt from scratch the (structural form of the) beq scheme for vector:
+
+Require Import Bool Vector.
+Scheme Equality for nat.
+Section S.
+Variables (A:Type) (eq_A:A->A->bool).
+Fixpoint f n1 n2 (v1:Vector.t A n1) (v2:Vector.t A n2) : bool :=
+  nat_beq n1 n2 && 
+  match v1, v2 with
+  | nil _, nil _ => true
+  | cons _ a1 n1 v1, cons _ a2 n2 v2 => nat_beq n1 n2 && eq_A a1 a2 && f n1 n2 v1 v2
+  | _, _ => false
+  end.
+End S.
+
+
+Hugo
+
+
+Comment author: @silene
+
+I don't understand your point about dependencies. In your example about sigT, one can certainly exchange the arguments B and eq_A. More generally, I cannot imagine a single example where putting all the types first, then all the equality functions, and finally the two arguments to compare, would fail to typecheck.
+
+Also I am a bit surprised by your function for comparing two vectors. At each call of f, you are performing two calls to nat_beq. Even if one of them is a typo, there is still one left, which causes your vector comparison to have quadratic complexity while it should be linear in the size of vectors. That said, when I tried to implement the comparison function, I had to use inversion to preserve linear complexity. So you might be right that comparing two dependently-typed objects cannot generally be done with linear complexity, but that feels wrong to me.
+
+Definition f n1 n2 (v1 : Vector.t A n1) : Vector.t A n2 -> bool.
+Proof.
+generalize (internal_nat_dec_bl n1 n2).
+case (nat_beq n1 n2) ; [|intros; exact false].
+intros H.
+rewrite <- (H eq_refl).
+clear n2 H.
+induction v1 as [|h1 n1 v1].
+intros ; exact true.
+intros v2.
+inversion_clear v2 as [|h2 n2 v2'].
+exact (IHv1 v2').
+Qed.
+
+
+Comment author: @herbelin
+
+(In reply to Guillaume Melquiond from comment [BZ#4](https://github.com/coq/coq/issues?q=is%3Aissue%20%22Original%20bug%20ID%3A%20BZ%234%22))
+> I don't understand your point about dependencies. In your example about
+> sigT, one can certainly exchange the arguments B and eq_A. More generally, I
+> cannot imagine a single example where putting all the types first, then all
+> the equality functions, and finally the two arguments to compare, would fail
+> to typecheck.
+
+You are right. I don't see examples where the eq_A might be dependent in the interpretation of an argument coming next (on the contrary of the logical relation - or parametricity - translation). Thanks for correcting, the eq_A's can then all come in a second step.
+
+> Also I am a bit surprised by your function for comparing two vectors. At
+> each call of f, you are performing two calls to nat_beq.
+
+I knew I was repeating and even uselessly using calls to nat_beq, since they are implied by the equality of the vectors themselves. I just wanted to write what would a canonical translation give.
+
+To tell the truth, it is also that I'm not able to clearly say what would be the good criterion to remove these useless calls. It is obviously related to the dependency of a vector in its length. So to able to remove them, one would need an analysis of the unerasable dependencies, which I don't know how to clearly do in a general setting.
+
+> Even if one of them
+> is a typo, there is still one left, which causes your vector comparison to
+> have quadratic complexity while it should be linear in the size of vectors.
+> That said, when I tried to implement the comparison function, I had to use
+> inversion to preserve linear complexity. So you might be right that
+> comparing two dependently-typed objects cannot generally be done with linear
+> complexity, but that feels wrong to me.
+> 
+> Definition f n1 n2 (v1 : Vector.t A n1) : Vector.t A n2 -> bool.
+> Proof.
+> generalize (internal_nat_dec_bl n1 n2).
+> case (nat_beq n1 n2) ; [|intros; exact false].
+> intros H.
+> rewrite <- (H eq_refl).
+> clear n2 H.
+> induction v1 as [|h1 n1 v1].
+> intros ; exact true.
+> intros v2.
+> inversion_clear v2 as [|h2 n2 v2'].
+> exact (IHv1 v2').
+> Qed.
+
+I don't think you need so complicated, i.e., I don't think you need to make a detour by internal_nat_dec_bl. Just removing the two calls to nat_beq in what I gave should be enough to get an observationally equivalent comparison function with optimal complexity, no?
+
+
+Comment author: @silene
+
+> Just removing the two calls to nat_beq in what I gave should be enough to get an observationally equivalent comparison function with optimal complexity, no?
+
+Actually, do we even want to have a heterogeneous comparison function? This would give an awful statement for correctness. So if the comparison is homogeneous instead, its definition becomes straightforward. But I still need to use an inversion (or at least an injection) in order to get the proper types for the recursive call, so it is not completely satisfactory.
+
+Definition f n (v1:Vector.t A n) : Vector.t A n -> bool.
+Proof.
+induction v1 as [|h1 n v1].
+intros _ ; exact true.
+intros v2.
+inversion_clear v2 as [|h2 a v2'].
+exact (IHv1 v2').
+Qed.
+
+
+Comment author: @herbelin
+
+(In reply to Guillaume Melquiond from comment [BZ#6](https://github.com/coq/coq/issues?q=is%3Aissue%20%22Original%20bug%20ID%3A%20BZ%236%22))
+> > Just removing the two calls to nat_beq in what I gave should be enough to get an observationally equivalent comparison function with optimal complexity, no?
+> 
+> Actually, do we even want to have a heterogeneous comparison function? This
+> would give an awful statement for correctness. So if the comparison is
+> homogeneous instead, its definition becomes straightforward.
+
+One might want a homogeneous comparison, but I don't know how to get it as part of a general algorithm. In the case of sigT for instance, to compare the pairs (t1,u1) and (t2,u2) where u1:P(t1) and u2:P(t2), the result of the comparison function on t1 and t2 is not informative enough in itself to ensure that t1=t2 and that u1 can be coerced in P(t2) [I'm using the pair notation for existT]. So, I don't see how to avoid having to consider in general heterogeneous comparison functions. I thus inferred by this generality argument that for vectors also, a canonically-generated comparison function would have to be heterogeneous. But maybe some smarter algorithm can be imagined which is able to see that a homogeneous function is possible for vectors. (And on the other side, the homogeneous function derives straighforwardly from the heterogeneous one.)
+
+Otherwise said, inversion is possible below but it might not be available in a more general framework.
+
+> But I still
+> need to use an inversion (or at least an injection) in order to get the
+> proper types for the recursive call, so it is not completely satisfactory.
+> 
+> Definition f n (v1:Vector.t A n) : Vector.t A n -> bool.
+> Proof.
+> induction v1 as [|h1 n v1].
+> intros _ ; exact true.
+> intros v2.
+> inversion_clear v2 as [|h2 a v2'].
+> exact (IHv1 v2').
+> Qed.
+
+[PS wrt previous comments: the first "nat_beq n1 n2" in my comment 3 does not seem justifiable even from the point of view of a "canonical" translation I was claiming to have. So, let's really consider it as a mistake.]
+
+
+Comment author: @JasonGross
+
+If you do homogenous comparison functions, then, in general, you'll need the correctness lemma for the argument types in the boolean computation function.  (Note that this means that the correctness lemmas will have to be transparent, and that this makes the functions slower in vm_compute.  I'm strongly against this.)
+
+Consider the following type:
+Inductive vtree (A : Type) : nat -> Type :=
+| leaf : vtree A 0
+| node : A -> forall x y, vtree A x -> vtree A y -> vtree A (S (x + y)).
+
+If you get two [vtree A 3], there's no way to know just by types whether they're both make of 0, 2; of 1, 1; or of 2, 0 subtrees.
+
+(I might have said what you said in a different way.  If so, I apologize for the duplication.)
+
+The only reason a homogenous comparison works for [Vector.t], I think, is that [S] is injective.  Since constructors are injective, you could probably special-case the class of inductives where all type indices are instantiated by a series of constructors, possibly eventually applied to a variable.  Note that you will still need to take in heterogenous comparison functions for any dependently typed non-recursive arguments, as evidenced by your sigT example.
+
+
+Comment author: @silene
+
+> One might want a homogeneous comparison, but I don't know how to get it as part of a general algorithm. In the case of sigT for instance, to compare the pairs (t1,u1) and (t2,u2) where u1:P(t1) and u2:P(t2), the result of the comparison function on t1 and t2 is not informative enough in itself to ensure that t1=t2 and that u1 can be coerced in P(t2) [I'm using the pair notation for existT].
+
+> If you do homogenous comparison functions, then, in general, you'll need the correctness lemma for the argument types in the boolean computation function.  (Note that this means that the correctness lemmas will have to be transparent, and that this makes the functions slower in vm_compute.  I'm strongly against this.)
+
+I am wondering whether this issue is just a consequence of the type of the boolean computation function not being rich enough. For instance, with almost the same body as the comparison function, instead of returning a boolean, we could return the following option:
+
+  forall (P : nat -> nat -> Type) n1 n2, P n1 n2 -> option (P n1 n1)
+
+That said, performing the induction requires creating a closure encapsulating P, so it might well be possible that the cost of the correctness lemma is still there, just interleaved along the other computations. So it seems a good argument for having heterogeneous comparison functions.
+
+> The only reason a homogenous comparison works for [Vector.t], I think, is that [S] is injective.
+
+Regarding injectivity, I have arrived to the same conclusion as you. And since injectivity is not decidable in general (is it?), it means that a general scheme would necessarily need to perform one nat_beq per recursive call for Vector.t (so quadratic complexity). But in fact, I don't really care about it anymore, since it just goes to show once again that Vector.t is the worse way of representing a vector. If one uses instead { l : list A | length l = n }, then one gets linear complexity for the comparison function even with the general scheme.
+
+
+Comment author: @JasonGross
+
+> And since injectivity is not decidable in general (is it?)
+
+In general, no (there's a trivial encoding of the halting problem as injectivity of a function [bool -> bool]), but constructors are always injective.
+
+
+Original example works now.

@@ -1,0 +1,10 @@
+Well that's just `ocaml` terminating with `Fatal error: exception Stack overflow`.
+
+Given the size of the file it may be hard to fix:
+```
+$ wc /tmp/Coq_native089c73.native
+  63028  161114 6296989 /tmp/Coq_native089c73.native
+```
+
+but maybe it is worth reporting to OCaml upstream. You could also try to increase stack size.
+Indeed, calling `ocaml` with a higher `ulimit -s` makes the example work fine for me.

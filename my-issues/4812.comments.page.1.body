@@ -1,0 +1,40 @@
+Comment author: @JasonGross
+
+install -d "/home/jgross/.local64/coq/coq-trunk/bin"
+install bin/coqide "/home/jgross/.local64/coq/coq-trunk/bin"
+install -d "/home/jgross/.local64/coq/coq-trunk/lib/coq"/toploop
+install ide/coqidetop.cma "/home/jgross/.local64/coq/coq-trunk/lib/coq"/toploop/
+install ide/coqidetop.cmxs "/home/jgross/.local64/coq/coq-trunk/lib/coq"/toploop/
+install: cannot stat ‘ide/coqidetop.cmxs’: No such file or directory
+
+
+Comment author: @ejgallego
+
+Yeah this is a bug in the makefile as
+
+$ make ide/coqidetop.cmxs
+
+doesn't produce the file.
+
+Using coqide.byte works as a workaround for now.
+
+
+Comment author: @ppedrot
+
+This was probably introduced by Pierre L. while reorganizing the Makefile. I'll assign him the bug.
+
+
+Comment author: @letouzey
+
+Sorry for the inconvenience... This bug should be fixed by commit 4a5b6f10.
+It was just a missing rule in the Makefile. The really really weird thing is
+that 'make' was pretending here to succeed (and in particular build this file)
+while it was not. I'll investigate that ...
+Pierre
+
+
+Comment author: @letouzey
+
+For the curious, the weird behavior of make (success even though it hasn't built a required file) happens when there's a dependency rule for this target (for instance via the inclusion of a .d), but no building rule. The commit 2861a39 should avoid this in the future.
+
+

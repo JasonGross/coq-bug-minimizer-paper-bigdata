@@ -1,0 +1,26 @@
+Comment author: @JasonGross
+
+Can the second call to [specialize] here fail as quickly as the first one?  
+(This was actually a bottle-neck in a tactic in fiat-crypto.)
+
+Fixpoint fact (n : nat) : nat
+:= match n with
+   | 0 => 1
+   | S n' => n * fact n'
+   end.
+
+Axiom admit : forall {T}, T.
+Goal forall (H : fact 100 = 100 * fact 99 -> False), H = H -> True.
+  intros.
+  Time Fail specialize (H admit). (* The command has indeed failed with message:
+Ltac call to "specialize (constr_with_bindings)" failed.
+Error: Cannot change H, it is used in hypothesis H0.
+Finished transaction in 0.001 secs (0.u,0.s) (successful) *)
+  Time Fail specialize (H eq_refl). (* very slow *)
+
+
+Comment author: @Zimmi48
+
+The specialize tactic is planned to be rewritten / modified significantly in 8.8, so this bug should be considered at that time.
+
+

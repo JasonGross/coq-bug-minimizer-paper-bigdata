@@ -1,0 +1,17 @@
+Comment author: @JasonGross
+
+Ltac ih H := induction H as H.
+Goal True -> True.
+  intro H; ih H. (* In nested Ltac calls to "ih" and "induction H as H", last 
+call failed.
+Anomaly:
+Uncaught exception Taccoerce.CannotCoerceTo("a disjunctive/conjunctive 
+introduction pattern").
+Please report at http://coq.inria.fr/bugs/. *)
+
+
+Comment author: @herbelin
+
+Fixed in branch v8.5 (f5923c217).
+
+

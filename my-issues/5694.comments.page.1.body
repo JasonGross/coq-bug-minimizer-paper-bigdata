@@ -1,0 +1,58 @@
+Comment author: @JasonGross
+```
+Goal True.
+  simple refine (let H := _ in _); [ shelve | | ]; cycle 1.
+  refine (fst H); shelve.
+  split. (* stack overflow *)
+```
+
+Comment author: @psteckler
+
+In engine/evd.ml, in the function "map_evar_info", it's a call to "map_named_val" that triggers the stack overflow, causing a repeated pattern:
+```
+[BZ#1095](https://github.com/coq/coq/issues?q=is%3Aissue%20%22Original%20bug%20ID%3A%20BZ%231095%22)63  Pc: 2833948  CArray char 9180
+[BZ#1095](https://github.com/coq/coq/issues?q=is%3Aissue%20%22Original%20bug%20ID%3A%20BZ%231095%22)64  Pc: 3105012  Constr char 13233
+[BZ#1095](https://github.com/coq/coq/issues?q=is%3Aissue%20%22Original%20bug%20ID%3A%20BZ%231095%22)65  Pc: 2833948  CArray char 9180
+[BZ#1095](https://github.com/coq/coq/issues?q=is%3Aissue%20%22Original%20bug%20ID%3A%20BZ%231095%22)66  Pc: 3104300  Constr char 13435
+```
+
+
+Comment author: @psteckler
+
+It looks like the function being mapped over terms is Evarutil.nf_evar0.
+
+
+Comment author: @silene
+
+The stack overflow is expected and there is not much point in trying to prevent it. The real issue is that a cyclic evar was created in the first place. I don't even understand where it comes from.
+
+For example,
+```
+  simple refine (let H := _ in _) ; [..|refine (fst H)]
+```
+creates a cyclic evar, while
+```
+  unshelve refine (let H := _ in _) ; [..|refine (fst H)]
+```
+does not, yet they should have the exact same behavior on such a simple example.
+
+
+> The stack overflow is expected and there is not much point in trying to prevent it. The real issue is that a cyclic evar was created in the first place. I don't even understand where it comes from.
+> 
+> For example,
+> 
+> ```
+>   simple refine (let H := _ in _) ; [..|refine (fst H)]
+> ```
+> 
+> creates a cyclic evar, while
+> 
+> ```
+>   unshelve refine (let H := _ in _) ; [..|refine (fst H)]
+> ```
+
+For the record, since unifall-related commit b6dabf6aa5b96cfa3c11038316399f0797d734ac (Sep 2020, after 8.12), the second command does create a loop too.
+
+Don't know what to expect. Should the `refine (fst H)` fail? Or automatically cut the dependency? On my side, I'm leaning towards the second approach.
+From a user point of view, I do not see any good reason for `refine (fst H)` to fail. Also, note that, even if you make the first `refine` much more precise: `simple refine (let H : prod True _ := _ in _)`, Coq still builds a cyclic evar. This cycle does not make sense to me. The type of the first wildcard (the second component of the type of `H`) should not depend on `H`.
+Works in master.

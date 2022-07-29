@@ -1,0 +1,33 @@
+Primitive functions not being hardened against broken input is not restricted to printing. Most functions need to be wrapped inside a sanitizer, but we should also expose the low-level equivalent for efficiency.
+Updated way to produce the error in 8.12 and pre-8.13 master (API of `Constr.Unsafe.Lambda` changed):
+```
+Require Import Ltac2.Ltac2.
+
+Ltac2 rec head v :=
+  match! v with
+  | ?f ?x => head f
+  | ?x => x
+  end.
+
+Ltac2 fake_cases (c : constr) (i : int) :=
+  let ind := match Constr.Unsafe.kind (head c) with
+             | Constr.Unsafe.Ind ind inst => ind
+             | _ => Control.zero (Tactic_failure (Some (Message.of_constr c)))
+             end in
+  Constr.Unsafe.make
+    (Constr.Unsafe.Lambda
+       (Constr.Binder.make None c)
+       (Constr.Unsafe.make
+          (Constr.Unsafe.Case
+             (Constr.Unsafe.case ind)
+             (Constr.Unsafe.make (Constr.Unsafe.Rel 1))
+             '(fun _ : $c => unit)
+             (Array.make i 'tt)))).
+
+Import Ltac2.Notations.
+
+Goal True.
+  let v := fake_cases 'False 1 in
+  Message.print (Message.of_constr v).
+```
+Closing as yet another explicitly unsafe call.

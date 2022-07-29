@@ -1,0 +1,35 @@
+Comment author: @JasonGross
+
+Code that worked in 8.4pl5:
+
+Module Type T.
+  Variable A : Type.
+End T.
+
+Module Make (M : T).
+  Import M.
+  Check A.
+(* Error: The reference A was not found in the current environment. *)
+
+(Does not work on 8dbfee5c5f897af8186cb1bdfb04fd4f88eca677; haven't tested other commits.)
+
+
+Comment author: @aspiwack
+
+This isn't what is happening. Cf the CHANGES file:
+
+```
+- Section-specific commands such as "Let" (resp. "Variable", "Hypothesis") used
+  out of a section now behave like the corresponding "Local" command, i.e.
+  "Local Definition" (resp. "Local Parameter", "Local Axiom"). (potential source
+  of rare incompatibilities).
+```
+
+Turn [Variable] into [Parameter] and you'll be fine.
+
+
+Comment author: @JasonGross
+
+Thanks!
+
+

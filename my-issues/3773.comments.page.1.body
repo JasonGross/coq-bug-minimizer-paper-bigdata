@@ -1,0 +1,25 @@
+Comment author: @JasonGross
+
+I thought this was changed a while ago.  In 0397aa549645df23cc50c9018b543e6c0b346d62 (Oct 26, 2014), open_constr does no typeclass resolution, but in e8726550e01e51ef3ccf8602f2ecbe2b3737cca3 (Sept 19, 2014), it does.  In any case, this should probably be in the test-suite to catch changes.
+
+Tactic Notation "opose" open_constr(foo) := pose foo.
+Class Foo := Build_Foo : Set.
+Axiom f : forall `{Foo}, Set.
+Set Printing Implicit.
+Goal forall `{Foo}, True.
+  intro H.
+  pose f.
+  opose f.
+  let x := (eval hnf in P) in
+  first [ has_evar x; fail 1 | idtac ].
+  let x := (eval hnf in P0) in
+  has_evar x.
+  admit.
+Defined.
+
+
+Comment author: @ppedrot
+
+Added a test in 7461aae.
+
+

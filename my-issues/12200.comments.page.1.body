@@ -1,0 +1,11 @@
+TIL coqchk supports strategies at all. Is there anything like documentation where one could possibly learn about this?
+`coqchk` only understands strategies in a very limited way. First they need to be part of the kernel, i.e.:
+- standard lazy
+- call-by-name
+- VM call-by-value
+- native call-by-value.
+
+Furthermore there are restrictions on how it behaves. Cast nodes have a clear tendency to disappear during reduction, so it's hard to understand what is going on when sending a strategy-annotated term to the kernel.
+coqchk doesn't use VM or native even if there's a vmcast/nativecast afaik
+@SkySkimmer you're right, I don't know what I was thinking about when I wrote this. My comment applies to the kernel, not the checker, which is even more restrictive (although it uses the same underlying mechanism). VM and native could be added to the checker, but they are deemed too unsafe to be trusted.
+

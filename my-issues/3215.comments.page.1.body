@@ -1,0 +1,64 @@
+Comment author: @JasonGross
+
+When I run coq_makefile on debian, I get a makefile that uses .opt versions of some ocaml binaries, but installing coq didn't give me ocaml-native-compilers automatically.  reportbug gives me the following template, which probably has the relevant info:
+
+Package: coq
+Version: 8.3.pl4+dfsg-1
+Severity: normal
+
+Dear Maintainer,
+*** Please consider answering these questions, where appropriate ***
+
+   * What led up to the situation?
+   * What exactly did you do (or not do) that was effective (or
+     ineffective)?
+   * What was the outcome of this action?
+   * What outcome did you expect instead?
+
+*** End of the template - remove these lines ***
+
+
+-- System Information:
+Debian Release: wheezy/sid
+  APT prefers precise-updates
+  APT policy: (500, 'precise-updates'), (500, 'precise-security'), (500, 'precise'), (100, 'precise-backports')
+Architecture: amd64 (x86_64)
+
+Kernel: Linux 3.8.0-34-generic (SMP w/1 CPU core)
+Locale: LANG=en_US.UTF-8, LC_CTYPE=en_US.UTF-8 (charmap=UTF-8)
+Shell: /bin/sh linked to /bin/dash
+
+Versions of packages coq depends on:
+ii  coq-theories                            8.3.pl4+dfsg-1
+ii  emacsen-common                          1.4.22ubuntu1
+ii  libc6                                   2.15-0ubuntu10.5
+ii  libcoq-ocaml [libcoq-ocaml-k3dy8]       8.3.pl4+dfsg-1
+ii  ocaml-base-nox [ocaml-base-nox-3.12.1]  3.12.1-2ubuntu2
+
+Versions of packages coq recommends:
+ii  coqide        8.3.pl4+dfsg-1
+ii  proofgeneral  3.7-4
+
+Versions of packages coq suggests:
+pn  coq-doc                  <none>
+pn  ledit [readline-editor]  2.02.1-3build3
+pn  libcoq-ocaml-dev         <none>
+pn  ocaml-nox                3.12.1-2ubuntu2
+pn  proofgeneral             3.7-4
+pn  why                      <none>
+
+-- no debconf information
+
+
+Comment author: @pirbo
+
+Is there ml files in the code you are trying to compile ?
+If not, I would like to know what ocaml binaries are used by the Makefile
+If yes, I understand your problem but it is related to libcoq-ocaml-dev that depends on ocaml-nox instead of ocaml-best-compilers...
+
+
+Comment author: @pirbo
+
+See http://bugs.debian.org/cgi-bin/bugreport.cgi?bug=736322
+
+

@@ -1,0 +1,72 @@
+Comment author: @JasonGross
+
+In the to-be-attached repo, in 
+src/Parsers/Refinement/SharpenedJavaScriptAssignmentExpression.v, the final 
+[Show] takes around 18 GB of RAM, while the vm_compute takes less than 8 GB, I 
+believe.  Build it with `make TIMED=1`.
+
+Here is a smaller example, which takes around 1.5 GB in the vm, and around 3.8 
+GB to print, and may hit a different hotspot:
+
+Fixpoint big n : Set
+  := match n with
+     | 0 => 6000 = 6000
+     | S n' => big n' = big n'
+     end.
+Definition hide1 {T} {v : T} := v.
+Definition hide2 {T} {v : T} := v.
+Definition hide3 {T} {v : T} := v.
+Definition hide4 {T} {v : T} := v.
+Definition hide5 {T} {v : T} := v.
+Definition hide6 {T} {v : T} := v.
+Definition hide7 {T} {v : T} := v.
+Definition hide8 {T} {v : T} := v.
+Definition hide9 {T} {v : T} := v.
+Definition hide10 {T} {v : T} := v.
+Definition hide11 {T} {v : T} := v.
+Definition hide12 {T} {v : T} := v.
+Definition hide13 {T} {v : T} := v.
+Definition hide14 {T} {v : T} := v.
+Definition hide15 {T} {v : T} := v.
+Definition hide16 {T} {v : T} := v.
+Goal True.
+  Time let v := constr:(big 9) in
+       let v' := (eval vm_compute in v) in
+       pose (@ hide1 _ v');
+         pose (@ hide2 _ v');
+         pose (@ hide3 _ v');
+         pose (@ hide4 _ v');
+         pose (@ hide5 _ v');
+         pose (@ hide6 _ v');
+         pose (@ hide7 _ v');
+         pose (@ hide8 _ v');
+         pose (@ hide9 _ v');
+         pose (@ hide10 _ v');
+         pose (@ hide11 _ v');
+         pose (@ hide12 _ v');
+         pose (@ hide13 _ v');
+         pose (@ hide14 _ v');
+         pose (@ hide15 _ v');
+         pose (@ hide16 _ v').
+
+
+Comment author: @JasonGross
+
+In the attached example, the vm takes less than 1.5 GB (I have 1465M virt, 922M 
+res)
+
+
+Comment author: @JasonGross
+
+Created attachment 860
+archive displaying issue
+
+> Attached file: [bad_print.7z](https://coq.inria.fr/bugfiles/attachment.cgi?id=860) (application/x-7z-compressed, 302593 bytes)
+> Description:   archive displaying issue
+
+
+Comment author: @ppedrot
+
+See https://github.com/coq/coq/pull/914.
+
+

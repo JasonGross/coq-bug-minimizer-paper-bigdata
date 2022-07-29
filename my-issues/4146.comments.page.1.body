@@ -1,0 +1,28 @@
+Comment author: @JasonGross
+
+This code used to work (in 8.4), and now errors with "Error: No product even after head-reduction." in 8.5:
+
+Goal forall x y : unit, x = y.
+  intros x * y.
+
+Here are some more failures in 8.5, all of which used to work in 8.4:
+
+Goal forall x y : unit, x = y.
+  intros * x y.
+
+Goal forall x y : unit, x = y.
+  intros * x.
+
+So it seems that [*] used to mean "as many as possible, such that the rest still work", and now means "all of the remaining ones".  This should be fixed, or at least noted in CHANGES/COMPATIBILITY (though I don't see any reason that the new behavior is better).
+
+
+Comment author: @JasonGross
+
+Note that this also applies to [**]
+
+
+Comment author: @herbelin
+
+Hi Jason, none of * and ** were documented in 8.4 as far as I know. The 8.5 behavior is the intended one.
+
+

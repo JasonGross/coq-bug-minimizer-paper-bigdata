@@ -1,0 +1,58 @@
+Comment author: @JasonGross
+
+Definition foo (x : nat * nat)
+:= Eval native_compute in let (a, b) := x in 1. (* Anomaly: Uncaught exception 
+Not_found. Please report at http://coq.inria.fr/bugs/. *)
+
+
+Comment author: @ejgallego
+
+Is this still reproducible in v8.6 git or trunk?
+
+
+Comment author: @JasonGross
+
+I got this in v8.6 from a few weeks ago.  Haven't tested trunk.
+
+
+Comment author: @psteckler
+
+Still in trunk, as of today.
+
+
+Comment author: @psteckler
+
+Somewhere, the exception is raised from `vernac_interp' in stm.ml, within the call:
+--
+  try Hooks.(call interp ?verbosely:(Some verbose) ?proof (loc, expr))
+--
+
+
+Comment author: @maximedenes
+
+This is a regression since 8.5, and the following reduced test case shows the problem:
+
+Definition foo (x : nat) := Eval native_compute in x.
+
+
+Comment author: @maximedenes
+
+A bisect gave the following commit:
+
+
+Comment author: @maximedenes
+
+commit 4f041384cb27f0d24fa14b272884b4b7f69cacbe
+Author: Matej Kosik <m4tej.kosik@ gmail.com>
+Date:   Mon Feb 15 11:55:43 2016 +0100
+
+    CLEANUP: Simplifying the changes done in "kernel/*"
+
+Submitted a fix here: https://github.com/coq/coq/pull/535
+
+
+Comment author: @maximedenes
+
+Fixed in 8.6 branch. Thanks for reporting!
+
+

@@ -1,0 +1,9 @@
+>  Is there any way to make these factor?
+
+Isn't the third ok?
+
+Otherwise, I would not know how to make it possible without a change of Coq rules.
+
+First, we would need to inline `atomic_constr` into level `0` (in `g_constr.mlg`), which would be good anyway to improve opportunities of factorization. But then, we would also need to inline `identref`  so that the Camlp5 knows that `IDENT` should come before `operconstr` in term of priority. Doing the second inlining would lose in term of factorization of entries (since `identref` does small job worth to be factorized), however we could imagine adding a primitive to Camlp5 to tell that some rules are not extensible (such as `identref`) and to inline (or automatically traverse) them if they are one-liner (as `identref` is)  so that it is clear that `? [ identref ]` takes precedence over `? [ operconstr ]`. I see that as possible future work.
+ 
+Ah, sorry, the issue is that `uconstr:(?[name])` works, but `uconstr:(f ?[name])` fails.  I suppose the issue is just that I have to place the notation at level 11 or higher.

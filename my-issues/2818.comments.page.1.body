@@ -1,0 +1,24 @@
+Comment author: @JasonGross
+
+I declared a local tactic (with [Local Ltac t := ...]) in one file, and referenced that tactic from another (non-local) tactic, say [t'], in the same file.  When I called [t'] from another file, I got a Not_found anomaly.  Removing [Local] fixed this problem.
+
+
+Comment author: @ppedrot
+
+This comes from the fact that Ltac expressions are not closures, but rather call directly their free variables.
+
+
+Comment author: STyx &lt;<PlaSTyx@free.fr>&gt;
+
+*** Bug [BZ#3135](https://github.com/coq/coq/issues?q=is%3Aissue%20%22Original%20bug%20ID%3A%20BZ%233135%22) has been marked as a duplicate of this bug. ***
+
+
+Comment author: @fpottier
+
+Hello!
+
+I just stumbled across this bug (or mis-feature). It is painful, as it would be quite nice to be able to declare many tactics as "Local". At the moment, one cannot do that if these tactics can be invoked (indirectly) from another file.
+
+Thanks.
+
+

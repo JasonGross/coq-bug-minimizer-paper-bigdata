@@ -1,0 +1,28 @@
+Comment author: @JasonGross
+
+For any inductive type [T] with at least one constructor (possibly only those declared when [Set Weak Eta Rule] was on, or something), I would like the conversion machinery to have the following judgmental rule:
+
+  forall (x : T),
+       x ≡ 
+         match x return T with
+           | constructor_1 a1 ... an => constructor_1 a1 ... an
+           | ...
+           | constructor_m a1 ... ap => constructor_m a1 ... ap
+         end
+
+(Possibly also for [fix] and recursive inductive types.)
+
+
+If I understand correctly, this should not require a type-directed conversion engine, because the rule is entirely syntactic, and you can look up the type based on the constructors in the [match] (of which there will be at least one).
+
+
+Comment author: @JasonGross
+
+Note that this is strictly weaker than the standard eta rule, which talks about applying a constructor to the eliminators, where-as this rule talks about applying the eliminator to a variable and the appropriate constructors in the branches.
+
+
+Comment author: @ppedrot
+
+I assume this feature request is far too fundamental to be put here in the bugtracker. It requires an important change in the theory of Coq. If you have both a argument for its soundness and a working patch, well, it may get merged... Until then, I believe we can close this bug.
+
+

@@ -1,0 +1,10 @@
+Comment author: @JasonGross
+
+Currently they are not, in 8.5pl1.
+
+
+Comment author: @mattam82
+
+Fixed in 8.6, see pull request https://github.com/coq/coq/pull/299
+
+

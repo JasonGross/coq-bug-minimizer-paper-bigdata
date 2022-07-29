@@ -1,0 +1,183 @@
+Comment author: @JasonGross
+
+Consider this code.  It does not work, though I think it should:
+
+```
+Notation "* x" := (id x) (only printing, at level 15, format "* x").
+Notation "x . y" := (x + y) (only printing, at level 20, x at level 14, left 
+associativity, format "x . y"). (* Error: The level of the leftmost 
+non-terminal cannot be changed. *)
+Check (((id 1) + 2) + 3).
+```
+If I drop the `x at level 14`, I get `*1.2.3`, when I want to get `(*1).2.3`.  
+Instead, I'm forced to place the `x . y` notation at level 14 or lower.
+
+
+Comment author: @psteckler
+
+What is the reason for that message? Scanning the leftmost terminal should determine the precedence level?
+
+
+Comment author: @JasonGross
+
+There's no way to say "this whole thing should be at level x, and the first nonterminal should be at level y".  This is presumably a sensible restriction for parsing (you need to pick a consistent set of binding tightnesses that get aggregated into the first nonterminal or something), but is needless for printing (where levels just determine parenthesization, and whether or not you wrap parentheses around the first nonterminal is largely independent of whether or not you wrap parentheses around the entire expression (at least if you don't care about reversibility of printing).
+
+
+Comment author: @psteckler
+
+PR submitted:
+
+  https://github.com/coq/coq/pull/1062
+
+
+Comment author: @herbelin
+
+You seem to want to have "." binding stronger than "*" by default, so why don't you put "." at a lower level than "*", as in:
+
+Notation "* x" := (id x) (only printing, at level 22, format "* x").
+Notation "x . y" := (x + y) (only printing, at level 21, left associativity, format "x . y").
+Check (((id 1) + 2) + 3).
+
+which gives the expected "(*1).2.3".
+
+
+Comment author: @psteckler
+
+See the exchange between Hugo and me in the PR comments.
+
+
+Comment author: @JasonGross
+
+Suppose I want cyclic precedences, or I want to print *x for x an identifier, but I want *(x.y) or (*x).y and never *x.y.  I think this needs the PR.
+
+
+Comment author: @herbelin
+
+With precedences big-jumping over a level:
+
+Notation "* x" := (id x) (only printing, at level 22, x at level 20, format "* x").
+Notation "x . y" := (x + y) (only printing, at level 21, left associativity, format "x . y").
+
+you would get:
+
+Check ((id 1) + 2) + 3.
+(*1).2.3
+Check (id (1 + 2)) + 3.
+(*(1.2)).3
+Check id (1 + 2 + 3).
+*(1.2.3)
+Check id 1.
+*1
+
+
+Comment author: @JasonGross
+
+Nice!  Can this also support [id (id x)] rendering as "**x"?
+
+
+Comment author: @herbelin
+
+(In reply to Jason Gross from comment [BZ#8](https://github.com/coq/coq/issues?q=is%3Aissue%20%22Original%20bug%20ID%3A%20BZ%238%22))
+> Nice!  Can this also support [id (id x)] rendering as "**x"?
+
+For that you would need x at same level, say n, in the "*" rule, right-associative way, as you initially did.
+
+Then, to get *(1.2) in the "id (1+2)" case, you would need the "." rule at level > n, as you initially did.
+
+Then, to get (*1).2 in the "(id 1) + 2" case, you would need the x at level < n in the "." rule, as you initially did.
+
+But then, this would lead to have "((id 1) + 2) + 3" rendered as "((*1).2).3", rather than (*1).2.3, so there is a choice to do in whether one prefers * right associative, or . left associative. The crossing of levels cannot support both.
+
+Right associativity of . would be however possible in your case, and left associativity could also be exchanged with right associativity in my proposal. After all, both proposals are symmetric and only the constraints of parsing force a left/right asymmetry.
+
+In any case, Paul's PR would allow more flexibility in general, and your current expectation in particular.
+
+
+Comment author: @silene
+
+> to get (*1).2 in the "(id 1) + 2" case, you would need the x at level < n in the "." rule, as you initially did.
+
+Would "<=" not be enough? In particular, with an equal level, then "((id 1) + 2) + 3" would be rendered as "(*1).2.3". What I am missing?
+
+
+Comment author: @herbelin
+
+(In reply to Guillaume Melquiond from comment [BZ#10](https://github.com/coq/coq/issues?q=is%3Aissue%20%22Original%20bug%20ID%3A%20BZ%2310%22))
+> > to get (*1).2 in the "(id 1) + 2" case, you would need the x at level < n in the "." rule, as you initially did.
+> 
+> Would "<=" not be enough? In particular, with an equal level, then "((id 1)
+> + 2) + 3" would be rendered as "(*1).2.3". What I am missing?
+
+I don't understand. With <=, i.e. with
+
+Notation "* x" := (id x) (only printing, at level 15, format "* x").
+Notation "x . y" := (x + y) (only printing, at level 20, x at level 15, left 
+associativity, format "x . y").
+
+One would get (*1.2).3, what Paul's branch confirms.
+
+
+Comment author: @silene
+
+I meant the following:
+
+Notation "* x" := (id x) (only printing, at level 20, format "* x").
+Notation "x . y" := (x + y) (only printing, at level 15, left associativity, format "x . y").
+
+Check (((id 1) + 2) + 3). -- (*1).2.3
+Check (id (1 + 2)).       -- *1.2
+
+If the goal is to obtain the same precedence rules as in the C language, this seems to do the job. So I have a hard time seeing which problem we are trying to solve here.
+
+
+Comment author: @herbelin
+
+(In reply to Guillaume Melquiond from comment [BZ#12](https://github.com/coq/coq/issues?q=is%3Aissue%20%22Original%20bug%20ID%3A%20BZ%2312%22))
+> I meant the following:
+> 
+> Notation "* x" := (id x) (only printing, at level 20, format "* x").
+> Notation "x . y" := (x + y) (only printing, at level 15, left associativity,
+> format "x . y").
+> 
+> Check (((id 1) + 2) + 3). -- (*1).2.3
+> Check (id (1 + 2)).       -- *1.2
+> 
+> If the goal is to obtain the same precedence rules as in the C language,
+> this seems to do the job. So I have a hard time seeing which problem we are
+> trying to solve here.
+
+This is what I proposed but Jason wanted to have **1 instead of *(*1).
+
+
+Comment author: @silene
+
+> This is what I proposed but Jason wanted to have **1 instead of *(*1).
+
+Notation "* x" := (id x) (only printing, at level 20, right associativity, format "* x").
+Notation "x . y" := (x + y) (only printing, at level 15, left associativity, format "x . y").
+
+Check (((id 1) + 2) + 3). -- (*1).2.3
+Check (id (1 + 2)).       -- *1.2
+Check (id (id 1)).        -- **1
+
+
+Comment author: @herbelin
+
+(In reply to Guillaume Melquiond from comment [BZ#14](https://github.com/coq/coq/issues?q=is%3Aissue%20%22Original%20bug%20ID%3A%20BZ%2314%22))
+> > This is what I proposed but Jason wanted to have **1 instead of *(*1).
+> 
+> Notation "* x" := (id x) (only printing, at level 20, right associativity,
+> format "* x").
+> Notation "x . y" := (x + y) (only printing, at level 15, left associativity,
+> format "x . y").
+> 
+> Check (((id 1) + 2) + 3). -- (*1).2.3
+> Check (id (1 + 2)).       -- *1.2
+> Check (id (id 1)).        -- **1
+
+Indeed, this is even better, but Jason also wanted to never see *1.2 but either (*1).2 or *(1.2).
+
+
+#1062 was merged, so can this issue be closed?
+Yes and @psteckler, note that you have been sent an invitation to join the Coq/External team, precisely so that you have the permissions to triage and close issues yourself.
+@Zimmi48 Thanks, I didn't see the invitation while I was away.

@@ -1,0 +1,19 @@
+Comment author: @JasonGross
+
+If a proof is completed, but fails [Qed.], for example, due to a universe inconsistency, and then a user of ProofGeneral tries to focus the proof (C-c C-p), this triggers "Anomaly: File "proofs/proof.ml", line 155, characters 12-18: Assertion failed. Please report."  For example the code
+
+Let U := Type.
+Goal U.
+  exact U.
+Defined. (* evaluate to the end of this line, then do C-c C-p *)
+
+triggers this.
+
+
+Comment author: @ppedrot
+
+
+
+*** This bug has been marked as a duplicate of bug [BZ#2903](https://github.com/coq/coq/issues?q=is%3Aissue%20%22Original%20bug%20ID%3A%20BZ%232903%22) ***
+
+

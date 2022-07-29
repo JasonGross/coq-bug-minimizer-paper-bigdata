@@ -1,0 +1,3 @@
+Hello, it seems quite simple to do this change. The only thing is to make sure which of the following lines are you ok with and which one should have the change from ml4 to mlg. I'm submitting a PR with all lines changed except the one in tools/coqdoc/tokens.ml
+
+I hope I'm in the good direction with the change :)

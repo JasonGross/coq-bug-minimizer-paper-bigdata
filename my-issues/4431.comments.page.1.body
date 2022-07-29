@@ -1,0 +1,206 @@
+Comment author: @JasonGross
+
+(Coq 8.5beta3)  This error only occurs in interactive mode.  In non-interactive mode, I just get "Anomaly: Uncaught exception Not_found. Please report."
+
+The backtrace from -debug is:
+frame @  file "toplevel/coqtop.ml", line 615, characters 6-22
+frame @  file "toplevel/vernac.ml", line 346, characters 2-13
+frame @  file "toplevel/vernac.ml", line 315, characters 14-48
+raise @  file "lib/exninfo.ml", line 63, characters 8-15
+frame @  file "lib/flags.ml", line 137, characters 19-41
+raise @  file "lib/exninfo.ml", line 63, characters 8-15
+frame @  file "lib/flags.ml", line 11, characters 15-18
+raise @  file "lib/exninfo.ml", line 63, characters 8-15
+frame @  file "toplevel/vernac.ml", line 253, characters 6-43
+raise @  file "lib/exninfo.ml", line 63, characters 8-15
+frame @  file "toplevel/vernac.ml", line 233, characters 6-16
+raise @  file "lib/exninfo.ml", line 63, characters 8-15
+frame @  file "stm/stm.ml", line 2452, characters 8-30
+frame @  file "stm/stm.ml", line 1952, characters 2-35
+raise @  file "lib/exninfo.ml", line 63, characters 8-15
+frame @  file "stm/stm.ml", line 1942, characters 4-48
+frame @  file "stm/stm.ml", line 1909, characters 4-91
+raise @  file "lib/exninfo.ml", line 63, characters 8-15
+frame @  file "lib/flags.ml", line 137, characters 19-41
+raise @  file "lib/exninfo.ml", line 63, characters 8-15
+frame @  file "lib/flags.ml", line 11, characters 15-18
+raise @  file "lib/exninfo.ml", line 63, characters 8-15
+frame @  file "toplevel/vernac.ml", line 253, characters 6-43
+raise @  file "lib/exninfo.ml", line 63, characters 8-15
+frame @  file "toplevel/vernac.ml", line 233, characters 6-16
+raise @  file "lib/exninfo.ml", line 63, characters 8-15
+frame @  file "stm/stm.ml", line 2452, characters 8-30
+frame @  file "stm/stm.ml", line 1952, characters 2-35
+raise @  file "lib/exninfo.ml", line 63, characters 8-15
+frame @  file "stm/stm.ml", line 1942, characters 4-48
+frame @  file "stm/stm.ml", line 1909, characters 4-91
+raise @  file "lib/exninfo.ml", line 63, characters 8-15
+frame @  file "lib/flags.ml", line 11, characters 15-18
+raise @  file "lib/exninfo.ml", line 63, characters 8-15
+frame @  file "toplevel/vernac.ml", line 253, characters 6-43
+raise @  file "lib/exninfo.ml", line 63, characters 8-15
+frame @  file "toplevel/vernac.ml", line 233, characters 6-16
+raise @  file "lib/exninfo.ml", line 63, characters 8-15
+frame @  file "stm/stm.ml", line 2452, characters 8-30
+frame @  file "stm/stm.ml", line 1952, characters 2-35
+raise @  file "lib/exninfo.ml", line 63, characters 8-15
+frame @  file "stm/stm.ml", line 1942, characters 4-48
+frame @  file "stm/stm.ml", line 1909, characters 4-91
+raise @  file "lib/exninfo.ml", line 63, characters 8-15
+frame @  file "toplevel/vernac.ml", line 253, characters 6-43
+raise @  file "lib/exninfo.ml", line 63, characters 8-15
+frame @  file "toplevel/vernac.ml", line 233, characters 6-16
+raise @  file "lib/exninfo.ml", line 63, characters 8-15
+frame @  file "stm/stm.ml", line 2452, characters 8-30
+frame @  file "stm/stm.ml", line 1952, characters 2-35
+raise @  file "lib/exninfo.ml", line 63, characters 8-15
+frame @  file "stm/stm.ml", line 1942, characters 4-48
+frame @  file "stm/stm.ml", line 1909, characters 4-91
+raise @  file "lib/exninfo.ml", line 63, characters 8-15
+frame @  file "toplevel/vernac.ml", line 233, characters 6-16
+raise @  file "lib/exninfo.ml", line 63, characters 8-15
+frame @  file "stm/stm.ml", line 2452, characters 8-30
+frame @  file "stm/stm.ml", line 1952, characters 2-35
+raise @  file "lib/exninfo.ml", line 63, characters 8-15
+frame @  file "stm/stm.ml", line 1942, characters 4-48
+frame @  file "stm/stm.ml", line 1909, characters 4-91
+raise @  file "lib/exninfo.ml", line 63, characters 8-15
+frame @  file "stm/stm.ml", line 2452, characters 8-30
+frame @  file "stm/stm.ml", line 1952, characters 2-35
+raise @  file "lib/exninfo.ml", line 63, characters 8-15
+frame @  file "stm/stm.ml", line 1942, characters 4-48
+frame @  file "stm/stm.ml", line 1909, characters 4-91
+raise @  file "lib/exninfo.ml", line 63, characters 8-15
+frame @  file "stm/stm.ml", line 1942, characters 4-48
+frame @  file "stm/stm.ml", line 1909, characters 4-91
+raise @  file "lib/exninfo.ml", line 63, characters 8-15
+frame @  file "stm/stm.ml", line 733, characters 6-10
+frame @  file "stm/stm.ml", line 1799, characters 29-47
+raise @  file "lib/exninfo.ml", line 63, characters 8-15
+frame @  file "stm/stm.ml", line 97, characters 15-71
+raise @  file "lib/exninfo.ml", line 63, characters 8-15
+frame @  file "toplevel/vernacentries.ml", line 2159, characters 10-346
+frame @  file "lib/flags.ml", line 137, characters 19-41
+raise @  file "lib/exninfo.ml", line 63, characters 8-15
+frame @  file "lib/flags.ml", line 11, characters 15-18
+frame @  file "toplevel/vernacentries.ml", line 848, characters 15-500
+frame @  file "proofs/proof_global.ml", line 152, characters 24-36
+frame @  file "toplevel/vernacentries.ml", line 853, characters 6-75
+raise @  unknown
+frame @  file "proofs/pfedit.ml", line 107, characters 28-67
+frame @  file "proofs/proof.ml", line 339, characters 4-30
+raise @  file "lib/exninfo.ml", line 63, characters 8-15
+frame @  file "toplevel/vernacentries.ml", line 2159, characters 10-346
+frame @  file "lib/flags.ml", line 137, characters 19-41
+raise @  file "lib/exninfo.ml", line 63, characters 8-15
+frame @  file "lib/flags.ml", line 11, characters 15-18
+frame @  file "toplevel/vernacentries.ml", line 848, characters 15-500
+frame @  file "proofs/proof_global.ml", line 152, characters 24-36
+frame @  file "toplevel/vernacentries.ml", line 853, characters 6-75
+raise @  unknown
+frame @  file "proofs/pfedit.ml", line 107, characters 28-67
+frame @  file "proofs/proof.ml", line 339, characters 4-30
+raise @  file "lib/exninfo.ml", line 63, characters 8-15
+frame @  file "lib/flags.ml", line 11, characters 15-18
+frame @  file "toplevel/vernacentries.ml", line 848, characters 15-500
+frame @  file "proofs/proof_global.ml", line 152, characters 24-36
+frame @  file "toplevel/vernacentries.ml", line 853, characters 6-75
+raise @  unknown
+frame @  file "proofs/pfedit.ml", line 107, characters 28-67
+frame @  file "proofs/proof.ml", line 339, characters 4-30
+raise @  file "lib/exninfo.ml", line 63, characters 8-15
+frame @  file "proofs/proofview.ml", line 1139, characters 25-65
+frame @  file "pretyping/evd.ml", line 1661, characters 15-20
+frame @  file "proofs/proofview.ml", line 1130, characters 10-44
+frame @  file "tactics/tacinterp.ml", line 2157, characters 32-69
+frame @  file "pretyping/patternops.ml", line 192, characters 10-33
+frame @  file "pretyping/patternops.ml", line 158, characters 49-84
+frame @  file "array.ml", line 79, characters 21-40
+frame @  file "pretyping/patternops.ml", line 158, characters 49-84
+frame @  file "array.ml", line 77, characters 21-40
+frame @  file "pretyping/evd.ml", line 815, characters 24-36
+raise @  file "lib/int.ml", line 37, characters 20-29
+
+(the associated tactic is [change c with c'])
+
+
+Comment author: @JasonGross
+
+Test-case in 8.5beta3:
+
+$ cat foo.v
+Require Import Coq.Arith.Arith Coq.Init.Wf.
+Axiom proof_admitted : False.
+Goal exists x y z : nat, Fix
+                           Wf_nat.lt_wf
+                           (fun _ => nat -> nat)
+                           (fun x' f => match x' as x'0
+                                              return match x'0 with
+                                                       | 0 => True
+                                                       | S x'' => x'' < x'
+                                                     end
+                                                     -> nat -> nat
+                                        with
+                                          | 0 => fun _ _ => 0
+                                          | S x'' => f x''
+                                        end
+                                          (match x' with
+                                             | 0 => I
+                                             | S x'' => (Nat.lt_succ_diag_r _)
+                                           end))
+                           z
+                           y
+                         = 0.
+Proof.
+  do 3 (eexists; [ shelve.. | ]).
+  match goal with |- ?G => let G' := (eval lazy in G) in change G with G' end.
+$ coqtop -debug -emacs < foo.v
+...
+<prompt>Unnamed_thm < 6 |branch| 0 < </prompt>Toplevel input, characters 2-78:
+>   match goal with |- ?G => let G' := (eval lazy in G) in change G with G' end.
+>   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Anomaly: error with no safe_id attached:
+Uncaught exception Not_found.
+frame @  file "stm/stm.ml", line 2452, characters 8-30
+frame @  file "stm/stm.ml", line 1953, characters 33-58
+raise @  unknown
+frame @  file "stm/stm.ml", line 123, characters 6-33
+frame @  file "printing/printer.ml", line 587, characters 4-43
+frame @  file "printing/printer.ml", line 478, characters 16-59
+frame @  file "pretyping/evarutil.ml", line 598, characters 15-63
+frame @  file "pretyping/evarutil.ml", line 570, characters 12-26
+raise @  file "lib/int.ml", line 37, characters 20-29. Please report.
+frame @  file "toplevel/coqloop.ml", line 317, characters 4-39
+raise @  file "lib/exninfo.ml", line 63, characters 8-15
+frame @  file "toplevel/vernac.ml", line 233, characters 6-16
+raise @  file "lib/errors.ml", line 23, characters 18-39
+frame @  file "toplevel/vernac.ml", line 233, characters 6-16
+raise @  file "lib/errors.ml", line 23, characters 18-39
+
+<prompt>Unnamed_thm < 7 |branch| 0 < </prompt>
+
+
+Is it the case that any anomaly will not have a safe_id attached, and so will result in this occurring in interactive tty mode?
+
+
+Comment author: @gares
+
+I can't reproduce the bug on 8.5rc1, looks the root cause was fixed
+
+
+Comment author: @JasonGross
+
+Is it that the code I suggested no longer gives an anomaly in 8.5rc1, or that you have an anomaly in 8.5rc1, but this behavior no longer occurs?
+
+There are two issues this bug report is about, nominally:
+1. The error message about safe_ids has an extra period
+2. Getting an anomaly gives rise to a safe_id error message on backtracking.
+
+(If the code I gave doesn't give an anomaly any more, that just means that you need a new test-case for this bug.)
+
+
+Comment author: @gares
+
+I think the double period bug was closed by Guillaume a while ago.
+
+

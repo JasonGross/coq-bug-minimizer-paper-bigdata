@@ -1,0 +1,49 @@
+Comment author: @JasonGross
+
+Goal True.
+  match goal with
+    | [ |- ?G ] => pose G; pose (fun G : Set => G)
+  end. (* Toplevel input, characters 56-72:
+Error: Ltac variable G is not bound to an identifier.
+It cannot be used in a binder. *)
+
+I'm not sure how I feel about this.  On the one hand, shadowing is bad.  On the other hand, it's not forbidden elsewhere.
+
+If this is to stay like this, it should be documented as a source of incompatibilities in CHANGES.
+
+
+Comment author: @aspiwack
+
+You realise, I suppose, that you are the one who (rightly) required this behaviour.
+
+Ok… To be entirely honest: yes, instead of an error I could decide that because G is bound to something which is not a name, then it is to act as a a name. But apart from being particularly awful in my opinion, it wouldn't actually be consistent with the rest of Ltac:
+
+Goal True -> True.
+Proof.
+  Fail let x:=constr:0 in intros x.
+  (* Error: Ltac variable x is bound to 0 which cannot be coerced to an introduction pattern. *)
+
+Also: shadowing isn't bad. But it is a complicated issue in dependently typed language, and can be fragile in interactive proofs. Hugo and I had some discussion on a better shadowing behaviour in refine. But nothing has been implemented yet.
+
+
+Comment author: @aspiwack
+
+I agree that the CHANGES documentation is… lacking…
+
+
+Comment author: @JasonGross
+
+When I requested that I was thinking that [fun G : Set => G] would take the name of any Ltac [G] which is a name, and behave as in 8.4 otherwise.  But, yes, I realize I requested the change that led to this behavior.
+
+Seeing how [intro] behaves, I guess I agree that it makes sense for this to be the behavior of binders, too.
+
+I would be fine with marking this as closed if CHANGES is updated.
+
+
+Comment author: @aspiwack
+
+Done (d856e6ea6366e148b9b215fc1ef9631c1da07320).
+
+Feel free to propose better prose. I've never been good at CHANGES.
+
+

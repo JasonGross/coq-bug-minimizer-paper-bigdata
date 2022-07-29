@@ -1,0 +1,84 @@
+Comment author: @JasonGross
+
+The first three `Notation`s succeed, but the last fails.  This is incorrect.
+```
+Reserved Notation "x {{ y >>" (at level 40).
+Notation "x {{ y >>" := (x y) (only parsing).
+Reserved Notation "x {{ y >}" (at level 40).
+Notation "x {{ y >}" := (x y) (only parsing).
+Reserved Notation "x {{ y }}" (at level 40).
+Notation "x {{ y }}" := (x y) (only parsing). (* Error: A left-recursive 
+notation must have an explicit level. *)
+```
+
+Comment author: @herbelin
+
+There is a hack with curly braces in the parser, so as to parse {A}+{B} (sumbool) and {A:T|P}+{B} (sumor of sig) (and maybe other similar expressions).
+
+This bug shows a problem with the hack. I'm afraid that trying to fix it might result in having to pile an other hack on top of the hack, so, as far as I'm concerned, I would rather lean to let the situation as it is (which does not exclude that there is after all a simple fix, but I'm not enough optimistic).
+
+
+Comment author: @silene
+
+What about simply removing the hack and adding all the missing nested notations? I tried the following notations and they seemed to work, as far as I could tell. But the solution seems so obvious that I must be missing something important here.
+```
+Notation "<~ x | P ~>" := (sig (fun x => P)) (x at level 99).
+Notation "<~ x : T | P ~>" := (sig (fun x : T => P)) (x at level 99).
+Notation "<~ P ~> + <~ Q ~>" := (sumbool P Q) (P at level 99).
+Notation "<~ x | P ~> + <~ Q ~>" := (sumor (sig (fun x => P)) Q) (x at level 99).
+Notation "<~ x : T | P ~> + <~ Q ~>" := (sumor (sig (fun x : T => P)) Q) (x at level 99).
+Notation "<~ x & P ~>" := (sigT (fun x => P)) (x at level 99).
+Notation "<~ x : T & P ~>" := (sigT (fun x : T => P)) (x at level 99).
+Notation "<~ x & P ~> + <~ Q ~>" := (sumor (sigT (fun x => P)) Q) (x at level 99).
+Notation "<~ x : T & P ~> + <~ Q ~>" := (sumor (sigT (fun x : T => P)) Q) (x at level 99).
+```
+
+Comment author: @herbelin
+
+@ Guillaume: maybe. More information in 0541d7039eb3ac663597059413b2d9a889d6b0b5.
+
+Typical problems are: whenever there is a new notation of the form "{ bla }", we need a factorization of `"A + { bla }"` (= `sum of A and { bla }`) and `"A + { foo }"` (`sumor of A and foo`).
+
+
+Comment author: @ppedrot
+
+A beotian question: why do we need to have sumor? Can't we just replace every instance of it by a simple sum and let cumulativity do the job? Even for extraction, it shouldn't be that bad.
+
+
+Comment author: @herbelin
+
+Finally, it was occupying my mind and I fixed it.
+
+The remark on sumor is interesting. I guess this would have to come with removing sumbool then since I don't think we want statements like
+
+`{n < m} + {n = m} + {m < n}`
+
+to look like the hybrid
+
+`{n < m} + {n = m} + (m < n) `
+
+rather than the homogeneous
+
+`(n < m) + (n = m) + (m < n)`
+
+This would also have the advantage to simplify the terminology inleft/left/inl, inright/right/inr.
+
+I made some experiment on the standard library and it seems to go through. The { ... } + { ... } and { ... } + { ... } + { ... } patterns are however common and somehow strongly tied to Coq and to its identity. So, I don't think that this a direction to be followed thoughlessly.
+
+
+Comment author: @herbelin
+
+*** Bug [BZ#2867](https://github.com/coq/coq/issues?q=is%3Aissue%20%22Original%20bug%20ID%3A%20BZ%232867%22) has been marked as a duplicate of this bug. ***
+
+
+Why was this bug closed?  It does not seem to be fixed as of 8.10.0:
+```coq
+Reserved Infix "||->{ f }" (at level 50, left associativity).
+Infix "||->{ f }" := f.
+(* Error: A left-recursive notation must have an explicit level. *)
+```
+Oh, maybe this is not about curly braces
+This has to do with the presence of spaces in the infix string which are not treated the same in `Reserved Infix` and in `Infix`. Sorry about it.
+
+Not too difficult to fix, but one would need for that to remove a hack I used for simulating `Reserved Infix` on top of `Reserved` and have instead a proper constructor in `constr_expr` for `Reserved Infix`....
+Seems to be fixed.

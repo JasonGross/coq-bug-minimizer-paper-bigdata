@@ -1,0 +1,21 @@
+What happens is that the syntax is wrong. `Bind Scope a_scope with option unit.` is the same as `Bind Scope a_scope with option. Bind Scope a_scope with unit.`. Otherwise said,
+```coq
+Bind Scope a_scope with option unit.
+Bind Scope b_scope with option nat.
+```
+is the same as
+```coq
+Bind Scope a_scope with option.
+Bind Scope a_scope with unit.
+Bind Scope b_scope with option.
+Bind Scope b_scope with nat.
+```
+which is certainly not what you want.
+
+I'm gonna remove the ability to give several types in `Bind Scope` since it is not documented and very confusing.
+
+(One day..., eventually..., finally..., coercions and bind shall be able to support arbitrary deep patterns made from type constructors and not only patterns of the form `option _` what `Bind Scope b_scope with option` stands for).
+
+> I'm gonna remove the ability to give several types in Bind Scope since it is not documented and very confusing.
+
+Or you could use a separator, maybe?

@@ -1,0 +1,24 @@
+This seems a duplicate of https://github.com/coq/coq/issues/15452
+I think this is different, for some reason the `--libdir=/usr/lib/ocaml` that is needed in Debian is not passed to Dune, it uses `$prefix/lib` instead which is the default.
+So it is a bug in "configure.ml"?
+For the record, here is what I wrote in Zulip:
+
+> I think the main issue is as follows. Dune says "If `--prefix` is specified the default is `$prefix/lib`, otherwise it is the output of `ocamlfind printconf destdir`." Since Coq uses `--prefix`, Dune installs the files in a location that Findlib never heard about.
+
+> So it is a bug in `configure.ml`?
+
+I would rather say that it is a bug in `Makefile.install`. But there is presumably a missing feature in `configure.ml` that prevents from fixing the bug adequately, I guess.
+I think we had this sorted in configure/Makefile.install but is very possible that I messed up.
+> For the record, here is what I wrote in Zulip:
+> 
+> > I think the main issue is as follows. Dune says "If `--prefix` is specified the default is `$prefix/lib`, otherwise it is the output of `ocamlfind printconf destdir`." Since Coq uses `--prefix`, Dune installs the files in a location that Findlib never heard about.
+
+Yup, dune allows to override this tho with `--libdir`
+> I think this is different, for some reason the `--libdir=/usr/lib/ocaml` that is needed in Debian is not passed to Dune, it uses `$prefix/lib` instead which is the default.
+
+Even if I pass `-libdir` to `./configure` explicitly, `make install` ignores it and installs the META files to, e.g., `usr/lib/coq-core/META` ([see this log](https://launchpadlibrarian.net/585237203/buildlog_ubuntu-xenial-i386.coq_8.master~git~202202091915+23046-0~daily357-9039b7cec0~ubuntu16.04.1_BUILDING.txt.gz))
+@JasonGross is this still relevant?
+I think it's not?  I'm not sure, though; I found a workaround a while back, I think, and haven't touched the code since
+Unsetting the blocker tag in any case.
+I suspect this is broken in the non-standard layout we are discussing in #15663 .
+Should be solved by #15560 

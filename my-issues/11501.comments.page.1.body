@@ -1,0 +1,45 @@
+Seems caused by 6bc9ef56c5833ee81d7298ab0c52146ad775e2a1 (part of PR #10612 )
+> Seems caused by [6bc9ef5](https://github.com/coq/coq/commit/6bc9ef56c5833ee81d7298ab0c52146ad775e2a1)
+
+That commits makes the trace be emitted as a "notice" instead of an "info", which seems right according to the documented semantics. Not sure why this ends up being unwrapped.
+
+@JasonGross Is there a description of the encoding `-emacs` is expected to speak?
+> @JasonGross Is there a description of the encoding `-emacs` is expected to speak?
+
+Not as far as I know.  @cpitclaudel or @Matafou might know better than I do, though.
+AFAIK -emacs only affects output. Regular coqtop inputs are expected. 
+> AFAIK -emacs only affects output. Regular coqtop inputs are expected.
+
+This is about coq output: what should be the encoding of a "notice" feedback?
+ <infomsg>  </infomsg> should do it.
+Sorry: `<infomsg> </infomsg>` should do it
+Did someone try this?
+I noticed that `Set Debug Auto.` display do not output any `<infomsg>`.
+If a message is not enclosed into infomsg it is considered important and will be printed even if there are other commands scripted in the same round (like in `auto;intros.`). if inside `infomsg` then it is only printed when it is the last command of the queue.
+@Matafou I can push a branch that does it, so that you can try with PG. It should take just a few minutes.
+Thanks. I will test it.
+A fix has been prepared but won't be ready in time for 8.11.1.
+> A fix has been prepared but won't be ready in time for 8.11.1.
+
+This is unfortunate, but I missed the 8.11.1 timeframe announcement. Where has it been published?
+> > A fix has been prepared but won't be ready in time for 8.11.1.
+> 
+> This is unfortunate, but I missed the 8.11.1 timeframe announcement. Where has it been published?
+
+Nowhere AFAICT, @ppedrot has just been talking about it for about a week on Gitter.
+@maximedenes FTR there was also no formal 8.11.2 announcement either but it should happen pretty soon according to @ppedrot. If you feel like this is an important fix, maybe you can find some time to finish it in the upcoming days (note to @ppedrot there is no obligation to have 8.11.2 tagged before the v8.12 branching; however the earlier, the better for the release notes preparation).
+@maximedenes the fix is not entirely ready for me. There is a indentation problem in the output of the goal. The goal should be pushed to the left. Currently here is what is displayed:
+```
+$ coqtop -emacs
+Welcome to Coq matafou-gropcmatafou:/home/courtieu/coq/denes,notice-infomsg (36d2ff28cfca47b580827eaa14ea854e9199e337)
+
+<prompt>Coq < 1 || 0 < </prompt>Goal True.
+<noticemsg>1 subgoal (ID 1)
+             
+             ============================
+             True</noticemsg>
+
+<prompt>Unnamed_thm < 2 |branch| 0 < </prompt>
+```
+Notice the left margin.
+There is a PR attempting to fix this bug. When it is merged, the right milestone will be added back automatically to the issue, but in the meantime, there's no point to keep postponing. In particular, this is not an 8.12-regression.

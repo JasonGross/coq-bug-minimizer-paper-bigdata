@@ -1,0 +1,42 @@
+Comment author: @JasonGross
+
+Here is code that works in 8.4 and 8.5, but not 8.6:
+
+Goal forall x : sigT (fun x => x = 1), True.
+  intro x; refine match x with
+                  | existT x' e' => _
+                  end.
+  lazymatch goal with
+  | [ H : _ = _ |- _ ] => idtac
+  end. (* fails in 8.6 *)
+  progress subst. (* fails in 8.6 *)
+
+
+Comment author: @JasonGross
+
+If this is intentional, there should probably be a compatibility option, and it 
+should be mentioned in incompatibilities.
+
+
+Comment author: @herbelin
+
+Hi Jason,
+
+The implementation of "refine" changed radically from 8.4 to 8.5. In 8.4, it was using an ad hoc implementation based on proofs/logic.ml while in 8.5 it uses the regular type inference mechanism in pretyping.ml. In particular, there are difference in the types inferred for the hypotheses and conclusion.
+
+Some a posteriori treatments have been applied to refine in 8.5, namely global βι-reduction on _all_ hypotheses and conclusion of the goal, but this obviously introduces other unexpected side-effects.
+
+The issue is discussed in length at https://github.com/coq/coq/pull/346.
+
+Now, if we look even more closely at the implementation than in [BZ#346](https://github.com/coq/coq/issues?q=is%3Aissue%20%22Original%20bug%20ID%3A%20BZ%23346%22), one can see the difference here: In 8.4, the type of your "e'" is normalized by the call
+to nf_betaiota in branch Meta of Logic.mk_refgoals. On the other side, in 8.5, it is done in Cases.build_branch (via a call to Inductiveops.get_constructors) with no βι-reduction at all. So, a quick fix is to add a nf_betaiota there.
+
+Note that it would imply a change not only in refine but also in the type inference in general as visible e.g. in
+
+Check fun x : sigT (fun x => x = 1)  => match x with  existT _ x' e' => _ end.
+
+which would also normalize the type of e'. But maybe that would not be so visible in general.
+
+I put such a fix for discussion at https://github.com/coq/coq/pull/373.
+
+

@@ -1,0 +1,19 @@
+Hi @JasonGross. I don't think this has to do with pattern-matching in particular. It is basically that processing goals is sequential and that `shelve` considers the goals and their dependencies at  the point it is itself called. For instance, the following pattern-matching-free example exhibits the same behavior:
+```coq
+Inductive foo := a | b | c.
+Goal foo -> foo.
+  intro x.
+  simple refine (foo_rect _ _ ltac:(shelve) _ x).
+```
+As for why the goals opened until `shelve` is called are considered shelvable, i.e. dependent, I don't understand why at once. And why `unshelve` does not work on them, I don't know either. I would say it is a bug as we are not supposed to loose evars from the shelf, but I don't know to which extent it comes from the tricky interaction of `ltac:(shelve)` within the scope of `refine`.
+
+Actually, this was a "critical" bug of calling `ltac` within `refine`. Even a simpler
+```coq
+Inductive foo := a | b | c.
+Goal foo -> foo.
+  intro x.
+  simple refine (foo_rect (fun _ => foo) ?[a] ltac:(exact b) ?[c] x).
+```
+is buggy since `?[a]` is lost (in the sense of not being anymore tracked as either focussed or on the shelve).
+
+I'm surprised that we didn't fall on it yet. See a fix at #6328.

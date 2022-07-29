@@ -1,0 +1,5 @@
+Comment author: @JasonGross
+
+Commands such as [Check] result in colored output from coqc.  It should therefore accept the -color flag.
+
+

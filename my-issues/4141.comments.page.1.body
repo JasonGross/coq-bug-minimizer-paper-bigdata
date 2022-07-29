@@ -1,0 +1,8 @@
+Comment author: @JasonGross
+
+If COQPATH is the accepted way of telling Coq about what directories to load, CoqIDE should have a way to modify COQPATH via the mouse.  Preferably with an interface that has a list of folders, and a folder-selector dialog to add more, rather than just a text field.
+
+
+IMHO project-wide options should live in `_CorProject` or `dune`, so things work well around several IDEs.
+
+I don't support having a mechanism to have Coq reload the loadpath dynamically so this can be closed. [too tricky to get right given the architecture]

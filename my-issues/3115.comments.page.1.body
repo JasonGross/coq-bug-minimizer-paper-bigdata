@@ -1,0 +1,51 @@
+Comment author: @JasonGross
+
+[Identity Coercion]s in their current state seem useless to me.  I do not see what I can do with them that I could not do without them.  For example:
+```coq
+Axioms A B : Type -> Type.
+Axiom f : A nat -> B Type.
+
+Definition A' := A nat.
+Definition f' : A' -> B Type := f.
+Coercion f' : A' >-> B.
+Check (_ : A nat) : A'.
+Fail Check (_ : A nat) : B Type. (* The term "?11:A nat" has type "A nat" while it is expected to have type "B Type". *)
+Check ((_ : A nat) : A') : B Type. (* ((?11:A nat):A'):B Type *)
+
+Fail Identity Coercion f'_id : A >-> A'. (* Error: in build_id_coercion: A must be a transparent constant. *)
+Identity Coercion f'_id : A' >-> A.
+
+Fail Check (_ : A nat) : B Type. (* The term "?11:A nat" has type "A nat" while it is expected to have type "B Type". *)
+
+Coercion f : A >-> B. (* Warning: f does not respect the uniform inheritance condition *)
+
+Check (_ : A nat) : B Type. (* Anomaly: apply_coercion_args. Please report. *)
+```
+
+I thought the point of [Identity Coercion]s was to get around the uniform inheritance condition.  If I could reverse the direction of the arrow, so that the identity coercion was from [A nat] to [A'] rather than from [A'] to [A nat], then they would be very useful.  But as they are, they do not seem to help me get around the uniform inheritance condition.
+
+
+Comment author: @JasonGross
+
+More generally, it would be nice to remove the restriction on identity coercions all-together, and simply require that the source and target, appropriately instantiated, be unifiable, and provide a way to provide the instantiation hints.  (Alternatively, allowing identity coercions to be one level of either folding or unfolding would be enough to get this by chaining them together.)
+
+Georges Gonthier has shown me a hack used in ssreflect that can be used to get around this when the source is not an inductive type:
+```coq
+Module Export Def.
+  Axiom A : Type.
+  Axiom B : Type.
+End Def.
+Definition C (b : bool) := if b then A else B.
+Module Type DefSig.
+  Definition A := C true.
+End DefSig.
+Module CoerT (P : DefSig).
+  Identity Coercion coer : P.A >-> C.
+End CoerT.
+Module Export CoerAT := CoerT Def.
+
+Check ((_ : A) : C _).
+```
+The [Module Export] at the end fails, though if [A] is an inductive type.
+
+

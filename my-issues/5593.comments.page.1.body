@@ -1,0 +1,154 @@
+Comment author: @JasonGross
+
+I'd like to be able to do:
+
+Infix "+" := add.
+Infix "+" := add2 (only printing). (* should emit a warning about shadowing 
+printing *)
+Infix "+" := add3 (only printing, shadowing printing). (* should emit no 
+warning *)
+Infix "+" := add5 (only parsing). (* should emit a warning about overriding a 
+parsing notation.*)
+Infix "+" := add6 (shadowing printing). (* should emit a warning about 
+overriding a parsing notation.*)
+Infix "+" := add7 (shadowing parsing). (* should emit a warning about shadowing 
+a printing notation.*)
+Infix "+" := add8 (shadowing). (* should emit no warning *)
+Infix "+" := add9. (* should emit warnings about shadowing printing and 
+overriding parsing *)
+
+I'm indifferent to shadowing/overriding/something-else.
+
+
+Comment author: @Zimmi48
+
+For now you have:
+
+Set Warnings "-notation-overridden".
+Infix "+" := add3 (only printing).
+Set Warnings "default".
+
+I agree that this is not the nicest UX. Something like:
+
+Silencing Warning "notation-overridden" Infix "+" := add3 (only printing).
+
+would be better and more generic than what you propose. WDYT?
+
+No, in fact that's not strictly more powerful as this doesn't allow to distinguish between shadowing parsing and shadowing printing...
+
+PS: enhancement requests should target 8.8 now that the feature freeze of 8.7 has passed.
+
+
+Comment author: @JasonGross
+
+> Silencing Warning "notation-overridden"
+
+I think I like this better, though I'm not 100% sure.  Since (new) warnings can appear on [Import], I want something that attaches the warning silencer to the notation, so that when I later [Import] the module, it will silently shadow the notations.  Will this syntax support that?
+
+
+Comment author: @Zimmi48
+
+(In reply to Jason Gross from comment [BZ#2](https://github.com/coq/coq/issues?q=is%3Aissue%20%22Original%20bug%20ID%3A%20BZ%232%22))
+> > Silencing Warning "notation-overridden"
+> 
+> I think I like this better, though I'm not 100% sure.  Since (new) warnings
+> can appear on [Import], I want something that attaches the warning silencer
+> to the notation, so that when I later [Import] the module, it will silently
+> shadow the notations.  Will this syntax support that?
+
+My testing with the heavy syntax "Set Warnings..." shows no warning on import, so I think this would be the same with an inline "Silencing Warning".
+
+To fully satisfy your request, the notation-overridden warning should be separated in two I guess... This would complicate the silencing of the two at once though.
+
+
+Comment author: @JasonGross
+
+What were you testing?  This shows the behavior I mentioned, with the heavy syntax:
+
+Module foo.
+  Axiom add : Set -> Set -> Set.
+  Set Warnings "-notation-overridden".
+  Infix "+" := add.
+  Set Warnings "default".
+End foo.
+Module bar.
+  Axiom add : Set -> Set -> Set.
+  Set Warnings "-notation-overridden".
+  Infix "+" := add.
+  Set Warnings "default".
+End bar.
+Import foo. (* no warnings *)
+Import bar. (* Warning: Notation _ + _ was already used in scope function_scope [notation-overridden,parsing] *)
+Import foo. (* Warning: Notation _ + _ was already used in scope function_scope [notation-overridden,parsing] *)
+Import bar. (* Warning: Notation _ + _ was already used in scope function_scope [notation-overridden,parsing] *)
+
+
+Comment author: @JasonGross
+
+(Get rid of the "in scope function_scope" in the comments; bad copy-paste where I changed the code but forgot to update the warning)
+
+
+Comment author: @Zimmi48
+
+Oh I see what you meant now. Well, it looks dangerous to me to attach a global effect to such Silencing command as this would meant that users would never be warned even if they have conflicting notations that library designers didn't think about (e.g. by importing two independent libraries).
+
+The silencing should be done at import time in this case, no?
+
+
+Comment author: @JasonGross
+
+Yes, it is a danger.  Perhaps the shadowing should freeze at declaration time which notations it's shadowing.  Then the example I gave you would still warn, but this example would not warn:
+
+Module foo.
+  Axiom add1 : Set -> Set -> Set.
+  Axiom add2 : Set -> Set -> Set.
+  Set Warnings "-notation-overridden".
+  Infix "+" := add1.
+  Infix "+" := add2.
+  Set Warnings "default".
+End foo.
+Import foo. (* Warning: Notation _ + _ was already used [notation-overridden,parsing] *)
+Import foo. (* Warning: Notation _ + _ was already used [notation-overridden,parsing] *)
+
+(And I think this example should absolutely not emit warnings.  There is no useful content in the warning.)
+
+
+Comment author: @Zimmi48
+
+Indeed, I agree with you that on this last example the warnings serve no purpose and should be considered as a bug. Could it be linked to the issues Paul is investigating at the moment?
+
+
+Comment author: @JasonGross
+
+No, I don't think it's linked to the issue Paul is solving; this works fine:
+Module foo.
+  Axiom add1 : Set -> Set -> Set.
+  Axiom add2 : Set -> Set -> Set.
+  Infix "+" := add1.
+End foo.
+Import foo. (* no warning *)
+Import foo. (* no warning *)
+
+
+Comment author: @JasonGross
+
+(The issue Paul is solving is that notations are sometimes considered to be not equal to themselves, and so the override check has a false positive.  This issue is that the warning is legitimate (when I'm writing the module, not when I'm importing it), but contained within a module.)
+
+
+Comment author: @psteckler
+
+After the above discussion, what is the desired behavior? As in the original bug description?
+
+
+Comment author: @JasonGross
+
+Minimal desired behavior: Add "shadowing" qualifier that records at declaration time what notations this one is overwriting, and do not ever warn if this notation overwrites any of those notations.  (This is https://coq.inria.fr/bugs/show_bug.cgi?id=5593#c7)
+
+Additional possible behavior: Have a "globally shadowing" modifier that causes Coq not to warn if this notation overwrites any other notation, at any point in time.  (This is https://coq.inria.fr/bugs/show_bug.cgi?id=5593#c4)
+
+
+Comment author: @JasonGross
+
+Another thing that would be useful: I'd like to be able to suppress notation-overridden-warnings-on-import separately from notation-overridden warnings at declaration time.  Otherwise I just end up passing -w "-notation-overridden" to all of my projects, because the overridden warnings on import are way too noisy.
+
+

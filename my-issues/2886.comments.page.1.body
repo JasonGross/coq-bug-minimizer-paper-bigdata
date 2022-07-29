@@ -1,0 +1,14 @@
+Comment author: @JasonGross
+
+The following code fails with "Anomaly: Uncaught exception Not_found. Please report."
+
+Goal forall (x y : Prop), (x -> y) -> False.
+  intros.
+  change (?a -> ?b) with ((fun A B => A -> B) a b) in *.
+
+
+Comment author: @ppedrot
+
+The trunk now has a better message.
+
+

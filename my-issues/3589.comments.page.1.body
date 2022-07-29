@@ -1,0 +1,32 @@
+Comment author: @JasonGross
+
+(* File reduced by coq-bug-finder from original input, then from 5553 lines to 1522 lines, then from 1285 lines to 173 lines, then from 118 lines to 71 lines, then from 50 lines to 25 lines *)
+(* coqc version trunk (September 2014) compiled on Sep 6 2014 6:15:6 with OCaml 4.01.0
+   coqtop version cagnode17:/afs/csail.mit.edu/u/j/jgross/coq-trunk,trunk (3ea6d6888105edd5139ae0a4d8f8ecdb586aff6c) *)
+
+Global Set Primitive Projections.
+Inductive paths {A : Type} (a : A) : A -> Type := idpath : paths a a.
+Arguments idpath {A a} , [A] a.
+Notation "x = y :> A" := (@ paths A x y) : type_scope.
+Notation "x = y" := (x = y :>_) : type_scope.
+Delimit Scope path_scope with path.
+Definition inverse {A : Type} {x y : A} (p : x = y) : y = x := match p with idpath => idpath end.
+Notation "p ^" := (inverse p) (at level 3, format "p '^'") : path_scope.
+Definition transport {A : Type} (P : A -> Type) {x y : A} (p : x = y) (u : P x) : P y := match p with idpath => u end.
+Definition ap {A B:Type} (f:A -> B) {x y:A} (p:x = y) : f x = f y := match p with idpath => idpath end.
+Lemma transport_compose {A B} {x y : A} (P : B -> Type) (f : A -> B)
+      (p : x = y) (z : P (f x))
+: transport (fun x => P (f x)) p z  =  transport P (ap f p) z.
+  admit.
+Defined.
+Record PreCategory := { object :> Type }.
+Record Functor (C D : PreCategory) := { object_of :> C -> D }.
+Timeout 1 Definition path_functor'_sig_inv
+  := ((transport_compose _ (@ object_of _ _) _ _)^)%path.
+
+
+Comment author: @mattam82
+
+Fixed in trunk.
+
+

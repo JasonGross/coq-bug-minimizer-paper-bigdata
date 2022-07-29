@@ -1,0 +1,56 @@
+Comment author: @JasonGross
+
+I would like to be able to define [eapply] in Ltac using [refine].  I have tried the two following approaches, but my understanding is that [Tactic Notations] are desugared before tactics are run, and that [Ltac]s only accept constrs, not open_constrs (though I'm not quite sure how the desugaring of tactic notations works if this is the case), and hence that recursive tactics taking open_constrs cannot presently be defined.
+
+Ltac eapply' term :=
+  first [ refine term
+        | eapply' (term _) ].
+
+(*
+Tactic Notation "eapply''0" open_constr(term) tactic(tac) :=
+  first [ refine term
+        | tac (term _) tac ].
+
+Tactic Notation "eapply''" open_constr(term) := eapply'0 term eapply'0.
+*)
+
+Axiom uip : forall T (x y : T) (pf1 pf2 : x = y), pf1 = pf2.
+
+Goal forall T (x y : T) (pf1 pf2 : x = y), pf1 = pf2.
+intros.
+eapply' uip. (* In nested Ltac calls to "eapply'", last call failed.                                                                                        
+Error: in Refiner.tclFAIL_s: No applicable tactic. *)
+
+
+Comment author: @ppedrot
+
+That's... complicated to say the least.
+
+You're currently flirting on the fringes of the expressivity of Ltac, which was not conceived to do what you mean to. Maybe one day, when I or some fellow have cleaned up the mess which is the handling of Ltac arguments. But for now, I am afraid that You Just Can't Do That™.
+
+(Maybe you'll find a side path that'll work, but I guess it would be more a bug than anything else.)
+
+
+Comment author: @ppedrot
+
+
+
+*** This bug has been marked as a duplicate of bug [BZ#1258](https://github.com/coq/coq/issues?q=is%3Aissue%20%22Original%20bug%20ID%3A%20BZ%231258%22) ***
+
+
+Comment author: @JasonGross
+
+I do not think this is a duplicate of Bug [BZ#1258](https://github.com/coq/coq/issues?q=is%3Aissue%20%22Original%20bug%20ID%3A%20BZ%231258%22); unless I am mis-understanding something, the present abilities of "Tactic Notation" are sufficient to implement the wishlist in that bug, which does not require recursing with open terms.  I have commented there to that effect, and reopened this bug.  If my interpretation is incorrect, feel free to remark this bug as a duplicate.
+
+
+Comment author: @ppedrot
+
+You'll be happy to know that in current trunk, you can already implement what you wish as follows:
+
+Ltac eapply' term :=
+  first [ refine term
+        | eapply' open_constr:(term _) ].
+
+For now, this is not documented, but it will be before the 8.6 release.
+
+

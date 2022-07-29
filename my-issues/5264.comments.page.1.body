@@ -1,0 +1,72 @@
+Comment author: @JasonGross
+
+As in https://coq.inria.fr/cocorico/CoqDevelopment/UnificationProblems#Inverting_tuples_in_instances_of_existential_variables:
+```coq
+Goal forall T1 (P1 : T1 -> Type), sigT P1 -> sigT P1.
+  intros T1 P1 H1.
+  eexists ?[x].
+  destruct H1 as [x1 H1].
+  Fail apply H1. (* Error: In environment
+T1 : Type
+P1 : T1 -> Type
+x1 : T1
+H1 : P1 x1
+Unable to unify "?x@ {H1:=existT P1 x1 H1}" with "x1" (cannot instantiate "?x" because "x1" is not in its scope: available arguments
+are "T1" "P1" "existT P1 x1 H1"). *)
+  instantiate (x:=projT1 H1).
+  apply H1.
+```
+
+Comment author: @JasonGross
+
+Here is another case I'd like solved:
+```coq
+Goal forall T1 (ls : list T1), { ls' : _ | ls = nil \/ List.tl ls = ls' }.
+  intros T1 ls.
+  eexists ?[x].
+  destruct ls as [|x xs]; [ left; reflexivity | right ].
+  simpl.
+  Fail reflexivity. (* In nested Ltac calls to "reflexivity" and "reflexivity", last call failed.
+Error: In environment
+T1 : Type
+x : T1
+xs : list T1
+Unable to unify "?x@ {ls:=(x :: xs)%list}" with "xs" (cannot instantiate "?x" because "xs" is not in its scope: available arguments
+are "T1" "(x :: xs)%list").
+                     *)
+  instantiate (x:=match ls with cons x xs => xs | _ => _ end).
+  reflexivity.
+```
+
+Comment author: @jonleivent
+
+This ties into this CEP: https://github.com/coq/ceps/blob/master/text/011-coevolving-evars.md
+
+Here's how it would pan out with the first example:
+```coq
+Goal forall T1 (P1 : T1 -> Type), sigT P1 -> sigT P1.
+  intros T1 P1 H1.
+  eexists ?[x].
+  destruct H1 as [x1 H1].
+  instantiate (1:=ltac:(destruct H1 as [x1 H1])).
+  apply H1.
+Qed.
+```
+and in the second example:
+```coq
+Require List.
+Goal forall T1 (ls : list T1), { ls' : _ | ls = nil \/ List.tl ls = ls' }.
+  intros T1 ls.
+  eexists ?[x].
+  destruct ls as [|x xs]; [ left; reflexivity | right ].
+  simpl.
+  instantiate (1:=ltac:(destruct ls as [|x xs])).
+  reflexivity.
+Grab Existential Variables.
+  constructor.
+Qed.
+```
+
+Note that when the constructor is for a record with judgmental eta, projecting the arguments is never wrong (destructing a record with judgmental eta is a reversible step; we can never learn a later constraint that will forbid a solution obtained by projecting out the fields).
+
+cc also @herbelin 

@@ -1,0 +1,94 @@
+Comment author: @JasonGross
+```coq
+(* File reduced by coq-bug-finder from original input, then from 3442 lines to 40 lines *)
+Notation "( x ; y )" := (existT _ x y) : fibration_scope.
+Open Scope fibration_scope.
+Notation "x .1" := (projT1 x) (at level 3) : fibration_scope.
+Notation "x .2" := (projT2 x) (at level 3) : fibration_scope.
+Inductive paths {A : Type} (a : A) : A -> Type := idpath : paths a a where "x = y :> A" := (@ paths A x y) : type_scope.
+Arguments idpath {A a} , [A] a.
+Notation "x = y" := (x = y :>_) : type_scope.
+Definition transport {A : Type} (P : A -> Type) {x y : A} (p : x = y) (u : P x) : P y :=
+  match p with idpath => u end.
+Notation "p # x" := (transport _ p x) (right associativity, at level 65, only parsing) : path_scope.
+Local Open Scope path_scope.
+Definition path_sigma_uncurried {A : Type} (P : A -> Type) (u v : sigT P)
+           (pq : {p : u.1 = v.1 &  p # u.2 = v.2})
+: u = v
+  := match pq with
+       | existT p q =>
+         match u, v return (forall p0, (p0 # u.2 = v.2) -> (u=v)) with
+           | (x;y), (x';y') => fun p1 q1 =>
+                                 match p1 in (_ = x'') return (forall y'', (p1 # y = y'') -> (x;y)=(x'';y'')) with
+                                   | idpath => fun y' q2 =>
+                                                 match q2 with
+                                                   | idpath => idpath
+                                                 end
+                                 end y' q1
+         end p q
+     end.
+(* (* Toplevel input, characters 606-612:
+Error:
+In environment
+A : Type
+P : A -> Type
+u : {x : _ & P x}
+v : {x : _ & P x}
+pq : {p : u .1 = v .1 & transport P p u .2 = v .2}
+p : u .1 = v .1
+q : transport P p u .2 = v .2
+x : A
+y : P x
+x' : A
+y' : P x'
+p1 : ?73 = ?74
+q1 : transport ?69 p1 (x; y) .2 = (x'; y') .2
+y'0 : ?96 ?73
+q2 : transport ?96 idpath y = y'0
+The term "idpath" has type "(x; y) = (x; y)"
+while it is expected to have type "(x; y) = (?73; ?103)"
+(cannot instantiate "?73" because "x" is not in its scope: available
+arguments are "A" "P" "u" "v" "pq" "p" "q" "(x; y)"
+"(x'; y')"). *)
+
+```
+Comment author: @silene
+
+It does not feel like a bug in Coq. As far as I can tell, Coq inferred the wrong type for p0 and/or p1, and thus was unable to typecheck the expression. I don't think we can offer any guarantee with respect to the inference of return clauses. Asserting that p1 is of type "x = x'" (for 8.4) or that p0 is of type "u.1 = v.1" (for 8.5) is sufficient for the typechecking to complete.
+
+I agree that the error message is completely unhelpful though. And the behavior discrepancy between 8.4 and 8.5 is a bit worrying. So it is only reluctantly that I am closing this bug.
+
+
+Comment author: @herbelin
+
+As far as I could investigate, this is related to commit f16f8383f0af88deda99fa4c033ea04149b00f49 by Pierre Boutillier on Mar 10 18:38:13 2014:
+
+MaybeFlexible semantic changes
+From Maybe reducible to Maybe to reduce (but for sure reducible)
+
+whose effect is to change the status of a rel which is not a let-in to MaybeFlexible to Rigid, thus shortcutting the use of a first-order heuristic.
+This can be seen on the following simplified example with only 3 holes:
+
+```coq
+Notation "( x ; y )" := (existT _ x y).
+Notation "x .1" := (projT1 x) (at level 3).
+Notation "x .2" := (projT2 x) (at level 3).
+Definition transport {A : Type} (P : A -> Type) {x y : A} (p : x = y) (u : P x) : P y :=
+  match p with eq_refl => u end.
+
+Definition path_sigma_uncurried {A : Type} (P : A -> Type) (u : @sigT A P) (z:A) (t:P z)
+           (p : @projT1 A P u = z :> A) (q : @transport A P (@projT1 A P u) z p (@projT2 A P u) = t :> P z)
+: True
+  := match u return forall (p0 : @projT1 A P _ = z :> A), (@transport A _ (@projT1 A P _) z p0 (@projT2 A P u) = t :> P z) -> True with
+           | (x;y) => fun (p1 : x = z :> A) q1 => I
+         end p q.
+```
+
+So, it is easy to make the example working by reverting flex_kind_of_term, or (presumably) to add first-order heuristic in the flex-rigid case. Don't know which is better. Don't know if there are examples which would break by reverting flex_kind_of_term.
+
+
+Note that the initial example now passes in 8.10, but @herbelin's example still fails with `Error: Found type "x = z" where "?x@{u0:=u; u:=(x; y)} .1 = z" was expected.`
+What should be done here?
+My example is the standard wish that unification is able to invert the instances in conjunctive types. This is of course something I'm interested to work on but it may be also relevant to have an official group of developers working on unification so as to share information and dispatch tasks.
+
+In any case, the issue can probably be closed as the wish is already collected, e.g. [here](https://github.com/coq/coq/wiki/UnificationProblems#inverting-tuples-in-instances-of-existential-variables).

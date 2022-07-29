@@ -1,0 +1,21 @@
+Comment author: @JasonGross
+
+Universe i.
+Definition foo := Type.
+Set Printing Universes.
+Check foo@ {i}.
+(* foo@ {Top.471}
+     : Type@ {i+1} *)
+
+It should tell me [foo@ {i}], I think.
+
+
+Comment author: @maximedenes
+
+With universe polymorphism, the v8.5 branch now shows:
+foo@ {i}
+     : Type@ {i+1}
+
+so it seems fixed.
+
+

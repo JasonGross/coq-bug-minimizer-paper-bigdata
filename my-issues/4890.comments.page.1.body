@@ -1,0 +1,41 @@
+Comment author: @JasonGross
+
+Consider:
+
+```
+Goal let f x := existT (fun t => t) bool x in Some (f true) = Some (f false) -> False.                                                             
+  intros f H.
+```
+`injection H` says `Error: This equality is discriminable. You should use the discriminate tactic to solve the goal.`, which is a lie, because
+`discriminate` says `Error: No primitive equality found.`, which is slightly misleading, but perhaps not overly so.
+
+If I `subst f; simpl in *`, then
+`injection H` still says `Error: This equality is discriminable. You should use the discriminate tactic to solve the goal.`, which is still a lie, because
+`discriminate` says `Error: Cannot discriminate on inductive constructors with dependent types.`
+
+But `injection` clearly *can* work on goals of this type:
+```
+Goal let f x := existT (fun t => t) Set x in Some (f bool) = Some (f nat) -> False.                                                                
+  intros f H.                                                                                                                                      
+  injection H. (* success, strips off the [Some]s, as expected *)
+```
+This shows up in the failure of the `inversion` tactic to do anything interesting on `H` in the first example (it just duplicates it).
+
+
+Comment author: @jonleivent
+
+I think this may be related to 4999, because factoring out `true` and `false` (which are ctors, although not `Prop`s) makes the injection work:
+```
+Goal let f x := existT (fun t => t) bool x in Some (f true) = Some (f false) -> False.
+  intros f H.
+  remember true as X; remember false as Y.
+  injection H.
+  subst X Y.
+```
+
+Comment author: @herbelin
+
+I submitted a pull request to stops injection to consider that detecting disjoint constructors is fatal. This would be an easy fix to this disagreement between `injection` and `discriminate`.
+
+
+Fixed by #276.

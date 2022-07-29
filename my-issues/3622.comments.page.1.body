@@ -1,0 +1,15 @@
+Comment author: @JasonGross
+
+coq_makefile A.v B.v -Q . "" gives Uncaught exception: Invalid_argument("index out of bounds")
+
+
+Comment author: @JasonGross
+
+Note that `coq_makefile A.v B. -Q . '""'` works fine
+
+
+Comment author: @pirbo
+
+Should be fixed in trunk (I'm not sure how coqdep and coqtop behave with empty logical name)
+
+

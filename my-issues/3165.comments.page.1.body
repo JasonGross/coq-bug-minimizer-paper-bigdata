@@ -1,0 +1,71 @@
+Comment author: @JasonGross
+
+Inductive T : Type := t1.
+
+Section eq.
+  Variable A : Type.
+  Let T := (@ eq A).
+  Let t1 := (@ eq_refl A).
+
+  Theorem foo a' b' (t' : T a' b')
+  : match t' with
+      | @ t1 y => tt
+    end
+    =
+    match t' with
+      | @ t1 y => tt
+    end.
+
+
+In HoTT/coq (based off a semi-recent trunk), this gives
+
+Toplevel input, characters 15-146:
+Anomaly: unexpected global_reference in pattern. Please report.
+frame @  file "toplevel/vernac.ml", line 343, characters 6-16
+raise @  file "toplevel/vernac.ml", line 335, characters 18-25
+frame @  file "toplevel/vernac.ml", line 327, characters 14-104
+raise @  file "library/states.ml", line 40, characters 45-46
+frame @  file "library/states.ml", line 38, characters 4-7
+raise @  file "toplevel/vernacentries.ml", line 1829, characters 12-13
+frame @  file "toplevel/vernacentries.ml", line 1818, characters 4-12
+frame @  file "toplevel/vernacentries.ml", line 453, characters 2-26
+frame @  file "toplevel/lemmas.ml", line 353, characters 13-474
+frame @  file "lib/cList.ml", line 163, characters 19-22
+frame @  file "toplevel/lemmas.ml", line 355, characters 20-64
+frame @  file "interp/constrintern.ml", line 1715, characters 10-46
+raise @  unknown
+frame @  file "interp/constrintern.ml", line 1622, characters 4-16
+frame @  file "interp/notation_ops.ml", line 57, characters 38-57
+frame @  file "lib/cList.ml", line 164, characters 2-16
+frame @  file "lib/cList.ml", line 156, characters 19-22
+raise @  unknown
+frame @  file "interp/constrintern.ml", line 527, characters 3-79
+frame @  file "interp/constrintern.ml", line 1448, characters 20-68
+frame @  file "lib/cList.ml", line 163, characters 19-22
+frame @  file "interp/constrintern.ml", line 1504, characters 22-71
+frame @  file "interp/constrintern.ml", line 1496, characters 15-59
+frame @  file "lib/cList.ml", line 163, characters 19-22
+frame @  file "interp/constrintern.ml", line 1489, characters 6-86
+frame @  file "lib/cList.ml", line 163, characters 19-22
+frame @  file "interp/constrintern.ml", line 1157, characters 17-47
+frame @  file "interp/constrintern.ml", line 864, characters 10-67
+raise @  file "lib/errors.ml", line 27, characters 18-39
+
+Apologies if this is not present in trunk or 8.4 (but it has nothing to do with universes, so I suspect it is).
+
+
+Comment author: @ppedrot
+
+This anomaly is easily turnable into a user error. Do you expect your code to work though? Currently one has to put true constructors in pattern-matching branches, but I presume it could be extended to definitions similarly to what you wrote.
+
+
+Comment author: @ppedrot
+
+Finally, I changed the anomaly for an error in trunk.
+
+
+Comment author: @JasonGross
+
+I was not sure if it would work before I tried it, but I did not expect it to be an anomaly.  It might be nice for the error message to mention the name of the global reference that's supposed to be a constructor.
+
+

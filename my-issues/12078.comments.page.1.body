@@ -1,0 +1,5 @@
+I don't know how to do this.
+I think you can do the edits to the files somewhere that isn't the current working directory, and you only copy the files back to the working directory if `diff` reports non-zero.  Alternatively/additionally, if all the tools can take input on stdin and do output on stdout, you can edit only the staged files, and then copy the edits back to the current working directory iff there is no change between the stage and the current copy?
+> if all the tools can take input on stdin and do output on stdout
+
+It's pretty likely that it is indeed the case.

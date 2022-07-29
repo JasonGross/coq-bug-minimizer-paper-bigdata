@@ -1,0 +1,48 @@
+Comment author: @JasonGross
+
+It would be great if Coq could tell me what the inconsistent assumptions are.  
+For example, when I get "Error: Compiled library Crypto.Util.Tuple.vo makes 
+inconsistent assumptions over library Coq.Init.Notations", I'd like to know if 
+the version of Notations.vo imported by Tuple.vo (a) was built with a version 
+of Coq that was compiled with a different version of OCaml (or a different 
+version of camlpX) (is this enough to get this error message?) or (b) defines a 
+syntactically different set of Ltacs/definitions than the one currently being 
+imported or (c) something else.  Do the .vo files store enough information for 
+this to happen?
+
+
+Comment author: @silene
+
+> Do the .vo files store enough information for this to happen?
+
+No, the message is displayed whenever the md5 digest of the .vo files do not match. So what the message really means is "someone modified the .vo file but forgot to recompile its dependents".
+
+
+Comment author: @JasonGross
+
+Ah, I see.  Though I think you mean "someone modified the vo xor its dependencies, and forgot to recompile the other"
+
+
+Comment author: @silene
+
+No. I did use "dependents" on purpose (perhaps it is not an actual word though). Let's take an example. Suppose B requires A (so B is dependent on A) and C requires (indirectly) B. First A is compiled, then B is compiled, then A is modified and recompiled, then C is compiled/executed. At that point Coq loads both A and B, which causes it to complain, since the md5 digest stored inside B does not match the current md5 digest of A. In no other cases will Coq complain.
+
+
+Comment author: @JasonGross
+
+Ah, I see.  "Dependent" is indeed a noun, but I think it can only refer to people: "a person who relies on another, especially a family member, for financial support."
+
+
+Comment author: @JasonGross
+
+What would it take to make .vo files independent of the version of ocaml used to compile them?
+
+
+Comment author: @silene
+
+Currently .vo files are more or less memory dumps of the process since Coq uses the Marshal library of Ocaml. So they are highly dependent on the way Ocaml has laid out the data structures. But in practice this layout hardly ever changes, so .vo files are not impacted much. If we wanted to make .vo files truly independent of Ocaml, we would have to implement a proper serialization of Coq data structures.
+
+
+Not sure how to solve this as indeed in general there is no way to tell more to the user other than indeed, the object list is in an inconsistent state.
+
+`dune coqtop file.v` will indeed ensure global consistency of `file` deps, so this error should never happen. That's a possible solution I think.

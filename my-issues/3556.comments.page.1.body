@@ -1,0 +1,96 @@
+Comment author: @JasonGross
+```
+
+$ cat foo.v
+Axiom foo0 : Set.
+$ cat bar.v
+Section bar.
+  Require foo.
+  Import foo.
+  Check foo0. (* foo0
+     : Set *)
+End bar.
+Fail Check foo0. (* Toplevel input, characters 21-25:
+Error: The reference foo0 was not found in the current environment. *)
+Locate foo0. (* Constant foo.foo0
+  (shorter name to refer to it in current context is foo.foo0) *)
+
+Section bar'.
+  Require Import foo.
+  Check foo0.
+End bar'.
+Check foo0. (* foo0
+     : Set *)
+$ coqc foo.v
+$ coqc bar.v
+foo0
+     : Set
+Constant foo.foo0
+  (shorter name to refer to it in current context is foo.foo0)
+foo0
+     : Set
+foo0
+     : Set
+
+
+
+```
+The very last [Check foo0.] should fail, I think.
+
+
+Comment author: @ppedrot
+
+I think the proper answer to this bug is that we should forbid any Require out of the toplevel... Its use elsewhere is a real can of worms.
+
+
+Comment author: @maximedenes
+
+Require inside sections seem much less of a pain (from the implementation standpoint) than those inside modules.
+
+I'll try to understand why the code handling Require Import is not literally the one of Require followed by the one of Import.
+
+
+Comment author: @maximedenes
+
+*** Bug #3363 has been marked as a duplicate of this bug. ***
+
+
+Comment author: @ppedrot
+
+Thinking about it and after reading the relevant code, I believe that "Require Export" does not behave like Require + Export even at toplevel. It seems to change the relative order of imported module. This may be relevant when there is non-commutative effects going around, like having two notations sharing the same tokens but with a distinct interpretation.
+
+
+If these were files instead of modules and using `Require Export M1.` the `Check` would go through.
+Using `Require M1. Export M1.` it doesn't.
+~~~coq
+Module M1.
+  Axiom A : Type.
+End M1.
+
+Module M2.
+  Export M1.
+  Axiom A : Prop.
+End M2.
+
+Module M3.
+  Export M1.
+End M3.
+
+Module M4.
+  Import M2. Import M3.
+  Fail Check A : Prop.
+End M4.
+~~~
+Still active. Easy way to check without having to make multiple testing files:
+~~~coq
+Section S.
+Require Hurkens. Import Hurkens.
+End S.
+Fail Check Generic.paradox.
+
+Section S.
+  Require Import Hurkens.
+End S.
+Check Generic.paradox.
+~~~
+The 2 checks should have the same result but don't.

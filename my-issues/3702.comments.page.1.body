@@ -1,0 +1,75 @@
+Comment author: @JasonGross
+
+Module NonPrim.
+  Unset Primitive Projections.
+  Record id := { idmap : forall {T}, T -> T }.
+  Definition id0 : id := {| idmap T x := x |}.
+  Goal forall T (x : T) (k : T) (H' : idmap id0 x = k), x = x.
+    cbv delta [id0 idmap].
+    progress cbv beta.
+    reflexivity.
+  Defined.
+End NonPrim.
+Module Prim.
+  Set Primitive Projections.
+  Record id := { idmap : forall {T}, T -> T }.
+  Definition id0 : id := {| idmap T x := x |}.
+  Goal forall T (x : T) (k : T) (H' : idmap id0 x = k), x = x.
+    cbv delta [id0 idmap].
+    progress cbv beta. (* failed to progress *)
+    reflexivity.
+  Defined.
+End Prim.
+
+
+Comment author: @mattam82
+
+This would require that delta expands the primitive projection to its eta-expanded form, not to the unfolded version of the primitive projection during cbv in the special case of delta without beta. cbv is untyped currently, i.e. it does not propagate the types of binders when reducing under them so that would require a huge change of the code. The only change I can make in reasonnable time is to enforce that we unfold only if beta and delta are present together. Then the only difference between primitive projections and projections is that to unfold a primitive projection you need both beta and delta.
+
+
+Comment author: @JasonGross
+
+Why would it require a huge change of the code?  The eta-expansion operation (replacing Proj(proj_info,record_term) with App(proj_info.body, record_term))  should be able to get enough typing information just from the primitive projection itself, right?
+
+
+Comment author: @mattam82
+
+You must infer the parameters of the record...
+
+
+Comment author: @mattam82
+
+i.e the expansion is of the form (fun x : I params, x.(p)), or 
+(fun params (x : I params) => x.(p)) someparams t
+
+
+Comment author: @JasonGross
+
+Oh, I see.  *sigh*  So the solution would be to make cbv typed, or to give the projection a reference to the type of its argument, which is used only in cbv, or something else?
+
+
+Comment author: @mattam82
+
+Apart from making cbv typed I don't see any other option. It could impact it's performance too. cbv is using an environment machine and I'm not sure how complicated it could be to make it keep types around. If you want to have a look, it's in pretyping/cbv.ml
+
+
+Comment author: @silene
+
+Three years have gone by. I believe there is now some consensus that the current behavior of delta on primitive projections is sensible. So I don't think delta will ever eta-expand them.
+
+
+Comment author: @JasonGross
+
+I believe this is actually resolved fixed.  I haven't checked, but I think the example passes now.  This was one of the conversations that led to the current status, where projections carry a flag saying if they've been unfolded, to solve exactly this issue.  Indeed, I think it would be wrong to implement the suggestion in the title of this bug report.  The title should perhaps be "[cbv delta; cbv beta] should be the same as [cbv beta delta] on primitive projections".  (There may be a duplicate report with a title like this.)
+
+
+Comment author: @silene
+
+Your testcase does not pass, and that is expected: there is no beta-reduction to perform here. The only way to get a beta-reduction would be to perform an eta-expansion first (or to deeply change the meaning of beta-reduction).
+
+
+Comment author: @JasonGross
+
+Ah, yes, I see now.  Thanks for explaining
+
+

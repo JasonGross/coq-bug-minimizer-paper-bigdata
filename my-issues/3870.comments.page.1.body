@@ -1,0 +1,54 @@
+Comment author: @JasonGross
+
+Navigating back and forth in proof general should not slow things down.  I'm not sure what is not being cleared (universes?).  But the time of [Qed] grows linearly, if not more, with each iteration.
+
+$ coqtop < theories/bug_factorization_slow_end_07_coqtop.v 2>&1 | grep Finished
+fff' < Finished transaction in 4.488 secs (4.484u,0.003s) (successful)
+fff' < Finished transaction in 12.095 secs (12.092u,0.004s) (successful)
+fff' < Finished transaction in 26.595 secs (26.589u,0.008s) (successful)
+fff' < Finished transaction in 38.041 secs (38.034u,0.008s) (successful)
+$ echo | coqtop
+Welcome to Coq cagnode15:/afs/csail.mit.edu/u/j/jgross/coq-trunk,trunk (ab1e5d1f9180daa64924b0b398300cd311611045)
+
+Coq < Coq <
+
+
+Comment author: @JasonGross
+
+Created attachment 528
+slow file
+
+> Attached file: [bug_factorization_slow_end_07_coqtop.v](https://coq.inria.fr/bugfiles/attachment.cgi?id=528) (text/plain, 51932 bytes)
+> Description:   slow file
+
+
+Comment author: @JasonGross
+
+*** Bug [BZ#3868](https://github.com/coq/coq/issues?q=is%3Aissue%20%22Original%20bug%20ID%3A%20BZ%233868%22) has been marked as a duplicate of this bug. ***
+
+
+Comment author: @gares
+
+Sorry I don't a working Coq right now.  Can you try with
+  Stm Command Backtrack 6 0 0
+in place of simply Backtrack and tell me if changes anything.
+
+
+Comment author: @ppedrot
+
+It seems to have been fixed by Matthieu's patch, doesn't it?
+
+
+Comment author: @mattam82
+
+
+> It seems to have been fixed by Matthieu's patch, doesn't it?
+
+Wow, you are fast. It should be.
+
+
+Comment author: @ppedrot
+
+Getting bored of redaction... There we are, let us close it!
+
+

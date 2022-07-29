@@ -1,0 +1,4 @@
+@JasonGross The issue is that the script should exit with an explicit error, right? Then if you put some `|| true`, you also need to put some new check below, right?
+There is already a check below, so the effect of `|| true` is to make the script exit with an explicit error:
+https://github.com/coq/coq/blob/d80458841316ca7edf7317ef412142e27133c931/dev/tools/merge-pr.sh#L84-L90
+Oh right! Sounds good.

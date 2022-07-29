@@ -1,0 +1,79 @@
+Comment author: @JasonGross
+
+Here is code that worked in 8.4, and does not work in 8.5:
+
+(* File reduced by coq-bug-finder from original input, then from 6735 lines to 486 lines, then from 407 lines to 72 lines *)
+(* coqc version 8.5beta1 (March 2015) compiled on Mar 15 2015 16:24:54 with OCaml 4.01.0
+   coqtop version cagnode15:/afs/csail.mit.edu/u/j/jgross/coq-8.5,v8.5 (1b3759e78f227eb85a128c58b8ce8c11509dd8c3) *)
+Require Import Coq.Lists.List.
+Require Import Coq.Sets.Ensembles.
+Global Set Implicit Arguments.
+Class DecideableEnsemble {A} (P : Ensemble A) :=
+  { dec : A -> bool;
+    dec_decides_P : forall a, dec a = true <-> P a}.
+Class IndexBound {A : Set} (a : A) (Bound : list A) :=
+  { ibound :> nat;
+    boundi : nth_error Bound ibound = Some a}.
+Global Instance IndexBound_tail
+       {A : Set}
+       (a a' : A) (Bound : list A)
+       {sB' : IndexBound a Bound}
+: IndexBound a (a' :: Bound) :=
+  { ibound := S ibound;
+    boundi := boundi }.
+Global Arguments ibound {A} [a Bound] _ .
+Record BoundedIndex {A : Set} (Bound : list A) :=
+  { bindex : A;
+    indexb :> IndexBound bindex Bound }.
+Local Notation Dep_Type A := (A -> Type).
+Axiom Iterate_Dep_Type_BoundedIndex_filter
+: forall {A : Set} (Bound : list A) (filter : nat -> bool), Dep_Type (BoundedIndex Bound) -> Type.
+
+Goal forall (A : Set) (a : A) (Bound : list A)
+            (_ : forall (P : forall _ : @ BoundedIndex A Bound, Type)
+                        (filter : Ensemble nat)
+                        (filter_dec : @ DecideableEnsemble nat filter)
+                        (_ : forall (idx : @ BoundedIndex A Bound)
+                                    (_ : filter
+                                           (@ ibound A (@ bindex A Bound idx) Bound
+                                                    (@ indexb A Bound idx))),
+                               P idx),
+                   @ Iterate_Dep_Type_BoundedIndex_filter A Bound
+                                                         (@ dec nat filter filter_dec) P)
+            (P : forall _ : @ BoundedIndex A (@ cons A a Bound), Type)
+            (filter : Ensemble nat) (filter_dec : @ DecideableEnsemble nat filter),
+       @ Iterate_Dep_Type_BoundedIndex_filter A Bound
+                                             (fun n : nat => @ dec nat filter filter_dec (S n))
+                                             (fun H : @ BoundedIndex A Bound =>
+                                                P
+                                                  (@ Build_BoundedIndex A (@ cons A a Bound) (@ bindex A Bound H)
+                                                                       (@ IndexBound_tail A (@ bindex A Bound H) a Bound
+                                                                                         (@ indexb A Bound H)))).
+  intros A a Bound IHBound P filter filter_dec.
+  refine (IHBound _ (fun n => filter (S n))
+                  {| dec := _;
+                     dec_decides_P n := (dec_decides_P (S n)) |} _) || fail "too early".
+  Undo.
+  eapply (IHBound _ (fun n => filter (S n))
+                  {| dec := _;
+                     dec_decides_P n := (dec_decides_P (S n)) |}).
+(* Toplevel input, characters 129-148:
+Error:
+In environment
+A : Set
+a : A
+Bound : list A
+IHBound : forall (P : Dep_Type (BoundedIndex Bound))
+            (filter : Ensemble nat) (filter_dec : DecideableEnsemble filter),
+          (forall idx : BoundedIndex Bound, filter (ibound idx) -> P idx) ->
+          Iterate_Dep_Type_BoundedIndex_filter dec P
+P : Dep_Type (BoundedIndex (a :: Bound))
+filter : Ensemble nat
+filter_dec : DecideableEnsemble filter
+n : nat
+The term "dec_decides_P (S n)" has type "dec (S n) = true <-> ?P (S n)"
+while it is expected to have type "dec (S n) = true <-> ?e n".
+*)
+
+
+This is a bug affecting an already old version, and it is unlikely both that we fix it and that it would help you. Therefore I'll close it as WONTFIX.

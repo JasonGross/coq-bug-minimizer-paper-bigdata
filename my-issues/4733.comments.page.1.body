@@ -1,0 +1,101 @@
+Comment author: @JasonGross
+
+Coq 8.4 used " [ x ; .. ; y ] ".  Coq 8.5 uses " [ x ; y ; .. ; z ] ".  This means that users cannot make use of the singleton list notations in a way that works in both 8.4 and 8.5, even with -compat 8.4, except by redefining the notations with something like:
+
+Require Coq.Lists.List.
+Require Coq.Vectors.VectorDef.
+Module Export Coq.
+Module Export Lists.
+Module List.
+Module ListNotations.
+Include Coq.Lists.List.ListNotations.
+Notation " [ x ; .. ; y ] " := (cons x .. (cons y nil) ..) : list_scope.
+End ListNotations.
+End List.
+End Lists.
+Module Export Vectors.
+Module VectorDef.
+Module VectorNotations.
+Import Coq.Vectors.VectorDef.VectorNotations.
+Notation " [ x ; .. ; y ] " := (cons _ x _ .. (cons _ y _ (nil _)) ..) : vector_scope. (* actually only required in > 8.5pl1, not in >= 8.5pl1 *)
+End VectorNotations.
+End VectorDef.
+End Vectors.
+End Coq.
+Export Vectors.VectorDef.VectorNotations.
+Export List.ListNotations.
+
+
+Please add compatibility notations for " [ x ; .. ; y ] " for lists and vectors to the standard library.
+
+
+Comment author: @JasonGross
+
+Pierre-Marie, you resolved bug [BZ#4684](https://github.com/coq/coq/issues?q=is%3Aissue%20%22Original%20bug%20ID%3A%20BZ%234684%22), so I'm assigning this to you, though I'm not sure if you're the right person for this (is someone else in charge of the compatibility notations?)
+
+
+Comment author: @ppedrot
+
+I don't really know what to do... Maybe Hugo has more insight into the parser abominations?
+
+
+Comment author: @JasonGross
+
+I think adding
+
+Notation " [ x ; .. ; y ] " := (cons x .. (cons y nil) ..) (compat "8.4") : list_scope.
+
+Notation " [ x ; .. ; y ] " := (cons _ x _ .. (cons _ y _ (nil _)) ..) (compat "8.4") : vector_scope.
+
+in the right places should be enough to fix things, as long as having these notations has no effect when the -compat 8.4 flag is not passed (I'm not sure how compat notations work, though, and what happens when the flag is not passed, and if there's any issue with reserving the notations but not assigning them, etc).
+
+
+Comment author: @herbelin
+
+I'm sorry, I lost track of what is wrong in having decomposed
+
+Notation " [ x ; .. ; y ] " := ...
+
+into
+
+Notation " [ x ] " :=
+Notation " [ x ; y ; .. ; z ] " := ...
+
+What is still not working after PMP's 2ee92b2? Why would a compatibility layer be needed?
+
+
+Comment author: @JasonGross
+
+Suppose a user wants to declare a new list-like notation with support for singletons in both 8.4 and 8.5.  If they use 
+
+Notation " [ x ] " := (mycons x mynil) : mylist_scope.
+Notation " [ x ; y ; .. ; z ] " := (mycons x (mycons y .. (mycons z mynil) ..)) : mylist_scope.
+
+then the notation works fine in 8.5.  In 8.4, [ x ] is always interpreted as the list singleton, not the mylist singleton, so singleton mylists are broken in 8.4.  If instead they use
+
+Notation " [ x ; .. ; y ] " := (mycons x .. (mycons y mynil) ..) : mylist_scope.
+
+then the notation works fine in 8.4 (we get both singleton mylists and singleton lists), but in 8.5, [ x ] is always interpreted as the mylist singleton, and so we've broken the list singleton notation.
+
+The fix to this is to restore the " [ x ; .. ; y ] " notation for lists and vectors in 8.4 compatibility mode, so that users can use " [ x ; .. ; y ] " for list-like structures, and have it not break singletons.
+
+
+Comment author: @herbelin
+
+I'm a bit lost on this one.
+
+Would it be enough to add the lines from comment nº3 to the file Coq84.v in branch v8.5?
+
+(According to this file, [BZ#4798](https://github.com/coq/coq/issues?q=is%3Aissue%20%22Original%20bug%20ID%3A%20BZ%234798%22) was blocking for that, but now it is solved.)
+
+
+Comment author: @JasonGross
+
+I think this is now solved (I think I had a pr that moved some compat notations and also fixed updated the test suite file for this bug, and everything works?)
+
+
+Comment author: @herbelin
+
+So, closing.
+
+

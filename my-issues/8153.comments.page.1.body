@@ -1,0 +1,9 @@
+Duplicate of #8154.
+No, I don't think this is a duplicate, even if the same commit is responsible for both.  In particular, this is very clearly a bug that makes developing some things much more annoying, while #8154 is closer to a disagreement with the current spec.  Also, it is theoretically possible to separate the behavior, and have `Set Proof Using Clear Unused` not clear let-bound definitions, while still fixing this bug.
+
+cc'ing @gares here
+>Also, it is theoretically possible to separate the behavior, and have Set Proof Using Clear Unused not clear let-bound definitions, while still fixing this bug.
+
+I don't think that makes sense. If you allow `y` in the body of `foo` what's supposed to happen if I unfold `foo` somewhere which doesn't have access to `y`?
+I guess if `foo` is opaque it could work, but we still have to check that `y` doesn't appear in its type somehow.
+The issue is that there's a disagreement between different parts of `Proof using` about the status of let binders.  In the example, `Proof using Type` for `foo` apparently allows access to all let binders depending only on variables in the type, under the (correct) presumption that using them doesn't require introducing additional variable dependencies.  However, this logic is backwards for checking the use of such lemmas, where it's incorrect to presume that access to let's is required.  One way to fix this is to give Let's the status of variables for the purposes of Proof using analysis (change the behavior of `Proof using Type`).  Another is to actually track dependency of proofs on Let's (change the behavior of `Qed`, I think)

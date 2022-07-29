@@ -1,0 +1,39 @@
+Comment author: @JasonGross
+
+*No description provided.*
+
+
+Comment author: @JasonGross
+
+The following code does not work, though I think it should:
+
+```coq
+Set Implicit Arguments.
+
+Axiom Foo : forall T (a b : T), Type.
+Axiom Bar : forall T a b, @ Foo T a b.
+Axiom foo : forall T a b, @ Foo T a b -> a = b.
+Coercion foo : Foo >-> eq.
+
+Goal forall T a b, @ Foo T a b -> a = b.
+intros T a b H.
+apply Bar. (* Error: Impossible to unify "Foo ?191 ?192" with "a = b". *)
+```
+
+The following code works fine, and I'm surprised, given the above:
+
+```coq
+Set Implicit Arguments.
+
+Record Foo T (a b : T) := { foo : a = b }.
+Axiom Bar : forall T a b, @ Foo T a b.
+Coercion foo : Foo >-> eq.
+
+Goal forall T a b, @ Foo T a b -> a = b.
+intros T a b H.
+apply Bar.
+```
+
+>The following code works fine, and I'm surprised, given the above:
+
+In fact it works even without the coercion, it recognizes Foo as a conjunction-like type. This is the same code which allows to apply  a lemma `A /\ B` to a goal `A`.

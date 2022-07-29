@@ -1,0 +1,30 @@
+Comment author: @JasonGross
+
+[Reserved Notation] seems to fail to register curly braces in some places.  Alternatively, [Reserved Notation] has some nuances that I could not find documentation for.  The following code, particularly the last line, behaves unexpectedly.
+
+Parameter foo : Type -> Type -> Type -> Type.
+Parameter bar : Type -> Type -> Type.
+
+(* Notation "C ~ D" := (bar C D). (* Error: A left-recursive notation must have an explicit level. *) *)
+(* Notation "C .^{ M } D" := (foo C M D). (* Error: A left-recursive notation must have an explicit level. *) *)
+
+Reserved Notation "C .^{ M } D" (at level 70, no associativity).
+Reserved Notation "C ~ D" (at level 70, no associativity).
+
+Notation "C ~ D" := (bar C D). (* works fine *)
+(* Notation "C .^{ M } D" := (foo C M D) (at level 70, no associativity). (* would work fine *) *)
+Notation "C .^{ M } D" := (foo C M D). (* Error: A left-recursive notation must have an explicit level. *)
+
+
+Comment author: @herbelin
+
+Fixed some time ago (suspectingly by 14f8db1, 3 Oct 2016).
+
+
+Comment author: @herbelin
+
+Was actually the same as [BZ#4970](https://github.com/coq/coq/issues?q=is%3Aissue%20%22Original%20bug%20ID%3A%20BZ%234970%22).
+
+*** This bug has been marked as a duplicate of bug [BZ#4970](https://github.com/coq/coq/issues?q=is%3Aissue%20%22Original%20bug%20ID%3A%20BZ%234970%22) ***
+
+

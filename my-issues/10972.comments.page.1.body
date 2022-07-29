@@ -1,0 +1,1 @@
+Note that `cbv [...]` and `eval cbv [...]` (without the `rewrite_strat`) both have the correct behavior here.

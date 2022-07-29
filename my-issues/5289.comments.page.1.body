@@ -1,0 +1,17 @@
+Comment author: @JasonGross
+
+*No description provided.*
+
+
+Comment author: @ppedrot
+
+Why not? That's debugging information, and this is precisely the purpose of Info.
+
+
+Comment author: @herbelin
+
+May I 2-pennily propose that even if (ever) some may find good reasons for reporting about inner names of ML tactics rather than about the syntax for ML tactics (*), maybe a nicer name for these ML tactics could be used...
+
+(*) I know that ensuring that the syntax coincides with the semantics is not necessary trivial but what would be the benefit of not trying to ensure it?
+
+

@@ -1,0 +1,124 @@
+Comment author: @JasonGross
+
+I have a case where
+```coq
+    match goal with
+      | [ |- appcontext[@ mis_char] ] => erewrite !(@ mis_char_eq) by (eauto with nocore parser_adt_method_db)
+      | [ H : appcontext[@ mis_char] |- _ ] => erewrite !(@ mis_char_eq) in H by (eauto with nocore parser_adt_method_db)
+    end.
+```
+on a goal like this:
+```coq
+  H2 : mis_char ch x1
+  ════════════════════════════
+   (let
+    (String0, is_char0, _, _, _, _, _, _) as StringLike0
+    return (String -> Ascii.ascii -> bool) := string_stringlike in
+    is_char0) str2 ch
+```
+fails with "Error: decompose_lam_n_decls: not enough abstractions", but removing the first line of the match statement makes it succeed.
+
+This should not be the case.  Either it should be an anomaly, or match should backtrack across it.  I'll see if I can make a test case.
+
+
+Comment author: @JasonGross
+```coq
+Record silly := { x : nat; y := x }.
+Goal forall (k : silly), x k = x k.
+  clear; unfold x; intros.
+  match goal with
+    | [ |- appcontext[1] ] => idtac
+  end. (* Toplevel input, characters 15-70:
+Error: decompose_lam_n_decls: not enough abstractions *)
+```
+The bug goes away if [unfold x] is replaced by [cbv beta delta [x]].
+
+
+Comment author: @JasonGross
+
+Oh, fascinating, but it comes back if you do [cbv zeta] before the [match].  In non Set Printing All mode, [cbv zeta] changes the goal from
+   (let (x0, y0) := k in x0) = (let (x0, y0) := k in x0)
+to
+   (let (x0, _) := k in x0) = (let (x0, _) := k in x0)
+
+In Set Printing All mode, [cbv zeta] changes nothing.
+
+
+Comment author: @ppedrot
+
+Well, there is a nice comment in the code (Constr_matching module) that precisely seems to hint at the source of the error:
+
+(* Warning: this assumes predicate and branches to be in canonical form using let and fun of the signature *)
+
+Your reduction functions probably messed up this assumption...
+
+
+Comment author: @JasonGross
+
+Using Gregory's template-coq plugin, and some notations, we get
+```coq
+Require Import Template.Template.
+
+Require Import Template.Ast.
+Require Import Coq.Strings.String.
+Local Open Scope string_scope.
+Notation n := nNamed.
+Notation "'λ' x ::: t ⇒ b" := (tLambda (n x) t b) (at level 10).
+Notation r := tRel.
+Notation mI n := (mkInd n 0).
+Notation tI n := (tInd (mI n)).
+Notation v n := (tVar n).
+Notation "'LET' x := v 'IN' b" := (tLetIn (n x) v b) (at level 10).
+Require Import Program.
+
+Record silly := { x : nat; y := x }.
+Goal forall (k : silly), x k = x k.
+  clear; cbv beta delta [x]; intros; exfalso.
+  quote_term (let (x0, y0) := k in x0) (fun x => pose x).
+  quote_term (let (x0, _) := k in x0) (fun x => pose x).
+  let c := (eval cbv zeta in (let (x0, _) := k in x0)) in
+  quote_term c (fun x => pose x).
+(*  t := tCase 0 (λ "k" ::: tI "Top.silly" ⇒ (tI "Coq.Init.Datatypes.nat"))
+         (v "k")
+         [(1,
+          λ "x0" ::: tI "Coq.Init.Datatypes.nat"
+          ⇒ ((LET "y0" := r 0 IN (tI "Coq.Init.Datatypes.nat")) (r 1)))]
+    : term
+  t0 := tCase 0 (λ "k" ::: tI "Top.silly" ⇒ (tI "Coq.Init.Datatypes.nat"))
+          (v "k")
+          [(1,
+           λ "x0" ::: tI "Coq.Init.Datatypes.nat"
+           ⇒ (tLetIn nAnon (r 0) (tI "Coq.Init.Datatypes.nat") (r 1)))]
+     : term
+  t1 := tCase 0 (λ "k" ::: tI "Top.silly" ⇒ (tI "Coq.Init.Datatypes.nat"))
+          (v "k") [(1, λ "x0" ::: tI "Coq.Init.Datatypes.nat" ⇒ (r 0))] *)
+(* more verbosely:
+  t := tCase 0
+         (tLambda (nNamed "k") (tInd (mkInd "Top.silly" 0))
+            (tInd (mkInd "Coq.Init.Datatypes.nat" 0)))
+         (tVar "k")
+         [(1,
+          tLambda (nNamed "x0") (tInd (mkInd "Coq.Init.Datatypes.nat" 0))
+            (tLetIn (nNamed "y0") (tRel 0)
+               (tInd (mkInd "Coq.Init.Datatypes.nat" 0))
+               (tRel 1)))] : term
+  t0 := tCase 0
+          (tLambda (nNamed "k") (tInd (mkInd "Top.silly" 0))
+             (tInd (mkInd "Coq.Init.Datatypes.nat" 0)))
+          (tVar "k")
+          [(1,
+           tLambda (nNamed "x0") (tInd (mkInd "Coq.Init.Datatypes.nat" 0))
+             (tLetIn nAnon (tRel 0) (tInd (mkInd "Coq.Init.Datatypes.nat" 0))
+                (tRel 1)))] : term
+  t1 := tCase 0
+          (tLambda (nNamed "k") (tInd (mkInd "Top.silly" 0))
+             (tInd (mkInd "Coq.Init.Datatypes.nat" 0)))
+          (tVar "k")
+          [(1,
+           tLambda (nNamed "x0") (tInd (mkInd "Coq.Init.Datatypes.nat" 0))
+             (tRel 0))] : term *)
+```
+
+In any case, this seems fixed in 95a4fcf8cd36e29034e886682ed3a6e2914ce04f?
+
+

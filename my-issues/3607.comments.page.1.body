@@ -1,0 +1,71 @@
+Comment author: @JasonGross
+
+Require Import Coq.Strings.String Coq.Lists.List Coq.Program.Program.
+Inductive parse_of : string -> list (list nat) -> Type :=
+| ParseHead : forall str pat pats, parse_of_pattern str pat
+                                   -> parse_of str (pat::pats)
+| ParseTail : forall str pat pats, parse_of str pats
+                                   -> parse_of str (pat::pats)
+with parse_of_pattern : string -> list nat -> Type :=
+| ParsePatternNil : parse_of_pattern EmptyString nil
+| ParsePatternCons : forall str pat strs pats,
+                       parse_of_item str pat
+                       -> parse_of_pattern strs pats
+                       -> parse_of_pattern (str ++ strs) (pat::pats)
+with parse_of_item : string -> nat -> Type :=
+| ParseTerminal : forall x, parse_of_item (String x EmptyString) 0
+| ParseNonTerminal : forall str, parse_of str [ [ 2 ] ]
+                                      -> parse_of_item str 1.
+Scheme Equality for parse_of. (* Error: Unknown exception during scheme creation. *)
+
+
+Comment author: @ppedrot
+
+It seems it simply cannot handle mutually inductive types.
+
+Inductive foo : Type :=
+with bar : nat -> Type :=.
+
+Scheme Equality for foo.
+(* Error: Unknown exception during scheme creation. *)
+
+Strangely enough, without parameters, a more informative anomaly is printed.
+
+Inductive foo : Type :=
+with bar : Type :=.
+
+Scheme Equality for foo.
+(* Anomaly: Decidability lemma for mutual inductive types not supported. Please report. *)
+
+
+Comment author: Alexey Shchepin &lt;<alexey@process-one.net>&gt;
+
+It also doesn't work for this:
+
+Inductive a : Set :=
+| A : list a -> a.
+
+Scheme Equality for a.
+(* Error: Unknown exception during scheme creation. *)
+
+
+Comment author: @jonleivent
+
+It even breaks on a trivial case:
+
+Inductive foo := foo1 | foo2.
+
+Scheme Equality for foo.
+
+produces:
+
+Error: Unknown exception during scheme creation: Proofview_monad.TacticFailure(_)
+
+This is in trunk version: a0315cb389e85622adb916b6e229b7a79889a3f8
+
+
+Comment author: @herbelin
+
+Fixed (Enrico, 24f5b8cf170).
+
+

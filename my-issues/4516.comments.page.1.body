@@ -1,0 +1,14 @@
+Comment author: @JasonGross
+```coq
+Set Universe Polymorphism.
+Record prod A B := pair { fst : A ; snd : B }.
+Infix "*" := prod : type_scope.
+Definition foo@{i j} := (Type@{i} * Type@{j})%type. (* Error: Universes {Top.9 
+Top.8} are unbound. *)
+```
+But there's no way that I can see to name the universes of [prod] without 
+getting rid of the notation.  For example, 
+```coq
+Definition foo@{i j i' j'} : Type@{max(i', j')} := (Type@{i} * Type@{j})%type. 
+(* Error: Algebraic universe on the right *)
+```

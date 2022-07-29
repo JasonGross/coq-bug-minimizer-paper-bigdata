@@ -1,0 +1,250 @@
+Comment author: @JasonGross
+
+Created attachment 702
+File displaying the bug
+
+Here is another file where [setoid_rewrite] fails in 8.5 where it succeeds in 8.4.
+
+> Attached file: [bug_cuo_no_setoid_08.v](https://coq.inria.fr/bugfiles/attachment.cgi?id=702) (text/plain, 60885 bytes)
+> Description:   File displaying the bug
+
+
+Comment author: @JasonGross
+
+Here's a shorter version: (hopefully an even shorter one will be coming soon)
+
+(* -*- mode: coq; coq-prog-args: ("-emacs" "-R" "." "Fiat" "-top" "bug_cuo_no_setoid_05" "-R" "." "Top") -*- *)
+(* File reduced by coq-bug-finder from original input, then from 1681 lines to 1437 lines, then from 1728 lines to 1521 lines, then from 587 lines to 446 lines, then from 1198 lines to 485 lines, then from 693 lines to 561 lines, then from 810 lines to 563 lines, then from 835 lines to 651 lines, then from 796 lines to 675 lines, then from 885 lines to 719 lines, then from 980 lines to 747 lines, then from 1286 lines to 748 lines, then from 978 lines to 762 lines, then from 1139 lines to 763 lines, then from 2823 lines to 763 lines, then from 962 lines to 763 lines, then from 1103 lines to 763 lines, then from 1514 lines to 763 lines, then from 949 lines to 763 lines, then from 903 lines to 805 lines, then from 973 lines to 839 lines, then from 924 lines to 853 lines, then from 1425 lines to 984 lines, then from 1170 lines to 1074 lines, then from 1584 lines to 1103 lines, then from 1172 lines to 931 lines, then from 1027 lines to 947 lines, then from 1062 lines to 987 lines, then from 1059 lines to 990 lines, then from 1169 lines to 991 lines, then from 1347 lines to 1001 lines, then from 1228 lines to 1038 lines, then from 1100 lines to 1039 lines, then from 1400 lines to 1146 lines, then from 1541 lines to 1227 lines, then from 1604 lines to 1313 lines, then from 1407 lines to 1310 lines, then from 3164 lines to 1313 lines, then from 1383 lines to 1311 lines, then from 1356 lines to 1311 lines, then from 1687 lines to 1363 lines, then from 1709 lines to 1362 lines, then from 1843 lines to 1371 lines, then from 1735 lines to 1375 lines, then from 1456 lines to 1373 lines, then from 3213 lines to 1382 lines, then from 1439 lines to 1381 lines, then from 1412 lines to 1381 lines, then from 2916 lines to 1429 lines, then from 1505 lines to 1482 lines, then from 3314 lines to 1487 lines, then from 1501 lines to 1485 lines, then from 1562 lines to 1178 lines, then from 1192 lines to 1175 lines, then from 978 lines to 284 lines, then from 298 lines to 284 lines *)
+(* coqc version 8.5 (April 2016) compiled on Apr 18 2016 14:50:52 with OCaml 4.02.3
+   coqtop version 8.5 (April 2016) *)
+Axiom proof_admitted : False.
+Tactic Notation "admit" := case proof_admitted.
+Require Coq.Program.Program.
+Require Coq.Sets.Ensembles.
+Export Coq.Setoids.Setoid.
+
+Import Coq.Vectors.VectorDef.VectorNotations.
+
+Section ilist2.
+
+  Context {A : Type}.
+
+  Context {B : A -> Type}.
+
+  Fixpoint ilist2 {n} (l : Vector.t A n) : Type :=
+    match l with
+    | [] => unit
+    | a :: l => @ prod (B a) (ilist2 l)
+    end.
+
+End ilist2.
+
+Record RawHeading :=
+  { NumAttr : nat;
+    AttrList : Vector.t Type NumAttr }.
+
+Record RawSchema :=
+  { rawSchemaHeading : RawHeading
+  }.
+
+Definition GetNRelSchema
+           {n}
+           (namedSchemas : Vector.t RawSchema n)
+           (idx : Fin.t n) :=
+  Vector.nth namedSchemas idx.
+
+Goal    forall (P : Set)
+     (r : forall
+            (_ : forall (_ : RawSchema) (n : nat) (_ : Vector.t RawSchema n) (_ : Fin.t n),
+                 RawSchema) (n : nat) (_ : Vector.t RawSchema (S n))
+            (_ : Fin.t n), RawSchema) (t : Vector.t RawSchema O) (P0 P1 : Set)
+     (u : forall (Ridx : Fin.t (S O))
+            (_ : Type),
+
+            (prod
+               (forall _ :  (prod nat (prod P (prod P1 (prod P0 unit)))),
+                Prop) unit))
+     (c :
+            (prod
+               (forall
+                  _ :
+                        (prod (@ id Type nat)
+                           (prod (@ id Type P)
+                              (prod (@ id Type P1) (prod (@ id Type P0) unit)))), Prop)
+               unit))
+     (_ : forall (n : Fin.t (S O))
+            (_ : @ ilist2 Type (fun x0 : Type => x0)
+                   (NumAttr
+                      (rawSchemaHeading
+                         (match
+                            n in (Fin.t m') return (forall _ : Vector.t RawSchema m', RawSchema)
+                          with
+                          | @ Fin.F1 n0 =>
+                              @ Vector.caseS RawSchema
+                                (fun (n1 : nat) (_ : Vector.t RawSchema (S n1)) => RawSchema)
+                                (fun (h : RawSchema) (n1 : nat) (_ : Vector.t RawSchema n1) => h)
+                                n0
+                          | @ Fin.FS n0 p' =>
+                              fun v : Vector.t RawSchema (S n0) =>
+                              r
+                                (fun (_ : RawSchema) (n1 : nat) (t0 : Vector.t RawSchema n1)
+                                   (p0 : Fin.t n1) => @ Vector.nth RawSchema n1 t0 p0) n0 v p'
+                          end
+                            (Vector.cons RawSchema
+                               (Build_RawSchema
+                                  (Build_RawHeading (S (S (S (S O))))
+                                     (Vector.cons Type nat (S (S (S O)))
+                                        (Vector.cons Type P (S (S O))
+                                           (Vector.cons Type P1 (S O)
+                                              (Vector.cons Type P0 O (Vector.nil Type))))))) O t))))
+                   (AttrList
+                      (rawSchemaHeading
+                         (match
+                            n in (Fin.t m') return (forall _ : Vector.t RawSchema m', RawSchema)
+                          with
+                          | @ Fin.F1 n0 =>
+                              @ Vector.caseS RawSchema
+                                (fun (n1 : nat) (_ : Vector.t RawSchema (S n1)) => RawSchema)
+                                (fun (h : RawSchema) (n1 : nat) (_ : Vector.t RawSchema n1) => h)
+                                n0
+                          | @ Fin.FS n0 p' =>
+                              fun v : Vector.t RawSchema (S n0) =>
+                              r
+                                (fun (_ : RawSchema) (n1 : nat) (t0 : Vector.t RawSchema n1)
+                                   (p0 : Fin.t n1) => @ Vector.nth RawSchema n1 t0 p0) n0 v p'
+                          end
+                            (Vector.cons RawSchema
+                               (Build_RawSchema
+                                  (Build_RawHeading (S (S (S (S O))))
+                                     (Vector.cons Type nat (S (S (S O)))
+                                        (Vector.cons Type P (S (S O))
+                                           (Vector.cons Type P1 (S O)
+                                              (Vector.cons Type P0 O (Vector.nil Type))))))) O t))))),
+          @ eq
+            (
+               (prod
+                  (forall _ :  (prod nat (prod P (prod P1 (prod P0 unit)))),
+                   Prop) unit))
+            (u n
+               (
+                  (
+                     (@ ilist2 Type (fun x0 : Type => x0)
+                        (NumAttr
+                           (rawSchemaHeading
+                              (match
+                                 n in (Fin.t m')
+                                 return (forall _ : Vector.t RawSchema m', RawSchema)
+                               with
+                               | @ Fin.F1 n0 =>
+                                   @ Vector.caseS RawSchema
+                                     (fun (n1 : nat) (_ : Vector.t RawSchema (S n1)) => RawSchema)
+                                     (fun (h : RawSchema) (n1 : nat) (_ : Vector.t RawSchema n1)
+                                      => h) n0
+                               | @ Fin.FS n0 p' =>
+                                   fun v : Vector.t RawSchema (S n0) =>
+                                   r
+                                     (fun (_ : RawSchema) (n1 : nat)
+                                        (t0 : Vector.t RawSchema n1)
+                                        (p0 : Fin.t n1) => @ Vector.nth RawSchema n1 t0 p0) n0 v
+                                     p'
+                               end
+                                 (Vector.cons RawSchema
+                                    (Build_RawSchema
+                                       (Build_RawHeading (S (S (S (S O))))
+                                          (Vector.cons Type nat (S (S (S O)))
+                                             (Vector.cons Type P (S (S O))
+                                                (Vector.cons Type P1
+                                                   (S O)
+                                                   (Vector.cons Type P0 O (Vector.nil Type)))))))
+                                    O t))))
+                        (AttrList
+                           (rawSchemaHeading
+                              (match
+                                 n in (Fin.t m')
+                                 return (forall _ : Vector.t RawSchema m', RawSchema)
+                               with
+                               | @ Fin.F1 n0 =>
+                                   @ Vector.caseS RawSchema
+                                     (fun (n1 : nat) (_ : Vector.t RawSchema (S n1)) => RawSchema)
+                                     (fun (h : RawSchema) (n1 : nat) (_ : Vector.t RawSchema n1)
+                                      => h) n0
+                               | @ Fin.FS n0 p' =>
+                                   fun v : Vector.t RawSchema (S n0) =>
+                                   r
+                                     (fun (_ : RawSchema) (n1 : nat)
+                                        (t0 : Vector.t RawSchema n1)
+                                        (p0 : Fin.t n1) => @ Vector.nth RawSchema n1 t0 p0) n0 v
+                                     p'
+                               end
+                                 (Vector.cons RawSchema
+                                    (Build_RawSchema
+                                       (Build_RawHeading (S (S (S (S O))))
+                                          (Vector.cons Type nat (S (S (S O)))
+                                             (Vector.cons Type P (S (S O))
+                                                (Vector.cons Type P1
+                                                   (S O)
+                                                   (Vector.cons Type P0 O (Vector.nil Type)))))))
+                                    O t)))))))) c)
+     (m0 :
+             (prod
+                (forall _ :  (prod nat (prod P (prod P1 (prod P0 unit)))),
+                 Prop) unit)),
+   @ eq
+     (
+        (prod
+           (forall _ :  (prod nat (prod P (prod P1 (prod P0 unit)))), Prop)
+           unit))
+     (u (@ Fin.F1 O) ( ( (prod nat (prod P (prod P1 (prod P0 unit)))))))
+     m0.
+  intros.
+  let H := match goal with H : forall _ _, eq _ _ |- _ => H end in
+  rewrite H || fail 0 "too early".
+  Undo.
+  let H := match goal with H : forall _ _, eq _ _ |- _ => H end in
+  setoid_rewrite (H Fin.F1) || fail 0 "too early".
+  Undo.
+  let H := match goal with H : forall _ _, eq _ _ |- _ => H end in
+  setoid_rewrite H.
+
+
+Comment author: @JasonGross
+
+Here's a much shorter version:
+
+Require Import Coq.Setoids.Setoid.
+Goal forall (T : nat -> Set -> Set) (U : Set)
+            (H : forall n : nat, T n (match n with
+                                      | 0 => fun x => x
+                                      | S _ => fun x => x
+                                      end (nat = nat)) = U),
+    T 0 (nat = nat) = U.
+Proof.
+  intros.
+  let H := match goal with H : forall _, eq _ _ |- _ => H end in
+  rewrite H || fail 0 "too early".
+  Undo.
+  let H := match goal with H : forall _, eq _ _ |- _ => H end in
+  setoid_rewrite (H 0) || fail 0 "too early".
+  Undo.
+  let H := match goal with H : forall _, eq _ _ |- _ => H end in
+  setoid_rewrite H. (* Error: Tactic failure: setoid rewrite failed: Nothing to rewrite. *)
+  reflexivity.
+Qed.
+
+
+Comment author: @mattam82
+
+Hmm, indeed it seems the unified evar for the forall n binding was not 
+substituted
+eagerly, which is subject to a flag in 8.5 that wasn't set on at all the places 
+needed... 
+It seems too late sadly to put this in a pl, it could drastically change 
+behaviors... 
+but certainly the fix will be in 8.6.
+
+
+Comment author: @mattam82
+
+Fixed in trunk.
+
+

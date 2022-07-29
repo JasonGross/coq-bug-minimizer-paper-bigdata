@@ -1,0 +1,29 @@
+Comment author: @JasonGross
+
+This code works in 8.4 and trunk of a few weeks ago, but not the most recent trunk.
+
+(* File reduced by coq-bug-finder from original input, then from 2980 lines to 89 lines, then from 77 lines to 43 lines *)
+(* coqc version trunk (October 2014) compiled on Oct 21 2014 14:32:3 with OCaml 4.01.0
+   coqtop version cagnode15:/afs/csail.mit.edu/u/j/jgross/coq-trunk,trunk (eb9c2c40da773cd7d619ea4aa9dffc8d3455e264) *)
+Class IsEquiv {A B : Type} (f : A -> B) := { equiv_inv : B -> A ; eisretr : forall x, f (equiv_inv x) = x }.
+Class Contr_internal (A : Type) := { center : A ; contr : (forall y : A, center = y) }.
+Arguments center A {_}.
+Definition Contr := Contr_internal.
+Existing Class Contr.
+Hint Extern 0 => progress change Contr_internal with Contr in * : typeclass_instances.
+Definition equiv_contr_unit {A} `{Contr A} : IsEquiv (fun (_ : A) => tt).
+Proof.
+  refine (Build_IsEquiv _ _ _
+                        (fun (_ : unit) => center A)
+                        _).
+  intros []; constructor. (* Error: No such goal *)
+Defined.
+
+
+Comment author: @aspiwack
+
+Indeed. It was, in fact, quite a silly bug. Fixed in (c2bdd1d3145556423621223694bd9fb23fe86a64).
+
+Thanks for the report.
+
+

@@ -1,0 +1,9 @@
+Comment author: @JasonGross
+
+I would like a variant of [unify] that allows me to specify what conversion should be done.  For example, [unify a b modulo beta iota zeta delta] should be the same as [unify a b], and [unify a b modulo none] should be the same as [constr_eq a b] if [a] and [b] have no evars.
+
+I find myself writing [syntax_unify] in Ltac, the behavior of which I want to be [unify a b modulo beta iota zeta] (i.e., it should unify evars, and beta/iota/zeta reduce, but it shouldn't unfold any constants).
+
+This is useful for writing tactics, when full-blown unification is too expensive and too slow to fail because it unfolds too many things.
+
+

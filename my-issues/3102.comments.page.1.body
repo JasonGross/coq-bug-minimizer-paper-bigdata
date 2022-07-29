@@ -1,0 +1,136 @@
+Comment author: @JasonGross
+
+It would be nice to be able to access not only the context of a term, but also which term is found.  For example, I would like
+
+Goal (1 = 2) = (1 = 2).
+  match goal with
+    | [ |- appcontext C T [@ eq nat _ _] ] => pose T
+  end.
+
+and have (1 = 2) be posed.  I'm not sure what this should do in the case that the holes are under binders, but I think it would be nice if, e.g.,
+
+Goal forall n m : nat, (n = m) = (n = m).
+  match goal with
+    | [ |- appcontext C T [@ eq nat _ _] ] => pose T
+  end.
+
+posed (fun n m : nat => n = m), i.e., bound the binders and made a function.  This is especially useful because I can pass holes in an open_constr to a tactic notation, but I can't pass things like ?a (and even if I could, I can't really use them).
+
+As a use-case, I can currently implement a limited form of [rewrite] in Ltac (limited in that you need to know ahead of time how many arguments the function takes, and fill them in by hand) as follows:
+
+  Local Tactic Notation "rewrite_by_transport0_rev" open_constr(H) :=
+    (* H should be a term with holes of the form [a = b], and we look for [b] in the goal. *)
+      lazymatch type of H with
+        | ?a = ?b
+          => let G0 := match goal with |- ?G => constr:(G) end in
+             lazymatch goal with
+               | [ |- appcontext G[b] ] (* The goal is [G(b)], and we want to rewrite it to [G(a)] *)
+                 => let A := fresh in
+                    let a' := fresh in
+                    let b' := fresh in
+                    let Hrew := fresh "rew_lem" in
+                    evar (A : Type); evar (a' : A); evar (b' : A);
+                    unfold A in a', b'; (* use [a'] and [b'] as the evars used to concretely infer [a] and [b], respectively *)
+                    let Gb' := context G[b'] in
+                    let unify_b' := constr:(idpath : Gb' = G0) in (* figure out what [b]/[b'] is *)
+                    instantiate; (* not sure if we need that; but it ensures that we know about all the existentials we've unified *)
+                    let Gb'' := fresh in
+                    pose G0 as Gb'';
+                      let b'' := (eval unfold b' in b') in
+                      change b'' with b' in Gb'';
+                        pattern b' in Gb'';
+                        lazymatch goal with
+                          | [ Gb''' := ?P _ |- _ ]
+                            => constr_eq Gb'' Gb'''; (* find the function type *)
+                              pose (@ transport A P a' b' H) as Hrew (* pose the lemma, letting unification figure out the holes in [H] *)
+                        end;
+                        subst Gb'' a' b' A;
+                        cbv beta in Hrew;
+                        apply Hrew
+             end
+      end.
+
+  Local Tactic Notation "rewrite_by_transport0" open_constr(H)
+    := rewrite_by_transport0_rev (inverse H).
+(*                                                                                                                                          
+  Local Tactic Notation "rewrite_by_transport1" open_constr(H) tactic(rewrite_by_transport_tac) :=                                          
+    first [ rewrite_by_transport0 H                                                                                                         
+          | rewrite_by_transport_tac (H _) rewrite_by_transport_tac ].                                                                      
+                                                                                                                                            
+  Local Tactic Notation "rewrite_by_transport1_rev" open_constr(H) tactic(rewrite_by_transport_tac) :=                                      
+    first [ rewrite_by_transport0_rev H                                                                                                     
+          | rewrite_by_transport_tac (H) rewrite_by_transport_tac ].                                                                        
+                                                                                                                                            
+  Local Tactic Notation "rewrite_by_transport" open_constr(H) :=                                                                            
+    rewrite_by_transport1 H (fun H' tac => rewrite_by_transport1 H' tac).                                                                   
+  Local Tactic Notation "rewrite_by_transport_rev" open_constr(H) :=                                                                        
+    rewrite_by_transport1_rev H (fun H' tac => rewrite_by_transport1_rev H' tac).                                                           
+*)
+  Time rewrite_by_transport0 (FCompositionOf T _ _ _ _ _).
+
+where [inverse : forall {A} {x y : A}, x = y -> y = x] and [transport : forall {A} (P : A -> Type) {x y}, x = y -> P x -> P y].
+
+
+I think with this new feature I could do something much simpler, such as
+  Local Tactic Notation "rewrite_by_transport0" open_constr(H) :=
+    (* H should be a term with holes of the form [a = b], and we look for [b] in the goal. *)
+      lazymatch type of H with
+        | ?a = ?b
+          => let G0 := match goal with |- ?G => constr:(G) end in
+             lazymatch goal with
+               | [ |- appcontext G b' [b] ]
+                 => pattern b';
+                   match goal with
+                     | [ |- ?P _ ]
+                       => let T := type of b' in
+                          apply (@ transport T P _ b' H)
+                   end
+             end
+      end. 
+at least if there are no binders in the goal.  
+
+It would also be nice if there were a variant of context which took the context ([G] in the above) and turned it into a gallina function, i.e., if I could do, with both of these features
+
+match goal with
+  | [ |- appcontext G T [foo] ] => let Gfun := context_fun[G] in
+                                   pose (Gfun T)
+end
+
+and have it be the same as
+
+match goal with
+  | [ |- ?G ] => pose G
+end
+
+
+
+I think the behavior of context_fun should be something like that
+match goal with
+  | [ |- appcontext G [foo] ] => let Gfun := context_fun[G] in
+                                 pose (Gfun)
+end
+
+should be roughly equivalent to
+
+pattern foo;
+match goal with
+  | [ |- ?Gfun ?T ] => pose Gfun
+end.
+
+if [pattern] allowed holes.
+
+
+Comment author: @ppedrot
+
+I wholeheartedly agree with your propositions.
+
+The main problem is not the implementation, as it should be quite easy to do, but rather the very syntax of this feature...
+
+More generally, this raises the problem of manipulating open terms in Ltac, which is currently impossible; one should be able to:
+
+1. abstract a term w.r.t. a free variable;
+2. substitute a free variable by something in an open term.
+
+Indeed, a context is nothing more than a special type of open term...
+
+

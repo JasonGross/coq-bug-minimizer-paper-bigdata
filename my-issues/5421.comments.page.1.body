@@ -1,0 +1,93 @@
+Comment author: @JasonGross
+
+See 
+https://github.com/JasonGross/slow-coq-examples/tree/master/slow_fiat_crypto_vm_native_no_op, 
+or the attached zip file.  There are two [vm_compute]s each of which takes 
+about 15-20 seconds.  See README.md for details.
+
+
+Comment author: @JasonGross
+
+Created attachment 821
+fiat-crypto repo
+
+> Attached file: [slow_fiat_crypto_vm_native_no_op.zip](https://coq.inria.fr/bugfiles/attachment.cgi?id=821) (application/zip, 417445 bytes)
+> Description:   fiat-crypto repo
+
+
+Comment author: @psteckler
+
+For the file AddCoordinatesSlowExample.v, the most costly items in the profile when running the [vm_compute]:
+
+- 65.99%  coqtop
+ - __mcount_internal
+  - 95.16% _mcount
+    - 41.34% camlCList__it_list_f_1844
+      - camlCClosure__defined_rels_5697
+      - camlCClosure__create_5759
+       + 96.71% camlReduction__whd_all_4888
+       + 2.26% camlReduction__clos_gen_conv_5811
+       + 0.74% camlReduction__whd_betaiotazeta_4885
+
+
+Comment author: @ppedrot
+
+I can't reproduce the slowness on trunk.
+
+
+Comment author: @ppedrot
+
+(In reply to Pierre-Marie Pédrot from comment [BZ#3](https://github.com/coq/coq/issues?q=is%3Aissue%20%22Original%20bug%20ID%3A%20BZ%233%22))
+> I can't reproduce the slowness on trunk.
+
+Sorry, I was not using the right file. Indeed there is something wrong going on.
+
+
+Comment author: @ppedrot
+
+All right, VM compute is slow because it recomputes normal of inductive types. The following patch divides by 4 the definition time:
+
+--- a/pretyping/vnorm.ml
++++ b/pretyping/vnorm.ml
+@ @  -47,10 +47,14 @ @  let invert_tag cst tag reloc_tbl =
+              (* Argggg, ces constructeurs de ... qui commencent a 1*)
+ 
+ let find_rectype_a env c =
+-  let (t, l) = decompose_appvect (whd_all env c) in
+-  match kind_of_term t with
+-  | Ind ind -> (ind, l)
+-  | _ -> assert false
++  match Constr.kind c with
++  | App (c, l) when isInd c ->
++    (destInd c, l)
++  | _ ->
++    let (t, l) = decompose_appvect (whd_all env c) in
++    match kind_of_term t with
++    | Ind ind -> (ind, l)
++    | _ -> assert false
+ 
+It stills takes a bit of time, but this is due to rehashconsing of the term which is huge and there is no way around.
+
+Meanwhile, native_compute is slow because of OCaml algorithm of coloration of registers. The problem is not on Coq side.
+
+
+Comment author: @ppedrot
+
+See PR https://github.com/coq/coq/pull/549 for a more general fix for the VM part.
+
+
+Comment author: @JasonGross
+
+Oooh, nice.  Thanks!
+
+
+Comment author: @psteckler
+
+Should this bug be closed?
+
+
+Comment author: @ppedrot
+
+I think so, even though the native compute bug is not solved. But Maxime has been aware of it already so that should be OK.
+
+

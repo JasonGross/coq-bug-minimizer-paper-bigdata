@@ -1,0 +1,24 @@
+Comment author: @JasonGross
+
+I noticed this while tracking down a coq-bug-minimizer test-suite failure:
+$ coq_makefile foo.v -Q . "" -o foo
+Warning: No file should be installed at the root of Coq's library.
+Warning: No logical path (-R, -Q) applies to these files:
+Warning:  foo.v
+
+Warning: . and . overlap (used in -R or -Q)
+
+Warning: no common logical root
+Warning: in such case INSTALLDEFAULTROOT must be defined
+Warning: the install-doc target is going to install files
+Warning: in orphan__Top
+
+
+If I pass -Q . "", coq_makefile should not add -R . Top.
+
+
+Comment author: @JasonGross
+
+*** Bug [BZ#5629](https://github.com/coq/coq/issues?q=is%3Aissue%20%22Original%20bug%20ID%3A%20BZ%235629%22) has been marked as a duplicate of this bug. ***
+
+

@@ -1,0 +1,32 @@
+Comment author: @JasonGross
+
+I think one way to make [Set] not be special is to make it so that all universes which would normally be minimized to [Set] are identified with each other, but not with [Set].  Consider the following code, where disabling minimization to set creates extra universes, when I don't want it to:
+```coq
+
+Set Universe Polymorphism.
+
+Notation Type0 := Set.
+Definition Type1@ {i} := Eval hnf in let gt := (Set : Type@ {i}) in Type@ {i}.
+Arguments Type1 / .
+Identity Coercion unfold_Type1 : Type1 >-> Sortclass.
+Inductive UnitT : Type1 := ttT.
+Inductive UnitS : Set := ttS.
+Unset Universe Minimization ToSet.
+Definition const2 (A : Type) (B : Type) : UnitS := ttS.
+Definition foo := const2 UnitT UnitT.
+Definition bar := const2 UnitS UnitS.
+Set Printing All.
+Set Printing Universes.
+Print foo. (* foo@ {Top.71} = 
+const2@ {Top.71 Top.71} UnitT@ {Top.71} UnitT@ {Top.71}
+     : UnitS
+(* Top.71 |= Set < Top.71
+              *)
+ *)
+Print bar.
+(* bar@ {Top.73 Top.74} = const2@ {Top.73 Top.74} UnitS UnitS
+     : UnitS
+(* Top.73 Top.74 |=  *) *)
+
+```
+

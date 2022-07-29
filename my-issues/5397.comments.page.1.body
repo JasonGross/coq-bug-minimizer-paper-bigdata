@@ -1,0 +1,51 @@
+Comment author: @JasonGross
+
+Consider this code:
+```coq
+CoInductive stream := cons (x : nat) (_ : stream).
+Definition __stream := nat.
+Recursive Extraction stream __stream.
+```
+We get:
+```
+Toplevel input, characters 11950-11987:
+ Warning: The identifier __stream contains __ which is reserved for the
+ extraction [extraction-reserved-identifier,extraction]
+```
+```ocaml
+type nat =
+| O
+| S of nat
+
+type stream = __stream Lazy.t
+and __stream =
+| Cons of nat * stream
+
+type __stream = nat
+```
+This is wrong.  Suggestion, building on 
+https://coq.inria.fr/cocorico/ExtractionNameTricks: prefix coinductive types 
+with `__coqL_` rather than `__`, and, when turning identifiers into strings, 
+replace any prefix of `__coqL_` with `___coqL_` (hence making the prefix 
+`__coqL_` prefix unique to coinductives).
+
+
+Comment author: @JasonGross
+
+Or, if extraction already has a mechanism for unique prefixes, use that.  
+Here's another example of a clash, drawing from 
+https://coq.inria.fr/cocorico/ExtractionNameTricks :
+```coq
+Record foo := { field : nat; _ : bool}.
+Definition foo__1 := 1.
+Recursive Extraction foo foo__1.
+```
+
+I can't figure out how to trigger "3. Haskell and qualified names."
+
+In any case, it'd be nice for these clashes to be fixed, and then for the 
+"Warning: The identifier __stream contains __ which is reserved for the 
+extraction [extraction-reserved-identifier,extraction]" warning to be dropped 
+all-together.
+
+

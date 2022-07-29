@@ -1,0 +1,56 @@
+Comment author: @JasonGross
+
+It is annoying to get a spew of
+  Warning: Notation _ * _ was already used in scope nat_scope
+ [notation-overridden,parsing]
+and many similar warnings whenever I do something like `Import NPeano Nat`, especially since there's nothing that can be done to fix this.  Either the standard library should be fixed, or the warning system should be fixed.  I'm okay with seeing warnings when there is something reasonable I can change in my project to make them go away, but this is not one of those cases.  (And it's not clear to me that notation-overridden even belongs on by default?  Certainly, it can be confusing in some cases, but in many cases you're just redeclaring an existing notation knowingly... maybe there should be an (allow overrides) modifier?)
+
+
+Comment author: @ppedrot
+
+I totally agree with you. But that means we need to mark notations that pertain to the same unit somehow. I don't see an easy way to fix this one, apart from marking it off by default...
+
+
+Comment author: @silene
+
+Fixed as a side-effect of commit dfadb39. If you have other examples, please open a new bug report.
+
+
+Comment author: @maximedenes
+
+Here's a more generic example:
+
+Module M.
+
+Notation "!!" := nat.
+Notation "!!" := true.
+
+End M.
+
+Import M.
+
+The Import produces the warning again. I believe the same happens if M and the Import are in two separate files.
+
+
+Comment author: @silene
+
+So you are _importing_ modules with _conflicting_ notations. A warning is definitely warranted in this case. Otherwise what is the point of having warnings in the first place?
+
+
+Comment author: @maximedenes
+
+Well, you could imagine that the warning is produced only when the conflict is introduced the first time. It may be at Import time if you Import two modules that define the same notation separately for two different things. But in the example I wrote, it would be only when you define the second notation.
+
+I guess what Jason was saying is that you could be importing one file from a library that you are just using, and you get the warning, whereas the problem should be fixed by the library author. Of course, the library author is already warned when the problematic file is compiled.
+
+
+Comment author: @silene
+
+Unfortunately, there is no real indication of where a notation comes from, so it is next to impossible to distinguish whether the conflict is with an old notation or a new one. Let us move this bug report to "major redesign".
+
+
+Comment author: @maximedenes
+
+Yes, that's what PMP said. I agree we won't have it for beta1, so ok for "Major redesign: , but it is not so hard because the information is there when a notation is registered. It is simply forgotten. The hard part is actually to make sense of that information. If someone can explain why object_name is full_path * kernel_name, I would be interested. There is a comment saying the full_path is for printing, but couldn't we print the kernel_name?
+
+

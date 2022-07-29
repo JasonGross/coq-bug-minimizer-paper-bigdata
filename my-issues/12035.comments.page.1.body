@@ -1,0 +1,110 @@
+> We could say that the hnf of the string/numeral notation type has to be an inductive type family, and we use the constructors of that type as entry points.
+
+That sounds reasonnable.
+
+> Separately, there is the question of if we should support non-fully-instantiated type families.
+
+That would be nice but indeed seems to require more work.
+
+> Or we could create an extension to string/numeral notations where the user can explicitly give the entry points as a list of references, and this is required whenever the hnf of the type is not an inductive type family.
+
+Do you have any use case / example in mind ?
+
+Currently, there are two non numeral notations remaining (grepping `register_rawnumeral_interpretation`):
+* primitive floats
+* reals
+
+I could maybe devise something similar to primitive integers for the first case. The second case is more interesting. Here are a few thoughts. Recall that real number constants are
+```
+IZR <Z>  (integers)
+Rdiv (IZR <Z>) (IZR (Z.pow_pos 10%Z <positive>))  (e.g. 1.23 is 123 / 10^2)
+Rmult (IZR <Z>) (IZR (Z.pow_pos 10%Z <positive>)) (e.g. 12e3 is 12 * 10^3)
+```
+this raises two issues:
+* entry points for uninterpretation that are not constructors of an inductive type
+* uninterpreter function need some way to "match" its input
+
+The first point could be fixed as you offer by providing explicitly entry points.
+The second sounds more difficult. A proposal would be to use some ltac code but that sounds like a sledgehammer to crunch a fly. Maybe would it be simpler to use a kind of "preprocessing" to translate the input into an inductive type that would then be processed by the uninterpreter.
+For instance, for reals, the inductive type could be something like
+```Coq
+Inductive IR :=
+  | IRZ : Z -> IR
+  | IRmult : IR -> IR -> IR
+  | IRdiv : IR -> IR -> IR
+  | IRpow : Z -> positive -> IR.
+```
+We would then need a way to produce values of this type from above terms. I don't know what would be the best solution here:
+* providing a list of entry points with a corresponding constructor for each one?
+* allowing a very simple function from the inductive type to the non inductive one and attempt to derive the preprocessor by reverting it? like
+```Coq
+Fixpoint pp (i : IR) : R :=
+  match i with
+  | IRZ z => IZR z
+  | IRmult i i' => Rmult (pp i) (pp i')
+  | IRdiv i i' => Rdiv (pp i) (pp i')
+  | IRpow z p => IZR (Z.pow_pos z p)
+  end.
+```
+
+I hope I'm not hijacking your issue.
+
+> I hope I'm not hijacking your issue.
+
+Not at all!
+
+What about the following proposal:
+Instead of providing a list of entry points, the user provides an uninterpretation "function" as a list of `pattern => constr` rules.  So the one for reals would look like
+```coq
+(
+ IZR z => Z.to_int z,
+ Rdiv (IZR c) (IZR (Z.pow_pos 10%Z e)) => ...,
+ Rmult (IZR c) (IZR (Z.pow_pos 10%Z e)) => ...
+)
+```
+The idea would be to parse the rules like branches of a `match`, but allow things that are not constructors, and do the appropriate match on `glob_constr`.  And the head constants of each branch would be the entry points.
+Looks nice! Just two questions (one on syntax, the other maybe more fundamental):
+
+* how do we distinguish constants from variables? shouldn't we use a syntax à la Ltac (`IZR ?z => ...`)
+* would this handle recursion? for instance, before 8.7, real constants were plain sums and products of `R0` and `R1`
+
+There are points I definitely like in your proposal:
+
+* it looks nice and intuitive
+* implementation should be reasonnable
+
+but other things I less appreciate:
+
+* if feels a bit like reimplementing a small subset of Ltac and implementation would probably still require some work
+* there is no longer a single printing function, which makes proofs that print and parse are in "bijection" (as in `theories/Numbers/Decimal*.v`) harder and less convincing
+
+Here is yet another proposal: Use an actual (mutual) inductive type that maps what you want to uninterpret and just translate from/to the actual type to this inductive type as a preprocessing of uninterpreting / a postprocessing of interpreting. One would then just have to provide a mapping from globrefs of the actual type to constructors of the inductive type. Constructors of the (first when mutual) inductive type would be used as triggers.
+
+For instance, for reals, that could look something like
+```Coq
+Inductive IR :=
+| IRZ : IZ -> IR
+| IRdiv : IR -> IR -> IR
+| IRmult : IR -> IR -> IR
+with IZ :=
+| IZpow_pos : Z -> positive -> IZ
+| IZ0 : IZ
+| IZpos : positive -> IZ
+| IZneg : positive -> IZ.
+
+Numeral Notation R (IZR IRZ, Rdiv IRdiv, Rmult IRmult, Z.pow_pos IZpow_pos, Z0 IZ0, Zpos IZpos, Zneg IZneg) decimal_to_IR IR_to_decimal : R_scope.
+```
+
+As a nice side effect, this could allow a finer control on what gets reduced or not when parsing (for instance here, `Z.pow_pos` would not be reduced avoiding blow up for large exponents).
+
+Ooh, I like that proposal.  Two questions / thoughts:
+1. Maybe there should be some syntactic way of distinguishing entry points from bits of the translation that only get used internally?  "Constructors of the (first when mutual) inductive type would be used as triggers." seems rather convoluted (there's no reason to make the inductive mutual a priori), though it could work (note that it's not the constructors themselves, but the things you map them to).  Why not just allow something like `Numeral Notation R [ via IR using (IZR IRZ, Rdiv IRdiv, Rmult IRmult, Z.pow_pos IZpow_pos, Z0 IZ0, Zpos IZpos, Zneg IZneg) ] decimal_to_IR IR_to_decimal : R_scope.` and then you can use as entry points any of the terms which map to constructors of the given inductive.
+2. I guess at each step of the translation, the machinery has to decide whether to keep going recursively, or to just insert the constr as-is, and this is keyed on the type of the constructor?  (An alternative would be to require that each type is either fully embedded or else fully replaced; this would require replacing `Z` with `IZ` in the type of `IZpow_pos`.). The "smart" version seems a tiny bit nicer from a usability perspective (and debugging these numeral notations is going to be quite hard*), but the more uniform version might be both easier to implement and easier to understand.
+
+*Because there's no error message when numeral notations fail printing, it might be useful to have a vernacular `Print Numeral` with optional ways of specifying the scope and the type, which will print out the relevant error message rather than silently failing.  I'll go make a separate feature request for this.
+For 1., I agree, no need for mutual inductives, the types to translate can be deduced from the list of (globref, constructor) pairs.
+
+For 2., I don't know, the more uniform version may indeed be simpler to implement.
+
+I agree debugging won't be comfortable but fortunately enough, one doesn't write this kind of notations everyday. So having debugging tools may be nice but maybe not worth too much effort.
+

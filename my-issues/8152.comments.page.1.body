@@ -1,0 +1,243 @@
+Here is a small example:
+```coq
+Require Import Coq.extraction.Extraction.
+
+Reserved Notation "'dlet' x .. y := v 'in' f"
+         (at level 200, x binder, y binder, f at level 200, format "'dlet'  x .. y  :=  v  'in' '//' f").
+Definition Let_In {A P} (x : A) (f : forall a : A, P a) : P x := let y := x in f y.
+Notation "'dlet' x .. y := v 'in' f" := (Let_In v (fun x => .. (fun y => f) .. )).
+
+Local Set Warnings Append "-extraction-opaque-accessed".
+Extraction Language Haskell.
+Axiom IO_unit : Type.
+Axiom io_unit : IO_unit.
+Extract Inlined Constant IO_unit => "GHC.Base.IO ()".
+Extraction Inline io_unit.
+
+Module Import A.
+  Inductive fooT := barT (v : nat) | bazT (v : bool).
+  Inductive foo := bar | baz.
+
+  Definition full_types (v : foo) : Type
+    := match v return Type with
+       | bar => nat
+       | baz => bool
+       end.
+
+  Definition invert_bind_args (v : fooT) (v' : foo) : option (full_types v')
+    := match v', v return option (full_types v') with
+       | bar, barT v => Some v
+       | baz, bazT v => Some v
+       | bar, _
+       | baz, _
+         => None
+       end.
+End A.
+
+Module B := A.
+
+Definition bind {A B} (v : option A) (f : A -> option B) := match v with Some a => f a | None => None end.
+
+Definition mkpair {T} (v : full_types T) := Some (existT (fun _ : full_types T => full_types T) v v).
+
+Definition bad (v : A.fooT) := bind (B.invert_bind_args v baz) (fun b : full_types baz => mkpair b).
+
+Definition main : IO_unit := dlet v := bad in io_unit.
+Redirect "bad.hs" Recursive Extraction main.
+```
+generates
+```haskell
+{-# OPTIONS_GHC -cpp -XMagicHash #-}
+{- For Hugs, use the option -F"cpp -P -traditional" -}
+
+module Main where
+
+import qualified Prelude
+
+#ifdef __GLASGOW_HASKELL__
+import qualified GHC.Base
+#else
+-- HUGS
+import qualified IOExts
+#endif
+
+#ifdef __GLASGOW_HASKELL__
+unsafeCoerce :: a -> b
+unsafeCoerce = GHC.Base.unsafeCoerce#
+#else
+-- HUGS
+unsafeCoerce :: a -> b
+unsafeCoerce = IOExts.unsafeCoerce
+#endif
+
+#ifdef __GLASGOW_HASKELL__
+type Any = GHC.Base.Any
+#else
+-- HUGS
+type Any = ()
+#endif
+
+data Bool =
+   True
+ | False
+
+data Nat =
+   O
+ | S Nat
+
+data Option a =
+   Some a
+ | None
+
+data SigT a p =
+   ExistT a p
+
+let_In :: a1 -> (a1 -> a2) -> a2
+let_In x f =
+  f x
+
+data FooT =
+   BarT Nat
+ | BazT Bool
+
+data Foo =
+   Bar
+ | Baz
+
+type Full_types = Any
+
+data FooT0 =
+   BarT0 Nat
+ | BazT0 Bool
+
+fooT_rect :: (Nat -> a1) -> (Bool -> a1) -> FooT0 -> a1
+fooT_rect f f0 f1 =
+  case f1 of {
+   BarT0 x -> f x;
+   BazT0 x -> f0 x}
+
+fooT_rec :: (Nat -> a1) -> (Bool -> a1) -> FooT0 -> a1
+fooT_rec =
+  fooT_rect
+
+data Foo0 =
+   Bar0
+ | Baz0
+
+foo_rect :: a1 -> a1 -> Foo0 -> a1
+foo_rect f f0 f1 =
+  case f1 of {
+   Bar0 -> f;
+   Baz0 -> f0}
+
+foo_rec :: a1 -> a1 -> Foo0 -> a1
+foo_rec =
+  foo_rect
+
+type Full_types0 = Any
+
+invert_bind_args :: FooT0 -> Foo0 -> Option Full_types0
+invert_bind_args v v' =
+  case v' of {
+   Bar0 -> case v of {
+            BarT0 v0 -> Some (unsafeCoerce v0);
+            BazT0 _ -> None};
+   Baz0 -> case v of {
+            BarT0 _ -> None;
+            BazT0 v0 -> Some (unsafeCoerce v0)}}
+
+bind :: (Option a1) -> (a1 -> Option a2) -> Option a2
+bind v f =
+  case v of {
+   Some a -> f a;
+   None -> None}
+
+mkpair :: Foo -> Full_types -> Option (SigT Full_types Full_types)
+mkpair _ v =
+  Some (ExistT v v)
+
+bad :: FooT -> Option (SigT Bool Bool)
+bad v =
+  bind (invert_bind_args v Baz) (\b -> unsafeCoerce mkpair Baz b)
+
+main :: GHC.Base.IO ()
+main =
+  let_In bad (\_ -> Prelude.error "AXIOM TO BE REALIZED")
+```
+which errors on ghc with
+```
+[1 of 1] Compiling Main             ( bad.hs, bad.o )
+
+bad.hs:112:26: error:
+    • Couldn't match expected type ‘FooT0’ with actual type ‘FooT’
+    • In the first argument of ‘invert_bind_args’, namely ‘v’
+      In the first argument of ‘bind’, namely ‘(invert_bind_args v Baz)’
+      In the expression:
+        bind (invert_bind_args v Baz) (\ b -> unsafeCoerce mkpair Baz b)
+
+bad.hs:112:28: error:
+    • Couldn't match expected type ‘Foo0’ with actual type ‘Foo’
+    • In the second argument of ‘invert_bind_args’, namely ‘Baz’
+      In the first argument of ‘bind’, namely ‘(invert_bind_args v Baz)’
+      In the expression:
+        bind (invert_bind_args v Baz) (\ b -> unsafeCoerce mkpair Baz b)
+```
+Related: https://github.com/coq/coq/issues/5754
+Here is an even smaller example:
+```coq
+Require Import Coq.extraction.Extraction.
+Extraction Language Haskell.
+Axiom IO_unit : Type.
+Axiom io_unit : IO_unit.
+Extract Inlined Constant IO_unit => "Prelude.IO ()".
+Extraction Inline io_unit.
+
+Local Unset Elimination Schemes.
+
+Module A.
+  Inductive T := t1 | t2.
+End A.
+
+Module B := A.
+
+Definition foo (f : A.T -> B.T) : IO_unit := io_unit.
+
+Definition main := foo (fun x => x).
+
+Extraction "foo.hs" main.
+```
+In `foo.hs`:
+```haskell
+module Foo where
+
+import qualified Prelude
+
+data T =
+   T1
+ | T2
+
+data T4 =
+   T0
+ | T3
+
+foo :: (T -> T4) -> Prelude.IO ()
+foo _ =
+  Prelude.error "AXIOM TO BE REALIZED"
+
+main :: Prelude.IO ()
+main =
+  foo (\x -> x)
+```
+which gives
+```
+$ ghc foo.hs
+[1 of 1] Compiling Foo              ( foo.hs, foo.o )
+
+foo.hs:19:14: error:
+    • Couldn't match expected type ‘T4’ with actual type ‘T’
+    • In the expression: x
+      In the first argument of ‘foo’, namely ‘(\ x -> x)’
+      In the expression: foo (\ x -> x)
+```
+
+

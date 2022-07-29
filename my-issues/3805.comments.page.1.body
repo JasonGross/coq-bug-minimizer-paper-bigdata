@@ -1,0 +1,36 @@
+Comment author: @JasonGross
+
+I expect this tactic notation to fail, and not to depend on the context in which it's called:
+
+Tactic Notation "mypose" constr(Goal1) := let x := constr:(?Goal1) in pose x.
+
+Goal forall a b c d : Set, a = b -> b = c -> a = c.
+  refine (let x := _ in _).
+  refine (let x := _ in _).
+  Focus 4.
+  mypose I.
+
+(* it gives
+  y := ?Goal1 : ?Goal
+  ============================
+   let x := ?Goal1 in ?Goal4
+*)
+
+
+
+(I expect the following to continue working, though:
+
+Tactic Notation "myrewrite" constr(Goal1) := rewrite ?Goal1.
+
+Goal forall a b c d : Set, a = b -> b = c -> a = c.
+  intros; progress myrewrite H.
+  Undo.
+  myrewrite I.
+  refine (let x := _ in _).
+  refine (let x := _ in _).
+  Focus 4.
+  myrewrite I.
+
+)
+
+

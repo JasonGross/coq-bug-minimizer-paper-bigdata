@@ -1,0 +1,20 @@
+Comment author: @JasonGross
+
+Sorry, my pull request at https://github.com/coq/coq/pull/129 broke [constructor n].  I'll go submit a pull request to fix it, together with a test case.
+
+
+Comment author: @JasonGross
+
+Pull [BZ#151](https://github.com/coq/coq/issues?q=is%3Aissue%20%22Original%20bug%20ID%3A%20BZ%23151%22) (https://github.com/coq/coq/pull/151)
+
+
+Comment author: @ppedrot
+
+This has been merged, right?
+
+
+Comment author: @JasonGross
+
+Yes
+
+

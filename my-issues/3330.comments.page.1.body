@@ -1,0 +1,53 @@
+Comment author: @JasonGross
+
+Created attachment 477
+A longish but robust script reproducing the error
+
+I will attach two scripts reproducing this error in trunk; one is a bit longer, but robust to changes; the other is a bit shorter, but very, very fragile; for example, changing "Section foo. Section bar.  ... End bar. End foo." to "Section bar. ... End bar." makes the error go away.
+
+> Attached file: [bug_really_end_section_02.v](https://coq.inria.fr/bugfiles/attachment.cgi?id=477) (application/octet-stream, 27511 bytes)
+> Description:   A longish but robust script reproducing the error
+
+
+Comment author: @JasonGross
+
+Created attachment 478
+A slightly shorter bug very fragile script reproducing the error
+
+> Attached file: [bug_really_end_section_05.v](https://coq.inria.fr/bugfiles/attachment.cgi?id=478) (application/octet-stream, 20811 bytes)
+> Description:   A slightly shorter bug very fragile script reproducing the error
+
+
+Comment author: @mattam82
+
+Ok, that's a section bug. Actually a design problem. AdjunctionHom is typechecked under the constraints produced by Adjunction_Type, which are not pushed when checking the discharged AdjunctionHom, hence we're missing in this case an equality that was necessary to typecheck the term...
+
+
+Comment author: @ppedrot
+
+This raises an assertion failure in trunk now..
+
+
+Comment author: @mattam82
+
+
+> This raises an assertion failure in trunk now..
+
+Hmm, I cannot reproduce this with either script and the test-suite which has the shorter one does not seem to fail either.
+
+
+Comment author: @JasonGross
+
+The anomaly is "Anomaly: File "kernel/safe_typing.ml", line 252, characters 31-37: Assertion failed.".  It occurs in with the file in the test-suite, but only if you copy it to a validly named file and use `coqtop -compile foo` or `coqtop -batch -compile foo` or `coqc foo.v`, but not `coqtop -batch -load-vernac-source foo`.  `coqc -verbose` shows that the error occurs at or after the end of the file.
+
+
+Comment author: @mattam82
+
+Ah ok, this is something else. Test file: "Module A." fails with the same error when compiled.
+
+
+Comment author: @mattam82
+
+It's because the Module is not ended
+
+

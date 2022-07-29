@@ -1,0 +1,29 @@
+Comment author: @JasonGross
+
+I learned recently that passing -bt to coqtop will make it give me a trace of any anomaly it encounters.  I'd like there to be a -bt argument to ./configure, which permanently enables -bt in coq{top,c} (is there any downside to having -bt always enabled, other than confusing beginners?), so that I don't have to manually enable it for only new enough versions of Coq.
+
+
+Comment author: @ppedrot
+
+The -bt option has a non-neglectible impact on performances so it cannot be enabled by default. We can provide a configure flag though.
+
+
+Comment author: @JasonGross
+
+Sure, a configure flag is good enough.  What's the performance impact?
+
+
+Comment author: @silene
+
+On micro-benchmarks, you can get exception throwing to become arbitrary slower. Still, I was curious, so I tried compiling Coq's standard library with and without -bt. Result: option -bt incurs a 30% slowdown.
+
+
+Comment author: @ppedrot
+
+Thinking about it: why don't you just use the COQDEBUG flag if you're using coq_makefile?
+
+
+What to do with this?
+The performance impact of backtraces is still there. I don't know how useful it is to add to a configure script. If you can use configure with -bt, you ought to be able to pass -bt to coqc. It is also the case that interactively you can do `Set Debug "backtrace".` if passing -bt is not available.
+
+I suggest we close.

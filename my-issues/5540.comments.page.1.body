@@ -1,0 +1,105 @@
+Comment author: @JasonGross
+
+I want to debug slowness in vm_compute/native_compute.  As 
+https://coq.inria.fr/bugs/show_bug.cgi?id=5170 is still open, and I don't know 
+Pierre-Marie's magic, I figured I'd try to extract a slow Coq term in 
+fiat-parsers to OCaml, and run the OCaml code.  This bug is blocking my ability 
+to do that.
+
+Consider this file:
+```
+Module Type A.
+  Parameter P : Type.
+  Parameter x : P.
+  Parameter f : P -> nat.
+End A.
+Module B (a : A).
+  Definition n := a.f a.x.
+End B.
+Module a <: A.
+  Definition P := True.
+  Definition x := I.
+  Definition f : P -> nat := fun _ => 0.
+End a.
+Module b := B a.
+Recursive Extraction b.n.
+```
+The ocaml I get is:
+```
+type __ = Obj.t
+
+type nat =
+| O
+| S of nat
+
+module type A =
+ sig
+  type coq_P
+
+  val x : coq_P
+
+  val f : coq_P -> nat
+ end
+
+module B =
+ functor (Coq_a:A) ->
+ struct
+  (** val n : nat **)
+
+  let n =
+    Coq_a.f Coq_a.x
+ end
+
+module Coq_a =
+ struct
+  (** val f : __ -> nat **)
+
+  let f _ =
+    O
+ end
+
+module Coq_b = B(Coq_a)
+```
+Attempting to compile this gives:
+File "foo.ml", line 33, characters 17-22:
+Error: Signature mismatch:
+       Modules do not match: sig val f : 'a -> nat end is not included in A
+       The value `x' is required but not provided
+       File "foo.ml", line 11, characters 2-15: Expected declaration
+       The type `coq_P' is required but not provided
+       File "foo.ml", line 9, characters 2-12: Expected declaration
+
+
+Comment author: @JasonGross
+
+Worse, this happens even when the value I'm extracting doesn't depend on any of 
+the Prop-valued definitions:
+```
+Module Type A.
+  Parameter P : Type.
+  Parameter x : P.
+End A.
+Module B (a : A).
+  Definition n := a.x.
+End B.
+Module a <: A.
+  Definition P := True.
+  Definition x := I.
+End a.
+Module Type Nop. End Nop.
+Module nop <: Nop. End nop.
+Module c (n : Nop).
+  Module b := B a.
+  Definition v := 0.
+End c.
+Module d := c nop.
+Recursive Extraction d.v.
+```
+
+Comment author: @JasonGross
+
+
+
+*** This bug has been marked as a duplicate of bug [BZ#843](https://github.com/coq/coq/issues/5795) ***
+
+

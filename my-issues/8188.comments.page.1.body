@@ -1,0 +1,9 @@
+cc @herbelin 
+The problem is not about "Sufficiently dependent types". It is about the name of the variable bound by `fun`. Since `fun _ => eq` is elaborated into `fun x => @eq x`, the binder is not matched against the anonymous variable `_`. The following works:
+```coq
+Axiom foo3 : forall {T} {TI : T -> Type} {R : forall t, TI t -> TI t -> Prop} {t : T}, Type.
+Notation bar := (@foo3 _ _ (fun t => eq) _).
+Check bar. 
+```
+
+

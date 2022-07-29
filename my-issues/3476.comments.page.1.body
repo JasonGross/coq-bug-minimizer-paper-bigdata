@@ -1,0 +1,44 @@
+Comment author: @JasonGross
+
+I would like both of the following to work:
+
+Tactic Notation "elet" ident(x) ":=" constr(c) "in" tactic(cont) := let x := c in cont.
+Tactic Notation "elet" ident(x) ":=" tactic3(c) "in" tactic(cont) := c; cont.
+Goal False.
+Proof.
+  Fail let x := lazymatch goal with
+             | [ |- True ] => constr:(1)
+             | [ |- False ] => fail "Found False"
+           end in
+  elet x' := x in pose x'; pose x'. (* Error: Tactic failure: Found False., as expected *)
+Abort.    
+Goal True.
+  let x := lazymatch goal with
+             | [ |- True ] => constr:(1)
+             | [ |- False ] => fail "Found False"
+           end in
+  elet x' := x in pose x'; pose x'. (* Error: Value is a term. Expected a tactic. *)
+
+
+Comment author: @ppedrot
+
+You can't overload notations in the current implementation, and I doubt it will be possible anytime soon. In both cases, the "elet" expression is parsed as a constr, because "x" is accepted by the constr grammar.
+
+Maybe what you want is a way to discriminate tactics from constrs dynamically. The problem I foresee is that in Ltac, eagerness of evaluation is REALLY badly specified, and this would be difficult to test that something is a tactic without actually evaluating it...
+
+
+Comment author: @JasonGross
+
+I would also be happy with a built-in "eager let" so that [elet x := y in z] ran [y] eagerly, resulting in immediate failure (with the appropriate message) if [y] was bound to something like [fail "foo"], but was the same as [let x := y in z] if [y] was bound to a constr.
+
+I'd also be happy with a functional if-then-else of ltac, where it evaluated to the then clause if the test passed, and evaluated to the else clause when the test failed.  So I could do something like [if (is_evar x) then constr:(y) else constr:(z)] and I could also do [if constr:(x) then (exact x) else x].
+
+
+Comment author: @aspiwack
+
+There is an internal tactic called [Proofview.tclIFCATCH] such that [Proofview.tclIFCATCH t k h] is t;k if [t] succeeds at least once, and [h] otherwise (in particular it would work with [is_evar], or the new [guard]).
+
+It's not in ltac yet because I haven't decided on a syntax.
+
+
+That's a WONTFIX.

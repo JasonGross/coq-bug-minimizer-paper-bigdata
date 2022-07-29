@@ -1,0 +1,36 @@
+Comment author: @JasonGross
+
+Record foo A := { a : A ; b : a = a }.
+
+Goal foo nat.
+  let x := constr:({| b := eq_refl 1 |}) in
+  unshelve econstructor;
+    destruct x as [a0 b0].
+  all: [ > exact a0
+       | cbv beta iota zeta ].
+  exact b0.
+  Undo 2.
+  all:cbv beta iota zeta.
+  all: [ > exact a0
+       | cbv beta iota zeta ].
+  Fail exact b0. (* The command has indeed failed with message:
+In environment
+a0 : nat
+b0 : a0 = a0
+The term "b0" has type "a0 = a0" while it is expected to have type "_UNBOUND_REL_2 = _UNBOUND_REL_2". *)
+  exact_no_check b0.
+Defined.
+
+
+Comment author: @herbelin
+
+I suspect that this is a duplicate of [BZ#3906](https://github.com/coq/coq/issues?q=is%3Aissue%20%22Original%20bug%20ID%3A%20BZ%233906%22) for which I proposed a patch but this patch had bad efficiency consequences in code using setoid_rewrite. As far as I'm concerned, I have to admit that I exhausted my ability to improve on this issue which then remains open, though bothering.
+
+
+Comment author: @herbelin
+
+
+
+*** This bug has been marked as a duplicate of bug [BZ#3906](https://github.com/coq/coq/issues?q=is%3Aissue%20%22Original%20bug%20ID%3A%20BZ%233906%22) ***
+
+

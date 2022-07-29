@@ -1,0 +1,79 @@
+Comment author: @JasonGross
+
+I came across 
+https://stackoverflow.com/questions/30157388/using-auto-and-eauto-to-rewrite-everywhere-including-context-in-coq 
+when looking at old stackoverflow questions.
+
+Hint Extern 1 _ => exfalso. (* Error: Bound head variable. *)
+
+I would suggest instead "Head identifier must be a global constant" for the 
+general case, possibly with an addendum of "Use 'Hint Extern n => tac.' rather 
+than 'Hint Extern n _ => tac.'" when the entire pattern is an underscore.
+
+
+Comment author: @JasonGross
+
+Or whatever the test is, rather than "global constant".  I suppose you can also 
+match on [match] and [fix] and [cofix] and [let] patterns?  At the very least, 
+"bound variable" should be expanded to also mention "hole".
+
+
+Comment author: @psteckler
+
+The code ("head_constr_bound" in hints.ml) has a match:
+
+--
+  | Const (c, _) -> ... 
+  | Ind (i, _) -> ...
+  | Construct (c, _) -> ...
+  | Var id -> ...
+  | Proj (p, _) -> ...
+--
+
+Anything else raises an exception leading to the error message. So the error message could be, "Head identifier must be a global or local constant, an inductive type, an inductive type constructor, or projection."
+
+If that's suitable, I'll make a PR.
+
+
+Comment author: @JasonGross
+
+I'd replace "inductive" with "(co)inductive", and maybe replace "global or local constant" with "constant, a section variable", and then that looks good.
+
+
+Comment author: @psteckler
+
+In fact, that error message appears in two places, and the code I mentioned was not the one triggered by the code.
+
+
+Comment author: @psteckler
+
+The other code ("try_head_pattern" in hints.ml) looks for:
+--
+    | PProd (_,_,b)  -> 
+    | PLetIn (_,_,_,b) -> 
+    | PApp (c,args)  -> 
+    | PIf (c,_,_)  -> 
+    | PCase (_,p,c,br) -> 
+    | PRef r         -> 
+    | PVar id        -> 
+    | PProj (p,c)    -> 
+--
+else it raises a (different) exception or an anomaly.
+
+In this case, the error message could be "Pattern or sub-pattern must be a global constant, a section variable, an if, case, or let expression, an application, or a projection".
+
+I mention "sub-pattern" because the same code is called recursively on pieces of the given pattern.
+
+
+Comment author: @psteckler
+
+Created PR 1046:
+
+  https://github.com/coq/coq/pull/1046
+
+
+Comment author: @maximedenes
+
+Paul's fix was merged, thanks!
+
+

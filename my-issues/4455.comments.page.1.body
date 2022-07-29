@@ -1,0 +1,7 @@
+Comment author: @JasonGross
+
+I ran into a bug in my Coq bug minimizer: https://github.com/JasonGross/coq-tools/issues/16.  The issue is basically that the algorithm for resolving [Import] and [Export] depends on whether or not the name given is an absolute name or not.  This means that inlining files changes the behavior of [Import], because there is no longer a way to give them the required absolute name.
+
+I would therefore like to request the following feature: a [ModuleDirectory SomeName.  ... End SomeName.] vernacular which opens a directory-like module: everything inside the [ModuleDirectory] is accessible as both [Foo] and [SomeName.Foo].  Importantly, [Import SomeName] should not consider the [ModuleDirectory] as a candidate for [Import].  Ideally, it should be possible to have multiple [ModuleDirectory] directives in the same file with the same name.  If it makes it easier to implement, I'm perfectly fine with disallowing any vernacular other than [ModuleDirectory], [Module], and [End] inside a [ModuleDirectory].
+
+

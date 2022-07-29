@@ -1,0 +1,44 @@
+Indeed that's a PITA; I wonder tho if we should not just try to setup a Docker env for Windows?
+Interestingly, GitHub Actions has the same issue, which I'm looking at with them here: https://github.com/actions/virtual-environments/issues/698
+There's a suggestion for a workaround at https://github.com/actions/virtual-environments/issues/698#issuecomment-614082622 : 
+> @JasonGross we took packet captures from inside the VM and found differences in the DNS response for succeeding and failed requests. These differences are not observable when using other DNS providers.
+>
+> I have escalated to the Azure DNS team.
+
+> As a workaround, consider forcing a different DNS server:
+>
+>     Get-NetAdapter | Set-DnsClientServerAddress -ServerAddresses 8.8.8.8
+>     cmd /c "ipconfig /flushdns 2>&1"
+
+@JasonGross azure and GH actions are the same animal but with different skins.
+@JasonGross I think we should close this as not a bug in Coq and indeed defer to https://github.com/actions/virtual-environments/issues/698
+
+I think we should at least work around it for now, perhaps with something like
+
+> @JasonGross yeah, got it. Powershell treats  `Non-authoritative answer:` as an error, so let's use direct cmd calling instead
+> ```
+>     steps:
+>       - uses: actions/checkout@v2
+>       - name: Download cygwin
+>         run: |
+>           & cmd /c 'nslookup www.cygwin.com 2>&1'
+>           while ($true)
+>           {
+>               try
+>               {
+>                   (New-Object Net.WebClient).DownloadFile('http://www.cygwin.com/setup-x86_64.exe', 'setup-x86_64.exe')
+>                   break
+>               }
+>               catch
+>               {
+>                   Write-Host "There is an error during package downloading:`n $_"
+>               }
+>           }
+>           & cmd /c 'nslookup www.cygwin.com 8.8.8.8 2>&1'
+>         shell: powershell
+> ```
+> 
+
+_Originally posted by @miketimofeev in https://github.com/actions/virtual-environments/issues/698#issuecomment-613549747_
+Ugh, I'd rather host it in some of our mirrors.
+Seems fixed.

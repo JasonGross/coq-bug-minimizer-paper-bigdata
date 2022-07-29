@@ -1,0 +1,55 @@
+Comment author: @JasonGross
+
+See https://ci.appveyor.com/project/JasonGross/coq/build/appveyor~25#L1591
+
+running: C:\cygwin_coq64_git_inst\bin\bash.exe --norc --noprofile 
+"/etc/postinstall/gdk-pixbuf2.0.sh"
+running: C:\cygwin_coq64_git_inst\bin\bash.exe --norc --noprofile 
+"/etc/postinstall/fontconfig_dtd.sh"
+running: C:\cygwin_coq64_git_inst\bin\bash.exe --norc --noprofile 
+"/etc/postinstall/man-db.sh"
+running: C:\cygwin_coq64_git_inst\bin\bash.exe --norc --noprofile 
+"/etc/postinstall/mingw64-x86_64-fontconfig.sh"
+running: C:\cygwin_coq64_git_inst\bin\bash.exe --norc --noprofile 
+"/etc/postinstall/mingw64-x86_64-gdk-pixbuf2.0.sh"
+running: C:\cygwin_coq64_git_inst\bin\bash.exe --norc --noprofile 
+"/etc/postinstall/mintty.sh"
+running: C:\cygwin_coq64_git_inst\bin\bash.exe --norc --noprofile 
+"/etc/postinstall/wget.sh"
+running: C:\cygwin_coq64_git_inst\bin\bash.exe --norc --noprofile 
+"/etc/postinstall/zp_desktop-file-utils.sh"
+running: C:\cygwin_coq64_git_inst\bin\bash.exe --norc --noprofile 
+"/etc/postinstall/zp_fontconfig_cache_1.sh"
+running: C:\cygwin_coq64_git_inst\bin\bash.exe --norc --noprofile 
+"/etc/postinstall/zp_glib2.0.sh"
+running: C:\cygwin_coq64_git_inst\bin\bash.exe --norc --noprofile 
+"/etc/postinstall/zp_man-db.sh"
+running: C:\cygwin_coq64_git_inst\bin\bash.exe --norc --noprofile 
+"/etc/postinstall/zp_mingw64-x86_64-fontconfig_cache.sh"
+running: C:\cygwin_coq64_git_inst\bin\bash.exe --norc --noprofile 
+"/etc/postinstall/zp_shared-mime-info.sh"
+Changing gid to Administrators
+Ending cygwin install
+The system cannot find the file specified.
+C:\projects\coq\dev\build\windows>ECHO Building Coq failed with error code 1 
+Building Coq failed with error code 1
+
+
+Comment author: @MSoegtropIMC
+
+Dear Jason,
+
+can you please send me the exact command line for MakeCoq_MinGW.bat? I can't derive this from the log below.
+
+I need to check what is in git. The text "Ending cygwin install" isn't in my original scripts - there seem to be some modifications.
+
+Best regards,
+
+Michael
+
+
+@JasonGross is this still an issue?
+I'm not sure.  I'll see if I can test it in the next couple of weeks.  But also feel free to close and I can open a new bug the next time I use the script, if it fails.
+Thanks for the quick update @JasonGross . IMHO no point on having you lose time testing this, the CI is doing a pretty good job these days I'd say.
+
+So let's close and we can reopen if we ever hit this.

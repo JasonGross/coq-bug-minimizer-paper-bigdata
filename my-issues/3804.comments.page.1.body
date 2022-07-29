@@ -1,0 +1,44 @@
+Comment author: @JasonGross
+
+Set Universe Polymorphism.
+Module Foo.
+  Definition T : sigT (fun x => x).
+  Proof.
+    exists Set.
+    abstract exact nat.
+  Defined.
+End Foo.
+Module Bar.
+  Include Foo.
+End Bar.
+Definition foo := eq_refl : Foo.T = Bar.T. (* Error: Conversion test raised an anomaly *)
+
+Using a [Qed]'d proof makes the error go away.  Turning off universe polymorphism makes the error go away.
+
+I'm not sure whether to class this as a bug in modules or in tactics.
+
+Also, what is the point of making conversion test anomalies just errors?  When is it the case that the conversion test raising an anomaly is expected?  Shouldn't it just be propagated up to toplevel?
+
+
+Comment author: @mattam82
+
+It was the Inlining of opaque module components that built ill-formed terms, fixed now.
+
+
+Comment author: @JasonGross
+
+Thanks!
+
+Will this go in as a test case?
+
+
+Comment author: @mattam82
+
+Btw, it can raise anomalies due to the two argument terms having different types, which can happen, e.g. during unification. That's why they're turned into errors at tactic level.
+
+
+Comment author: @mattam82
+
+Yes, it's in the test-suite now.
+
+

@@ -1,0 +1,6 @@
+Comment author: @JasonGross
+```coq
+Axiom foo : Type.
+Goal Type.
+Info 0 apply foo.
+```

@@ -1,0 +1,28 @@
+Comment author: @JasonGross
+
+A construct such as
+
+  match H return T with
+    | con1 => x
+    | con2 => x
+    ...
+  end
+
+should reduce to [x] (justified by the proof [match H as H' return (match H' return T with _ => x end = x) with _ => eq_refl end]).
+
+That is, any [match] which does not need an [as] nor an [in] clause (where the [return] type doesn't refer to anything bound in [as] or [in]), and in which all of the branches contain unifiable terms, which don't mention anything bound in the constructors, should reduce to the term specified in the branch(es).
+
+This is useful, when combined with a few other rules (that I'll make separate requests for), for being able to extract the components of, e.g., a path between dependent pairs, using only unification.
+
+
+Test case:
+
+Goal (fun b : bool => if b then True else True) = (fun b : bool => True).
+  reflexivity.
+
+
+Comment author: @ppedrot
+
+This is a heavy change in the fundations of CIC itself, that might be worth requiring a thesis or two, like your proposition in bug [BZ#3191](https://github.com/coq/coq/issues?q=is%3Aissue%20%22Original%20bug%20ID%3A%20BZ%233191%22)... Until that time, I think we can safely close this bug report.
+
+

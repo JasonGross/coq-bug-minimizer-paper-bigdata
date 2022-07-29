@@ -1,0 +1,10 @@
+Comment author: @JasonGross
+
+If the native-code version of ocaml was found, but the native-code version of lablgtk2 was not installed, make errors with "Cannot find file gtkThread.cmx"
+
+
+Comment author: @pirbo
+
+r15721 in trunk
+
+

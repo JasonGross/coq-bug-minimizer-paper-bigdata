@@ -1,0 +1,8 @@
+I'm not very skilled in this area, I'd probably need help from ML experts. Not sure who to contact though.
+What are the hard parts?  I'm guessing you don't want to follow Gallina and compile a deep match into nested matches?
+@ppedrot Is the primary issue here getting the syntax to work, or getting the semantics to work, or getting efficient semantics (a la [Compiling Pattern Matching to Good Decision Trees](http://moscova.inria.fr/~maranget/papers/ml05e-maranget.pdf)), or something else?
+None of that (although you might call that semantics), the hard thing is to properly type-check them. The interpreter uses a case representation similar to the Coq kernel, so we also need to perform the case expansion.
+
+There is nothing involved conceptually, it is a classical problem of ML, but it's a tedious one. I don't think there is a readily available implementation I can just copy and paste.
+Interesting.  Do you need to type-check before doing case-explosion?  It seems like as long as you have access to unusable/fresh names, you could perform a case-explosion without knowing any types, only knowing which things in the patterns are constructors and which are names.
+https://github.com/coq/coq/pull/16023

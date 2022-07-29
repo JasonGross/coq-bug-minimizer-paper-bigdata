@@ -1,0 +1,2 @@
+Indeed. The `int63` plugin was removed by #13559. We should still do the same for primitive floats though.
+

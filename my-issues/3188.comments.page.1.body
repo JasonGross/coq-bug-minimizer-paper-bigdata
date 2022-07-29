@@ -1,0 +1,47 @@
+Comment author: @JasonGross
+
+(* File reduced by coq-bug-finder from 1656 lines to 221 lines to 26 lines to 7 lines. *)
+
+Require Import Coq.Classes.RelationClasses.
+
+Hint Extern 0 => apply reflexivity : typeclass_instances.
+Hint Extern 1 => symmetry.
+
+Lemma foo : exists m' : Type, True.
+  intuition.
+
+
+Comment author: @JasonGross
+
+Here's a slightly shorter version:
+
+Require Import Coq.Classes.RelationClasses.
+
+Hint Extern 0 => apply reflexivity : typeclass_instances.
+
+Lemma foo : exists m' : Type, True.
+  symmetry.
+
+
+Comment author: @ppedrot
+
+This is proper exception in trunk. What version are you using?
+
+
+Comment author: @JasonGross
+
+8.4pl2.  (Usually I'm using HoTT/coq, but this time, I'm on 8.4.)
+
+
+Comment author: @ppedrot
+
+Most probably a variant of bug [BZ#3265](https://github.com/coq/coq/issues?q=is%3Aissue%20%22Original%20bug%20ID%3A%20BZ%233265%22).
+
+
+Comment author: @ppedrot
+
+
+
+*** This bug has been marked as a duplicate of bug [BZ#3265](https://github.com/coq/coq/issues?q=is%3Aissue%20%22Original%20bug%20ID%3A%20BZ%233265%22) ***
+
+

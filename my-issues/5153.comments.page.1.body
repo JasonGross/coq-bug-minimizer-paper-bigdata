@@ -1,0 +1,84 @@
+Comment author: @JasonGross
+
+Class some_type := { Ty : Type }.
+Instance: some_type := { Ty := nat }.
+Arguments Ty : clear implicits.
+Goal forall (H : forall t : some_type, @ Ty t -> False) (H' : False -> 1 = 2), 1 
+= 2.
+Proof.
+  intros H H'.
+  pose proof (H' (@ H _ O)). (* succeeds *)
+  specialize (H' (@ H _ O)). (* fails *)
+(*
+Error: (diff) In environment
+H : forall t : some_type, Ty t -> False
+H' : False -> 1 = 2
+H0 : 1 = 2
+The term "0" has type "nat" while it is expected to have type
+"Ty ?10".
+*)
+
+Clearly the issue is that unification is calling typeclass resolution at a 
+different point in each of these.  It's not clear to me that they should.  I'll 
+leave it up to the devs to pick a target milestone; changes in the unification 
+algorithms that tactics use seems like a subtle problem and an easy source of 
+incompatibilities.
+
+
+Comment author: @JasonGross
+
+Hugo, I'm assigning you because you seem to have the most involvement in the 
+unification and type algorithms lately, though I'm not sure if someone else 
+would be better (MS? PMP? coq-bugs-redist?)
+
+
+Comment author: @herbelin
+
+Hi Jason,
+
+It seems that it would be strictly more powerful in this case to have "specialize" follow the same typing path as "pose proof", in the following sense.
+
+As far as I can see, in "pose proof" path [1], type classes are used only at the very end of typing [2] as well as in case of type mismatch failure of unification/coercion when applying an argument to a function [3].
+
+In "specialize" path [4], type classes are used at the very end of typing [5]. As for arguments given with "with", this is a similar path [6] a bit weaker [7].
+
+So, if I did not forget places where type classes can be used, the only effect of using path [1] for "specialize" would be to succeed in a case where it previously failed (case [3]) (if ever Matthieu can confirm).
+
+Based on that, I have an "enhancement" patch. Note however that this is not magical and exclusive of working at improving unification itself. For instance, the following would fail:
+
+Class some_type := { Ty : Type }.
+Instance some_nat : some_type := { Ty := nat }.
+Instance some_bool : some_type := { Ty := bool }.
+Arguments Ty : clear implicits.
+Goal forall (H : forall t : some_type, @ Ty t -> False) (H' : False -> 1 = 2), 1 
+= 2.
+Proof.
+  intros H H'.
+  specialize (H' (@ H _ O)).
+
+because the wrong instance would be found with no backtracking available. Alternatively, in the given case, another algorithm canonically inverting the problem "nat == Ty ?n" into "?n := Build_some_type ?p" and "nat == ?p" would succeed.
+
+I add some technical information for the purpose of further reference, and for those interested in the technical aspects of the code as it is now.
+
+[1] Tacinterp.interp_constr which calls type inference with the use_typeclasses flag on
+[2] Pretyping.solve_remaining_evars
+[3] in Coercion.inh_conv_coerce_to_gen
+[4] Tacinterp.interp_constr_with_bindings, which calls Tacinterp.interp_open_constr, which in this case calls type inference with the use_typeclasses flag off
+[5] in Tactics.specialize itself
+[6] Tacinterp.interp_open_constr
+[7] type classes are only used for checking the type of "with" arguments (in Unification.w_coerce_to_type) but not internally for typing
+
+
+Comment author: @JasonGross
+
+Given that the change would be strictly more powerful, it seems reasonable for 
+inclusion in 8.6 to me, as long as this is noted in the 
+changelog/compatibilities file.  (I was worried about it being less powerful in 
+some cases.)
+
+
+Comment author: @herbelin
+
+Granted in trunk 9f463c144 (May 22, 2017).
+
+

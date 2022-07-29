@@ -1,0 +1,3 @@
+I imagine https://github.com/coq/coq/issues/14541 would also allow me to side-step this issue
+Related to #4904.
+Also related to #14105 and #12777. By the way, the introduction of name space for inductive types would help (and was one reason for #14492, to give an alternative to the cases where the current semantics is expected, if ever @ppedrot, you see a way to make progresses about it).

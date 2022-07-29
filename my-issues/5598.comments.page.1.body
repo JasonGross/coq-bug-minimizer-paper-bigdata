@@ -1,0 +1,47 @@
+Comment author: @JasonGross
+```coq
+Section foo.
+  Context {T} (a : T) (b : T).
+  Let k := eq_refl a.
+  Existing Class eq.
+  Global Existing Instance k.
+End foo. (* Anomaly: variable k unbound. Please report at 
+http://coq.inria.fr/bugs/. *)
+```
+
+Comment author: @ppedrot
+
+We should check that we don't add global instances referring to section variables. Unluckily the globality is strangely encoded in instances, I need to wrap my head around them.
+
+
+Comment author: @herbelin
+
+Actually, I started to work at it last week.
+
+I understood that "Existing Class" is directly calling "Hints" (add_hints) but hints do not support discharging.
+
+An easy fix would be to forbid Global for Existing Instance in sections.
+
+A more ambitious fix would be to support Global for hints commands (or at least for those of them for which discharging makes sense), and this is what I started to do last week.
+
+However, I'm not an expert in hints, is this something that we want (at least for consistency with general support for discharging in general)?
+
+
+Comment author: @JasonGross
+
+Global instances in sections are legitimate, and I use them frequently.  I use global existing instance less frequently in sections, but I think it is still legitimate.  I think the only illegitimate thing here is that the instance is a [Let]; is it hard to check that none of the identifiers are section variables nor Lets when doing global existing instance in a section?
+
+
+Comment author: @JasonGross
+
+> A more ambitious fix would be to support Global for hints commands (or at least for those of them for which discharging makes sense), and this is what I started to do last week.
+
+I would like that, though I think it makes no sense for some types of hints.  In particular, I'm not convinced about [Extern] hints with patterns that refer to section variables.
+
+
+Comment author: @mattam82
+
+Agreed, I think hints should be categorized as dischargeable or not: the dischargeable ones being global_references which are not local (i.e., VarRef's) and whose pattern is not specified (otherwise we'd need to know how to discharge those).
+
+
+Fixed in 8.7 by #841 (16 Aug 17).

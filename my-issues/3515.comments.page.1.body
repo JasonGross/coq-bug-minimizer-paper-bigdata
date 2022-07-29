@@ -1,0 +1,492 @@
+Comment author: @JasonGross
+
+```coq
+(* File reduced by coq-bug-finder from original input, then from 5752 lines to 3828 lines, then from 2707 lines to 558 lines, then from 472 lines to 168 lines, then from 110 lines to 101 lines, then from 96 lines to 77 lines *)
+Require Coq.Setoids.Setoid.
+Import Coq.Setoids.Setoid.
+Generalizable All Variables.
+Axiom admit : forall {T}, T.
+Class Equiv (A : Type) := equiv : relation A.
+Class type (A : Type) {e : Equiv A} := eq_equiv : Equivalence equiv.
+Class ILogicOps Frm := { lentails: relation Frm;
+                         ltrue: Frm;
+                         land: Frm -> Frm -> Frm;
+                         lor: Frm -> Frm -> Frm }.
+Infix "|--"  := lentails (at level 79, no associativity).
+Infix "\\//"   := lor (at level 76, right associativity).
+Class ILogic Frm {ILOps: ILogicOps Frm} := { lentailsPre:> PreOrder lentails }.
+Definition lequiv `{ILogic Frm} P Q := P |-- Q /\ Q |-- P.
+Infix "-|-"  := lequiv (at level 85, no associativity).
+Instance lequiv_inverse_lentails `{ILogic Frm} : subrelation lequiv (inverse lentails) := admit.
+Record ILFunFrm (T : Type) `{e : Equiv T} `{ILOps : ILogicOps Frm} := mkILFunFrm { ILFunFrm_pred :> T -> Frm }.
+Section ILogic_Fun.
+  Context (T: Type) `{TType: type T}.
+  Context `{IL: ILogic Frm}.
+  Local Instance ILFun_Ops : ILogicOps (@ ILFunFrm T _ Frm _) := admit.
+  Definition ILFun_ILogic : ILogic (@ ILFunFrm T _ Frm _) := admit.
+End ILogic_Fun.
+Implicit Arguments ILFunFrm [[ILOps] [e]].
+Instance ILogicOps_Prop : ILogicOps Prop | 2 := {| lentails P Q := (P : Prop) -> Q;
+                                                   ltrue        := True;
+                                                   land     P Q := P /\ Q;
+                                                   lor      P Q := P \/ Q |}.
+Axiom Action : Set.
+Definition Actions := list Action.
+Instance ActionsEquiv : Equiv Actions := { equiv a1 a2 := a1 = a2 }.
+Definition OPred := ILFunFrm Actions Prop.
+Local Existing Instance ILFun_Ops.
+Local Existing Instance ILFun_ILogic.
+Definition empOP : OPred.
+admit.
+Defined.
+Definition catOP (P Q: OPred) : OPred := admit.
+Add Parametric Morphism : catOP with signature lentails ==> lentails ==> lentails as catOP_entails_m.
+admit.
+Defined.
+Definition catOPA (P Q R : OPred) : catOP (catOP P Q) R -|- catOP P (catOP Q R) := admit.
+Class IsPointed (T : Type) := point : T.
+Notation IsPointed_OPred P := (IsPointed (exists x : Actions, (P : OPred) x)).
+Record PointedOPred := mkPointedOPred {
+                           OPred_pred :> OPred;
+                           OPred_inhabited: IsPointed_OPred OPred_pred
+                         }.
+Existing Instance OPred_inhabited.
+Canonical Structure default_PointedOPred O `{IsPointed_OPred O} : PointedOPred
+  := {| OPred_pred := O ; OPred_inhabited := _ |}.
+Instance IsPointed_catOP `{IsPointed_OPred P, IsPointed_OPred Q} : IsPointed_OPred (catOP P Q) := admit.
+Instance IsPointed_lorRempOP {P} : IsPointed_OPred (P \\// empOP) := admit.
+Goal forall (T : Type) (O0 : T -> OPred) (O1 : T -> PointedOPred)
+            (tr : T -> T) (O2 : PointedOPred) (x : T)
+            (H : forall x0 : T, catOP (O0 x0) (O1 (tr x0)) |-- O1 x0),
+     exists e1 e2,
+       catOP (O0 e1) (OPred_pred e2) |-- catOP (O1 x) O2.
+  intros; do 2 esplit.
+  rewrite <- catOPA.
+  lazymatch goal with
+  | |- ?R (?f ?a ?b) (?f ?a' ?b') =>
+    let P := constr:(fun H H' => Morphisms.proper_prf a a' H b b' H') in
+    refine (P _ _)
+  end; unfold Basics.flip; try reflexivity.
+  lazymatch goal with |- catOP (O0 ?e1) ?e2 |-- OPred_pred _ => is_evar e1; is_evar e2 end.
+  2:lazymatch goal with |- ?e |-- OPred_pred ?x => is_evar e; unify e (OPred_pred x) end.
+  2:solve [ apply reflexivity ].
+  lazymatch goal with |- catOP (O0 ?e1) (?e2 \\// empOP) |-- OPred_pred _ => is_evar e1; is_evar e2 end.
+  Back 2.
+  1:solve [ eauto ].
+  lazymatch goal with |- ?e \\// empOP |-- OPred_pred ?x => is_evar e end.
+```
+
+Neither of these [lazymatch]es should succeed.  Yet they do, in both 8.4 and trunk.  Why do [apply reflexivity] and [eauto] decide to instantiate these existentials like this?  And why does this happen even when there are no existentials in the goal or context in when I [apply reflexivity]?  And why does [reflexivity] fail when [apply reflexivity] succeeds?  (This last is https://coq.inria.fr/bugs/show_bug.cgi?id=3513.)
+
+
+The example doesn't compile on a recent Coq and I didn't manage to compile an old version of Coq to check the expected output.
+Here is the log from 8.4pl6 using `true | ~/.local64/coq/coq-8.4pl6/bin/coqtop -q -time < foo.v 2>&1` with the example in `foo.v`
+```
+Welcome to Coq 8.4pl6 (December 2020)
+Skipping rcfile loading.
+
+Coq < Coq < Chars 228 - 255 [Require~Coq.Setoids.Setoid.] 0. secs (0.035415u,0.s)
+
+Coq < Chars 256 - 282 [Import~Coq.Setoids.Setoid.] 0. secs (0.001905u,0.s)
+
+Coq < Chars 283 - 311 [Local~Generalizable~Variables~...] 0. secs (7.2e-05u,0.s)
+
+Coq < Chars 312 - 340 [Axiom~admit~:~forall~{T},~T.] admit is assumed
+0. secs (0.00032u,0.s)
+
+Coq < Chars 341 - 386 [Class~Equiv~(A~:~Type)~~:=~~~~...] 0. secs (0.000953u,0.s)
+
+Coq < Chars 387 - 455 [Class~type~(A~:~Type)~{e~:~Equ...] 0. secs (0.001101u,0.s)
+
+Coq < Coq < Coq < Coq < Chars 456 - 642 [Class~ILogicOps~Frm~~:=~~{lent...] ILogicOps is defined
+ILogicOps_rect is defined
+ILogicOps_ind is defined
+ILogicOps_rec is defined
+lentails is defined
+ltrue is defined
+land is defined
+lor is defined
+0. secs (0.002295u,0.s)
+
+Coq < Chars 643 - 700 [Infix~"|--"~:=~lentails~(at~le...] 0. secs (0.000189u,0.s)
+
+Coq < Chars 701 - 758 [Infix~"\\//"~:=~lor~(at~level~...] 0. secs (0.000115u,0.s)
+
+Coq < Chars 759 - 838 [Class~ILogic~Frm~{ILOps~:~ILog...] ILogic is defined
+ILogic_rect is defined
+ILogic_ind is defined
+ILogic_rec is defined
+lentailsPre is defined
+0. secs (0.002957u,0.s)
+
+Coq < Chars 839 - 897 [Definition~lequiv~`{ILogic~Frm...] lequiv is defined
+0. secs (0.001367u,0.s)
+
+Coq < Chars 898 - 953 [Infix~"-|-"~:=~lequiv~(at~leve...] 0. secs (0.000205u,0.s)
+
+Coq < Chars 954 - 1050 [Global~Instance~lequiv_inverse...] lequiv_inverse_lentails is defined
+0. secs (0.004129u,0.s)
+
+Coq < Chars 1051 - 1162 [Record~ILFunFrm~(T~:~Type)~`{e...] ILFunFrm is defined
+ILFunFrm_rect is defined
+ILFunFrm_ind is defined
+ILFunFrm_rec is defined
+ILFunFrm_pred is defined
+0. secs (0.001614u,0.s)
+
+Coq < Chars 1163 - 1182 [Section~ILogic_Fun.] 0. secs (0.000173u,0.s)
+
+Coq < Chars 1185 - 1220 [Context~~(T~:~Type)~`{TType~:~...] T is assumed
+e is assumed
+TType is assumed
+0. secs (0.000411u,0.s)
+
+Coq < Chars 1223 - 1249 [Context~~`{IL~:~ILogic~Frm}.] Frm is assumed
+ILOps is assumed
+IL is assumed
+0. secs (0.001754u,0.s)
+
+Coq < Chars 1252 - 1321 [Instance~ILFun_Ops~:~(ILogicOp...] ILFun_Ops is defined
+0. secs (0.000621u,0.s)
+
+Coq < Chars 1324 - 1389 [Definition~ILFun_ILogic~:~ILog...] ILFun_ILogic is defined
+0. secs (0.000681u,0.s)
+
+Coq < Chars 1390 - 1405 [End~ILogic_Fun.] 0. secs (0.000955u,0.s)
+
+Coq < Warning: Implicit Arguments is deprecated; use Arguments instead
+Chars 1406 - 1448 [Implicit~Arguments~~ILFunFrm~[...] 0. secs (0.000164u,0.s)
+
+Coq < Coq < Coq < Coq < Chars 1449 - 1758 [Global~Instance~ILogicOps_Prop...] ILogicOps_Prop is defined
+0. secs (0.003192u,0.s)
+
+Coq < Chars 1759 - 1778 [Axiom~Action~:~Set.] Action is assumed
+0. secs (0.000442u,0.s)
+
+Coq < Chars 1779 - 1813 [Definition~Actions~:=~list~Act...] Actions is defined
+0. secs (0.000434u,0.s)
+
+Coq < Chars 1814 - 1882 [Global~Instance~ActionsEquiv~:...] ActionsEquiv is defined
+0. secs (0.000359u,0.s)
+
+Coq < Chars 1883 - 1925 [Definition~OPred~:=~ILFunFrm~A...] OPred is defined
+0. secs (0.000378u,0.s)
+
+Coq < Chars 1926 - 1960 [Existing~Instance~ILFun_Ops.] 0. secs (0.000142u,0.s)
+
+Coq < Chars 1961 - 1998 [Existing~Instance~ILFun_ILogic...] 0. secs (0.00015u,0.s)
+
+Coq < Chars 1999 - 2024 [Definition~empOP~:~OPred.] 1 subgoal
+  
+  ============================
+   OPred
+0. secs (0.000196u,0.s)
+
+empOP < Chars 2025 - 2031 [admit.] No more subgoals.
+0. secs (0.000208u,0.s)
+
+empOP < Chars 2032 - 2040 [Defined.] admit.
+
+empOP is defined
+0. secs (0.000209u,0.s)
+
+Coq < Chars 2041 - 2088 [Definition~catOP~(P~Q~:~OPred)...] catOP is defined
+0. secs (0.000291u,0.s)
+
+Coq < Chars 2089 - 2190 [Add~Parametric~Morphism~[no~pr...] 1 subgoal
+  
+  ============================
+   forall x y : OPred,
+   x |-- y -> forall x0 y0 : OPred, x0 |-- y0 -> catOP x x0 |-- catOP y y0
+0. secs (0.004241u,0.s)
+
+catOP_entails_m_Proper < Chars 2191 - 2197 [admit.] No more subgoals.
+0. secs (0.000639u,0.s)
+
+catOP_entails_m_Proper < Chars 2198 - 2206 [Defined.] Add Parametric Morphism [no printer for binders] : catOP with signature
+ (lentails ==> lentails ==> lentails) as ?catOP_entails_m.
+admit.
+
+catOP_entails_m_Proper is defined
+0. secs (0.005023u,0.s)
+
+Coq < Chars 2207 - 2296 [Definition~catOPA~(P~Q~R~:~OPr...] catOPA is defined
+0. secs (0.001684u,0.s)
+
+Coq < Chars 2297 - 2337 [Class~IsPointed~(T~:~Type)~~:=...] 0. secs (0.003418u,0.s)
+
+Coq < Chars 2338 - 2416 [Notation~IsPointed_OPred~~P:=~...] 0. secs (0.000163u,0.s)
+
+Coq < Coq < Coq < Coq < Chars 2417 - 2603 [Record~PointedOPred~~:=~~~mkPo...] PointedOPred is defined
+PointedOPred_rect is defined
+PointedOPred_ind is defined
+PointedOPred_rec is defined
+OPred_pred is defined
+OPred_inhabited is defined
+0. secs (0.00225u,0.s)
+
+Coq < Chars 2604 - 2638 [Global~Existing~Instance~OPred...] 0. secs (0.000169u,0.s)
+
+Coq < Coq < Chars 2639 - 2768 [Canonical~Structure~default_Po...] default_PointedOPred is defined
+0. secs (0.002159u,0.s)
+
+Coq < Chars 2769 - 2873 [Global~Instance~IsPointed_catO...] IsPointed_catOP is defined
+0. secs (0.001825u,0.s)
+
+Coq < Chars 2874 - 2949 [Global~Instance~IsPointed_lorR...] IsPointed_lorRempOP is defined
+0. secs (0.00189u,0.s)
+
+Coq < Coq < Coq < Coq < Coq < Chars 2950 - 3217 [Goal~forall~(T~:~Type)~(O0~:~T...] 1 subgoal
+  
+  ============================
+   forall (T : Type) (O0 : T -> OPred) (O1 : T -> PointedOPred) 
+     (tr : T -> T) (O2 : PointedOPred) (x : T),
+   (forall x0 : T, catOP (O0 x0) (O1 (tr x0)) |-- O1 x0) ->
+   exists (e1 : T) (e2 : PointedOPred), catOP (O0 e1) e2 |-- catOP (O1 x) O2
+0. secs (0.001638u,0.s)
+
+Unnamed_thm < Chars 3220 - 3240 [intros;~do~2~esplit.] 1 subgoal
+  
+  T : Type
+  O0 : T -> OPred
+  O1 : T -> PointedOPred
+  tr : T -> T
+  O2 : PointedOPred
+  x : T
+  H : forall x0 : T, catOP (O0 x0) (O1 (tr x0)) |-- O1 x0
+  ============================
+   catOP (O0 ?123) ?126 |-- catOP (O1 x) O2
+0. secs (0.000715u,0.s)
+
+Unnamed_thm < Chars 3243 - 3261 [rewrite~<-~catOPA.] 1 subgoal
+  
+  T : Type
+  O0 : T -> OPred
+  O1 : T -> PointedOPred
+  tr : T -> T
+  O2 : PointedOPred
+  x : T
+  H : forall x0 : T, catOP (O0 x0) (O1 (tr x0)) |-- O1 x0
+  ============================
+   catOP (catOP (O0 ?123) ?130) ?131 |-- catOP (O1 x) O2
+0. secs (0.072416u,0.s)
+
+Unnamed_thm < Unnamed_thm < Unnamed_thm < Unnamed_thm < Unnamed_thm < Chars 3264 - 3456 [lazymatch~goal~with~|~|-~?R~(?...] 2 subgoals
+  
+  T : Type
+  O0 : T -> OPred
+  O1 : T -> PointedOPred
+  tr : T -> T
+  O2 : PointedOPred
+  x : T
+  H : forall x0 : T, catOP (O0 x0) (O1 (tr x0)) |-- O1 x0
+  ============================
+   catOP (O0 ?123) ?130 |-- O1 x
+
+subgoal 2 is:
+ ?131 |-- O2
+0. secs (0.006998u,0.s)
+
+Unnamed_thm < Chars 3459 - 3548 [lazymatch~goal~with~|~|-~catOP...] 2 subgoals
+  
+  T : Type
+  O0 : T -> OPred
+  O1 : T -> PointedOPred
+  tr : T -> T
+  O2 : PointedOPred
+  x : T
+  H : forall x0 : T, catOP (O0 x0) (O1 (tr x0)) |-- O1 x0
+  ============================
+   catOP (O0 ?123) ?130 |-- O1 x
+
+subgoal 2 is:
+ ?131 |-- O2
+0. secs (0.000466u,0.s)
+
+Unnamed_thm < Chars 3551 - 3638 [2:~lazymatch~goal~with~~~~|~|-...] 2 subgoals
+  
+  T : Type
+  O0 : T -> OPred
+  O1 : T -> PointedOPred
+  tr : T -> T
+  O2 : PointedOPred
+  x : T
+  H : forall x0 : T, catOP (O0 x0) (O1 (tr x0)) |-- O1 x0
+  ============================
+   catOP (O0 ?123) ?130 |-- O1 x
+
+subgoal 2 is:
+ O2 |-- O2
+0. secs (0.000454u,0.s)
+
+Unnamed_thm < Chars 3641 - 3671 [2:~solve~[~apply~reflexivity~]...] 1 subgoal
+  
+  T : Type
+  O0 : T -> OPred
+  O1 : T -> PointedOPred
+  tr : T -> T
+  O2 : PointedOPred
+  x : T
+  H : forall x0 : T, catOP (O0 x0) (O1 (tr x0)) |-- O1 x0
+  ============================
+   catOP (O0 ?123) (?469 \\// empOP) |-- O1 x
+0. secs (0.002739u,0.s)
+
+Unnamed_thm < Chars 3674 - 3776 [lazymatch~goal~with~|~|-~catOP...] 1 subgoal
+  
+  T : Type
+  O0 : T -> OPred
+  O1 : T -> PointedOPred
+  tr : T -> T
+  O2 : PointedOPred
+  x : T
+  H : forall x0 : T, catOP (O0 x0) (O1 (tr x0)) |-- O1 x0
+  ============================
+   catOP (O0 ?123) (?469 \\// empOP) |-- O1 x
+0. secs (0.000401u,0.s)
+
+Unnamed_thm < Chars 3779 - 3786 [Back~2.] 2 subgoals
+  
+  T : Type
+  O0 : T -> OPred
+  O1 : T -> PointedOPred
+  tr : T -> T
+  O2 : PointedOPred
+  x : T
+  H : forall x0 : T, catOP (O0 x0) (O1 (tr x0)) |-- O1 x0
+  ============================
+   catOP (O0 ?123) ?130 |-- O1 x
+
+subgoal 2 is:
+ O2 |-- O2
+0. secs (0.000773u,0.s)
+
+Unnamed_thm < Chars 3789 - 3807 [solve~[~eauto~~].] 1 subgoal
+  
+  T : Type
+  O0 : T -> OPred
+  O1 : T -> PointedOPred
+  tr : T -> T
+  O2 : PointedOPred
+  x : T
+  H : forall x0 : T, catOP (O0 x0) (O1 (tr x0)) |-- O1 x0
+  ============================
+   O2 |-- O2
+0. secs (0.001674u,0.s)
+
+Unnamed_thm < Chars 3810 - 3882 [lazymatch~goal~with~|~|-~?e~\\...] Error: No matching clauses for match goal
+       (use "Set Ltac Debug" for more info).
+
+Unnamed_thm < 
+```
+With a typeclass log:
+```
+Unnamed_thm < Chars 3581 - 3668 [2:~lazymatch~goal~with~~~~|~|-...] 2 subgoals
+  
+  T : Type
+  O0 : T -> OPred
+  O1 : T -> PointedOPred
+  tr : T -> T
+  O2 : PointedOPred
+  x : T
+  H : forall x0 : T, catOP (O0 x0) (O1 (tr x0)) |-- O1 x0
+  ============================
+   catOP (O0 ?123) ?130 |-- O1 x
+
+subgoal 2 is:
+ O2 |-- O2
+0. secs (0.u,0.000479s)
+
+Unnamed_thm < Chars 3671 - 3701 [2:~solve~[~apply~reflexivity~]...] 1.1: apply @IsPointed_catOP on
+(IsPointed (exists x0 : Actions, (catOP ?130 O2:OPred) x0))
+1.1.1.1: apply @IsPointed_lorRempOP on
+(IsPointed (exists x0 : Actions, ?130 x0))
+1.1.2.1: apply OPred_inhabited on
+(IsPointed (exists x : Actions, O2 x))
+no backtrack on (IsPointed (exists x : Actions, O2 x)) after normevars
+no backtrack on (IsPointed (exists x : Actions, O2 x)) after apply @IsPointed_catOP
+1.1: apply Equivalence_Reflexive on
+(Reflexive lentails)
+1.1.1: no match for (Equivalence lentails)
+5 possibilities
+backtracked after apply Equivalence_Reflexive
+1.2: apply PreOrder_Reflexive on
+(Reflexive lentails)
+1.2.1.1: apply @lentailsPre on
+(PreOrder lentails)
+1.2.1.1.1.1: apply ILFun_ILogic on
+(ILogic OPred)
+no backtrack on (ILogic OPred) after normevars
+no backtrack on (ILogic OPred) after apply @lentailsPre
+no backtrack on (PreOrder lentails) after apply PreOrder_Reflexive
+1 subgoal
+  
+  T : Type
+  O0 : T -> OPred
+  O1 : T -> PointedOPred
+  tr : T -> T
+  O2 : PointedOPred
+  x : T
+  H : forall x0 : T, catOP (O0 x0) (O1 (tr x0)) |-- O1 x0
+  ============================
+   catOP (O0 ?123) (?469 \\// empOP) |-- O1 x
+0. secs (0.u,0.006285s)
+
+Unnamed_thm < Chars 3704 - 3806 [lazymatch~goal~with~|~|-~catOP...] 1 subgoal
+  
+  T : Type
+  O0 : T -> OPred
+  O1 : T -> PointedOPred
+  tr : T -> T
+  O2 : PointedOPred
+  x : T
+  H : forall x0 : T, catOP (O0 x0) (O1 (tr x0)) |-- O1 x0
+  ============================
+   catOP (O0 ?123) (?469 \\// empOP) |-- O1 x
+0. secs (0.u,0.000377s)
+
+Unnamed_thm < Chars 3809 - 3816 [Back~2.] 2 subgoals
+  
+  T : Type
+  O0 : T -> OPred
+  O1 : T -> PointedOPred
+  tr : T -> T
+  O2 : PointedOPred
+  x : T
+  H : forall x0 : T, catOP (O0 x0) (O1 (tr x0)) |-- O1 x0
+  ============================
+   catOP (O0 ?123) ?130 |-- O1 x
+
+subgoal 2 is:
+ O2 |-- O2
+0. secs (0.00049u,0.s)
+
+Unnamed_thm < Chars 3819 - 3837 [solve~[~eauto~~].] 1.1: apply @IsPointed_catOP on
+(IsPointed (exists x0 : Actions, (catOP (O1 (tr x)) O2:OPred) x0))
+1.1.1.1: apply OPred_inhabited on
+(IsPointed (exists x0 : Actions, (O1 (tr x)) x0))
+no backtrack on (IsPointed (exists x0 : Actions, (O1 (tr x)) x0)) after normevars
+no backtrack on (IsPointed (exists x0 : Actions, (O1 (tr x)) x0)) after apply @IsPointed_catOP
+1.1.2.1: apply OPred_inhabited on
+(IsPointed (exists x : Actions, O2 x))
+no backtrack on (IsPointed (exists x : Actions, O2 x)) after normevars
+no backtrack on (IsPointed (exists x : Actions, O2 x)) after apply @IsPointed_catOP
+1 subgoal
+  
+  T : Type
+  O0 : T -> OPred
+  O1 : T -> PointedOPred
+  tr : T -> T
+  O2 : PointedOPred
+  x : T
+  H : forall x0 : T, catOP (O0 x0) (O1 (tr x0)) |-- O1 x0
+  ============================
+   O2 |-- O2
+0. secs (0.003973u,0.s)
+
+Unnamed_thm < Chars 3840 - 3912 [lazymatch~goal~with~|~|-~?e~\\...] Error: No matching clauses for match goal
+       (use "Set Ltac Debug" for more info).
+
+Unnamed_thm < 
+
+```

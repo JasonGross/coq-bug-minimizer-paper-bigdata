@@ -1,0 +1,13 @@
+Comment author: @JasonGross
+
+Perhaps [Set Axiom Free Dependent Destruction] or similar.  It seems poor that axioms can creep into developments without the developers being aware, especially from tactics in the standard library.
+
+
+Comment author: @mattam82
+
+Hi Jason,
+
+  we're looking at a complete overhaul of dependent destruction with more control on where K/JMeq is needed with Cyprien Mangin. Right now dependent destruction is based on generalizing the goal by heterogeneous equalities, so it would make the tactic fail most of the time with this flag, but if you're interested you could redefine the tactic
+[simplify_one_dep_elim_term] to fail or introduce an heterogeneous equality instead of simplifying it (first case of simplify_one_dep_elim_term), or do a trick like in HoTT, requiring a typeclass instance of the axiom.
+
+

@@ -1,0 +1,52 @@
+Comment author: @JasonGross
+
+On Windows, using the script https://coq.inria.fr/bugs/attachment.cgi?id=501 from bug [BZ#3275](https://github.com/coq/coq/issues?q=is%3Aissue%20%22Original%20bug%20ID%3A%20BZ%233275%22), with a fresh clone of Coq trunk 8287733d5df1bd673a38e92f23c47e95d1bb7a91:
+
+$ ./configure -local
+...
+$ make -j2 coqide
+...
+$ make -j2 coqide VERBOSE=1
+make --warn-undefined-variable --no-builtin-rules -f Makefile.build BUILDGRAMMAR=1 grammar/grammar.cma grammar/q_constr.cmo
+make[1]: Entering directory '/cygdrive/d/Downloads/coq'
+make[1]: 'grammar/grammar.cma' is up to date.
+make[1]: 'grammar/q_constr.cmo' is up to date.
+make[1]: Leaving directory '/cygdrive/d/Downloads/coq'
+make --warn-undefined-variable --no-builtin-rules -f Makefile.build coqide
+make[1]: Entering directory '/cygdrive/d/Downloads/coq'
+"ocamlc" -rectypes  -I config -I lib -I kernel -I kernel/byterun -I library -I proofs -I tactics -I pretyping -I interp -I stm -I toplevel -I parsing -I printing -I grammar -I intf -I ide -I ide/utils -I "+site-lib/lablgtk2" -thread   -o bin/coqide.byte.exe unix.cma lablgtk.cma \
+        lablgtksourceview2.cma str.cma  lib/clib.cma lib/xml_lexer.cmo lib/xml_parser.cmo lib/xml_printer.cmo lib/errors.cmo lib/spawn.cmo ide/ide.cma ide/coqide_main.ml
+"ocamlopt" -rectypes    -I config -I lib -I kernel -I kernel/byterun -I library -I proofs -I tactics -I pretyping -I interp -I stm -I toplevel -I parsing -I printing -I grammar -I intf -I ide -I ide/utils -I "+site-lib/lablgtk2" -thread     -c ide/wg_ProofView.ml
+File "ide/coqide_main.ml", line 1:
+Error: Error while linking ide/coqide_main.cmo:
+The external function `win32_interrupt' is not available
+Makefile.build:332: recipe for target 'bin/coqide.byte.exe' failed
+make[1]: *** [bin/coqide.byte.exe] Error 2
+make[1]: *** Waiting for unfinished jobs....
+make[1]: Leaving directory '/cygdrive/d/Downloads/coq'
+Makefile:158: recipe for target 'submake' failed
+make: *** [submake] Error 2
+
+
+Comment author: @JasonGross
+
+Here is a workaround:
+
+In Makefile.build, change
+
+$(COQIDEBYTE): $(LINKIDE)
+	$(SHOW)'OCAMLC -o $@ '
+	$(HIDE)$(OCAMLC) $(COQIDEFLAGS) $(BYTEFLAGS) -o $@  unix.cma lablgtk.cma \
+	        lablgtksourceview2.cma str.cma $(IDEFLAGS) $^
+
+to
+
+$(COQIDEBYTE): $(LINKIDE)
+	$(SHOW)'OCAMLC -o $@ '
+	$(HIDE)$(OCAMLC) $(COQIDEFLAGS) $(BYTEFLAGS) -o $@  unix.cma lablgtk.cma \
+	        lablgtksourceview2.cma str.cma ide/ide_win32_stubs.c -custom $(IDEFLAGS) $^
+
+
+I suspect this is not compatible with linux, and this might also be the wrong place to introduce it, but I'll leave it to someone more familiar with the build system to figure out where to insert this.
+
+

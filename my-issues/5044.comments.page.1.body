@@ -1,0 +1,30 @@
+Comment author: @JasonGross
+
+This code works in 8.4 and 8.5pl2, but the final two checks fail in 8.6
+```coq
+Require Import Coq.Program.Program.
+
+Section foo.
+  Context (x : False).
+  Local Obligation Tactic := pose proof x; repeat esplit.
+  Unset Shrink Obligations.
+  Program Definition foo : True := _.
+  Set Shrink Obligations.
+  Program Definition bar : True := _.
+  Local Obligation Tactic := pose x; repeat esplit.
+  Unset Shrink Obligations.
+  Program Definition foo' : True := _.
+  Set Shrink Obligations.
+  Program Definition bar' : True := _.
+End foo.
+Check foo' : False -> True.
+Check bar' : False -> True.
+Check foo : True.
+Check bar : True.
+
+```
+There should be some setting of [Shrink Obligations] that does the right thing, 
+and that setting should be set in the Compat.Coq85 file.
+
+
+Now the first 2 checks fail and the last 2 succeed.

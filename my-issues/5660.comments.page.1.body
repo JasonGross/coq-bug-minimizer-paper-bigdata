@@ -1,0 +1,6 @@
+Comment author: @JasonGross
+
+I would like to be able to tell vm_compute to treat some identifiers as axioms 
+/ as opaque.  This should not slow down the vm.
+
+

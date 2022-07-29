@@ -1,0 +1,30 @@
+That's an algorithmic issue. Changing a hypothesis is linear in the size of the context (see `Environ.apply_to_hyp`), so `cbv in *` is quadratic.
+What about adding a fast-path to things like unfold, rewrite, cbv, etc, that don't try to actually modify a hypothesis if there is no change?  (But also, shouldn't updating a hypothesis to something that's convertible with it be constant in the size of the context?)
+I tried to write a little patch to perform conversion tactics with `in *` occurrences in batch, but it turns out to be fairly subtle. For instance, it is unclear in which environment the partial tactics should be called. If I construct it piecewise, I get errors from instances of the form
+```
+Goal True.
+Proof.
+pose (P := True).
+assert P by constructor.
+unfold P in *.
+```
+because `P` does not exist yet when unfolding `P` in `P`. Dually, if I call it on the whole initial environment, unfolding will break because the shape of the resulting term depends on the order of application of the conversion tactic in general. So, essentially, to preserve the current behaviour we have to apply the conversion globally, but one term at a time to update the environment. In which case, we're back to square one because this is linear in the size of the context. Any thoughts?
+> But also, shouldn't updating a hypothesis to something that's convertible with it be constant in the size of the context?
+
+Forgot to comment on this: currently the representation of named contexts uses both a map (with O(log n) access) and a list. You need the list because most of the accesses to the context are performed in a LIFO way. We could try to generate it on the fly, but I am slightly concerned by the cost of it when most users require the linear form, not the map one.
+Would it be possible to define a function `depends_on_environ` which, given a conversion, tells if the conversion depends on the environment? For instance, it would return `false` for `cbv beta`, and `true` for `unfold P` in the above example, and for `cbv [x]` it would return `true` if `x` is let-bound in the environment, but false if `x` is a global identifier.
+Then if `depends_on_environ` returns true, run the existing one-term-at-a-time code, else run your new batch conversion code.
+
+> Forgot to comment on this: currently the representation of named contexts uses both a map (with O(log n) access) and a list. You need the list because most of the accesses to the context are performed in a LIFO way. We could try to generate it on the fly, but I am slightly concerned by the cost of it when most users require the linear form, not the map one.
+
+Not sure if I understand the problem here but there are [data structures](https://docs.oracle.com/javase/8/docs/api/java/util/LinkedHashMap.html) which efficiently maintain both a map and a linked list at the same time. Does Coq use such a data structure for environments at the moment? Or what does it prevent from doing so?
+> So, essentially, to preserve the current behaviour we have to apply the conversion globally, but one term at a time to update the environment. In which case, we're back to square one because this is linear in the size of the context. Any thoughts?
+
+As long as the `in *` is not also modified by an `at 1`, it should be safe to find the first term in the context where the conversion is defined, and then do it separately on that term and every term that comes after that.  In fact, even if it is modified by `at 1` I think we're fine, because I think you can't write `in (Value of *)` (can you?).
+@samuelgruetter Currently, we literally have at the same time in the data structure a map (for fast non-linear access) and a list. The problem is not so much the need to design a efficient data structure than to keep backwards compatibility with existing code. There are *a hell of a lot* of places where we explicitly use the underlying list, and turning this into an abstract API is going to be a pain.
+
+Also, the datastructure you mention seems to be imperative in nature. There is probably a way to make it immutable or at least persistent, but that's an additional requirement for Coq environments to take into account.
+
+Crawling through the code history, I found bug #1898 which shows that the `in *` clause is tricky, and furthermore that the current handling is a bit ad-hoc, e.g. `fold` and `unfold` do not behave the same in case of failure.
+It seems to me that all the tricky-ness is related to conversions which depend on the environment, while all the performance problems we encounter in practice are related to conversions which do not depend on the environment. 
+So a patch which only focuses on environment-independent conversions would be very useful and also unlikely to trigger tricky cases.

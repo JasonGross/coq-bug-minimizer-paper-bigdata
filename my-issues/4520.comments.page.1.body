@@ -1,0 +1,47 @@
+Comment author: @JasonGross
+
+This does not work, but I think it should.
+```coq
+Set Universe Polymorphism.
+Section foo.
+  Context (foo : Type@{i}) (bar : Type@{i}). (* Error: Undeclared universe: i *)
+  Definition qux@{i} (baz : Type@{i}) := foo -> bar.
+End foo.
+```
+Alternatively, how do I specify "these do universes should be the same, but 
+don't persist the universe names to the rest of the section"?  This doesn't 
+work:
+```coq
+Context@{i} (foo : Type@{i}) (bar : Type@{i}).
+```
+
+Comment author: @mattam82
+
+Why don't you want the name to persist? Was it related to the problem of 
+shadowing? I just see there's a bug in printing now, if you use both the 
+shadowed and unshadowed universes you can't distinguish them. Not a "major" bug 
+in any case.
+
+
+@JasonGross does `Unset Strict Universe Declaration.` do what you want?
+``` coq
+Set Universe Polymorphism.
+Unset Strict Universe Declaration.
+
+Section foo.
+  Context (foo : Type@{i}) (bar : Type@{i}). (* foo and bar at same universe *)
+  Context (dog : Type@{i}). (* dog at different universe from foo and bar *)
+
+  Definition qux@{i} (baz : Type@{i}) := foo -> bar. (* baz at different universe from foo/bar/dog *)
+
+  Set Printing Universes.
+  About qux. (* qux@{i} : Type@{i} -> Type@{Top.1} *)
+  Goal True.
+  (*  foo, bar : Type@{Top.1}
+      dog : Type@{Top.2}
+   *)
+  Abort.
+End foo.
+```
+@JasonGross ping
+Yes, that seems good enough.

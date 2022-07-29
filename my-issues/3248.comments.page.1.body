@@ -1,0 +1,173 @@
+Comment author: @JasonGross
+```coq
+Set Implicit Arguments.
+
+Ltac ret_and_left_helper T tac :=
+  let t := type of T in
+  lazymatch eval hnf in t with
+    | ?a /\ ?b => constr:(proj1 T)
+    | forall x : ?T', @ ?f x =>
+      constr:(fun x : T' => $(let fx := constr:(T x) in
+                              let t := tac fx in
+                              exact t)$)
+  end.
+
+Ltac ret_and_left T := ret_and_left_helper T ret_and_left.
+
+Goal forall A B : Prop, (A -> B -> A /\ B) -> True.
+intros.
+let t' := ret_and_left H in
+pose t'. (* Error: Illegal application:
+The term "H" of type "A -> B -> A /\ B"
+cannot be applied to the terms
+ "x" : "B"
+ "x" : "B"
+The 1st term has type "B" which should be coercible to
+"A". *)
+```
+I expect this tactic to work.  If I make `A -> B -> A /\ B` be `A -> A -> A /\ B`, I get `a := fun _ x0 : A => proj1 (H x0 x0) : A -> A -> A`, which is the wrong term.
+
+
+Comment author: @ppedrot
+
+I suspect some fishy interpretation for terms. Ltac does not have true variables, so it happily uses haphazard casts between constr and potential variables at runtime.
+
+
+Comment author: @ppedrot
+
+Actually this seems to be the expected behaviour. The binder does not create any fresh variables, and Ltac only manipulates terms outside of their environment. I assume there is a workaround to your particular problem nonetheless.
+
+
+Comment author: @JasonGross
+
+Why does [fun x : T' => ...] not create [x] as a fresh variable?  Is there a way to force it to do so?
+
+I find this behavior unexpected and unproductive; for some reason, Coq is identifying terms between different calls to my function just because they have the same name.
+
+My first attempt at a workaround exposes another bug, which is that $()$ doesn't know about identifiers introduced in constr:(), which makes me surprised that my original tactic was accepted in the first place:
+
+Ltac ret_and_left T :=
+  let t := type of T in
+  lazymatch eval hnf in t with
+    | ?a /\ ?b => constr:(proj1 T)
+    | forall x : ?T', @ ?f x =>
+      let tac := ret_and_left in
+      constr:(fun x' : T' => let fx := T x' in
+                             $(let t := tac fx in
+                               exact t)$)
+  end.
+(* it can't find [fx] *)
+
+
+Comment author: @ppedrot
+
+This one seems more like a bug.
+
+
+Comment author: @JasonGross
+
+Can you explain to me how to run the old ltac by hand, in a way that it's not a bug?  It seems to me to stem from the same behavior as the following, which also seems like a bug:
+
+Ltac silly T := constr:(fun x : unit => T x).
+Ltac silly' T := constr:(fun x : unit => $(let t' := T in exact t')$ x).
+
+Goal forall x : unit, True.
+intro x.
+let t := constr:(fun y => y = x) in
+let t' := silly t in
+pose t'.
+(* [P := fun x0 : unit => (fun y : unit => y = x) x0 : unit -> Prop] - what I expected *)
+let t := constr:(fun y => y = x) in
+let t' := silly' t in
+pose t'.
+(* [P0 := fun x0 : unit => (fun y : unit => y = x0) x0 : unit -> Prop] - what?! why'd my [x] from the environment get substituted to [x0]? *)
+
+It seems that $()$ re-typechecks any terms that occur inside of it in unexpected ways, re-binding variables with duplicated names.  Or perhaps capture-avoiding substitution is done in the wrong order.  Anyway, I really do not expect my tactics to be sensitive to name changes in ways like this.
+
+
+Comment author: @ppedrot
+
+The one with the let-binding now works in trunk as you expect. I will see what to do for the other ones.
+
+
+Comment author: @JasonGross
+
+Thanks!
+
+
+Comment author: @ppedrot
+
+The issue of capturing variables in $(...)$ constructions is deeper than it seems. I don't think I can easily fix it. It comes from the way goals are treated inside tactics: rel contexts become named context at the creation of the goal, so the unbound variables of the captured term refers to the innermost bound variable, which produces the behaviour you're witnessing.
+
+
+Comment author: @JasonGross
+
+What are rel contexts and named contexts?
+
+Are you saying that this happens because the "x" in my function is more inner than the "x" in the context?
+
+Is it possible to do some kind of pre-conversion at the beginning of the tactic, and applying renaming to the context and captured terms at the same time?  When does renaming currently happen?
+
+
+Comment author: @ppedrot
+
+This seems to be fixed in trunk but I have no idea of which commit did it...
+
+
+Comment author: @JasonGross
+
+This does not seem fixed in trunk.  I haven't re-tried the other code in the thread, but the following behaves incorrectly:
+```coq
+Ltac ret_and_left f :=
+  let tac := ret_and_left in
+  let T := type of f in
+  lazymatch eval hnf in T with
+    | ?a /\ ?b => exact (proj1 f)
+    | ?T' -> _ =>
+      let ret := constr:(fun x' : T' => $(tac (f x'))$) in
+      let ret' := (eval cbv zeta in ret) in
+      exact ret'
+  end.
+
+Goal forall A B : Prop, (A -> A -> A -> A /\ B) -> True.
+  intros A B H.
+  pose $(ret_and_left H)$.
+  (** [fun _ _ x'1 : A => proj1 (H x'1 x'1 x'1) : A -> A -> A -> A *)
+```
+
+Comment author: @ppedrot
+
+The error you mention was actually the expected behaviour, because Ltac only manipulates terms with variables in a non-capture-avoiding manner. Now that we have a way to give a name to binders in Ltac, you can work around your problem by simply writing the tactic as:
+```coq
+Ltac ret_and_left f :=
+  let tac := ret_and_left in
+  let T := type of f in
+  lazymatch eval hnf in T with
+    | ?a /\ ?b => exact (proj1 f)
+    | ?T' -> _ =>
+      let x' := fresh "x" in
+      let ret := constr:(fun x' : T' => $(tac (f x'))$) in
+      let ret' := (eval cbv zeta in ret) in
+      exact ret'
+  end.
+```
+(Note the fresh variable instantiation.)
+
+
+I'm adding here a related issue discussed [here](https://github.com/coq/coq/pull/307#issuecomment-255523527).
+
+```coq
+Ltac f_rec n x y := match n with
+  | 3 => constr:((x,y))
+  | _ => constr:(let z := n in ltac:(let ret := f_rec (S n) y z in exact ret))
+ end.
+Check eq_refl : ltac:(let b := f_rec 1 0 0 in exact (b=(1,2))).
+```
+Note that it works (in Ltac1) if using a `fresh`:
+```coq
+Ltac f_rec n x y := match n with
+  | 3 => constr:((x,y))
+  | _ => let z:=fresh in constr:(let z := n in ltac:(let ret := f_rec (S n) y z in exact ret))
+ end.
+Check eq_refl : ltac:(let b := f_rec 1 0 0 in exact (b=(1,2))).
+```

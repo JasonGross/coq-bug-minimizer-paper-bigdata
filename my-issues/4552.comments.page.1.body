@@ -1,0 +1,68 @@
+Comment author: @JasonGross
+
+The following options are not documented.  Some of them certainly should be.
+
+Asymmetric Patterns
+Atomic Load
+Bullet Behavior
+Compat Notations
+Congruence Depth
+Congruence Verbose
+Debug Eauto
+Debug RAKAM
+Debug Tactic Unification
+Debug Unification
+Default Clearing Used Hypotheses
+Default Proof Mode
+Dependent Propositions Elimination
+Discriminate Introduction
+Dump Bytecode
+Equality Scheme
+Extraction File Comment
+Extraction Flag
+Extraction name
+Functional Induction Rewrite Dependent
+Function_debug
+Function_raw_tcc
+Info Eauto
+Injection L2R Pattern Order
+Injection On Proofs
+Inline Level
+Kernel Term Sharing
+Keyed Unification
+Omega Action
+Omega OldStyle
+Omega System
+Program Mode
+Proof Using Clear Unused
+Record Elimination Schemes
+Rewriting Schemes
+Rtauto Check
+Rtauto Pruning
+Rtauto Verbose
+Short Module Printing
+SimplIsCbn
+Stable Omega
+Standard Proposition Elimination Names
+Strict Proofs
+Tactic Evars Pattern Unification
+Tactic Pattern Unification
+Typeclasses Debug
+Typeclasses Dependency Order
+Typeclasses Depth
+Typeclasses Modulo Eta
+Typeclasses Strict Resolution
+Typeclasses Unique Instances
+Typeclasses Unique Solutions
+Typeclass Resolution After Apply
+Typeclass Resolution For Conversion
+Undo
+Verbose Compat Notations
+
+(Discovered with:
+  git grep optkey | grep -o '\[[^]]*' | sed s'/"//g' | sed s'/^\[//g' | sed s'/ 
+//g' | sed s'/;/ /g' | sort | less
+filtering against https://coq.inria.fr/refman/option-index.html)
+
+
+More up-to-date issue is #8380.

@@ -1,0 +1,5 @@
+See also https://github.com/ProofGeneral/PG/issues/415
+As discussed on gitter this is due to the stm calling update_global_env
+Is "Local Set Printing Width" a way to avoid triggering this function? If yes this could lead to a reasonable solution I guess.
+Answering my own question: no.
+This also applies to `Notation`, and is taking several seconds each time in bedrock2. If there was an easy way to avoid calling this expensive update on vernacs that clearly do not modify the environment (notations, printing options, etc), that would be very convenient. I hear there is some classification system for vernacs, or is this for something else?

@@ -1,0 +1,32 @@
+Simpler test
+~~~coq
+Axiom reflect : Prop.
+Module M.
+  Class reflect := do_reflect : reflect.
+End M.
+~~~
+Part of the point, though, is that I don't want the class to be recursive, I want it to be non-recursive (as if I had written `Class reflect' := do_reflect : reflect` or whatever)
+The issue AFAIU is that `Class`, despite not supporting recursive definitions, is parsed, and partly interpreted, using the same mechanism as `Inductive`, leading to this confusion.
+
+The same is true with `Record`:
+
+``` coq
+Definition foo := Prop.
+Record foo := { i : foo }.
+(* Records declared with the keywords Record or Structure cannot be recursive.
+You can, however, define recursive records using the Inductive or CoInductive command. *)
+```
+
+In this case though, despite the limitation (since records cannot be recursive, we could have hoped that `foo` would be interpreted as the previously defined `foo`), the error message is clear.
+
+It's not clear whether the limitation should be lifted, or the error message for the `Class` command should simply be improved. I'm leaning on the latter solution, partly because it'll create less risk of confusion, and partly because it's a simpler change.
+PS:
+
+```coq
+Definition foo := Prop.
+Class foo := { i : foo }.
+(* Records declared with the keywords Record or Structure cannot be recursive.
+You can, however, define recursive records using the Inductive or CoInductive command. *)
+```
+
+(same error message: it should probably be tweaked for `Class`)

@@ -1,0 +1,38 @@
+Comment author: @JasonGross
+
+I would like the following code to type-check:
+```coq
+
+Generalizable All Variables.
+Section coer.
+  Context `(a : A -> A') `(a' : A' -> A'')
+          `(b : B -> B') `(b' : B' -> B'').
+
+  Coercion a : A >-> A'.
+  Coercion a' : A' >-> A''.
+  Coercion b : B >-> B'.
+  Coercion b' : B' >-> B''.
+
+  Variable f : A' -> B'.
+  Check f : A -> B''.
+
+  Variable a0 : A'.
+  Variable b0 : B'.
+
+  Check (a0, b0) : A'' * B''.
+
+  Variable ab : A' * B'.
+  Check ab : A'' * B''.
+
+  Variable aob : A' + B'.
+  Check aob : A'' + B''.
+
+```
+
+I expect, e.g., [aob : A'' + B''] to expand to
+  match aob with
+    | @ inl _ _ x => @ inl A'' B'' x
+    | @ inr _ _ x => @ inr A'' B'' x
+  end
+
+

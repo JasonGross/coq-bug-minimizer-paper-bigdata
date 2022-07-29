@@ -1,0 +1,11 @@
+Note, furthermore, that this bug will make it impossible to use the minimizer on any file where this is the error message.
+It's trying to point at the `Type` in 
+~~~coq
+Set Universe Polymorphism.
+Lemma foo@{} : Prop.
+Proof.
+  exact (forall T:Type, True).
+Defined.
+~~~
+Is that also a problem for the minimizer or is it just when going through ltac?
+This is also an issue; it should be the case that if I remove all lines after the end of the statement which is being pointed to by the error message, then the error still occurs.  It seems fine for the error message to point at that location in additional details, but the location of the error message itself should be the command that triggers the error, IMO.

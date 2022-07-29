@@ -1,0 +1,135 @@
+When reinterpreting a constr matched under binders such as `?f` in a new environment  such as `x:Type`, no check is done. Otherwise said, the rationale wat that it is the responsibility of the user to plug the term under binders in exactly the same environment under which it was matched. One (obvious) way to take care of the problem user-side is to do:
+```
+Goal Type.
+  let c := constr:(prod nat nat) in
+  let c' := (eval pattern nat in c) in
+  let c' := lazymatch c' with ?f _ => f end in
+  let c'' := lazymatch c' with fun x : Set => ?f => constr:(forall x : Set, f) end in
+  exact c''.
+```
+or
+```
+Goal Type.
+  let c := constr:(prod nat nat) in
+  let c' := (eval pattern nat in c) in
+  let c' := lazymatch c' with ?f _ => f end in
+  let c'' := lazymatch c' with fun x : ?T => ?f => constr:(forall x : T, f) end in
+  exact c''.
+```
+I would propose a wontfix unless some better proposal exists.
+> When reinterpreting a constr matched under binders such as `?f` in a new environment such as `x:Type`, no check is done. 
+
+Lacking a check seems basically fine, even potentially quite useful for performance (though I seem to recall that `context` used to not do such checks, and now it does).  However, the code does in fact do a check.  If I replace `Type` with `nat `, I get an error message:
+```coq
+Goal Type.
+  let c := constr:(prod nat nat) in
+  let c' := (eval pattern nat in c) in
+  let c' := lazymatch c' with ?f _ => f end in
+  let c'' := lazymatch c' with fun x : Set => ?f => constr:(forall x : nat, f) end in
+  (* Error:
+Cannot reinterpret "(_UNBOUND_REL_1 * _UNBOUND_REL_1)%type" in the current environment. *)
+  exact c''.
+Defined.
+```
+So I'm guessing that there used to be no check, and then a check was added, but the adder of the check neglected to handle universes?  Or, perhaps, the reinterpretation happens in uconstr-land, and conversion to constr-land checks types but not universes?
+
+> One (obvious) way to take care of the problem user-side is to do:
+
+No, your proposals side-step the error by not doing what I want to do.   However, changing from `Set` to `Type` here is actually quite important, as otherwise I have to add an extra pass PHOAS->DeBruijn->PHOAS and duplicate some code by copy paste (because template polymorphism isn't enough to make my PHOAS trees land in `Set`, and universe polymorphism breaks a number of proof scripts in annoying ways (frequently through failure of `subst` and other on-the-fly lemma-generating tactics)).
+
+> I would propose a wontfix unless some better proposal exists.
+
+I would be satisfied with a `refresh_universes` tactic, so that the following should work:
+
+```Coq
+Goal Type.
+  let c := constr:(prod nat nat) in
+  let c' := (eval pattern nat in c) in
+  let c' := lazymatch c' with ?f _ => f end in
+  let c'' := lazymatch c' with fun x : Set => ?f => uconstr:(forall x : Type, f) end in
+  let c'' := refresh_universes c'' in
+  exact c''.
+Defined. 
+```
+Note that going from `uconstr` to `constr` also does not do this check; is this a bug?
+```Coq
+Goal Type.
+  let c := constr:(prod nat nat) in
+  let c' := (eval pattern nat in c) in
+  let c' := lazymatch c' with ?f _ => f end in
+  let c'' := lazymatch c' with fun x : Set => ?f => uconstr:(forall x : Type, f) end in
+  let c'' := constr:(c'') in
+  exact c''.
+Defined. (* same error *)
+```
+> So I'm guessing that there used to be no check, and then a check was added, but the adder of the check neglected to handle universes?
+
+There is no check, only an attempt to quickly re-infer the type of the term, assuming well-typing but not checking that it is well-typed (so-called `get_type_of` function). It is this re-inference of the type which fails if you use `x:nat`.
+
+As for the going from `uconstr` to `constr`, it does not help because the untyped `c''` is internally `forall x:Type, f` where the `f`, a `constr` assumed to be checked` has not yet been substituted into the `uconstr`, which is a `glob_constr`.
+
+Maybe the failure of universe polymorphism with `subst` and co should first be fixed. @mattam82 talked about it to me and I suspect that this would not be a big deal to fix.
+> Maybe the failure of universe polymorphism with subst and co should first be fixed. 
+
+Note that this will solve only half of my problem.  I maintain that replacing `Set` with `Type ` dynamically is a legitimate use case that should have support.
+What about:
+```
+Goal Type.
+  let c := constr:(prod nat nat) in
+  let c' := (eval pattern nat in c) in
+  let c' := lazymatch c' with ?f _ => f end in
+  let c'' := lazymatch c' with fun x : Set => ?f => constr:(forall x : Type, f) end in
+  let t := type of c'' in
+  exact c''.
+Defined.
+```
+There is a `refresh_universes` in evarsolve which can even replace Set with Type, we could expose that then it would be
+``` coq
+Goal Type.
+Proof.
+  let c := constr:(prod nat nat) in
+  let c' := (eval pattern nat in c) in
+  let c' := lazymatch c' with ?f _ => f end in
+  let c'' := refresh_universes_and_set c'' in
+  exact c''.
+Defined. 
+```
+@herbelin Oooh, great, thanks!  I'm wonder if @ppedrot will hate me for making code depend on this side effect of `type of`.
+
+@SkySkimmer That seems like the right thing to do moving forward, though `and_set` seems like a hard name to understand... maybe `refresh_universes_raising_set` or `refresh_universes_raising_set` or even expose `refresh_universes` and `bump_set_to_type` separately.
+@JasonGross Although not documented, that's actually the expected semantics of `type of`, and the same kind of trick should be used in Ltac2 as well. Don't refrain from relying on it!
+Oops, it looks like I forgot to reply to this for a while.  Replying with some overlap with https://github.com/coq/coq/pull/8455#issuecomment-420278499 (since I think discussion should happen here):
+I think that allowing ill-typed `constr` is a bad design decision.  When I write `uconstr:(...)`, I expect that maybe I have generated an ill-typed term.  When I write `constr:(...)`, I expect that the term ought to be well-typed if `constr` succeeds, unless I am building it out of ill-typed components such as doing `constr:(@conj False True ltac:(exact_no_check I) I)`.
+Even if we decide to leave Ltac1 as-is, I think things which can generate ill-typed `constr`s in Ltac2 should be relegated to `Unsafe` modules (such as `Constr.Unsafe.make`).  @ppedrot do you have an example of some Ltac2 code which would rely on this trick?
+Ltac2 suffers from the same problem, unluckily. I have thought about several ways to work around this without sacrificing efficiency, but I don't quite know how to do so for now. Best I can think of is to represent terms with a cache storing an environment and an evarmap in which they are known to be typeable, and check by pointer equality that if they have changed in the meantime, we need to recompute the type. But that's still quite expensive probably.
+Regarding the environment part:
+We only care about changes when the new environment closes over a name present in the old environment, but with the wrong type.  (I grant that this does not catch cases like `let c := constr:(x : T) in rename x into y; rename z into x; pose c`, but perhaps `rename` should apply by default not just to the current hypotheses and goal, but also to all constrs in the current Ltac environment?)  If we have O(1) lookup for "is this name in the environment cache?" (which seems reasonable with a hash-set or similar), then this check should be quite fast in most cases, right?  For each binder we close over in `constr:(...)`, we pay O(1) cache-lookup + O(1) pointer equality ( + O(retyping) iff the type pointers are not equal).
+
+Regarding the evarmap part: What's an example of code exploiting the problem we have now?  I thought Ltac2 lived in the evarmap monad or something, and there's no way to modify the evarmap except by refinement from within Ltac2?
+For the environment, the problem is that your proposal doesn't scale to complex datatypes containing types. Morally you need some preseaf theory or something to handle that, but that means that types carry additional data that cannot be erased and thus you depart from the ML execution model.
+
+For the evarmap, the problem is that you can return data through backtracking exceptions, so that if this data is a term that relies on some universe constraint that has been introduced in the meantime, you're fried. Mtac has the same problem actually, and they solve it quite elegantly thanks to the fact that evars in the object and meta language coincide (they are the same). Another solution for Ltac would be to disallow exceptions returning data, but then you also have the same problem with non-backtracking mutable state, and it looks like we really want that one. Once again, the solution would be some richer type-and-runtime system, but then this does not fit within the backwards compatibility requirements of Ltac2, so that we have to resort to dynamic checks instead.
+Can you be more specific about how it doesn't scale to complex datatypes?  I see that general environment transformations don't scale (this is just a slight variant of my `rename` example), but I think that if we only need to do this check on context extensions (when we are closing over a free variable to make it no longer free), pointer equality on the types should suffice.  That is, I cannot imagine a context Γ where `t` is well-typed, `T` is a well-formed type, either `x` does not appear in Γ or the `x` in Γ has a type which is pointer-equal to `T` and has no body, but yet `fun x : T => t` is not well-typed.  Similarly, I cannot imagine a context Γ where `t` is well-typed, `T` is a well-formed type, `b` is well-typed of type `T`, either `x` does not appear in Γ or the `x` in Γ has a type which is pointer-equal to `T` and has a body which is pointer-equal to `b`, but yet `let x : T := b in t` is not well-typed.
+
+  My current picture is that for any term `t` and any context `Γ` in which `t` is well-typed, we can divide `Γ` up into two (mutually dependent) lists: `Γ₁` containing all names which occur free in the term `t`, and `Γ₂` containing all other names in `Γ`.  Having made this divide, `t` should be well-typed in any choice of `Γ₂` which results in a well-typed context when interleaved with `Γ₁`.  Thus, since all operations should preserve the well-typedness of the context/environment, and more-over the only operation that calls this check is adding new binders 
+
+For the evarmap, what about making the default way of catching exceptions retype any constrs that live in the exception data (which may be expensive for exception data containing constr, but should be free for, e.g., string-data exceptions), and provide an unsafe way of catching exceptions (or an unsafe wrapper for exception data that says "don't retype me, here be dragons").  Would this work?  My goal is that Ltac2 should allow users who want fast code and know what they're doing to get fast code, and should also make it hard for users who don't know what they're doing to shoot themselves in the foot (at least behavior-wise) without noticing.
+> Can you be more specific about how it doesn't scale to complex datatypes?
+
+How do you perform variable expansion on closures returning or taking terms as arguments? Every type needs to come with a way to lift the variables it recursively contains.
+
+> if we only need to do this check on context extensions
+
+That won't be sufficient. Remember the dreaded list of `clear` issues?
+
+> My goal is that Ltac2 should allow users who want fast code and know what they're doing to get fast code, and should also make it hard for users who don't know what they're doing to shoot themselves in the foot (at least behavior-wise) without noticing.
+
+I think that the cache solution is the easiest one that satisfies both criteria. You can always provide a function that produces a term whose cache is the current state, and that blindly trusts the user about this.
+@JasonGross 
+Is the following a better workaround?: `eval pattern (nat:Type) in c`
+
+@jonleivent Does that work?  It seems like a neat trick if it does ... I guess `pattern` has to retypecheck the abstracted term to make sure it's well-typed?
+@JasonGross Works for me in 8.12.  The question is, is it an Ltac hack or legit.
+
+@JasonGross I just tried this trick in the last example the ExampleMoreParamtricity.v file in your reification-by-parametricity project, and it works if both nat and list nat are cast as Types in the pattern - allowing for the removal of the adjust_first_binder_to_type and swap_first_two_binders tactics.
+Note that in sufficiently old versions of Coq, the `type of` trick is still required to add universe constraints when using the `eval pattern (nat:Type)` trick.

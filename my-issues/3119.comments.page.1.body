@@ -1,0 +1,99 @@
+Comment author: @JasonGross
+
+It would be extremely useful to have eta conversion for records, e.g., so that the double-opposite of a category is judgmentally equal to itself, and so that the double-opposite of a functor can be asserted equal to itself without transport across paths.
+
+More generally, I would like to have eta-conversion for inductive datatypes with one constructor and no indices (only parameters, so, e.g., [sigT] is fine, but [eq] is not).  This would not decrease the expressiveness of Coq, as changing parameters into indices would give back the old behavior.
+
+Perhaps more generally, it would be nice if we had the following two eta rules about matches for any inductive data type T (regardless of whether or not it has indices):
+
+  forall (x : T),
+       x ≡ 
+         match x return T with
+           | constructor1 a1 ... an => constructor1 a1 ... an
+           | ...
+           | constructorm a1 ... ap => constructorm a1 ... ap
+         end
+
+and then some kind of rule about commutativity of [match] which says that
+  let (a1, ..., an) := x in constructor a1 ... an
+is convertible with something whose head is [constructor] (i.e., the version of [existT _ (projT1 x) (projT2 x)], but for arbitrary inductive datatypes with one constructor and no indices.
+
+But I would be very happy with just eta conversion for records.
+
+
+Comment author: @JasonGross
+
+I was talking with Saizan and xplat on #agda, and I think the appropriate generalized eta rule is that [match] commutes with any function which is polymorphic over the indices of the inductive data type.  So, for example, with [eq] which has two parameters ([A : Type] and [x : A]) and one index (of type A), the rule is
+
+  ∀ A (x y : A) (P : ∀ a, x = a → Type) (f : ∀ a (p : x = a), P a p) (p : x = y),
+    f _ p
+    = match p as p0 in (_ = y0) return (P y0 p0) with
+        | eq_refl ⇒ f _ eq_refl
+      end.
+
+and for [JMeq], the rule is
+
+  ∀ A (x : A) (P : ∀ B (b : B), JMeq x b → Type) (f : ∀ B (y : B) (p : JMeq x y) → P B y p) B (y : B) (p : JMeq x y),
+    f _ _ p
+    = match p as p0 in (@ JMeq _ _ B0 y0) return (P B0 y0 p0) with
+        | JMeq_refl ⇒ f _ _ JMeq_refl
+      end.
+
+and for [sum], the rule is
+
+  ∀ A B (P : A + B → Type) (f : ∀ x, P x) (x : A + B),
+    f x
+    = match x as x0 return P x0 with
+        | inl a ⇒ f (inl a)
+        | inr b ⇒ f (inr b)
+      end.
+
+It would be nice to have these rules judgmentally, and by combining the case that [f] is a constructor with the case that [f] is the identity, I think these rules suffice to obtain eta for records.
+
+
+Comment author: @pirbo
+
+This is a HUGE change. it is way too big to be only a bug.
+
+It IS interesting feel absolutely free to spend the month in kernel/closure.ml it requires to figure out how it could be implemented in practice and the month it requires to make the correction proof of the implementation. Make a talk at (t least) the next coq workshop because other people will definitely be interested the research !
+
+
+Comment author: @silene
+
+I am no specialist, but it seems you are suggesting that (x: Acc ...) should be convertible to Acc_intro (match x with Acc_intro y => y end). Does that not break strong normalization and make type checking undecidable? If so, it is not just a matter of proving the correctness of the implementation; there are many theoretical implications to consider first. So let us close this report.
+
+
+Comment author: @JasonGross
+
+For future reference: after discussing with Thorsten Altenkirch and Paolo Capriotti at the HoTT/UF Workshop, I learned that this rule implies equality reflection.  If we have
+
+  ∀ A (x y : A) (P : ∀ a, x = a → Type) (f : ∀ a (p : x = a), P a p) (p : x = y),
+    f _ p
+    ≡ match p as p0 in (_ = y0) return (P y0 p0) with
+        | eq_refl ⇒ f _ eq_refl
+      end.
+
+then, given [A] and [x : A], take [P _ _ := A], [f _ _ := x], and [g y _ := y], so that [f x eq_refl ≡ g x eq_refl ≡ x].  Then, assuming [y : A] and [p : x = y], using this match-commutation rule on the second and second-to-last-step, we get
+
+
+    x
+    ≡ f y (match p as p0 in (_ = y0) return (P y0 p0) with
+             | eq_refl ⇒ x
+           end)
+    ≡ match p as p0 in (_ = y0) return (P y0 p0) with
+        | eq_refl ⇒ f _ eq_refl
+      end
+    ≡ match p as p0 in (_ = y0) return (P y0 p0) with
+        | eq_refl ⇒ x
+      end
+    ≡ match p as p0 in (_ = y0) return (P y0 p0) with
+        | eq_refl ⇒ g _ eq_refl
+      end
+    ≡ g y (match p as p0 in (_ = y0) return (P y0 p0) with
+             | eq_refl ⇒ g _ eq_refl
+           end)
+    ≡ y
+
+and hence [x ≡ y].
+
+

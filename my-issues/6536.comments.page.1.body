@@ -1,0 +1,16 @@
+WG discussion: will be fixed by reverting #873 
+This should be fixed by #6949.
+Same remark as in #6777, I prefer to adopt the point of view that #6949 is not solving this issue and
+that this issue remains open.
+
+On the particular example given by @JasonGross, #6952 still don't use `hide` as it was in 8.7. The reason is that a goal printing is done in a temporary local `type_scope` which takes precedence over the abbreviation. The following however works:
+```coq
+Notation hide := (_ = _).
+Check 1 = 1.
+(* hide : Prop *)
+```
+So, I don't know what to think about it. Should `type_scope` be skipped in the printing algorithm? That would make an exception hard to justified. Or are the real examples different enough from the example above so that the new behavior does not matter in practice?
+
+An alternative would be to go back to the idea of assigning scopes to abbreviations, but for printing only (since having resolution of qualified names dependent on scopes look to me to be a rather heavy change which would have to be justified by more extensive examples). Having abbreviation scopes for printing only would be rather cheap to implement.
+
+@gares (or maybe @ggonthier): Would it be useful for mathcomp that abbreviations could come with a scope for printing only?

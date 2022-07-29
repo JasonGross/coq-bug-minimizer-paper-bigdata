@@ -1,0 +1,100 @@
+Comment author: @JasonGross
+
+Created attachment 717
+example of `change` being slow in src/Parsers/Refinement/SharpenedExpressionPlusParen.v
+
+In the attached development (compatible with 8.4pl{2,3,4,5,6} and 8.5pl1, based on which _CoqProject is used (either _CoqProject.v85 or _CoqProject.v84)), `Time refine_binop_table.` gives the following profiles in Coq 8.4:
+
+with [pose y as x; change y with x in H]:
+total time:     70.236s
+
+ tactic                                    self  total   calls       max
+────────────────────────────────────────┴──────┴──────┴───────┴─────────┘
+─setoid_rewrite_refine_binop_table_idx -   0.5% 100.0%       1   70.236s
+─refine_binop_table --------------------   0.0% 100.0%       1   70.236s
+─replace_with_at_by --------------------   0.0%  98.9%       1   69.492s
+─set_tac -------------------------------   0.0%  98.8%       1   69.424s
+─change x with x' in H -----------------  98.8%  98.8%       1   69.420s
+
+ tactic                                    self  total   calls       max
+────────────────────────────────────────┴──────┴──────┴───────┴─────────┘
+─refine_binop_table --------------------   0.0% 100.0%       1   70.236s
+└setoid_rewrite_refine_binop_table_idx -   0.5% 100.0%       1   70.236s
+└replace_with_at_by --------------------   0.0%  98.9%       1   69.492s
+└set_tac -------------------------------   0.0%  98.8%       1   69.424s
+└change x with x' in H -----------------  98.8%  98.8%       1   69.420s
+
+
+with [set (x := y) in H]:
+total time:      0.912s
+
+ tactic                                    self  total   calls       max
+────────────────────────────────────────┴──────┴──────┴───────┴─────────┘
+─refine_binop_table --------------------   0.4% 100.0%       1    0.912s
+─setoid_rewrite_refine_binop_table_idx -  38.2%  99.6%       1    0.908s
+─setoid_rewrite H ----------------------  29.4%  39.0%       1    0.356s
+─replace_with_at_by --------------------   0.0%  14.0%       1    0.128s
+─replace_with_vm_compute_in ------------   0.0%  14.0%       1    0.128s
+─replace c with c' in H by (clear; my_vm   0.0%  14.0%       1    0.128s
+─params --------------------------------   0.0%   7.5%       4    0.020s
+─induction H ---------------------------   6.1%   6.1%       1    0.056s
+─set_tac -------------------------------   0.4%   5.7%       1    0.052s
+─set (x' := x) in H --------------------   5.3%   5.3%       1    0.048s
+─assert (Params m' v) as H by typeclasse   0.0%   3.1%       4    0.008s
+─typeclasses eauto ---------------------   3.1%   3.1%       4    0.008s
+─clear n -------------------------------   3.1%   3.1%       4    0.008s
+─pose proof lem as H -------------------   2.6%   2.6%       1    0.024s
+─assert T0 as H0 by (clear; lazy beta io   0.0%   2.2%       1    0.020s
+─clear ---------------------------------   2.2%   2.2%       2    0.016s
+
+ tactic                                    self  total   calls       max
+────────────────────────────────────────┴──────┴──────┴───────┴─────────┘
+─refine_binop_table --------------------   0.4% 100.0%       1    0.912s
+└setoid_rewrite_refine_binop_table_idx -  38.2%  99.6%       1    0.908s
+ ├─setoid_rewrite H --------------------  29.4%  39.0%       1    0.356s
+ │└params ------------------------------   0.0%   7.5%       4    0.020s
+ │ ├─assert (Params m' v) as H by typecl   0.0%   3.1%       4    0.008s
+ │ │└typeclasses eauto -----------------   3.1%   3.1%       4    0.008s
+ │ └─clear n ---------------------------   3.1%   3.1%       4    0.008s
+ ├─replace_with_vm_compute_in ----------   0.0%  14.0%       1    0.128s
+ │└replace c with c' in H by (clear; my_   0.0%  14.0%       1    0.128s
+ │└replace_with_at_by ------------------   0.0%  14.0%       1    0.128s
+ │ ├─induction H -----------------------   6.1%   6.1%       1    0.056s
+ │ └─set_tac ---------------------------   0.4%   5.7%       1    0.052s
+ │  └set (x' := x) in H ----------------   5.3%   5.3%       1    0.048s
+ ├─pose proof lem as H -----------------   2.6%   2.6%       1    0.024s
+ └─assert T0 as H0 by (clear; lazy beta    0.0%   2.2%       1    0.020s
+
+
+The times are similar (within a factor of 2 or so) in Coq 8.5.
+
+What is [change] doing?!
+
+> Attached file: [slow_set.zip](https://coq.inria.fr/bugfiles/attachment.cgi?id=717) (application/zip, 424194 bytes)
+> Description:   example of `change` being slow in src/Parsers/Refinement/SharpenedExpressionPlusParen.v
+
+
+Comment author: @JasonGross
+
+Note also that if you use [change] rather than [set] in src/Parsers/Refinement/SharpenedJSON.v, by adding
+
+Ltac replace_with_vm_compute_in c H ::=
+  let c' := (my_eval_vm_compute_in c) in
+  (* By constrast [set ... in ...] seems faster than [change .. with ... in ...] in 8.4?! *)
+  let set_tac := (fun x' x
+                  => pose x as x';
+                     change x with x' in H) in
+  replace_with_at_by c c' set_tac ltac:(clear; my_vm_cast_no_check (eq_refl c')).
+
+before [Section IndexedImpl.], [Time rewrite_disjoint_search_for.] will thrash your machine and blow through *64 GB* of RAM before crashing Coq, after maybe 15 minutes or so.  By contrast, using [set] takes at most 0.2 s!  Something is seriously wrong with [change] here.
+
+
+Duplicate https://github.com/coq/coq/issues/4636
+@SkySkimmer the correct Github syntax is:
+
+Duplicate of #4636 
+Duplicate of #4636
+
+[and it has to appear in the first line, grrrr]
+Duplicate of #4636
+Seems it has to appear alone, grrrrr

@@ -1,0 +1,25 @@
+Comment author: @JasonGross
+
+Goal forall (n : nat) (H := eq_refl : n = n) (H' : n = 0), H = eq_refl.
+  intros.
+  Fail subst. (* Toplevel input, characters 15-20:
+Error: Abstracting over the term "n" leads to a term 
+"λ n : nat, H = eq_refl" which is ill-typed. *)
+  revert H.
+  subst. (* success *)
+  Undo.
+  intro.
+  clearbody H.
+  subst. (* success *)
+
+
+Comment author: @ppedrot
+
+This seems to be fixed in trunk.
+
+
+Comment author: @herbelin
+
+Indeed, fixed in 6522aa62d832837314dcef54735e6a4e55431571 (May 8, 2014). Patch is not so long, so if ever you'd like to adapt it for the 8.4 branch and submit a patch, you're welcome (the worry is mainly not to use the new proof engine commands from ProofView in the patch).
+
+

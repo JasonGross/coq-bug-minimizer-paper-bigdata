@@ -1,0 +1,41 @@
+Comment author: @JasonGross
+
+Class instructions (n : nat) :=
+  {
+    W : Type;
+    ldi :> nat -> W
+  }.
+Goal instructions 64 -> True.
+  intro.
+  first [ let v := constr:(
+                     let y2 := ldi 0 in
+                     let (CF, _) := (true, 0) in
+                     y2) in
+          idtac
+        | fail 1 "too early" ].
+  let v := constr:(
+             let y2 := ldi 0 in
+             let '(CF, _) := (true, 0) in
+             y2) in
+  idtac. (* Anomaly: index to an anonymous variable. Please report at 
+http://coq.inria.fr/bugs/. *)
+
+
+Comment author: @ppedrot
+
+I cant't reproduce this on latest 8.6 (db18609c0).
+
+
+Comment author: @JasonGross
+
+EmEmilio
+
+*** This bug has been marked as a duplicate of bug [BZ#4763](https://github.com/coq/coq/issues?q=is%3Aissue%20%22Original%20bug%20ID%3A%20BZ%234763%22) ***
+
+
+Comment author: @JasonGross
+
+Emilio says in https://coq.inria.fr/bugs/show_bug.cgi?id=5139 that "It seems 
+that 0b417c12eb10bb29bcee04384b6c0855cb9de73a is the one solving the issue."
+
+

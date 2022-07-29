@@ -1,0 +1,14 @@
+Comment author: @JasonGross
+
+Sometimes I get error messages such as
+
+Unable to satisfy the following constraints:
+In environment:
+H : Funext
+A : PreCategory
+
+?29 : "Funext"
+
+It would be nice if Coq mentioned something like "Some branches terminated with universe inconsistencies", or if it defaulted it [Set Printing Universes] when the cause might have been a universe inconsistency.
+
+

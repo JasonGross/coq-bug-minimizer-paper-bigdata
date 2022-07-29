@@ -1,0 +1,16 @@
+Comment author: @JasonGross
+
+The following code works in 8.5 and fails in trunk:
+
+Goal True.
+  Fail autorewrite with foo. (* The command has indeed failed with message:
+Error: Rewriting base foo does not exist.
+as expected *)
+  try autorewrite with foo. (* Error: Rewriting base foo does not exist. in trunk; [try] should catch this *)
+
+
+Comment author: @ppedrot
+
+Fixed by 730e8b84.
+
+

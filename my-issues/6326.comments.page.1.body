@@ -1,0 +1,4 @@
+Does #6318 help with this issue?
+#6318 does seem to fix the issue.
+Thanks @JasonGross and @maximedenes for testing, in this area we are looking at lots of strange combinations and it is hard sometimes to reason about the effects patches will have.
+Fixed by #6318 .

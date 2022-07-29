@@ -1,0 +1,40 @@
+Comment author: @JasonGross
+
+Goal 0 = 0.
+  pose ?Goal. (* Anomaly: error with no safe_id attached: Stack overflow.. Please report. *)
+
+This is with 91c2a866e7827c0ede0539cb49f924b68db569a9.
+
+
+Comment author: @gares
+
+My understanding is that "proof progress" (evar instantiation) is not internally performed by unifying the evar representing the current goal with term produced by the tactic, but rather by blindly assigning the term to the evar (here this results in a cyclic substitution).
+Unification should perform occur check, and hence avoid this problem.
+
+I have not looked at the code to see if this assignment is performed in
+a single place, and hence if the bug can be easily fixed...
+
+
+Comment author: @gares
+
+Ah, the "error with no safe_id" message is my fault, I should just let the non-Errors.noncritical exception escape.
+
+
+Comment author: @herbelin
+
+Note that the problem exists already in 8.4:
+
+Definition F := forall A, A.
+Goal exists x:F, x = x.
+eexists.
+match goal with |- ?x = _ => instantiate (1:=x F) end.
+(* no occur-check, hence a loop *)
+
+I have no idea at the current time of the most appropriate way to address this.
+
+
+Comment author: @maximedenes
+
+Both examples now fail with nice error messages, so I guess this bug is closed.
+
+

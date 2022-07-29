@@ -1,0 +1,30 @@
+Comment author: @JasonGross
+
+I'd like to be able to automatically generate lemmas like the ones I'm adding 
+in https://github.com/coq/coq/pull/451
+
+
+So with primitive projections this becomes a definitional equality. But I guess we can keep this as a wish for an eta lemma without primitive projections. Here is a small example to demonstrate:
+```coq
+Unset Primitive Projections.
+
+Module A.
+  Record foobar := { foo : Set ; bar : Prop }.
+  Axiom fb : foobar.
+  Eval cbv in (Build_foobar (foo fb) (bar fb)).
+  (*      = {| foo := let (foo, _) := fb in foo; bar := let (_, bar) := fb in bar |}
+     : foobar
+ *)
+End A.
+
+Set Primitive Projections.
+
+Module B.
+  Record foobar := { foo : Set ; bar : Prop }.
+  Axiom fb : foobar.
+  Eval cbv in (Build_foobar (foo fb) (bar fb)).
+  (*      = {| foo := foo fb; bar := bar fb |}
+     : foobar
+*)
+End B.
+```

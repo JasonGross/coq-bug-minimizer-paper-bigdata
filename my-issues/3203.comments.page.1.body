@@ -1,0 +1,97 @@
+Comment author: @JasonGross
+
+jgross@ cagnode17:/tmp$ cat mk-uu.sh
+#!/bin/bash
+coqc --version
+coqc -where
+CONTRIB="$(coqc -where)/user-contrib"
+echo "$CONTRIB"
+rm -rf user-contrib
+mkdir user-contrib
+cd user-contrib
+mkdir -p tmp1/tmp2 tmp3
+rm -rf "$CONTRIB/tmp1"
+mkdir -p "$CONTRIB/tmp1/tmp2"
+echo 'Definition UU := Type.' > tmp1/tmp2/uuutest.v
+echo 'Require Export "uuutest".' > tmp1/tmp2/uu0test.v
+echo 'Require Export "uu0test".' > tmp3/pathtest.v
+echo 'Require Export "uuutest".' > tmp3/pathtest2.v
+echo 'Require Export "uu0test".' >> tmp3/pathtest2.v
+PS4='$ '
+set -x
+#coqc -R tmp1 tmp1 tmp1/tmp2/uuutest
+#coqc -R tmp1 tmp1 tmp1/tmp2/uu0test
+cd tmp1/tmp2
+coqc uuutest
+coqc uu0test
+mv uuutest.vo uu0test.vo "$CONTRIB/tmp1/tmp2/"
+rm *
+cd ../../tmp3
+cat pathtest.v
+coqc pathtest
+cat pathtest2.v
+coqc pathtest2
+jgross@ cagnode17:/tmp$ ./mk-uu.sh
+jgross@ cagnode17:/tmp$ ./mk-uu.sh
+The Coq Proof Assistant, version trunk (December 2013)
+compiled on Dec 28 2013 12:22:55 with OCaml 4.01.0
+/afs/csail.mit.edu/u/j/jgross/.local64/coq/coq-polyproj/lib/coq
+/afs/csail.mit.edu/u/j/jgross/.local64/coq/coq-polyproj/lib/coq/user-contrib
+$ cd tmp1/tmp2
+$ coqc uuutest
+$ coqc uu0test
+$ mv uuutest.vo uu0test.vo /afs/csail.mit.edu/u/j/jgross/.local64/coq/coq-polyproj/lib/coq/user-contrib/tmp1/tmp2/
+$ rm uu0test.glob uu0test.v uuutest.glob uuutest.v
+$ cd ../../tmp3
+$ cat pathtest.v
+Require Export "uu0test".
+$ coqc pathtest
+File "./pathtest.v", line 1, characters 0-25:
+Error: Cannot find library uuutest in loadpath
+$ cat pathtest2.v
+Require Export "uuutest".
+Require Export "uu0test".
+$ coqc pathtest2
+
+Note that coq fails to find uuutest when it's imported transitively, but succeeds when it's imported directly.
+
+This was reported on coq-club by Vladimir Voevodsky.
+
+
+Comment author: @silene
+
+My take on this bug is that all the "Require" should have failed (rather than succeeded), since the loaded files do not have the correct qualified names. They contain modules "uuutest" and "uu0test" while they are located as if they were called "tmp1.tmp2.uuutest" and "tmp1.tmp2.uu0test". Coq should have complained loudly about this mismatch, as it already does when using option "-R". Not sure yet why it went through silently.
+
+
+Comment author: @JasonGross
+
+When you require with quotes, does it simply look for the .vo file (and not check the name of the library)?  But perhaps the [Require "foo".] gets written to a .vo file as a [Require foo.], so if it's not already loaded, Coq uses the other code and fails to find foo.
+
+
+Comment author: @silene
+
+Thanks for the hint. You got it (almost) right. When you do 'Require "foo"', Coq searches for file "foo.vo". Then it outputs to the resulting .vo file, not 'Require foo', but 'Require bar' (with bar the name of the module contained in "foo.vo"). Moreover, Coq does not check that the location of the file matches the logical path of its library.
+
+My opinion is now that the bug is not worth fixing (i.e. outputting to .vo file the equivalent of the vernacular requiring a quoted filename). Instead, the quoted form should be frowned upon and users discouraged to use it, as it is a can of worms.
+
+For the record, the corresponding functions are in library/library.ml:
+- rec_intern_by_filename_only and require_library_from_file for quoted filenames,
+- intern_library and require_library_from_dirpath for regular libraries.
+
+
+Comment author: @silene
+
+And now that I understand what happens, I might just as well write a simpler script for reproducing the issue:
+
+#!/bin/sh
+mkdir -p dir
+touch dir/a.v ; coqc dir/a.v
+echo 'Require "a".' > dir/b.v ; coqc -R dir Dir dir/b.v
+echo 'Require b.' > dir/c.v ; coqc -R dir Dir dir/c.v
+
+
+Comment author: @ppedrot
+
+Require with quote has been forbidden in Coq. I thus consider this bug to be fixed.
+
+

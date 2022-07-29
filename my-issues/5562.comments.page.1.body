@@ -1,0 +1,303 @@
+Comment author: @JasonGross
+
+See https://ci.appveyor.com/project/JasonGross/coq/build/appveyor~27#L2530 and 
+https://ci.appveyor.com/project/JasonGross/coq/build/appveyor~27#L2488
+
+Solver failed:
+  Ocamlbuild knows of no rules that apply to a target named camlp4/camlp4.cmx. 
+This can happen if you ask Ocamlbuild to build a target with the wrong 
+extension (e.g. .opt instead of .native) or if the source files live in 
+directories that have not been specified as include directories.
+Backtrace:
+  - Failed to build the target camlp4/camlp4.native
+      - Building camlp4/camlp4.native:
+          - Failed to build all of these:
+              - Building camlp4/camlp4.cmx
+              - Building camlp4/camlp4lib.a
+
+
+Comment author: @MSoegtropIMC
+
+Dear Jason,
+
+thanks for reporting. I will look into this this week. Building CamlP4 depends quite a bit on the used OCaml version. Older version included it, newer versions not and the build procedure varies. I guess I need yet another variant.
+
+Best regards,
+
+Michael
+
+
+Comment author: @Zimmi48
+
+I don't know if this is relevant to this discussion but note than camlp4 support has been dropped in trunk. See PR https://github.com/coq/coq/pull/461.
+
+
+Comment author: @MSoegtropIMC
+
+Dear Théo,
+
+thanks for the info - yes it helps.
+
+It is my expectation that the current/latest build wrapper script can also build older versions of Coq (convenient for comparing results with previous versions). As far as I know Coq 8.5x strictly requires CAMLP4. So the question is from which Coq version on should I remove the CAMLP4 dependency.
+
+Maybe at some point in time I should only keep the outer build script (the DOS batch file) backwards compatible and download the inner build script (bash script) depending on the version of Coq to be build.
+
+Best regards,
+
+Michael
+
+
+Comment author: @maximedenes
+
+Hi Michael,
+
+I don't think Coq ever required camlp4. If camlp5 is installed, it should be enough, even for old Coq versions.
+
+So maybe a simple fix is to try to skip the installation of camlp4.
+
+
+Comment author: @MSoegtropIMC
+
+Dear Maxime,
+
+is it possible that some versions of Menhir depend on CamlP4 and Coq depends on Menhir? I don't remember the details but I am sure I added the explicit build of CamlP4 (after it was dropped from building by default with OCaml) for a reason.
+
+Anyway - I can easily find out what the reason was.
+
+Best regards,
+
+Michael
+
+
+Comment author: @maximedenes
+
+I seem to recall seeing such an indirect dependency at some point, but I forgot what it was exactly.
+
+
+Comment author: @Zimmi48
+
+Sorry for my ignorance but do the Windows script install camlp5 as well? Until 8.6, Coq required camlp5 or camlp4. Now it requires strictly camlp5. Coq does not depend on menhir.
+
+
+Comment author: @MSoegtropIMC
+
+Dear Théo,
+
+yes, the script also builds / installs camlp5.
+
+I guess this is my bad then. I personally depend on Menhir and as it looks this somehow creaped in.
+
+So the solution is either to make building menhir optional or to remove this entirely and possibly to see if current menhir builds without camlp4 and to remove this dependency.
+
+I will fix this.
+
+Best regards,
+
+Michael
+
+
+Comment author: @ejgallego
+
+Michael, have you considered handling some install duties using the opam packaging available at http://protz.github.io/ocaml-installer/ by Jonathan Protzenko?
+
+Do you think it would help?
+
+
+Comment author: @MSoegtropIMC
+
+Dear Emilio,
+
+I evaluated it back when I started it and decided aginst it. The problems were:
+
+1.) A major requirement is that all sources going into the build can be collected and archived. The reason for this is to fullfill legal open source requirements for binary deliveries. GPL requires that you deliver the exact sources you used - no delegation or excuses allowed. Of cause only a small part is GPL but it is extremely tedious to find out what is licensed in which way (this can also change) so it is safest to just archive all sources. As long as something is "university only" nobody is too picky about this, but as soon as a tool gets used industrially, their might be people torpedizing it for some profit reason, and a hit in this direction might be quite a disaster. I don't see that opam does this in an organized way. E.g. my scripts have features to get the sources of cygwin MinGW target libraries going into the build (some of which are GPL). Also the OCaml build of opam e.g. used binary indelivieres - it maybe still does. 
+
+2.) In order to be able to fix bugs later in specific versions, it is required for industrial users to be able to 100% reproduce a build later on - maybe years later. This also requires requirement 1.) above but also a few additional steps. E.g. the scripts also allows to archive the complete build environment (cygwin) used. The assumption is that the output of a MinGW build done on Cygwin does not depend on the specific windows version used - likely not 100% true because Windows DLLs are linked in - but I think as is it is good enough and going further gets tricky like archive an OS together with several specimens a HW on which it runs.
+
+3.) it was more effort to get opam build/install reliably with one script (I tested it over 6 months) then the few packages I need. Maybe this is better now.
+
+Best regards,
+
+Michael
+
+
+Comment author: @ejgallego
+
+Dear Michael,
+
+thanks for your reply; regarding your requirements, I think I should point out that OPAM allows you to fulfill requirements 1 and 2 without much effort, recall that OPAM is a _source based_ package manager, and you can indeed specify exact configurations to build. This how we use it in Coq's Travis. OPAM doesn't provide yet 100% reproducible builds, but so doesn't your scripts IIUC.
+
+A good point in favor of OPAM is that it usually works well for CI testing, it tends to be more reliable than hand-made scripts due to the dynamic nature of the OCaml ecosystem.
+
+
+Comment author: @ejgallego
+
+[The relevant commands are `opam source` and `opam pin`]
+
+
+Comment author: @MSoegtropIMC
+
+Dear Emilio,
+
+for sure I can try it again. A lot of things have improved in the last 18 months. E.g. when I started it was not even possible to build OCAML from sources on Windows. There was a circular dependency on flexdll and OCAML used a binary delivery of flexdll. And this was something you didn't find out when building with opam. Complexity is a concern. It might be difficult to find someone who signs a letter stating which exact SW is in a Coq delivery if it is difficult to fully understand the build process.
+
+My scripts results are not 100% binary identical, but they difer only in build dates and paths if built from cygwin and source archives. I test this by disassembling the binaries and comparing the disassmblies (filtering out dates and pathes). Up to now there was no deviation.
+
+Best regards,
+
+Michael
+
+
+Comment author: @MSoegtropIMC
+
+Dear Coq Team,
+
+for the records: Coq does depend on camlp4 via CoqIDE and lablgtk. Lablgtk requires CamlP4, at least the configure fails without it with error message:
+
+    configure: error: Cannot find camlp4o
+
+This is also true for the latest version 2.18.5 of lablgtk.
+
+The issues with building camlp4 came with a cygwin update - a rare thing to happen. Since camlp5 also has build issues with latest cygwin, I will fix the problems for both. But I will also check if lablgtk really needs camlp4.
+
+I sent Maxime a quick fix for 8.6.1 (essentially using an old version of Cygwin) since the real fix might take a short while.
+
+Best regards,
+
+Michael
+
+
+Comment author: @MSoegtropIMC
+
+Dear Coq Team,
+
+the root cause seems to be that in previous versions of Cygwin, sed converted cr-lf sequences to lf, the current version does not do this any more. One can argue that the new behaviour is correct, while the old one was more convenient for calling MinGW programs (like OCaml for MinGW) in cygwin. The result is that a lot of $(.... | sed ...) sequences in scripts now end up with a trailing carriage return which messes up the logic.
+
+I am not sure what is the best way to fix this - replace sed with a version which does cr-lf -> lf converion or add explicit cr removal in many places where it is required. Opinions are welcome.
+
+Best regards,
+
+Michael
+
+
+========== new sed behaviour ==========
+
+soegtrop@ SOEGTROP-DESK /build/camlp5-6.14
+$ echo -e "a\rb\rc\r" | hexdump -C
++ echo -e 'a\rb\rc\r'
++ hexdump -C
+00000000  61 0d 62 0d 63 0d 0a                              |a.b.c..|
+00000007
+
+soegtrop@ SOEGTROP-DESK /build/camlp5-6.14
+$ echo -e "a\rb\rc\r" | sed 's/a//' | hexdump -C
++ echo -e 'a\rb\rc\r'
++ sed s/a//
++ hexdump -C
+00000000  0d 62 0d 63 0d 0a                                 |.b.c..|
+00000006
+
+soegtrop@ SOEGTROP-DESK /build/camlp5-6.14
+$ echo -e "a\r\nb\r\nc\r" | sed 's/a//' | hexdump -C
++ echo -e 'a\r\nb\r\nc\r'
++ sed s/a//
++ hexdump -C
+00000000  0d 0a 62 0d 0a 63 0d 0a                           |..b..c..|
+00000008
+
+soegtrop@ SOEGTROP-DESK /build/camlp5-6.14
+$
+
+========== old sed behaviour ==========
+
+soegtrop@ SOEGTROP-DESK ~
+$ echo -e "a\rb\rc\r" | hexdump -C
++ echo -e 'a\rb\rc\r'
++ hexdump -C
+00000000  61 0d 62 0d 63 0d 0a                              |a.b.c..|
+00000007
+
+soegtrop@ SOEGTROP-DESK ~
+$ echo -e "a\rb\rc\r" | sed 's/a//' | hexdump -C
++ echo -e 'a\rb\rc\r'
++ sed s/a//
++ hexdump -C
+00000000  0d 62 0d 63 0a                                    |.b.c.|
+00000005
+
+soegtrop@ SOEGTROP-DESK ~
+$ echo -e "a\r\nb\r\nc\r" | sed 's/a//' | hexdump -C
++ echo -e 'a\r\nb\r\nc\r'
++ sed s/a//
++ hexdump -C
+00000000  0a 62 0a 63 0a                                    |.b.c.|
+00000005
+
+
+Comment author: @MSoegtropIMC
+
+P.S.:
+
+both the new (4.4) and the old version (4.2.2) of sed have a -b option:
+
+  -b, --binary
+                 open files in binary mode (CR+LFs are not processed specially)
+
+so one can assume that removing the "special processing of CR+LF" in the new version is a bug.
+
+So I would suggest to use an old version of sed for the time beeing and report a bug to the cygwin team.
+
+Best regards,
+
+Michael
+
+
+Comment author: @JasonGross
+
+Michael, can your scripts be updated to forcibly install the older version of `sed`?
+
+
+Comment author: @MSoegtropIMC
+
+Dear Jason,
+
+as far as I know one can supply package versions on the command line, so this should be easy. The problem is that all cygwin mirrors I know of only keep the current and the previous version and a working version will be gone soon (if there still is a working version). As a remedy one would have to supply the binary package for a working sed and copy it to the cygwin cache folder before running the scripts (or download it in the script from some INRIA server). Also one might have to patch the setup.ini file. This is doable as a temporary work around but not really something I would call a solution. An alternative would be to simply overwrite the sed executable with another version downloaded from some server (or comming with coq).
+
+I reported this on the cygwin list. I would wait with an action plan until I have an answer.
+
+Best regards,
+
+Michael
+
+
+Comment author: @MSoegtropIMC
+
+Dear Coq Team,
+
+after trying various more or less messy solutions, I decided to simply build the old version of sed from sources. The sed sources are available from the gnu server even for very old versions and the cygwin specific patch file I deliver with the other Coq patches. This adds 2 minutes to the build time, but I couldn't find another good solution.
+
+Test is running ...
+
+Best regards,
+
+Michael
+
+
+`camlp4` is not required anymore, so closing this.
+The bug was closed indeed but not by removing the dependency of the build script on camlp4.
+It would be great if the dependency of lablgtk on camlp4 could be dropped while it is ported to gtk3.
+But I hope this was truly fixed in the sense that camlp4 now does build again. At least I see the sed patches in 
+
+https://github.com/coq/coq/tree/master/dev/build/windows/patches_coq
+
+The issues was that Cygwin changed sed to no longer strip carriage returns. This results in difficulties in a mixed Cygwin / MinGW environment, so I patches sed back.
+
+In case this doesn't work please let me know asap.
+
+Best regards,
+
+Michael
+I just successfully built CoqIDE on my Debian system after purging camlp4. Is this a Windows-only dependency?
+Yup so indeed I think this is the reason I closed the bug, at least myself I have been working without camlp4 for quite a bit of time.
+However, Travis still installs it: https://travis-ci.org/coq/coq/jobs/367639525#L524
+
+EDIT: Ah, that's because ocaml-nox recommends camlp4.

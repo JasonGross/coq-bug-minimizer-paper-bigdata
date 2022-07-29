@@ -1,0 +1,13 @@
+@andres-erbsen or @samuelgruetter Can you point us at a particular file and commitish that prints non-utf-8 to the console, for inclusion in the test-suite, when I (or someone else) gets around to working on this?
+[Here](https://travis-ci.com/mit-plv/bedrock2/jobs/184001043#L1195)'s a log on Travis with some non-utf8 in the console. It's from commit https://github.com/mit-plv/bedrock2/commit/9b427dc4cea9731a7869eb7c68a1de95047dd7be, file [bedrock2/src/BytedumpTest.v](https://github.com/mit-plv/bedrock2/blob/9b427dc4cea9731a7869eb7c68a1de95047dd7be/bedrock2/src/BytedumpTest.v)
+an alternative to updating the script would be up change bedrock2 build to not output binary to console. it would probably require changing the build organization (currently we just call coq makefile). fixing the script is probably preferred anyway.
+I am much afraid that I don't understand what is going on here, however we must get the `bedrock2` build fixed in the CI, please point us to what the right workaround is.
+The right workaround for now is to redirect the output of `make ` to `/dev/null` for the bedrock2 ci, and cite this issue in a comment.
+Actually, it should work just to grep out lines with high bytes...
+`echo -ne 'ab\x80c\ndd\nas' | LANG=en_US.UTF-8 grep -a '^.*$'`
+produces
+`dd`
+`as`
+> The right workaround for now is to redirect the output of `make ` to `/dev/null` for the bedrock2 ci, and cite this issue in a comment.
+
+That seems pretty radical, if something else fails how are we going to debug it?

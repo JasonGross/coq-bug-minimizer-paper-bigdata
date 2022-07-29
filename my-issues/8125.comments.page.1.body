@@ -1,0 +1,45 @@
+cc @maximedenes @cpitclaudel 
+Nice idea.  The place to modify is this:
+
+```
+class WarningObject(NotationObject):
+    """An warning raised by a Coq command or tactic..
+
+    Do not mistake this for ``.. warning::``; this directive is for warning
+    messages produced by Coq.
+
+
+    Example::
+
+       .. warn:: Ambiguous path
+
+          When the coercion :token:`qualid` is added to the inheritance graph, non
+          valid coercion paths are ignored.
+    """
+    subdomain = "warn"
+    index_suffix = "(warn)"
+    annotation = "Warning"
+
+    # Generate names automatically
+    def _name_from_signature(self, signature):
+        return stringify_with_ellipses(signature)
+```
+
+If the names are unique, it would make sense t use them here, too, so you'd remove `_name_from_signature` and give each exception an explicit `:name:` instead.  To also allow for categories, you'd change the `option_spec` to this:
+
+```
+    option_spec = {
+        'name': directives.unchanged,
+        'category': directives.unchanged,
+        'undocumented': directives.flag
+    }
+```
+
+Finally you'd change the way exceptions are rendered:
+
+```
+    def _render_signature(self, signature, signode):
+        super()._render_signature(self, signature, signode)
+        signode.append(… some nodes here for the name and category)
+```
+

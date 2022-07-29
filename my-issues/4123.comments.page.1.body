@@ -1,0 +1,607 @@
+Comment author: @JasonGross
+
+Compiling all of bedrock (about 415 .v files, 3.9 MB) in 8.4pl5 gives me 2.0 GB of .vo files, the largest of which is 72 MB.  There are only 8 .vo files larger than 40 MB.
+
+Compiling half of bedrock (249 files) in -quick mode in 8.5 already totals 6.7 GB of .vio files, the largest of which is 94 MB.  92 are larger than 40 MB, 61 of which are larger than 60 MB.  I am running out of harddrive space, and have already consolidated the multiple copies of bedrock lying around.  It would be nice if (and seems theoretically possible that) the .vio files could be not much larger than the size of the .vo file + the size of the .v file.
+
+
+Comment author: @gares
+
+While you are at it, would you be kind enough to give benchmarks too (timings).
+
+2G vs 14G (extrapolating)
+
+I'm sorry it is bigger, but it is not *huge* (my smatphone has enough storage to hold these .vio files).  A .vio is not optimized for space at all, but it is hard today to find on the market an hard drive smaller than 256G... and Bedrock is big... If PMP is listening, do you still have your "marshaled data compaction utility" at hand (to see the theoretical optimum of the current approach)?
+
+In any case you have to measure the memory usage of Coq /while/ producing .vo
+files and the .vio files, since a .vio is a "dump" of the state of Coq,
+not of the resulting .vo file, + the AST of the .v file.
+
+
+Comment author: @JasonGross
+
+The benchmarks I could give you now would be confused, because I'm on a networked filesystem.  For example:
+  Bedrock/Platform/Cito/PostOk (real: 85.28, user: 12.92, sys: 47.16, mem: 4360288 ko)
+
+Relatedly, my quota on this filesystem is under 20 GB, which is why I'm hitting issues... but my ~256 GB local drive also has only 13 GB free, and it is a continual struggle to keep enough space free to, e.g., run a VM.
+
+I hope to have most of the non-proofy parts of bedrock compiling within the next few days, and have a Jenkins instance doing this automatically; once I get this set up, I'll point you at the logs from the Jenkins instance (or copy them for you, if we can't get permissions set up).
+
+I will note that there is one file in bedrock that, in 8.4pl5, requires around 11 GB RAM to produce the .vo file.  Everything else (before and after it) works fine with 8GB RAM and 1GB swap.
+
+
+My suggestion could be taken to say that it might be nice if it could instead be a dump of the AST + the .vo file + whatever interpolation data is needed, since this seems to be much smaller than the state of Coq.
+
+
+Comment author: @JasonGross
+
+> 2G vs 14G (extrapolating)
+
+You are underestimating.  At 348 / 412, I've already hit 15 GB, with 3 files over 300 MB, 7 files over 200 MB, and 13 over 100 MB.  If things keep growing like this, say an average of 200 MB (though I wouldn't be surprised if the average gets up to 400 MB) for the remaining files (do .vio files include everything that's [Require]d into them, or something?), that could be a total of around 30 GB.  Even for a project like bedrock, I feel like this is unreasonably large.
+
+
+Comment author: @JasonGross
+
+Note: it seems that I can cut the .vio file size in ~half by passing -no-native-compiler.  Why should the native compiler contribute so much?
+
+
+Comment author: @maximedenes
+
+Wow, sounds surprising! But I must confess I haven't followed what exactly goes into .vio files.
+
+
+Comment author: @JasonGross
+
+> Note: it seems that I can cut the .vio file size in ~half by passing -no-native-compiler.  Why should the native compiler contribute so much?
+
+Sorry, strike that, this is probably not the case; I am just bad at counting file size.  (Trouble with symlinks.)
+
+Currently at 379/412, and 17 GB.
+
+
+Comment author: @gares
+
+FTR, a .vio file contains a dump of the Summary.  If you never used such API for the native compiler, than it can't have an impact.  Unless, you add data to data structures already in the summary, like the env.
+
+
+Comment author: @ppedrot
+
+
+> I'm sorry it is bigger, but it is not *huge* (my smatphone has enough
+> storage to hold these .vio files).  A .vio is not optimized for space at
+> all, but it is hard today to find on the market an hard drive smaller than
+> 256G... and Bedrock is big... If PMP is listening, do you still have your
+> "marshaled data compaction utility" at hand (to see the theoretical optimum
+> of the current approach)?
+
+The code is there: https://github.com/ppedrot/ocaml-compactor. It may need a little bit of adaptation to handle well the vio structure, but that should be rather easy.
+
+
+Comment author: @ppedrot
+
+The compactor was updated to handle the vio structure. Jason, can you try it on one of your huge files to see what happens? (I believe you'll hit performance issues, but I can try to get around this).
+
+
+Comment author: @JasonGross
+
+I assume I'm supposed to `make opt`, not `make`?  `make` gives me:
+
+$ make
+ocamldep partition.ml hopcroft.ml analyze.ml dot.ml compact.ml main.ml > .deps
+ocamlopt -g -c partition.ml
+File "partition.ml", line 1:
+Error: Could not find the .cmi file for interface partition.mli.
+make: *** [partition.cmx] Error 2
+
+
+How long should I expect it to take?  I'm currently trying it on the biggest bedrock .vio file (367MB) (total is 18 GB for ~everything).  The .vio is available, for now, at http://people.csail.mit.edu/jgross/tmp/CountUnique.vio.  I suppose I shall just leave compact running on it overnight.
+
+
+Comment author: @JasonGross
+
+The compactor takes > 8 GB RAM; it was killed:
+
+jgross@ cagnode13:~/ocaml-compactor$ ls -la CountUnique.vio
+-rw-rw-r-- 1 jgross jgross 384132458 Mar 14 23:17 CountUnique.vio
+jgross@ cagnode13:~/ocaml-compactor$ time ./compact CountUnique.vio
+Killed
+
+real    21m23.899s
+user    2m47.150s
+sys     0m22.525s
+
+
+I'll try it on a smaller .vio file.
+
+
+Comment author: @JasonGross
+
+On a 100K file (compacted to 75K):
+
+jgross@ cagnode13:~/ocaml-compactor$ ls -la NotationExample.vio
+-rw-rw-r-- 1 jgross jgross 101577 Mar 14 23:57 NotationExample.vio
+jgross@ cagnode13:~/ocaml-compactor$ time ./compact NotationExample.vio
+
+real    0m0.116s
+user    0m0.092s
+sys     0m0.016s
+jgross@ cagnode13:~/ocaml-compactor$ ls -la NotationExample.vio
+-rw-rw-r-- 1 jgross jgross 76785 Mar 14 23:57 NotationExample.vio
+
+On a 1M file (compacted to 408K):
+
+jgross@ cagnode13:~/ocaml-compactor$ ls -la StringSetFacts.vio
+-rw-rw-r-- 1 jgross jgross 1092069 Mar 14 23:58 StringSetFacts.vio
+jgross@ cagnode13:~/ocaml-compactor$ time ./compact StringSetFacts.vio
+
+real    0m1.925s
+user    0m1.816s
+sys     0m0.088s
+jgross@ cagnode13:~/ocaml-compactor$ ls -la StringSetFacts.vio
+-rw-rw-r-- 1 jgross jgross 417062 Mar 14 23:58 StringSetFacts.vio
+
+
+On a 16M file (compacted to 6.6M):
+
+jgross@ cagnode13:~/ocaml-compactor$ ls -la Folds.vio
+-rw-rw-r-- 1 jgross jgross 16753312 Mar 14 23:58 Folds.vio
+jgross@ cagnode13:~/ocaml-compactor$ time ./compact Folds.vio
+
+real    0m48.483s
+user    0m46.451s
+sys     0m1.484s
+jgross@ cagnode13:~/ocaml-compactor$ ls -la Folds.vio
+-rw-rw-r-- 1 jgross jgross 6835054 Mar 14 23:59 Folds.vio
+
+On a 90M file.... I'll let you know when it finishes.
+
+
+By the way, Enrico, I can't give you a timing log yet; the Jenkins setup I'm using seems to be a VM with less than 18 GB free; it runs out of space when trying to `make quick` for bedrock.  But if you want to run the times yourself, https://github.com/JasonGross/bedrock/tree/trunk should build everything with `make quick TIMED=1 -kj` (faster if you pass OTHERFLAGS=-no-native-compiler), modulo ~5 files at the very end that use extraction (which seems to diverge on `Unset Extraction AccessOpaque.  Recursive Extraction ...` in -quick mode, maybe?)
+
+
+Comment author: @JasonGross
+
+I killed the 90M one after 17 minutes, when I noticed it ate 7-8 GB RAM.
+
+On a 51M file (compacted to 18M):
+jgross@ cagnode13:~/ocaml-compactor$ ls -la SemanticsFacts8.vio
+-rw-rw-r-- 1 jgross jgross 52661926 Mar 15 00:19 SemanticsFacts8.vio
+jgross@ cagnode13:~/ocaml-compactor$ time ./compact SemanticsFacts8.vio
+
+real    2m40.762s
+user    2m33.050s
+sys     0m4.128s
+jgross@ cagnode13:~/ocaml-compactor$ ls -la SemanticsFacts8.vio
+-rw-rw-r-- 1 jgross jgross 18220563 Mar 15 00:23 SemanticsFacts8.vio
+
+
+For reference, the size comparison table on this small selection:
+
+name            | .v   | .vo  | .vio | .vio (compacted)
+-------------------------------------------------------
+NotationExample | 2K   | 58K  | 100K | 75K
+StringSetFacts  | 0.4K | 2M   | 1.1M | 408K
+Folds           | 5K   | 40K  | 16M  | 6.6M
+SemanticsFacts8 | 11K  | 104K | 51M  | 18M
+
+So the compactification seems pretty useful (factor of ~2.5 smaller), except for when it eats up all my RAM and time.  But the .vio files are still vastly bigger than the corresponding .vo files in many cases.
+
+
+Comment author: @ppedrot
+
+The compactor is assumed to be in O(n log n) time and O(n) space, but the size of the objects we're considering pushes it indeed to its limits.
+
+I have tried it on an ssreflect vio (the ~50 Mio ssralg.vio to be precise) and I also observe the 2.5 factor, and several orders of magnitude w.r.t. the vo.
+
+This means that there is still a lot of stuff in the vio. Maybe we can modify the votour program to give us an idea of who is taking so much space?
+
+
+Comment author: @gares
+
+To me this 2.5 factor means that the code of Coq loses some theoretically possible sharing.  But for a 2x factor it does not seem worth to investigate.
+
+A .vio contains a dump of the summary per proof task (hopefully sharing parts of their content).
+
+votour can hardly be extended to look inside the summary in an easy way.
+The way the state of the system (summary) is organized is pretty much anarchic, each module can add to it pretty much anything, and we don't have the data type description (as we have for the rest of the .vo file contents).
+To me the best way to investigate the issue is to instrument the code that dumps the summary to print the size and label of each component.  Then see why the big chunks are so big.
+
+
+Comment author: @gares
+
+Ah, I forgot.  Thanks jason for running the compaction tests!
+
+
+Comment author: @ppedrot
+
+
+> votour can hardly be extended to look inside the summary in an easy way.
+> The way the state of the system (summary) is organized is pretty much
+> anarchic, each module can add to it pretty much anything, and we don't have
+> the data type description (as we have for the rest of the .vo file contents).
+
+Yes and no. I have been thinking for quite a time to add an optional debug segment in the vo files, including amongst others the data structure of Dyn.t objects. This would allow several things, for instance a coqobjinfo program spitting out details about the vo, similarly to ocamlobjinfo.
+
+There aren't that many distinct dynamic objects defined in the Coq stack (a quick grep gives me a bit more than 60), so I do not think that this task would be daunting.
+
+
+Comment author: @ppedrot
+
+I am currently looking at the contents of vio using votour. Is is normal that in the STM task segment, the majority of the memory is taken by the document of the first task? The first document eats up 5M words, while the remaining only accounts for 2.5M words...
+
+I do not understand very well the internals of the vio processing. Do tasks only store the diffs of the state between them?
+
+
+Comment author: @ppedrot
+
+Here is a more fine-grained analysis of an uncompressed ssarg.vio. I believe it represents well the standard situation of a vio. Below, MW stands for 10⁶ words.
+
+Whole file: 18MW
+
+First object: 13MW, of which
+
+1. LIBRARY-SUMMARY 8MW
+2. MODULE-SUBSTOBJS-SUMMARY 2.5MW
+3. names-SUMMARY 1MW
+
+The next object by size is very far in the list of task, and only accounts for 0.5MW.
+
+Clearly, the issue comes from the fact that the vio embeds ALL of the libraries required so far. This leads to a quadratic behaviour, which explaines the explosion Jason observes on a file-plentiful development such as Bedrock.
+
+
+Comment author: @ppedrot
+
+Jason, can you try to build Bedrock with that branch?
+
+https://github.com/ppedrot/coq/tree/require-on-the-fly
+
+Instead of storing the whole library in the vio, it just keeps an index into the relevant file. It is not miraculous, but I get a ~25% size gain on reasonable sizes of vio files, and I secretly hopes it partially counters the linear growth of vio files.
+
+
+Comment author: @JasonGross
+
+Created attachment 564
+Sizes of .vio files with require-on-the-fly
+
+I've built Bedrock with require-on-the-fly, and it seems to have made the big files a little smaller (the biggest is down from 376MB to 346MB), and the smaller files a little bigger (NotationExample is up from 100K to 119K), and overall the size is now 19GB (negligible change).  The full log of current sizes (with require-on-the-fly) is attached.  Many of the .vio files are currently available at http://people.csail.mit.edu/jgross/tmp/bedrock-vio/, I believe, but may not be for long.  If you want any of the .vio files to explore, I can give them to you.
+
+> Attached file: [bedrock-vio-size.log.txt](https://coq.inria.fr/bugfiles/attachment.cgi?id=564) (text/plain, 33746 bytes)
+> Description:   Sizes of .vio files with require-on-the-fly
+
+
+Comment author: @JasonGross
+
+Created attachment 565
+Log of building .vio files for bedrock
+
+Enrico, here is a log of the build on AFS (a networked file system).  I'm afraid it's not the best quality log; the first large chunk is with the native compiler, while the rest is with the native compiler disabled, and the real/system times are noisy due to networked file system access.  But was this log something like what you were looking for?
+
+> Attached file: [bedrock-vio.log.txt](https://coq.inria.fr/bugfiles/attachment.cgi?id=565) (text/plain, 65967 bytes)
+> Description:   Log of building .vio files for bedrock
+
+
+Comment author: @ppedrot
+
+Meh. I'm disappointed. Thanks anyway, Jason.
+
+I've been crawling through some ssreflect vios to have an idea of the fat objects down there. There are two recurring object kinds worthy to mention.
+
+1. Declarations.module_signature
+2. Cemitcodes.to_patch
+
+The first one is by far the most represented one in the dumps. I assume this is due to the fact we consider expanded signatures for functors, so that functor applications trigger some form of combinatorial explosion. For the second one, I do not have a precise understanding, but the patch list becomes huge in some cases (around 3000 elements), a phenomenon I can't explain at all.
+
+In any case, it seems that the vio file is bound to be linear in the size of the session, resulting in the aforementioned quadratic explosion when considering all files. Otherwise said, if X.vio depends on Y.vio, then X size is at least of the order of Y size.
+
+Maybe one could work around this by providing blocks of vio files to ensure more sharing?
+
+
+Comment author: @JasonGross
+
+Bedrock does make heavy use of modules and functors, so I could see that being relevant.
+
+What are Cemitcodes?
+
+
+Comment author: @ppedrot
+
+They are the code produced by the VM.
+
+
+Comment author: @maximedenes
+
+The usual suspects...
+
+Two remarks about the Cemitcodes.to_patch objects (they are used by the VM):
+
+1) We should ask Benjamin Grégoire if he sees what's happening.
+
+2) The two explosions could be related, since Cemitcodes.to_patch handles relocation of constants after functor instantiation, if I recall correctly.
+
+
+Comment author: @ppedrot
+
+Just for the record: I looked at some vio files provided by Jason, and once again most of the size is due to module_signature objects.
+
+
+Comment author: @gares
+
+I take the freedom to add the experience of Arthur to this bug report.
+
+Here are some stats for TLC:
+========================
+charguer@ charg:~/tlc/src$ du -hc *.vo
+4.6M    total
+charguer@ charg:~/tlc/src$ du -hc *.vio
+710M    total
+========================
+Then I used a regexp to remove all proofs in "Proof using. (..) Qed.", simply
+replacing them by "Proof using. Admitted".
+========================
+charguer@ charg:~/tlc/src$ du -hc *.vo
+3.1M    total
+charguer@ charg:~/tlc/src_test$ du -hc *.vio
+57M    total
+========================
+
+This is very odd to me.  If Arthur has time, I ask to turn
+the proofs into "Proof using. idtac. Admitted." in a recent Coq
+version (where Admitted proofs are processed asynchronously, it
+is not the case in beta1 for example).
+
+If the 20x factor stays, then there must be something very fishy.
+The "AST" of tactics can't be the reason for that.
+
+
+Comment author: @charguer
+
+I ran with  "Proof using. idtac. Admitted".
+it gave the same results as with "Proof using. Admitted".
+I also tried "Proof using. admit. Qed". Same results.
+
+For further debugging:
+- git clone git+ssh://arthurc@ scm.gforge.inria.fr//gitroot/tlc/tlc.git
+- checkout the branch: coqdebug
+- if coq v8.5 not in path: create a file "settings.sh" with contents e.g. "COQBIN=~/softs/coq/bin/"
+- run "make quick" (for vio files) then "make proof_vo" (for vo files).
+- run script "removeproof.sh" which updates files in place.
+- "make clean", and "make again", to see the smaller vio files.
+
+
+Hope this helps,
++
+Arthur
+
+
+Comment author: @gares
+
+Thanks for the git (and all the memories installing php5-cli brought back to me :-).
+
+I can't reproduce the odd behavior.  Here the size of .vio files
+is pretty invariant on the actual proof scripts they contain.
+
+Sure, .vio files are big (is seems tha base is 17M, then each file adds on top of it a little).  I don't know how PMP manages to read the .vio with votour, I can't undestand if the big part is the module_signature or not. :-/
+
+
+Comment author: @ppedrot
+
+
+> Thanks for the git (and all the memories installing php5-cli brought back to
+> me :-).
+
+I can't install it on the machine I have here (not root). Can you give us the resulting proofs on a distinct git branch?
+
+
+Comment author: @ppedrot
+
+In any case, same symptom for TLC as for Bedrock: vm code in module types eats up space. Just to highlight it out, some functor-intensive proofs in the stdlib already account for a lot of eaten up memory. For instance, I often stumble upon the module NLog.NLog2Prop, whose expanded type feature a lot of vm compiled code.
+
+Why on earth module signatures in functors embed compiled code for the vm???
+
+
+Comment author: @gares
+
+Not 100% sure, but at some point Bruno told me that even if something is called module_signature in kernel/ it may be used to store the module_body.  So maybe you are looking at the body of the module/functor.
+
+
+Comment author: @ppedrot
+
+
+> Not 100% sure, but at some point Bruno told me that even if something is
+> called module_signature in kernel/ it may be used to store the module_body. 
+> So maybe you are looking at the body of the module/functor.
+
+No, this is not the case. Here is a snippet of the corresponding functor:
+
+Module Type
+ NLog.NLog2Prop =
+ Funsig (A:NAxioms.NAxiomsSig)
+   Funsig
+     (B:Sig
+          Definition eq_refl : RelationClasses.Reflexive A.eq.
+          ...
+        End)
+     Funsig
+       (C:Sig ... End)
+     Funsig (D:Sig ... End)
+         Sig
+           ...
+         End
+
+Then eq_refl is only a term in the signature of the argument of the functor, and nonetheless it has a huge cemitcode. Fully printing the contents of the functor gives an idea of how huge this is (and thus the measure of the memory leak). It seems that this size is due to unapplied module substitution, so maybe we should flush this out before marshalling?
+
+
+Comment author: @charguer
+
+I have been a bit confused by two versions of Coq that I had, and I give all results below. (One month ago, you could get smaller vio files).
+The point remains: a factor 200 in size for the vio vs the vo
+(even for a file with mostly tactics inside).
+
+
+I put my files in two branches of TLC: coqdebug_withproofs coqdebug_withoutproofs (hopefully I got this right)
+Run "make LibEqual.vo" to reproduce results below.
+
+
+======== branch coqdebug_withproofs, coq from March 19th
+
+ls -all LibEqual.{vio,vo} LibTactics.{vio,vo}
+-rw-rw-r-- 1 charguer charguer 17971459 mars  25 16:51 LibEqual.vio
+-rw-rw-r-- 1 charguer charguer   100097 mars  25 16:51 LibEqual.vo
+-rw-rw-r-- 1 charguer charguer 18444376 mars  25 16:51 LibTactics.vio
+-rw-rw-r-- 1 charguer charguer   457296 mars  25 16:51 LibTactics.vo
+
+======== branch coqdebug_withoutproofs, coq from March 19th
+
+ls -all LibEqual.{vio,vo} LibTactics.{vio,vo}
+-rw-rw-r-- 1 charguer charguer 17931740 mars  25 16:50 LibEqual.vio
+-rw-rw-r-- 1 charguer charguer    70068 mars  25 16:50 LibEqual.vo
+-rw-rw-r-- 1 charguer charguer 18434965 mars  25 16:50 LibTactics.vio
+-rw-rw-r-- 1 charguer charguer   446980 mars  25 16:50 LibTactics.vo
+
+======== branch coqdebug_withproofs, coq from Feb 17th
+
+
+ls -all LibEqual.{vio,vo} LibTactics.{vio,vo}
+-rw-rw-r-- 1 charguer charguer 17992494 mars  25 16:52 LibEqual.vio
+-rw-rw-r-- 1 charguer charguer    99956 mars  25 16:52 LibEqual.vo
+-rw-rw-r-- 1 charguer charguer 18569124 mars  25 16:52 LibTactics.vio
+-rw-rw-r-- 1 charguer charguer   457102 mars  25 16:52 LibTactics.vo
+
+======== branch coqdebug_withoutproofs, coq from Feb 17th 
+======> small vio files!
+
+make LibEqual.vo
+ls -all LibTactics.{vio,vo} LibEqual.{vio,vo}
+-rw-rw-r-- 1 charguer charguer 69948 mars  25 16:45 LibEqual.vio
+-rw-rw-r-- 1 charguer charguer 69927 mars  25 16:48 LibEqual.vo
+-rw-rw-r-- 1 charguer charguer 446808 mars  25 16:45 LibTactics.vio
+-rw-rw-r-- 1 charguer charguer 446788 mars  25 16:48 LibTactics.vo
+
+
+Comment author: @ppedrot
+
+I know that I am abusing your kindness, but could you try to run a git bisect?
+
+
+Comment author: @gares
+
+PMP: I've no idea whatsoever.  If you want to try you could experiment by changing the freeze function and perform this "compaction" when the argument says we are freezing to marshal.  Surely Pierre L. knows better these module substs.
+
+Arthur: thanks! The patch that makes "Admitted" proofs processed asynchronously dates 9/3/2015, so the coq from february is not storing tasks for them (i.e. the .vio are exactly the .vo).  Cfr: https://coq.inria.fr/bugs/show_bug.cgi?id=4032
+
+
+Comment author: @gares
+
+Race condition: no need to bisect.
+
+
+Comment author: @charguer
+
+Ok, so, if I understand well, there is no "oddity" anymore of smaller vio files; however there still is a factor 200 to fix somehow.
+
+
+Comment author: @ppedrot
+
+I am trying a patch for a more clever module substitution for VM code. I'll keep you in touch.
+
+
+Comment author: @gares
+
+Exactly that, Arthur.
+
+I'm not very motivated, but PMP seems to love this challenge, so there is some hope :-)
+
+
+Comment author: @charguer
+
+Hi,
+
+It seems no clear to me whether I should hope for an improvement of the size of the vio files by a factor 200, while sticking to the current approach, in time before the v8.5 release.
+
+While this problem is not solved, would it not make sense to propose another kind of file, call it "*.voi" (unlike "*.vio") that would simply contain what the *.vo file contains if it were produced by ignoring text between "Proof using" and "Qed/Admitted"? 
+
+I know there would be overhead to having to introduce another extension and to duplicate the -quick option, but at least we could obtain, for sure, a working system that enables fast recompilation of libraries, without any memory overhead.
+
+Thoughts?
+
++
+Arthur
+
+
+Comment author: @gares
+
+It is surely doable, but I would not call the file differently (-vio2vo would fail on that kind of .vio).
+
+Now that I think about it, it could be possible with a small effort to store the entire document leading to the proof (in place of the proof fragment + the initial state).
+This would make things less efficient (if many definitions come before the proof for example) but surely more compact.  In this optic, there would be an extra flag for -quick.
+
+
+Comment author: @charguer
+
+> it could be possible with a small effort to store the entire document leading to the proof.
+
+I agree this can be done with small effort, but I'd worry about any solution that has non-linear complexity; eventually, we will encounter applications where the scalability issue will bite us.
+
+
+Comment author: @ppedrot
+
+> I'd worry about any solution that has non-linear complexity
+
+The linear size of vio files is inherent to the way we build them. I have thought of several workarounds to counter this.
+
+1. Pack all vio files in a via (or whatever) library file, ensuring sharing between object code. This would require a server compiling vio files and making the whole environment grow, and them write it out at once. This is far out of my reach, and even if Enrico would dedicate a full-time development on this, I highly doubt we would make it for the release.
+
+2. Trick the global environment summary, by dropping the shared part of the environment and reloading it on demand. This may be easier to do, but has a very strong hack smell.
+
+In short: this is damn complicated...
+
+
+Comment author: @gares
+
+PMP, do you say "environment" as in Global.env?  Because at some point you were pointing the finger to the libstack.  Is it loaded on demand now?
+
+
+Comment author: @ppedrot
+
+> PMP, do you say "environment" as in Global.env?  Because at some point you
+> were pointing the finger to the libstack.  Is it loaded on demand now?
+
+Not yet for the libstack. The patch is here, but I am still a bit afraid to push it.
+
+When I say environment, I am indeed talking about the summary that contains the Global.env, because it is the one that eats up most of the memory (between 60 and 80%, from my experiments). But actually, its contents are rather stupid, because they essentially come from the others vios and vos. We should be able to reload them on the fly too...
+
+
+Comment author: @gares
+
+Do we agree it is not an space issue for .vio files only but is a more general problem of Coq's memory usage?  I mean, building the summary.env on the fly (lazily, on demand, whatever) would benefit Coq in general.  Or I'm mistaken?
+
+No idea if that is possible given the current way of building it (replaying a list of additions to an existing env).  For example, are the libstack node(s?) needed in order to add to the evn an entry named accordingly (so that one could filter + add, rather than just add)?
+
+
+Comment author: @ppedrot
+
+> Do we agree it is not an space issue for .vio files only but is a more
+> general problem of Coq's memory usage?
+
+Not only. There is also a lot of duplication between .vio files, because they embed the whole session that lead to them. Typically, assuming a dependency chain of the form A -> B -> C, C.vio will somehow contain all the data from B.vio, while it could only retrieve it from B.vio. This is the linear issue I was talking about, that leads to a quadratic blowup.
+
+
+Comment author: @RalfJung
+
+In case another example for a development with large vio files is useful, you could check out <https://gitlab.mpi-sws.org/FP/iris-coq.git>.  "make quick" only works with Coq 8.6 here, take for example commit 1bc26dc9822d6595df8d134fe365dd0356a4ac0b.  The .vo files sum up to 20MB, the .vio files sum up to roughly 2GB (factor 100).
+
+In particular the quadratic dependency on the number of files is hitting us really hard; we like to split things into many files so that "make -jX" is more parallel.
+
+
+Comment author: @RalfJung
+
+Oh, just to clarify:  There is not much potential for actual parallelism currently.  We use many sections and haven't yet adopted "Proof using", so "make quick" takes almost as long as "make".  I am not sure whether that will have an effect on the vio file size.
+
+
+Comment author: @ejgallego
+
+I am not sure I got all the details here but why is not the right solution here to store in the .vio file only the diff between two consecutive summaries?
+
+[I am aiming to build summary diff for 8.8 as to improve a bit worker load]
+
+

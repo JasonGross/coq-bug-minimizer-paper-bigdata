@@ -1,0 +1,211 @@
+Umm, like this?
+```
+====== ill-typed term ====
+application head= Cons((u.ap),Var(1) Var(1))
+head type=
+  (A:Type(Var(1)))
+   (B:Type(Var(1))) (f:(#2->#2)) (x:#3) (y:#4) (p:(Ind((u.paths),0,Var(1)) #5#2#1)) (Ind((u.paths),0,Var(1)) #5(#4 #3)(#4 #2))
+arguments:
+arg 1=
+ (Ind((u.paths),0,Var(1))
+  #4
+  (Cons((u.transport),Var(2) Var(1))
+   Type(Var(1))[X:Type(Var(1))]#1#5#4
+   (Cons((u.path_universe),Var(1) Var(1) Var(2))
+    #7#5#4Proj((u.equiv_fun),(Cons((u.equiv_path),Var(1) Var(1) Var(2) Var(1)) #5#4#1))
+    Proj((u.equiv_isequiv),(Cons((u.equiv_path),Var(1) Var(1) Var(2) Var(1)) #5#4#1)))#2)
+  (Proj((u.equiv_fun),(Cons((u.equiv_path),Var(1) Var(1) Var(2) Var(1)) #5#4#1)) #2))
+type=  Type(Var(1))
+
+arg 2=
+ (Ind((u.paths),0,Var(1))
+  #5
+  (Cons((u.transport),Var(2) Var(1))
+   Type(Var(1))[x:Type(Var(1))]#1#4#5
+   (Cons((u.inverse),Var(2))
+    Type(Var(1))#5#4
+    (Cons((u.path_universe),Var(1) Var(1) Var(2))
+     #7#5#4Proj((u.equiv_fun),(Cons((u.equiv_path),Var(1) Var(1) Var(2) Var(1)) #5#4#1))
+     (Cons((u.isequiv_path),Var(1) Var(1) Var(1) Var(1) Var(2)) #5#4#1)))
+   (Cons((u.transport),Var(2) Var(1))
+    Type(Var(1))[x:Type(Var(1))]#1#5#4
+    (Cons((u.path_universe),Var(1) Var(1) Var(2))
+     #7#5#4Proj((u.equiv_fun),(Cons((u.equiv_path),Var(1) Var(1) Var(2) Var(1)) #5#4#1))
+     (Cons((u.isequiv_path),Var(1) Var(1) Var(1) Var(1) Var(2)) #5#4#1))#2))
+  (Cons((u.transport),Var(2) Var(1))
+   Type(Var(1))[x:Type(Var(1))]#1#4#5
+   (Cons((u.inverse),Var(2))
+    Type(Var(1))#5#4
+    (Cons((u.path_universe),Var(1) Var(1) Var(2))
+     #7#5#4Proj((u.equiv_fun),(Cons((u.equiv_path),Var(1) Var(1) Var(2) Var(1)) #5#4#1))
+     Proj((u.equiv_isequiv),(Cons((u.equiv_path),Var(1) Var(1) Var(2) Var(1)) #5#4#1))))
+   (Proj((u.equiv_fun),(Cons((u.equiv_path),Var(1) Var(1) Var(2) Var(1)) #5#4#1)) #2)))
+type=  Type(Var(1))
+
+arg 3=
+ (Cons((u.ap),Var(1) Var(1))
+  #4#5
+  (Cons((u.transport),Var(2) Var(1))
+   Type(Var(1))[x:Type(Var(1))]#1#4#5
+   (Cons((u.inverse),Var(2))
+    Type(Var(1))#5#4
+    (Cons((u.path_universe),Var(1) Var(1) Var(2))
+     #7#5#4Proj((u.equiv_fun),(Cons((u.equiv_path),Var(1) Var(1) Var(2) Var(1)) #5#4#1))
+     (Cons((u.isequiv_path),Var(1) Var(1) Var(1) Var(1) Var(2)) #5#4#1))))
+  (Cons((u.transport),Var(2) Var(1))
+   Type(Var(1))[x:Type(Var(1))]#1#5#4
+   (Cons((u.path_universe),Var(1) Var(1) Var(2))
+    #7#5#4Proj((u.equiv_fun),(Cons((u.equiv_path),Var(1) Var(1) Var(2) Var(1)) #5#4#1))
+    (Cons((u.isequiv_path),Var(1) Var(1) Var(1) Var(1) Var(2)) #5#4#1))#2)
+  (Cons((u.transport),Var(2) Var(1)) Type(Var(1))[x:Type(Var(1))]#1#5#4#1#2))
+type=
+ (p:(Ind((u.paths),0,Var(1))
+   #4
+   (Cons((u.transport),Var(2) Var(1))
+    Type(Var(1))[x:Type(Var(1))]#1#5#4
+    (Cons((u.path_universe),Var(1) Var(1) Var(2))
+     #7#5#4Proj((u.equiv_fun),(Cons((u.equiv_path),Var(1) Var(1) Var(2) Var(1)) #5#4#1))
+     (Cons((u.isequiv_path),Var(1) Var(1) Var(1) Var(1) Var(2)) #5#4#1))#2)
+   (Cons((u.transport),Var(2) Var(1)) Type(Var(1))[x:Type(Var(1))]#1#5#4#1#2)))
+  (Ind((u.paths),0,Var(1))
+   #6
+   ((Cons((u.transport),Var(2) Var(1))
+     Type(Var(1))[x:Type(Var(1))]#1#5#6
+     (Cons((u.inverse),Var(2))
+      Type(Var(1))#6#5
+      (Cons((u.path_universe),Var(1) Var(1) Var(2))
+       #8#6#5Proj((u.equiv_fun),(Cons((u.equiv_path),Var(1) Var(1) Var(2) Var(1)) #6#5#2))
+       (Cons((u.isequiv_path),Var(1) Var(1) Var(1) Var(1) Var(2)) #6#5#2))))
+    (Cons((u.transport),Var(2) Var(1))
+     Type(Var(1))[x:Type(Var(1))]#1#6#5
+     (Cons((u.path_universe),Var(1) Var(1) Var(2))
+      #8#6#5Proj((u.equiv_fun),(Cons((u.equiv_path),Var(1) Var(1) Var(2) Var(1)) #6#5#2))
+      (Cons((u.isequiv_path),Var(1) Var(1) Var(1) Var(1) Var(2)) #6#5#2))#3))
+   ((Cons((u.transport),Var(2) Var(1))
+     Type(Var(1))[x:Type(Var(1))]#1#5#6
+     (Cons((u.inverse),Var(2))
+      Type(Var(1))#6#5
+      (Cons((u.path_universe),Var(1) Var(1) Var(2))
+       #8#6#5Proj((u.equiv_fun),(Cons((u.equiv_path),Var(1) Var(1) Var(2) Var(1)) #6#5#2))
+       (Cons((u.isequiv_path),Var(1) Var(1) Var(1) Var(1) Var(2)) #6#5#2))))
+    (Cons((u.transport),Var(2) Var(1)) Type(Var(1))[x:Type(Var(1))]#1#6#5#2#3)))
+
+arg 4=
+ (Cons((u.transport_path_universe),Var(0) Var(1) Var(2) Var(1))
+  #7#5#4Proj((u.equiv_fun),(Cons((u.equiv_path),Var(1) Var(1) Var(2) Var(1)) #5#4#1))
+  Proj((u.equiv_isequiv),(Cons((u.equiv_path),Var(1) Var(1) Var(2) Var(1)) #5#4#1))#2)
+type=
+ (Ind((u.paths),0,Var(1))
+  #4
+  (Cons((u.transport),Var(2) Var(1))
+   Type(Var(1))[X:Type(Var(1))]#1#5#4
+   (Cons((u.path_universe),Var(1) Var(1) Var(2))
+    #7#5#4Proj((u.equiv_fun),(Cons((u.equiv_path),Var(1) Var(1) Var(2) Var(1)) #5#4#1))
+    Proj((u.equiv_isequiv),(Cons((u.equiv_path),Var(1) Var(1) Var(2) Var(1)) #5#4#1)))#2)
+  (Proj((u.equiv_fun),(Cons((u.equiv_path),Var(1) Var(1) Var(2) Var(1)) #5#4#1)) #2))
+
+arg 5=
+ (Cons((u.ap),Var(2) Var(1))
+  (Ind((u.paths),0,Var(2)) Type(Var(1))#5#4)#4
+  [s:(Ind((u.paths),0,Var(2)) Type(Var(1))#5#4)](Cons((u.transport),Var(2) Var(1)) Type(Var(1))[x:Type(Var(1))]#1#6#5#1#3)
+  (Cons((u.path_universe),Var(1) Var(1) Var(2))
+   #7#5#4Proj((u.equiv_fun),(Cons((u.equiv_path),Var(1) Var(1) Var(2) Var(1)) #5#4#1))
+   (Cons((u.isequiv_path),Var(1) Var(1) Var(1) Var(1) Var(2)) #5#4#1))#1
+  (Proj((u.eissect),(Cons((u.isequiv_equiv_path),Var(1) Var(1) Var(1) Var(2)) #7#5#4)) #1))
+type=
+ (Ind((u.paths),0,Var(1))
+  #4
+  ([s:(Ind((u.paths),0,Var(2)) Type(Var(1))#5#4)](Cons((u.transport),Var(2) Var(1)) Type(Var(1))[x:Type(Var(1))]#1#6#5#1#3)
+   (Cons((u.path_universe),Var(1) Var(1) Var(2))
+    #7#5#4Proj((u.equiv_fun),(Cons((u.equiv_path),Var(1) Var(1) Var(2) Var(1)) #5#4#1))
+    (Cons((u.isequiv_path),Var(1) Var(1) Var(1) Var(1) Var(2)) #5#4#1)))
+  ([s:(Ind((u.paths),0,Var(2)) Type(Var(1))#5#4)](Cons((u.transport),Var(2) Var(1)) Type(Var(1))[x:Type(Var(1))]#1#6#5#1#3) #1))
+
+arg 6=  (Cons((u.transport_path_universe_equiv_path),Var(1) Var(1) Var(2)) #7#5#4#1#2)
+type=
+ (Ind((u.paths),0,Var(1))
+  (Ind((u.paths),0,Var(1))
+   #4
+   (Cons((u.transport),Var(2) Var(1))
+    Type(Var(1))[X:Type(Var(1))]#1#5#4
+    (Cons((u.path_universe),Var(1) Var(1) Var(2))
+     #7#5#4Proj((u.equiv_fun),(Cons((u.equiv_path),Var(1) Var(1) Var(2) Var(1)) #5#4#1))
+     (Cons((u.isequiv_path),Var(1) Var(1) Var(1) Var(1) Var(2)) #5#4#1))#2)
+   (Proj((u.equiv_fun),(Cons((u.equiv_path),Var(1) Var(1) Var(2) Var(1)) #5#4#1)) #2))
+  (Cons((u.transport_path_universe),Var(1) Var(1) Var(2) Var(1))
+   #7#5#4Proj((u.equiv_fun),(Cons((u.equiv_path),Var(1) Var(1) Var(2) Var(1)) #5#4#1))
+   (Cons((u.isequiv_path),Var(1) Var(1) Var(1) Var(1) Var(2)) #5#4#1)#2)
+  (Cons((u.ap),Var(2) Var(1))
+   (Ind((u.paths),0,Var(2)) Type(Var(1))#5#4)#4
+   [s:(Ind((u.paths),0,Var(2)) Type(Var(1))#5#4)](Cons((u.transport),Var(2) Var(1)) Type(Var(1))[x:Type(Var(1))]#1#6#5#1#3)
+   (Proj((u.equiv_inv),(Cons((u.isequiv_equiv_path),Var(1) Var(1) Var(1) Var(2)) #7#5#4))
+    (Cons((u.equiv_path),Var(1) Var(1) Var(2) Var(1)) #5#4#1))#1
+   (Proj((u.eissect),(Cons((u.isequiv_equiv_path),Var(1) Var(1) Var(1) Var(2)) #7#5#4)) #1)))
+
+
+====== type error ====
+(Ind((u.paths),0,Var(1))
+ (Ind((u.paths),0,Var(1))
+  #4
+  (Cons((u.transport),Var(2) Var(1))
+   Type(Var(1))[X:Type(Var(1))]#1#5#4
+   (Cons((u.path_universe),Var(1) Var(1) Var(2))
+    #7#5#4Proj((u.equiv_fun),(Cons((u.equiv_path),Var(1) Var(1) Var(2) Var(1)) #5#4#1))
+    (Cons((u.isequiv_path),Var(1) Var(1) Var(1) Var(1) Var(2)) #5#4#1))#2)
+  (Proj((u.equiv_fun),(Cons((u.equiv_path),Var(1) Var(1) Var(2) Var(1)) #5#4#1)) #2))
+ (Cons((u.transport_path_universe),Var(1) Var(1) Var(2) Var(1))
+  #7#5#4Proj((u.equiv_fun),(Cons((u.equiv_path),Var(1) Var(1) Var(2) Var(1)) #5#4#1))
+  (Cons((u.isequiv_path),Var(1) Var(1) Var(1) Var(1) Var(2)) #5#4#1)#2)
+ (Cons((u.ap),Var(2) Var(1))
+  (Ind((u.paths),0,Var(2)) Type(Var(1))#5#4)#4
+  [s:(Ind((u.paths),0,Var(2)) Type(Var(1))#5#4)](Cons((u.transport),Var(2) Var(1)) Type(Var(1))[x:Type(Var(1))]#1#6#5#1#3)
+  (Proj((u.equiv_inv),(Cons((u.isequiv_equiv_path),Var(1) Var(1) Var(1) Var(2)) #7#5#4))
+   (Cons((u.equiv_path),Var(1) Var(1) Var(2) Var(1)) #5#4#1))#1
+  (Proj((u.eissect),(Cons((u.isequiv_equiv_path),Var(1) Var(1) Var(1) Var(2)) #7#5#4)) #1)))
+is not convertible with
+(Ind((u.paths),0,Var(1))
+ (Ind((u.paths),0,Var(1))
+  #4
+  (Cons((u.transport),Var(2) Var(1))
+   Type(Var(1))[X:Type(Var(1))]#1#5#4
+   (Cons((u.path_universe),Var(1) Var(1) Var(2))
+    #7#5#4Proj((u.equiv_fun),(Cons((u.equiv_path),Var(1) Var(1) Var(2) Var(1)) #5#4#1))
+    Proj((u.equiv_isequiv),(Cons((u.equiv_path),Var(1) Var(1) Var(2) Var(1)) #5#4#1)))#2)
+  (Proj((u.equiv_fun),(Cons((u.equiv_path),Var(1) Var(1) Var(2) Var(1)) #5#4#1)) #2))
+ (Cons((u.transport_path_universe),Var(0) Var(1) Var(2) Var(1))
+  #7#5#4Proj((u.equiv_fun),(Cons((u.equiv_path),Var(1) Var(1) Var(2) Var(1)) #5#4#1))
+  Proj((u.equiv_isequiv),(Cons((u.equiv_path),Var(1) Var(1) Var(2) Var(1)) #5#4#1))#2)
+ (Cons((u.ap),Var(2) Var(1))
+  (Ind((u.paths),0,Var(2)) Type(Var(1))#5#4)#4
+  [s:(Ind((u.paths),0,Var(2)) Type(Var(1))#5#4)](Cons((u.transport),Var(2) Var(1)) Type(Var(1))[x:Type(Var(1))]#1#6#5#1#3)
+  (Cons((u.path_universe),Var(1) Var(1) Var(2))
+   #7#5#4Proj((u.equiv_fun),(Cons((u.equiv_path),Var(1) Var(1) Var(2) Var(1)) #5#4#1))
+   (Cons((u.isequiv_path),Var(1) Var(1) Var(1) Var(1) Var(2)) #5#4#1))#1
+  (Proj((u.eissect),(Cons((u.isequiv_equiv_path),Var(1) Var(1) Var(1) Var(2)) #7#5#4)) #1)))
+====== universes ====
+Var(1) = Var(0)
+Var(0) < Var(2)
+Set <= Var(2)
+    <= Var(1)
+    <= Var(0)
+Prop < Set
+
+Fatal Error: Type error: CantApplyBadType at argument 6
+```
+I like the newlines for the args; thanks! You seem to have lost some spaces between numbers though, e.g., `#1#5#4` should be ` #1 #5 #4`.  ( and shouldn't this discussion about printing be on the printing pr?)
+The checker doesn't look at the universe graph when comparing instances on polymorphic constants, even when the constants are opaque. Here: https://github.com/coq/coq/blob/350ee43d73ee4d6c9b6c3fd24cae3aca8a2b5ce4/checker/reduction.ml#L346
+
+Here's a reduced version: https://gist.github.com/SkySkimmer/4aad82eb32c63cc598d378265026ba09
+It produces checker error https://gist.github.com/SkySkimmer/7f12bce75b7966ff0119e70b5fdd7e32
+
+Here's a super reduced version for the test suite:
+```coq
+Universe big.
+
+Polymorphic Lemma foo@{u} : Type@{big}.
+Proof. exact Type@{u}. Qed.
+
+Universes U V.
+
+Definition yo : foo@{U} = foo@{V} := eq_refl.
+```

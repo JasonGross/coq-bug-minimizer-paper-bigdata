@@ -1,0 +1,170 @@
+Comment author: @JasonGross
+
+What causes [rewrite] in the following to fail?
+
+```coq
+Require Import Coq.Classes.RelationClasses Coq.Classes.Morphisms 
+Coq.Setoids.Setoid.
+Notation iffT := (fun A B => inhabited ((A -> B) * (B -> A)))%type.
+
+Global Instance iffT_Reflexive : Reflexive iffT | 1.
+Proof. repeat constructor; intro; assumption. Defined.
+Global Instance iffT_Symmetric : Symmetric iffT | 1.
+Proof. repeat (intros [?] || intro); constructor; tauto. Defined.
+Global Instance iffT_Transitive : Transitive iffT | 1.
+Proof. repeat (intros [?] || intro); constructor; tauto. Defined.
+
+
+Global Instance iff_prod_Proper
+  : Proper (iff ==> iff ==> iff) (fun A B => prod A B).
+Proof. repeat intro; tauto. Defined.
+Global Instance iff_iffT_prod_Proper
+  : Proper (iff ==> iffT ==> iffT) (fun A B => prod A B) | 1.
+Proof.
+  intros ?? [?] ?? [?]; constructor; tauto.
+Defined.
+Global Instance iffT_iff_prod_Proper
+  : Proper (iffT ==> iff ==> iffT) (fun A B => prod A B) | 1.
+Proof.
+  intros ?? [?] ?? [?]; constructor; tauto.
+Defined.
+Global Instance iffT_iffT_prod_Proper
+  : Proper (iffT ==> iffT ==> iffT) (fun A B => prod A B) | 1.
+Proof.
+  intros ?? [?] ?? [?]; constructor; tauto.
+Defined.
+Hint Extern 2 (Proper _ prod) => apply iffT_iffT_prod_Proper : 
+typeclass_instances.
+Hint Extern 2 (Proper _ (fun A => prod A)) => refine iff_iffT_prod_Proper : 
+typeclass_instances.
+Hint Extern 2 (Proper _ (fun A B => prod A B)) => refine iff_prod_Proper : 
+typeclass_instances.
+
+Goal forall A B, (A <-> B) -> ((A * B) <-> (B * A)).
+Proof.
+  intros A B H.
+  pose proof (_ : Proper (iff ==> _ ==> _) prod).
+  Typeclasses eauto := debug.
+  rewrite H.
+  (* Debug: 1: looking for (Proper (iff ==> ?r0 ==> ?r) prod) with backtracking
+Debug: 1.1: (*external*) proper_subrelation on (Proper (iff ==> ?r0 ==> ?r) 
+prod), 3 subgoal(s)
+Debug: 1.1.4 : (Proper ?R' prod)
+Debug: 1.1.4: looking for (Proper ?R' prod) with backtracking
+Debug: 1.1.4.1: (*external*) proper_reflexive on (Proper ?R' prod), 0 subgoal(s)
+Debug:
+1.1.4 : (Unconvertible (relation (Type -> Type -> Type)) (iff ==> ?r0 ==> 
+?r)%signature eq)
+Debug:
+1.1.4: looking for (Unconvertible (relation (Type -> Type -> Type))
+                      (iff ==> ?r0 ==> ?r)%signature eq) with backtracking
+Debug: 1.1.4.1: (*external*) unconvertible on
+(Unconvertible (relation (Type -> Type -> Type)) (iff ==> ?r0 ==> ?r)%signature 
+eq), 0 subgoal(s)
+Debug: 1.1.4 : (subrelation eq (iff ==> ?r0 ==> ?r)%signature)
+Debug: 1.1.4: looking for (subrelation eq (iff ==> ?r0 ==> ?r)%signature) with 
+backtracking
+Debug: 1.1.4: no match for (subrelation eq (iff ==> ?r0 ==> ?r)%signature) , 1 
+possibilities
+Debug: 1.2: (*external*) proper_normalization on (Proper (iff ==> ?r0 ==> ?r) 
+prod), 2 subgoal(s)
+Debug: 1.2.3 : (Normalizes (Type -> Type -> Type) (iff ==> ?r0 ==> 
+?r)%signature ?R1)
+Debug:
+1.2.3: looking for (Normalizes (Type -> Type -> Type) (iff ==> ?r0 ==> 
+?r)%signature ?R1) with backtracking
+Debug: 1.2.3.1: (*external*) normalizes on
+(Normalizes (Type -> Type -> Type) (iff ==> ?r0 ==> ?r)%signature ?R1), 0 
+subgoal(s)
+Debug: 1.2.3 : (Proper (Basics.flip (Basics.flip (iff ==> ?r0 ==> 
+?r)%signature)) prod)
+Debug:
+1.2.3: looking for (Proper (Basics.flip (Basics.flip (iff ==> ?r0 ==> 
+?r)%signature)) prod) with backtracking
+Debug: 1.2.3.1: (*external*) (class_apply @ proper_flip_proper) on
+(Proper (Basics.flip (Basics.flip (iff ==> ?r0 ==> ?r)%signature)) prod), 1 
+subgoal(s)
+Debug: 1.2.3.1.2 : (Proper (Basics.flip (iff ==> ?r0 ==> ?r)%signature) prod)
+Debug:
+1.2.3.1.2: looking for (Proper (Basics.flip (iff ==> ?r0 ==> ?r)%signature) 
+prod) with backtracking
+Debug: 1.2.3.1.2.1: (*external*) (class_apply @ proper_flip_proper) on
+(Proper (Basics.flip (iff ==> ?r0 ==> ?r)%signature) prod), 1 subgoal(s)
+Debug: 1.2.3.1.2.1.2 : (Proper (iff ==> ?r0 ==> ?r) prod)
+Debug: 1.2.3.1.2.1.2: looking for (Proper (iff ==> ?r0 ==> ?r) prod) with 
+backtracking
+Debug: 1.2.3.1.2.1.2.1: (*external*) proper_subrelation on
+(Proper (iff ==> ?r0 ==> ?r) prod), 3 subgoal(s)
+Debug: 1.2.3.1.2.1.2.1.4 : (Proper ?R' prod)
+Debug: 1.2.3.1.2.1.2.1.4: looking for (Proper ?R' prod) with backtracking
+Debug: 1.2.3.1.2.1.2.1.4: no match for (Proper ?R' prod) , 11 possibilities
+Debug: 1.2.3.1.2.2: (*external*) proper_subrelation on
+(Proper (Basics.flip (iff ==> ?r0 ==> ?r)%signature) prod), 3 subgoal(s)
+Debug: 1.2.3.1.2.2.4 : (Proper ?R' prod)
+Debug: 1.2.3.1.2.2.4: looking for (Proper ?R' prod) with backtracking
+Debug: 1.2.3.1.2.2.4: no match for (Proper ?R' prod) , 11 possibilities
+Debug: 1.2.3.2: (*external*) proper_subrelation on
+(Proper (Basics.flip (Basics.flip (iff ==> ?r0 ==> ?r)%signature)) prod), 3 
+subgoal(s)
+Debug: 1.2.3.2.4 : (Proper ?R' prod)
+Debug: 1.2.3.2.4: looking for (Proper ?R' prod) with backtracking
+Debug: 1.2.3.2.4: no match for (Proper ?R' prod) , 11 possibilities
+Debug: 1.3: (*external*) proper_reflexive on (Proper (iff ==> ?r0 ==> ?r) 
+prod), 1 subgoal(s)
+Debug: 1.3.2 : (Reflexive (iff ==> ?r0 ==> ?r)%signature)
+Debug: 1.3.2: looking for (Reflexive (iff ==> ?r0 ==> ?r)%signature) with 
+backtracking
+Debug: 1.3.2.1: simple apply @ Equivalence_Reflexive on
+(Reflexive (iff ==> ?r0 ==> ?r)%signature), 1 subgoal(s)
+Debug: 1.3.2.1.2 : (Equivalence (iff ==> ?r0 ==> ?r)%signature)
+Debug: 1.3.2.1.2: looking for (Equivalence (iff ==> ?r0 ==> ?r)%signature) with 
+backtracking
+Debug: 1.3.2.1.2: no match for (Equivalence (iff ==> ?r0 ==> ?r)%signature) , 0 
+possibilities
+Debug: 1.3.2.2: simple apply @ PreOrder_Reflexive on
+(Reflexive (iff ==> ?r0 ==> ?r)%signature), 1 subgoal(s)
+Debug: 1.3.2.2.2 : (PreOrder (iff ==> ?r0 ==> ?r)%signature)
+Debug: 1.3.2.2.2: looking for (PreOrder (iff ==> ?r0 ==> ?r)%signature) with 
+backtracking
+Debug: 1.3.2.2.2.1: simple apply @ Equivalence_PreOrder on
+(PreOrder (iff ==> ?r0 ==> ?r)%signature), 1 subgoal(s)
+Debug: 1.3.2.2.2.1.2 : (Equivalence (iff ==> ?r0 ==> ?r)%signature)
+Debug: 1.3.2.2.2.1.2: looking for (Equivalence (iff ==> ?r0 ==> ?r)%signature) 
+with backtracking
+Debug: 1.3.2.2.2.1.2: no match for (Equivalence (iff ==> ?r0 ==> ?r)%signature) 
+, 0 possibilities
+ *)
+
+(* Error:
+Tactic failure: setoid rewrite failed: Unable to satisfy the following 
+constraints:
+UNDEFINED EVARS:
+ ?X179==[A B H H0 |- relation Type] (internal placeholder) {?r}
+ ?X180==[A B H H0 |- relation Type] (internal placeholder) {?r0}
+ ?X181==[A B H H0 (do_subrelation:=do_subrelation)
+          |- Proper
+               (iff ==>
+                ?X180@ {__:=A; __:=B; __:=H; __:=H0} ==> ?X179@ {__:=A; __:=B; 
+__:=H; __:=H0}) prod]
+          (internal placeholder) {?p}
+ ?X182==[A B H H0 |- ProperProxy ?X180@ {__:=A; __:=B; __:=H; __:=H0} B] 
+(internal placeholder) {?p0}
+ ?X184==[A B H H0 |- relation Type] (internal placeholder) {?r1}
+ ?X185==[A B H H0 (do_subrelation:=do_subrelation)
+          |- Proper (iff ==> ?X184@ {__:=A; __:=B; __:=H; __:=H0}) (prod B)]
+          (internal placeholder) {?p1}
+ ?X186==[A B H H0 (do_subrelation:=do_subrelation)
+          |- Proper
+               (?X179@ {__:=A; __:=B; __:=H; __:=H0} ==>
+                ?X184@ {__:=A; __:=B; __:=H; __:=H0} ==> Basics.flip 
+Basics.impl) iff]
+          (internal placeholder) {?p2}
+.
+ *)
+```
+
+Comment author: @mattam82
+
+Seems to be building an ill-typed term, need to investigate some more.
+
+

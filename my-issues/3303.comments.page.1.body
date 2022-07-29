@@ -1,0 +1,20 @@
+Comment author: @JasonGross
+
+I'd like a [time] tactic, which is a tactic version of the vernacular [Time].  The main use is to allow timing of multiple tactics after a semicolon, without having to split them out.
+
+
+Comment author: @ppedrot
+
+I presume this is doable, but because of the new backtracking semantics, a tactic may be called several times, resulting in potentially many outputs.
+
+
+Comment author: @JasonGross
+
+I'm fine with having multiple timings being printed from the same tactic.  A warning might be nice when backtracking across a [time], but it's not necessary.
+
+
+Comment author: @ppedrot
+
+Fixed in trunk.
+
+

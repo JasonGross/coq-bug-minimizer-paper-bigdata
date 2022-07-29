@@ -1,0 +1,14 @@
+Comment author: @JasonGross
+
+CAMLP4O   parsing/g_tactic.ml4
+File "parsing/g_tactic.ml4", line 521, characters 3-16:
+Warning: Unused local entry "move_location"
+File "parsing/g_tactic.ml4", line 493, characters 3-9:
+Warning: Unused local entry "rename"
+
+
+Comment author: @ppedrot
+
+Fixed by ddf50c8.
+
+

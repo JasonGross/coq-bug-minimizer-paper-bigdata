@@ -1,0 +1,1 @@
+A subtle bug apparently due to c4bc671db43. An interesting puzzle in how to add arguments to an `printf`-like function of unknown arity. Don't know how to solve it though (expect than by giving `warn0`, `warn1`, `warn2` functions).

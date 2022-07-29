@@ -1,0 +1,20 @@
+Comment author: @JasonGross
+
+In Coq 8.5,
+  Global Set Warnings.
+gives "Warning: There is no option Warnings.", but
+  Global Set Warnings "-all".
+gives "Error: There is no option Warnings."
+
+This seems like a major design flaw in terms of backwards compatibility of 
+options that take strings.
+
+Maxime, are you the right person for this, or is there someone else in charge 
+of options?
+
+
+Comment author: @maximedenes
+
+Fixed in v8.5 branch (was already fixed in v8.6). Thanks for reporting!
+
+

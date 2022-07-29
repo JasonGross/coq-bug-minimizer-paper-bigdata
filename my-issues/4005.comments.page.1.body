@@ -1,0 +1,33 @@
+Comment author: @JasonGross
+
+If a proof begins with [clear foo], then Coq will suggest a [Proof using] directive that does not include [foo].  The [clear foo] will subsequently fail.
+
+To maximize backwards compatibility, I'd suggest that [clear]ing a section hypothesis that has been cleared by [Proof using] should result in simply a warning the first time it is issued (and, for full backwards compatibility, [progress clear] would also have to succeed), and an error the next time.
+
+
+Comment author: @gares
+
+I think the effort required to code what you ask is non negligible ("the first time it is called" is relative to a proof branch, for example).
+I'm not thrilled by the cheaper option of adding a "Proof Using Do Not Clear"
+switch either.
+
+I see your point, it is hard to write a script that takes proof using suggestions and never breaks scripts by applying them.  And I think your
+script would be very useful.  But I don't see a good solution for the
+problem you raise.
+
+
+Comment author: @ppedrot
+
+Actually, the right thing to do would be to forbid messing with section variables in proofs. This is a huge source of nasty bugs.
+
+
+Comment author: @JasonGross
+
+Here is another, more subtle way that [Proof using] can break proofs: automatic naming of hypotheses depends on which names are already in the context.  [Proof using] can change that, by clearing variables, and thus break scripts using automatically generated names.
+
+
+Comment author: @maximedenes
+
+But of course you are not writing scripts relying on generated names :)
+
+

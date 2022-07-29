@@ -1,0 +1,18 @@
+Comment author: @JasonGross
+
+The following code causes Windows to inform me that coqtop has stopped responding:
+
+  Ltac foo := repeat foo.
+  Goal False.
+    foo.
+
+It would be nice if coq instead told me that the tactic ran too deep, or that coq OOM'ed, or whatever, rather than crashing.  Or even if it just ran forever, but gave me the ability to interrupt it with ctrl+c, ctrl+c in emacs.
+
+
+Comment author: @herbelin
+
+This issue is related to the ocaml compiler whose native programs (generally) crash when stack is exhausted [Coq is indeed written in ocaml].
+
+If you want to prevent this kind of crash use ocaml with bytecode programs only. This runs about 6 times slower but fails nicely when stack is exhausted. To run coqide with the bytecode version of coqtop, indicate the path of coqtop.byte in the external tab of the preference panel of coqide. Then, you'll get instead a "Stack overflow" message.
+
+

@@ -1,0 +1,55 @@
+Comment author: @JasonGross
+
+Here is code that fails:
+
+Require Import Coq.micromega.Psatz Coq.fourier.Fourier.
+Goal forall x y : Rdefinitions.R, y <> 0 -> (x * y) / y = x.
+Proof.
+  intros; nra.
+
+
+[psatz] also fails, on [Q], [R], and [Z], as do [nia] and [lia] and [lra] and 
+[fourier].
+
+
+Comment author: @fajb
+
+This is by design.
+
+Division (euclidian or not) is not part of the logic fragment handled by those tactics. 
+
+Yet, division can be desugared into a product using some ltac e.g
+
+Ltac elim_div :=
+  unfold Rdiv;
+  match goal with
+  | |- context[/ ?X] =>
+    let dX := fresh "dX" in
+    let eqX := fresh "eqx" in
+    let nX  := fresh "nX" in 
+    remember X as dX eqn:eqX;
+      generalize (Rinv_r dX) ;
+      revert eqX ; generalize ( / dX) as nX ; intro
+  end.
+
+Unfortunately the resulting goal is not solved by nra.
+However, after intuition subst, it is in the scope of nsatz.
+
+PS: The goal could be pre-processed this way with the caveat that it should not be done when the division is by a constant...
+PS: square root etc could also be desugared
+
+
+Comment author: @fajb
+
+To explain the wontfix:
+ I consider that this is not a task for Psatz tactics 
+ to normalise the goal.
+
+Nonetheless, if there would exist the counterpart of zify for R and or Q, 
+it would make sense to run them.
+
+Regards,
+--
+Frédéric
+
+

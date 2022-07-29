@@ -1,0 +1,36 @@
+Comment author: @JasonGross
+
+The code
+
+
+Definition foo := True.                                                                                                                     
+                                                                                                                                            
+Section foo.                                                                                                                                
+  Global Arguments foo / .
+End foo.
+
+
+results in
+
+
+Toplevel input, characters 15-23:                                                                                                           
+Anomaly: dirpath_prefix: empty dirpath. Please report.
+frame @  file "toplevel/vernac.ml", line 343, characters 6-16
+raise @  file "toplevel/vernac.ml", line 335, characters 18-25
+frame @  file "toplevel/vernac.ml", line 327, characters 14-104
+raise @  file "library/states.ml", line 40, characters 45-46
+frame @  file "library/states.ml", line 38, characters 4-7
+raise @  file "toplevel/vernacentries.ml", line 1829, characters 12-13
+frame @  file "toplevel/vernacentries.ml", line 1818, characters 4-12
+frame @  file "library/lib.ml", line 547, characters 17-49
+frame @  file "lib/cList.ml", line 164, characters 2-16
+frame @  file "lib/cList.ml", line 156, characters 19-22
+frame @  file "library/lib.ml", line 527, characters 44-75                                                                                   
+raise @  unknown
+frame @  file "library/libobject.ml", line 141, characters 4-12                                                                              
+frame @  file "library/libobject.ml", line 109, characters 23-69                                                                             
+frame @  file "pretyping/tacred.ml", line 620, characters 14-23                                                                              
+frame @  file "library/globnames.ml", line 190, characters 20-37                                                                             
+raise @  file "lib/errors.ml", line 27, characters 18-39
+
+

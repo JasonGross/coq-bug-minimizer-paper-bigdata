@@ -1,0 +1,19 @@
+Note that the following works:
+```
+Notation "'WITH' ( x1 : t1 ) , x2t2 , .. , xntn  'PRE'  [ ] P 'POST' [ ] Q" :=
+  ((fun x1 : t1 => (fun x2t2 => .. (fun xntn => (pair .. (pair x1 x2t2) .. xntn)) .. )),
+   (fun x1 : t1 => (fun x2t2 => .. (fun xntn => P) .. )),
+   (fun x1 : t1 => (fun x2t2 => .. (fun xntn => Q) .. )))
+    (at level 200, x1 at level 0, x2t2 closed binder, P at level 100, Q at level 100, only parsing).
+Check WITH (x : nat) , (y : nat) , (z : nat) PRE [] (x, y, z) POST [] (z, y, x).
+```
+... but I guess it is on purpose that you want to parse `x2t2` as a term! Will think about it.
+
+Note for myself: we probably want to also support `x2t2 ident`/`x2t2 name` and `x2t2 pattern`. This would require to have in `NtnTypeBinderList` the same kind of parsing annotations as in `NtnTypeBinder`. Waiting first for #11841 and #13265 to be merged before coming back to this.
+But an anomaly is not just a limitation, it is a bug since it means an exception is escaping from somewhere...
+Would you like I make a PR to turn the anomaly into an error... well if you want... But let's wait first for #11841 and #13265 being merged and it will become probably as quick to address the general case. There are enough other anomalies to address in the meantime.
+> Would you like I make a PR to turn the anomaly into an error... well if you want...
+
+As a general principle yes, anomalies should be avoided while limitations are of a lesser priority.
+
+But of course, there is no specific emergency for *this one*.

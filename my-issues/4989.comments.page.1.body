@@ -1,0 +1,9 @@
+Comment author: @JasonGross
+
+I'd like to see a tactic for small inversions 
+(http://gallium.inria.fr/blog/a-new-Coq-tactic-for-inversion/, 
+http://www-verimag.imag.fr/~monin/Proof/SmallInvScalesUp/paper.pdf) make its 
+way into the standard library.
+
+
+@herbelin mentioned during the WG he's working on it (with Thierry Martinez), so assigning to him.

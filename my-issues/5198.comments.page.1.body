@@ -1,0 +1,206 @@
+Comment author: @JasonGross
+
+I suspect this is f691677, but I'll go bisect
+
+(* -*- mode: coq; coq-prog-args: ("-emacs" "-boot" "-nois") -*- *)
+(* File reduced by coq-bug-finder from original input, then from 286 lines to 
+27 lines, then from 224 lines to 53 lines, then from 218 lines to 56 lines, 
+then from 269 lines to 180 lines, then from 132 lines to 48 lines, then from 
+253 lines to 65 lines, then from 79 lines to 65 lines *)
+(* coqc version 8.6.0 (November 2016) compiled on Nov 12 2016 14:43:52 with 
+OCaml 4.02.3
+   coqtop version jgross-Leopard-WS:/home/jgross/Downloads/coq/coq-v8.6,v8.6 
+(7e992fa784ee6fa48af8a2e461385c094985587d) *)
+Axiom admit : forall {T}, T.
+Set Printing Implicit.
+Inductive nat := O | S (_ : nat).
+Axiom f : forall (_ _ : nat), nat.
+Class ZLikeOps (e : nat)
+  := { LargeT : Type ; SmallT : Type ; CarryAdd : forall (_ _ : LargeT), LargeT 
+}.
+Class BarrettParameters :=
+  { b : nat ; k : nat ; ops : ZLikeOps (f b k) }.
+Axiom barrett_reduce_function_bundled : forall {params : BarrettParameters}
+                                               (_ : @ LargeT _ (@ ops params)),
+    @ SmallT _ (@ ops params).
+
+Global Instance ZZLikeOps e : ZLikeOps (f (S O) e)
+  := { LargeT := nat ; SmallT := nat ; CarryAdd x y := y }.
+Definition SRep := nat.
+Local Instance x86_25519_Barrett : BarrettParameters
+  := { b := S O ; k := O ; ops := ZZLikeOps O }.
+Definition SRepAdd : forall (_ _ : SRep), SRep
+  := let v := (fun x y => barrett_reduce_function_bundled (CarryAdd x y)) in
+     v.
+Definition SRepAdd' : forall (_ _ : SRep), SRep
+  := (fun x y => barrett_reduce_function_bundled (CarryAdd x y)).
+(* Error:
+In environment
+x : SRep
+y : SRep
+The term "x" has type "SRep" while it is expected to have type
+ "@ LargeT ?e ?ZLikeOps".
+ *)
+
+
+Comment author: @JasonGross
+
+Bisecting gives
+
+a477dca64bb71a98fb92875df438d44d1fe54400 is the first bad commit
+commit a477dca64bb71a98fb92875df438d44d1fe54400
+Author: Matthieu Sozeau <mattam@ mattam.org>
+Date:   Wed Oct 26 19:20:08 2016 +0200
+
+    Fix handling of only_classes at toplevel
+
+:040000 040000 025af2066663eb4b30e9b930ef78ff94f1d59688 
+b6b4d221a7e322030aad263a386b9aac919439e6 M	ltac
+:040000 040000 ecb4eed76a98ec7100c4d82a430d29a758122234 
+dbf5d5b3541e1ecc60774af09f1b299e340fd8c3 M	tactics
+:040000 040000 a4e562050b2cf32f8acd54fd959e7715884db0ce 
+2a48b8ece7f933075bcd19bbbb85dc794bd0e165 M	test-suite
+
+
+Comment author: @mattam82
+
+Ok, I'll have a look ASAP
+
+
+Comment author: @mattam82
+
+Your example seems to require canonical structures, if you declare ZZLikeOps to be one it typechecks. The second example is really a different type inference problem as the constraint you give is used early to fill the types of x and y.
+
+
+Comment author: @JasonGross
+
+Why do they both work in 8.5, though?  And is the advice to fix this problem "make all your typeclasses be canonical structures?
+
+
+Comment author: @JasonGross
+
+This seems like it could be solved by delaying unification constraints.  The code
+
+Definition SRepAdd' : forall (_ _ : SRep), SRep
+  := (fun x y => @ barrett_reduce_function_bundled x86_25519_Barrett (@ CarryAdd _ _ x y)).
+
+has a unique solution in the first-order unification fragment, I believe.  But Coq 8.6 does not find it.  However, Coq 8.6 does find the solution to
+
+Definition SRepAdd' : forall (_ _ : SRep), SRep
+  := (fun x y => @ barrett_reduce_function_bundled x86_25519_Barrett (@ CarryAdd (f _ _) _ x y)).
+
+I don't see why this is; I haven't added any new information.  Even more strikingly, if I force this information in a different way, Coq still fails to solve the problem:
+
+Axiom admit : forall {T}, T.
+Set Printing Implicit.
+Inductive nat := O | S (_ : nat).
+Axiom f : forall (_ _ : nat), nat.
+Class ZLikeOps (e : nat)
+  := { LargeT : Type ; SmallT : Type ; CarryAdd : forall (_ _ : LargeT), e = e -> LargeT }.
+Class BarrettParameters :=
+  { b : nat ; k : nat ; ops : ZLikeOps (f b k) }.
+Axiom barrett_reduce_function_bundled : forall {params : BarrettParameters}
+                                               (_ : f b k = f b k -> @ LargeT _ (@ ops params)),
+    @ SmallT _ (@ ops params).
+
+Global Instance ZZLikeOps e : ZLikeOps (f (S O) e)
+  := { LargeT := nat ; SmallT := nat ; CarryAdd x y := fun _ => y }.
+Definition SRep := nat.
+Local Instance x86_25519_Barrett : BarrettParameters
+  := { b := S O ; k := O ; ops := ZZLikeOps O }.
+Definition SRepAdd : forall (_ _ : SRep), SRep
+  := let v := (fun x y => @ barrett_reduce_function_bundled x86_25519_Barrett (@ CarryAdd _ _ x y)) in
+     v.
+Definition SRepAdd' : forall (_ _ : SRep), SRep
+  := (fun x y => @ barrett_reduce_function_bundled x86_25519_Barrett (@ CarryAdd _ _ x y)).
+
+In this example, I've fully specified what the [e] parameter to [CarryAdd] must be, by virtue of the type of [barrett_reduce_function_bundled].  Coq is still unhappy, though.
+
+
+Comment author: @JasonGross
+
+Here's a case where there is a unique solution to the global unification problem, and it falls within the first-order fragment, and yet Coq fails to find it.
+
+Axiom admit : forall {T}, T.
+Set Printing Implicit.
+Inductive nat := O | S (_ : nat).
+Axiom f : forall (_ _ : nat), nat.
+Class ZLikeOps (e : nat)
+  := { LargeT : Type ; SmallT : Type ; CarryAdd : forall (_ _ : LargeT), LargeT }.
+Axiom LargeT' : forall {e} {ops : ZLikeOps e}, Type.
+Axiom CarryAdd' : forall {e} {ops : ZLikeOps e} (_ _ : @ LargeT e ops), @ LargeT' e ops.
+Class BarrettParameters :=
+  { b : nat ; k : nat ; ops : ZLikeOps (f b k) }.
+Axiom barrett_reduce_function_bundled : forall {params : BarrettParameters}
+                                               (_ : @ LargeT' _ (@ ops params)),
+    @ SmallT _ (@ ops params).
+Global Instance ZZLikeOps e : ZLikeOps (f (S O) e)
+  := { LargeT := nat ; SmallT := nat ; CarryAdd x y := y }.
+Definition SRep := nat.
+Local Instance x86_25519_Barrett : BarrettParameters
+  := { b := S O ; k := O ; ops := ZZLikeOps O }.
+Definition SRepAdd : forall (_ _ : SRep), SRep
+  := let v := (fun x y => @ barrett_reduce_function_bundled x86_25519_Barrett (@ CarryAdd' _ _ x y)) in
+     v.
+Definition SRepAdd' : forall (_ _ : SRep), SRep
+  := (fun x y => @ barrett_reduce_function_bundled x86_25519_Barrett (@ CarryAdd' _ _ x y)).
+
+
+Comment author: @mattam82
+
+Certainly not that advice. But you bundle the Type in ZZLikeOps and that's not recommended style with typeclasses for sure. It worked in 8.5 because in the middle of unification we allow a resolution of @ LargeT ?n ?e by ZZLikeOps ?n for some unknown ?n and luckily a later unification solved this ?n. Today this residual shelved goal makes the search fail. I think while we explore the design space with shelving, we'll need an option to allow shelved subgoals to remain after resolution of typeclasses, even though I find it quite disturbing to have such "floating" things around. "Legacy Resolution" works in this case, as well as Filtered Unification by giving the right patterns to the [ops], e.g.
+
+or even without any particular option by doing 
+Hint Extern 0 (ZLikeOps _) => notypeclasses refine (@ ops _) : typeclass_instances. (* The pattern inferred for it is too specific *)
+Definition ZZLikeOps (* Remove the offending instance creating non-class subgoals *)
+
+Another venue for avoiding this is with a bidirectional typechecking algorithm that could transmit the values of the [e] and [ZLikeOps] arguments of CarryAdd from the typing constraint coming from the enclosing barret_reduce_function_bundled.
+
+
+Comment author: @mattam82
+
+You have to remember that typechecking [foo (CarryAdd x y)] typechecks [x] with just the information of CarryAdd, _nothing else_ here.
+
+
+Comment author: @JasonGross
+
+So is [Set Typeclasses Legacy Resolution] the advice?  Or always unbundling typeclasses?  It seems like this should definitely be mentioned in incompatibilities/CHANGES/COMPATIBILITY, if it's here to stay, and there should be advice for how to update code appropriately.
+
+> Another venue for avoiding this is with a bidirectional typechecking algorithm that could transmit the values of the [e] and [ZLikeOps] arguments of CarryAdd from the typing constraint coming from the enclosing barret_reduce_function_bundled.
+
+That sounds like a useful thing for 8.7?
+
+> You have to remember that typechecking [foo (CarryAdd x y)] typechecks [x] with just the information of CarryAdd, _nothing else_ here.
+
+Sure.  I'm saying that this breaks the folk-lore guarantee that Coq's unification is complete on the pattern fragment.  But I guess that's a separate bug, since it doesn't involve typeclasses, and is not a regression.
+
+
+Comment author: @mattam82
+
+Let's wait a bit before jumping to conclusions, I'm not giving advice yet, just trying to understand the problems first. I don't think Coq's incomplete on the pattern fragment. Do you think SRep ~= @ LargeT _ _ is in the pattern fragment or are you thinking about a different problem? There seems to be issues on the patterns of ops (and ZZLikeOps) where you need to explicitely give the (f _ _), is this the source of the higher-order pattern problem you're talking about?
+
+
+Comment author: @JasonGross
+
+> Do you think SRep ~= @ LargeT _ _ is in the pattern fragment or are you thinking about a different problem?
+
+No.  And I might be misnaming things.  What's the fragment where first you instantiate evars up to syntactic equality, and then you do conversion on closed terms?  I think that strategy dives this problem.
+
+I'm also confused why giving [f _ _] fixes things.
+
+
+Comment author: @mattam82
+
+This is fixed in the 8.6 branch. Leaving it opened though as there is an interesting discussion to start on treatment of shelved goals during resolution.
+
+
+Comment author: @mattam82
+
+Also analysing why the (f _ _) pattern helps is interesting, my guess is that unification is greatly helped by it.
+
+
+Comment author: @Zimmi48
+
+This bug was fixed but left open because "there is an interesting discussion to start on treatment of shelved goals during resolution". This is an interesting discussion indeed but I think it can happen elsewhere.
+
+

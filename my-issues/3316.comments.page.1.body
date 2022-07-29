@@ -1,0 +1,45 @@
+Comment author: @JasonGross
+
+$ rm *.v; for i in A B C D E F G H I J K L M N O P Q R S T U V W X Y Z; do for j in A B C D E F G H I J K L M N O P Q R S T U V W X Y Z; do touch $i$j.v; done; done; coq_makefile *.v> Makefile
+
+
+# trunk
+$ time make clean
+...
+
+real    0m52.466s
+user    0m4.768s
+sys     0m48.147s
+
+# 8.4pl3
+$ time make clean COQBIN="$(readlink -f ~/.local64/coq/coq-8.4pl3/bin)/"
+...
+real    0m23.130s
+user    0m5.248s
+sys     0m19.417s
+
+
+Before tracking this down, someone should tell me how to check whether or not I'm using the native code/byte-code/opt/whatever versions of each.
+
+
+Comment author: @ppedrot
+
+This is hard to track down by profiling executions, because the time coqdep needs to run is spread amongst a bunch of small functions.
+
+Still, is that really problematic? Shouldn't we fix coq_makefile instead, so that it does dependency analysis on a whole set of .v files?
+
+
+Comment author: @JasonGross
+
+I want my dependency analysis to be either parallelizable or instantaneous, and to be done from the generated Makefile, rather than from the program generating the makefile.  So either coq_makefile should be parallelizable and should include a rule to regenerate the makefile using itself when any of the targets change (this seems like it might be a pain, though), or the makefile should keep using coqdep.
+
+Pierre Boutillier was kind enough to try to reproduce this with me when I was at IHP, and couldn't reproduce.  So I'm inclined to believe that the issue is me compiling the versions with different settings (maybe one was bytecode and the other opt, or maybe one was debug and the other not), or something.  As soon as I get a chance to make a thorough test of settings, I'm planning on updating and probably closing this bug.
+
+
+Comment author: @pirbo
+
+No news, good news ?
+I recheck today and do not see difference ...
+Reopen it if you manage to see how to reproduce...
+
+

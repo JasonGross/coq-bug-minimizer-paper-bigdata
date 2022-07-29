@@ -1,0 +1,58 @@
+Comment author: @JasonGross
+
+There is no way to combine implicit status with simplification flags in a way 
+that is valid in both 8.5 and 8.6.  The following code works in both 8.5 and 
+8.6:
+  Arguments pred {_}, _.
+  Arguments pred !_ /.
+  Goal forall x, pred 1 = pred x.
+    simpl.
+However, [Arguments pred {!_} /, !_ / .] parses only in 8.5, and [Arguments 
+pred {!_} /, _.], which parses and works in 8.6, gives the error message 
+"Error: All arguments lists must have the same length" in 8.5.  Is there a good 
+reason for this change in behavior?
+
+
+Comment author: @maximedenes
+
+No change of behavior here, apart from making what was previously random behavior an error. Simpl modifiers never had an effect except in the first list.
+
+The correct way is indeed:
+
+Arguments pred {!_} /, _.
+
+If we want good compatibility, we should fix the bogus "All arguments lists must have the same length" in 8.5. Once this spurious check is removed, the code in 8.5 will have the same behavior as 8.6.
+
+
+Comment author: @JasonGross
+
+I would suggest accepting the trailing "/" syntax as a no-op and emitting a deprecation warning.  This syntax dates back to 8.4, and the change makes it impossible write code that compiles with 8.4 and 8.5 and 8.6 without doubling up on all of the [Arguments] lines that set both "/" and implicits and have multiple argument lists.
+
+
+Comment author: @JasonGross
+
+(In this case, the motivation for the project compiling with 8.4 is that that's the newest version of Coq shipped on a stable debian/ubuntu distro.)
+
+
+Comment author: @ejgallego
+
+Unfortunately:
+
+- coq packages in testing/unstable/yakkety are not in a good state.
+- debian/ubuntu LTS will remain shipping 8.4 for more two years.
+
+I'm afraid that users of such distributions will need to find alternative means of installing Coq.
+
+
+Comment author: @maximedenes
+
+How does this look?
+
+https://github.com/coq/coq/pull/341
+
+
+Comment author: @maximedenes
+
+The syntax is now allowed in 8.6, with a deprecation warning and no longer recognized in trunk.
+
+

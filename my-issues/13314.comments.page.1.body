@@ -1,0 +1,2 @@
+According to the documentation of `Hint Mode`, if you provide several modes, it is already interpreted as a disjunction. So is there anything to change?
+I had previously missed "Multiple modes can be declared for a single identifier, in that case only one mode needs to match the arguments for the hints to be applied.". I guess I had assumed that subsequent modes overwrote previous ones.  Perhaps there should be a note or warning in the doc that subsequent declarations do not overwrite.  (Is there a way to remove Hint Modes?  Either way, I think this should be noted.)

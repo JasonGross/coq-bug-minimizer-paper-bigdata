@@ -1,0 +1,129 @@
+Comment author: @JasonGross
+
+In my quest to recreate directory structure within a single file, I have discovered that the proof term resulting from the rewriting machinery depends on what modules are available, even if they have not been imported.  Here is some code that would work if each top-level module were it's own file:
+
+Module File1.
+  Module Export DirA.
+    Module A.
+      Inductive paths {A : Type} (a : A) : A -> Type :=
+        idpath : paths a a.
+
+      Arguments idpath {A a} , [A] a.
+
+      Notation "x = y :> A" := (@ paths A x y) : type_scope.
+      Notation "x = y" := (x = y :>_) : type_scope.
+    End A.
+  End DirA.
+End File1.
+
+Module File2.
+  Module Export DirA.
+    Module B.
+      Import File1.
+      Export A.
+      Lemma foo : forall x y : Type, x = y -> y = x.
+      Proof.
+        intros x y H.
+        rewrite <- H.
+        constructor.
+      Qed.
+    End B.
+  End DirA.
+End File2.
+
+Module File3.
+  Module Export DirA.
+    Module C.
+      Import File1.
+      Export A.
+      Lemma bar : forall x y : Type, x = y -> y = x.
+      Proof.
+        intros x y H.
+        rewrite <- H.
+        constructor.
+      Defined.
+      Definition bar'
+        := Eval cbv beta iota zeta delta [bar internal_paths_rew] in bar.
+    End C.
+  End DirA.
+End File3.
+
+
+Comment author: @silene
+
+For wha
+
+
+Comment author: @silene
+
+(Automatically submitting a reply when pressing 'tab' is an interesting feature...)
+
+For what is worth, it works with trunk. But I kind of prefer the 8.4 behavior, I don't see much point in reproving internal_paths_rew in every submodule, as is done in trunk. I think it was a good idea to reuse already proved instances of rewriting lemmas rather than proving them again.
+
+
+Comment author: @JasonGross
+
+I agree that it is a good idea to reuse lemmas, but I think it should only be done if the constant is "in scope".  In particular, I am strongly against [Require] changing the behavior of proof scripts.  So, for example, I think the following should reuse the lemma from [Module B]:
+
+Module File1.
+  Module Export DirA.
+    Module A.
+      Inductive paths {A : Type} (a : A) : A -> Type :=
+        idpath : paths a a.
+
+      Arguments idpath {A a} , [A] a.
+
+      Notation "x = y :> A" := (@ paths A x y) : type_scope.
+      Notation "x = y" := (x = y :>_) : type_scope.
+    End A.
+  End DirA.
+End File1.
+
+Module File2.
+  Module Export DirA.
+    Module B.
+      Import File1.
+      Export A.
+      Lemma foo : forall x y : Type, x = y -> y = x.
+      Proof.
+        intros x y H.
+        rewrite <- H.
+        constructor.
+      Qed.
+    End B.
+  End DirA.
+End File2.
+
+Module File3.
+  Module Export DirA.
+    Module C.
+      Import File1 File2.
+      Export A B.
+      Lemma bar : forall x y : Type, x = y -> y = x.
+      Proof.
+        intros x y H.
+        rewrite <- H.
+        constructor.
+      Defined.
+      Definition bar'
+        := Eval cbv beta iota zeta delta [bar B.internal_paths_rew] in bar.
+      Print bar'. (* bar' = 
+fun (x y : Type) (H : x = y) =>
+match H in (_ = y0) return (y0 = x) with
+| idpath => idpath
+end
+     : forall x y : Type, x = y -> y = x *)
+    End C.
+  End DirA.
+End File3.
+
+
+
+I am, in principle, fine with reusing qualified constants, so long as the constants brought in by [Require] are not used, and there is a way to mimic the behavior of [Require] with namespaces or modules or something, in a single file.
+
+
+Comment author: @JasonGross
+
+As Guillaume said, this is fixed in trunk.  (The submit-on-tab behavior also seems to be gone, at least for me.)
+
+

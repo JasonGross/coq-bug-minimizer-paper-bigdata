@@ -1,0 +1,30 @@
+Comment author: @JasonGross
+
+I built Coq 8.4pl6 using the Coq SDK (https://coq.inria.fr/distrib/V8.5beta1/files/CoqSDK-85-1.zip).  When I have cygwin ocaml in the path (
+$ which ocamlc
+/usr/bin/ocamlc
+$ ocamlc -v
+The OCaml compiler, version 4.01.0
+Standard library directory: /usr/lib/ocaml
+), [Declare ML Module] spins forever using not much memory and a lot of CPU.  When I have the Coq SDK ocaml in path (
+$ which ocamlc
+/cygdrive/c/CoqSDK-85-1/bin/ocamlc
+$ ocamlc -v
+The OCaml compiler, version 4.01.0
+Standard library directory: C:/CoqSDK-85-1/lib
+) it builds fine.
+
+Minimal example:
+$ cat foo.ml4
+
+$ cat foo.v
+Declare ML Module "foo".
+$ coq_makefile foo.ml4 foo.v | sed s'/"\(\$(CAMLP4BIN)\$(CAMLP4)o\)"/\1/' | make -f - # loops on cygwin ocaml, works on Coq SDK ocaml, assuming Coq was built with Coq SDK ocaml
+
+The sed command is to work around bug [BZ#4266](https://github.com/coq/coq/issues?q=is%3Aissue%20%22Original%20bug%20ID%3A%20BZ%234266%22).
+
+
+I'm curious to know if this problem extends to having different versions of OCaml, or OCamls compiled for different architectures, or if it's a Windows problem.
+
+
+I am closing this; at least in modern versions of OCaml, I get a linking error when compiling with mismatched compilers. Please reopen if needed.

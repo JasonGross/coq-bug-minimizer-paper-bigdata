@@ -1,0 +1,36 @@
+Comment author: @JasonGross
+
+Axiom A : Type.
+Axiom B : Type.
+Axiom C : Type.
+
+Notation foo x := (@ eq _ x).
+Notation foot x := $(exact (@ eq _ x))$.
+
+Goal A = A.
+match goal with
+  | [ |- context G[foo ?x] ] => let G' := context G[@ eq _ C] in pose G'
+end. (* success, I get [P := (foo C) A : Prop] as a hypothesis *)
+match goal with
+  | [ |- context G[foot ?x] ] => let G' := context G[@ eq _ C] in pose G'
+end. (* success, I get [P0 := foo C : Type -> Prop] as a hypothesis *)
+
+
+It would be nice if the second case were consistent with the first case.  But I realize this would be a rather invasive change, since it would require allowing Ltac to explicitly handle metavariables.
+
+
+Comment author: @JasonGross
+
+On second thought, how much trouble would it be to convert metavariables to evars when going from patterns to tactics in terms, and then converting evars back to metavariables going the other way?
+
+
+Comment author: @aspiwack
+
+Frankly, it doesn't sound reasonable.
+
+
+Comment author: @ppedrot
+
+The exact way of resolving holes is insanely non-uniform. This won't be fixed ever, I am afraid.
+
+

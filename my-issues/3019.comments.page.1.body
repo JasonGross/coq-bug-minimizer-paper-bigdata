@@ -1,0 +1,80 @@
+Comment author: @JasonGross
+
+Created attachment 397
+patch for theories/Logc/Eqdep_dec.v
+
+We have
+  eq_proofs_unicity :
+   ∀ A : Type, (∀ x y : A, x = y ∨ x ≠ y) → ∀ (x y : A) (p1 p2 : x = y), p1 = p2
+in the standard library (theories/Logic/Eqdep_dec.v).  It is straightforward to generalize this to
+  eq_proofs_unicity' :
+   ∀ (A : Type) (x : A), (∀ y : A, x = y ∨ x ≠ y) → ∀ (y : A) (p1 p2 : x = y), p1 = p2
+(see https://gist.github.com/5307146), upon which we get [eq_proofs_unicity := fun A eq_dec x y p1 p2 => @ eq_proofs_unicity' A x (eq_dec x) y p1 p2].  This is useful, for example, to prove that all proofs of [nil = nil] are equal.  I've attached a possible patch which preserves all the existing theorems, and simply adds these ones as extras.  I believe that it compiles fine, though I haven't yet compiled the entire coq development with this change.
+
+> Attached file: [Eqdep_dec.diff](https://coq.inria.fr/bugfiles/attachment.cgi?id=397) (text/plain, 3651 bytes)
+> Description:   patch for theories/Logc/Eqdep_dec.v
+
+
+Comment author: @JasonGross
+
+Created attachment 398
+generalized version of theories/Logic/EqdepFacts.v
+
+I've attached a generalized version of theories/Logic/EqdepFacts.v, which replaces makes the proofs work with decidable equality on a specified element.  I'm not sure whether or not this should be integrated with trunk, though, if it is, it's possible that theorems should be renamed so as not to cause backward incompatibility.  I'll upload the version of Eqdep_dec.v that uses this momentarily.
+
+> Attached file: [EqdepFacts_one_variable.v](https://coq.inria.fr/bugfiles/attachment.cgi?id=398) (text/plain, 13670 bytes)
+> Description:   generalized version of theories/Logic/EqdepFacts.v
+
+
+Comment author: @JasonGross
+
+Created attachment 399
+generalized version of theories/Logic/Eqdep_dec.v
+
+> Attached file: [Eqdep_dec_one_variable.v](https://coq.inria.fr/bugfiles/attachment.cgi?id=399) (text/plain, 10569 bytes)
+> Description:   generalized version of theories/Logic/Eqdep_dec.v
+
+
+Comment author: @ppedrot
+
+Sounds nice. Anyone against the inclusion of this patch?
+
+
+Comment author: @JasonGross
+
+Pull request at https://github.com/coq/coq/pull/5
+
+
+Comment author: @pirbo
+
+Comment on attachment 397
+patch for theories/Logc/Eqdep_dec.v
+
+patch partially accepted
+
+
+Comment author: @JasonGross
+
+If you're interested in merging the other patch, I've made a pull request at https://github.com/coq/coq/pull/6.
+
+
+Comment author: @herbelin
+
+Patch is ok to me, though I would suggest to use suffix _on, following the terminology in ChoiceFacts.v, rather than _one_var.
+
+
+Comment author: @JasonGross
+
+Should I also go change Eqdep_dec to use _on rather than _one_var?  (That part of the patch was merged a while ago.)  If so, should I do that in pull request [BZ#6](https://github.com/coq/coq/issues?q=is%3Aissue%20%22Original%20bug%20ID%3A%20BZ%236%22), or make a fresh pull request?
+
+
+Comment author: @pirbo
+
+please update the pull request with all the renaming and I'll merge it.
+
+
+Comment author: @JasonGross
+
+Updated.
+
+

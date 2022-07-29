@@ -1,0 +1,2 @@
+@jasongross: I have a branch extending #8187 so that printing of numeral notations is also based on the order of open scope (rather than by order of declarations of numeral notations as it is still the case in #8187). Ping me if I did not make progress on it by two weeks. (By the way, don't hesitate to explicitly tell there if you are ok with the changes which you requested.).
+@herbelin Thanks!  Does this also handle the case where there are two numeral notations for non-overlapping portions of the same inductive, in the same scope, or will that remain unsupported for now?

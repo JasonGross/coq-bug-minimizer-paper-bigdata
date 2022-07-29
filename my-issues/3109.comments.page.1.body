@@ -1,0 +1,69 @@
+Comment author: @JasonGross
+
+Here is a case where [rewrite] fails with "Unable to find an instance" and [erewrite] fails with "Cannot refine ... because a metavariable has several occurrences".  Yet [generalize]ing some types allows the rewrite to go through just fine.  Does [erewrite]/[rewrite] backtrack after hitting those errors?
+
+~~~coq
+Set Implicit Arguments.
+
+Reserved Infix "#" (at level 65, left associativity).
+
+Record PreCategory :=
+  {
+    Object :> Type;
+    Morphism : Object -> Object -> Type;
+
+    Identity : forall x, Morphism x x;
+    Compose : forall s d d', Morphism d d' -> Morphism s d -> Morphism s d' where "f # g" := (Compose f g);
+
+    Associativity : forall x1 x2 x3 x4
+                           (m1 : Morphism x1 x2)
+                           (m2 : Morphism x2 x3)
+                           (m3 : Morphism x3 x4),
+                      (m3 # m2) # m1 = m3 # (m2 # m1)
+  }.
+
+Infix "#" := (@ Compose _ _ _ _).
+
+Goal forall (C : PreCategory) (H0 H1 : Object C) (H2 : Morphism C H1 H0)
+            (H3 H4 : Object C) (H5 : Morphism C H3 H4) (H6 : Morphism C H4 H1)
+            (F0' : Object C -> PreCategory) (H10 : Object (F0' H1))
+            (H13 : Object (F0' H3)) (f : Object (F0' H1) -> Object (F0' H0))
+            (m' : forall s d : Object C,
+                    Morphism C s d -> Object (F0' s) -> Object (F0' d))
+            (H16 : Morphism (F0' H0) (m' H3 H0 (H2 # H6 # H5) H13)
+                            (m' H3 H0 (H2 # (H6 # H5)) H13))
+            (H14 : Morphism (F0' H0) (f (m' H3 H1 (H6 # H5) H13)) (f H10))
+            (H15 : Morphism (F0' H0) (m' H3 H0 (H2 # (H6 # H5)) H13)
+                            (f (m' H3 H1 (H6 # H5) H13))),
+       H14 # H15 # H16 = H14 # (H15 # H16).
+Proof.
+  intros.
+  rewrite (@ Associativity _ _ _ _ _ H16 H15 H14). (* succeeds *)
+  Undo.
+  Fail erewrite Associativity. (* Error: Cannot refine with term
+ "eq_ind_r
+    (fun _ : Morphism ?81 ?82 ?85 => H14 # H15 # H16 = H14 # (H15 # H16))
+    ?207 (Associativity ?81 ?82 ?83 ?84 ?85 ?201 ?202 ?203)"
+because a metavariable has several occurrences. *)
+  Fail rewrite Associativity. (* Error: Unable to find an instance for the variables p, x1, x2, x3, x4. *)
+  (* We can generalize the types of the morphisms, and then it works *)
+  repeat match goal with
+           | [ |- appcontext[@ Compose _ (?f ?x) _ _] ]
+             => generalize dependent (f x); intros
+           | [ |- appcontext[@ Compose _ _ (?f ?x) _] ]
+             => generalize dependent (f x); intros
+           | [ |- appcontext[@ Compose _ _ _ (?f ?x)] ]
+             => generalize dependent (f x); intros
+         end;
+    clear.
+  erewrite Associativity. (* success *)
+  Undo.
+  rewrite Associativity. (* success *)
+~~~
+
+
+Just a note: this is still the same (master about 1 month old). I am doing some extensions to the real analysis library and trying to do the proofs nicely the derivable dependency of derive sometimes really seems to confuse Coq for no obvious reasons.
+
+With doing proofs nicely I mean that instead of asserting tons of absolutely unintuitive stuff before applying a lemma with 10 premises I use unshelve eapply and let Coq tell me what it needs to apply the lemma. This way the proofs are much shorter, more obvious with a nice uncluttered context, but sometimes this breaks apart. Whatever I try I end up in the issues outlined by @JasonGross above or in "Application of lemmas whose beta-iota normal form contains metavariables deep inside the term is not supported; try "refine" instead." Looks like the good old "yes Coq is dependently typed, but don't use it" story.
+
+If this is of interest I could post the lemma I am working on - a variant of derive_pt_recip_interv for decreasing functions and proven based on the variant for increasing functions rather than from scratch. A proof from scratch works fine but needs a ton of upfront boilerplate lemmas. Proving the lemma depending on the increasing variant in the style common on the analysis library (provide 10 asserts of several lines long terms upfront) also works. Doing the proofs in a reasonable straight forward way letting Coq help you doesn't.

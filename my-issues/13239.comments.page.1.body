@@ -1,0 +1,1 @@
+FWIW `autoapply @lem0 with typeclass_instances; typeclasses eauto.` does fail in this example. The debug log is incorrect to pretend to use `simple eapply`.

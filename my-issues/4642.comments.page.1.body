@@ -1,0 +1,56 @@
+Comment author: @JasonGross
+
+The code doesn't work in Coq 8.5 yet due to bug [BZ#4631](https://github.com/coq/coq/issues?q=is%3Aissue%20%22Original%20bug%20ID%3A%20BZ%234631%22).
+
+
+Comment author: @JasonGross
+
+Created attachment 684
+development with error (make src/Parsers/Refinement/SharpenedJSONDebug.vo)
+
+If you run `make src/Parsers/Refinement/SharpenedJSONDebug.vo`, the code runs out of my 64 GB of RAM on parser_red5.
+
+> Attached file: [bug_4642.zip](https://coq.inria.fr/bugfiles/attachment.cgi?id=684) (application/x-zip-compressed, 953061 bytes)
+> Description:   development with error (make src/Parsers/Refinement/SharpenedJSONDebug.vo)
+
+
+Comment author: @JasonGross
+
+Sorry the development is so big.  I could through my bug minimizer at it, but I'm not sure if it'll give me anything reasonable in a reasonable amount of time, given that the direct dependencies of the file take ~10 minutes to compile.
+
+
+Comment author: @ppedrot
+
+I can't compile your example. The makefile complains that there is no "Overview" file.
+
+
+Comment author: @JasonGross
+
+Ugh, sorry, I'll post a fixed zip file in the next few hours.
+
+If you want to build it before then, you can download https://github.com/JasonGross/coq-scripts/blob/master/compatibility/Coq__8_4__Compat.v as src/Common/Coq__8_4__8_5__Compat.v, and use coq_makefile -f _CoqProject.in to get a working makefile, I believe.
+
+
+Comment author: @JasonGross
+
+Created attachment 691
+development with error (make src/Parsers/Refinement/SharpenedJSONDebug.vo)
+
+> Attached file: [bug_4642.zip](https://coq.inria.fr/bugfiles/attachment.cgi?id=691) (application/x-zip-compressed, 999072 bytes)
+> Description:   development with error (make src/Parsers/Refinement/SharpenedJSONDebug.vo)
+
+
+Comment author: @silene
+
+It is not clear from your report and I have a hard time telling from the source, so let me ask explicitly. It is trivial to make cbv runs out of memory, you just need an intermediate object so large that it does not fit in memory. Are you sure all your intermediate objects have a sensible size? For instance, if you have forgotten to declare a constant as unfoldable in opt_red, you might well blow up your memory.
+
+
+Comment author: @JasonGross
+
+On smaller examples, everything that I want unfolded is, in fact, unfolded, and I don't believe the term gets huge at any point (though I suppose it's possible that it gets large and then is reduced by one of the subsequent calls to [simpl] (speaking of which, it's very annoying that there's no way to say "unfold this constant only if it's applied to a constructor" (bug [BZ#4639](https://github.com/coq/coq/issues?q=is%3Aissue%20%22Original%20bug%20ID%3A%20BZ%234639%22)); I've essentially spent the past month(!) working around this issue, and now nearly am able to do things with an extra thousand lines of code, [vm_compute], and a small list of arguments to [cbv])).
+
+When I remove the unfolding of [List.map], it goes through very quickly on this example, which isn't definitive, but is suggestive.
+
+
+@JasonGross Is this bug still relevant?
+Let me close it, in absence of update.

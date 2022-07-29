@@ -1,0 +1,1 @@
+Ah, I guess the "right" thing to do is to compute when a module is going to be typed as a module type either via a .mli or via passing it to any other module functor (even via `Include`, I guess), and then emitting the relevant declarations even then?

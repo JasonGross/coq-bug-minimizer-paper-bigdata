@@ -1,0 +1,21 @@
+Comment author: @JasonGross
+
+I get 
+This webpage is not available
+
+Less
+The webpage at ftp://ftp.inria.fr/INRIA/LogiCal/coq might be temporarily down or it may have moved permanently to a new web address.
+Error code: ERR_FTP_FAILED
+
+from ftp://ftp.inria.fr/INRIA/LogiCal/coq, mentioned in the README as hosting older versions of Coq.
+
+
+Comment author: @herbelin
+
+Indeed, INRIA admins changed the address. It is now
+
+ftp://ftp.inria.fr/INRIA/Projects/LogiCal/coq/
+
+I fixed the README.
+
+

@@ -1,0 +1,17 @@
+Well, that's probably not so difficult to do. Maybe a "good first issue"? I guess a call to a reduction function to insert after type inference, following the model adopted in `Vernacentries.vernac_definition` and `do_definition` (formerly in `Command`, now in `DeclareDef`).
+Note that some clean-up of at the level of parsing could help having a more uniform behavior across various "definition" keywords. See also #6567.
+@herbelin I noticed that `Definition` does not recognize `Compute`:
+
+```coq
+Eval vm_compute in 5. (* 5 *)
+Compute 5.            (* 5 *)
+
+Definition five  := Eval vm_compute in 5. (* valid *)
+Definition five' := Compute 5.            (* not valid *)
+```
+
+But in the [docs](https://coq.inria.fr/refman/proof-engine/vernacular-commands.html#coq:cmd.compute) it is mentioned that `Compute` is just a shortcut for `Eval vm_compute`.
+
+Is there an issue for that?
+That doc says it's for the command Compute, so it's accurate.
+So if `Compute 5` is equivalent to `Eval vm_compute in 5`, why is only the latter usable within `Definition` and not the former?

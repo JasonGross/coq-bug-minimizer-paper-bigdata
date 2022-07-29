@@ -1,0 +1,53 @@
+Comment author: @JasonGross
+
+Module X.
+  Set Universe Polymorphism.
+  Inductive paths A (x : A) : forall _ : A, Type := idpath : paths A x x.
+  Notation "x = y" := (@ paths _ x y) (at level 70, no associativity) : type_scope.
+
+  Axioms A B : Type.
+  Axiom P : A = B.
+  Definition foo : A = B.
+    abstract (rewrite <- P; reflexivity).
+  (* Error: internal_paths_rew already exists. *)
+  Defined. (* Anomaly: Uncaught exception Not_found(_). Please report. *)
+
+
+If I use [Fail Defined], I get "This command has not failed!"
+
+
+Comment author: @maximedenes
+
+Do you know which commit fixed the underlying anomaly? I could then test the capture of the anomaly independently.
+
+
+Comment author: @JasonGross
+
+Perhaps bug [BZ#3684](https://github.com/coq/coq/issues?q=is%3Aissue%20%22Original%20bug%20ID%3A%20BZ%233684%22) is a better one to use:
+
+Definition foo : Set.
+  refine ($(abstract admit)$).
+(* Toplevel input, characters 15-42:
+Anomaly: Uncaught exception Not_found(_). Please report. *)
+
+PMP said: "Should be morally fixed in trunk. See the comments of commit 9295b3db to understand that the reality is not that bright, but at least, typical use-case should go through just fine."
+
+Alternatively, bug [BZ#3392](https://github.com/coq/coq/issues?q=is%3Aissue%20%22Original%20bug%20ID%3A%20BZ%233392%22) has another anomaly on [Defined], which I bisected.
+
+
+Comment author: @gares
+
+I guess it was the fix to 3392.  In any case now Defined works, and Fail Defined "works" too.  So the test case is bogus.
+
+If you want an anomaly
+
+  BackTo 999999.
+
+But then Fail does not mask it... so I guess this bug is also fixed.
+
+
+Comment author: @maximedenes
+
+Alright, so it seems we can't reproduce it. Feel free to reopen the bug if you have a new repro case.
+
+

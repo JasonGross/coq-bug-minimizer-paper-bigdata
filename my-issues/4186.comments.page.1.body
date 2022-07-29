@@ -1,0 +1,7 @@
+Comment author: @JasonGross
+
+plugins/extraction/ExtrOcamlNatInt.v seems to be missing the line:
+
+Extract Inlined Constant Compare_dec.lt_dec => "(<)".
+
+

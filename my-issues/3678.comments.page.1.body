@@ -1,0 +1,44 @@
+Comment author: @JasonGross
+
+Goal True.
+  let x := constr:(let z := Set in
+                   $(exact z)$) in
+  pose x.
+  let x := constr:(let z := Set in
+                   $(idtac z; exact z)$) in
+  pose x. (* Toplevel input, characters 17-72:
+Error: z not found. *)
+
+
+Comment author: @ppedrot
+
+No need for tactics in terms.
+
+Goal True.
+idtac nat.
+
+
+Comment author: @ppedrot
+
+Actually this behaviour is already present in Coq v8.4...
+
+
+Comment author: @aspiwack
+
+It's just the way [idtac] has always worked, it takes ltac-bound identifiers and display their contents if they are terms. The error message is not great, I admit, but probably not worth extra effort.
+
+Goal True.
+let x := nat in idtac x.
+(* nat *)
+
+Also:
+
+Goal True.
+  let x := constr:(let z := Set in
+                   $(let z:=eval red in z in idtac z; exact z)$) in
+  pose x.
+(* Set *)
+
+I'm won't-fixing this one.
+
+

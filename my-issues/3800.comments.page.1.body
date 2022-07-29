@@ -1,0 +1,11 @@
+Comment author: @JasonGross
+
+If .cmxs files do not have the execute bit set (at least on Windows), attempting to use them results in "Error: error loading shared library: Permission denied".  The natdynlink target should use install -m 0755, not 0644.
+
+
+Comment author: @pirbo
+
+Thanks for the report.
+Sorry, I don't have a Windows, Is there the same issue with cma in byte mode ?
+
+

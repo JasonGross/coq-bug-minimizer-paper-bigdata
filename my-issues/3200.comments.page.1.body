@@ -1,0 +1,76 @@
+Comment author: @JasonGross
+
+I get many instances of config/Makefile:19: warning: undefined variable `C'
+
+When configuring, I did
+
+jgross@ cagnode17:~/coq-trunk$ ./configure -prefix "$(readlink -f ~/.local64)" -nodoc -coqide no
+You have GNU Make 3.81. Good!
+You have OCaml 4.01.0. Good!
+You have Camlp5 6.11. Good!
+You have native-code compilation. Good!
+CoqIde manually disabled:
+=> no CoqIde will be built.
+
+  Architecture                      : Linux
+  Coq VM bytecode link flags        : -dllib -lcoqrun -dllpath '/afs/csail.mit.edu/u/j/jgross/.local64/lib/coq'
+  Coq tools bytecode link flags     :
+  OS dependent libraries            : -cclib -lunix
+  Objective-Caml/Camlp4 version     : 4.01.0
+  Objective-Caml/Camlp4 binaries in : /afs/csail.mit.edu/u/j/jgross/.local64/bin
+  Objective-Caml library in         : /afs/csail.mit.edu/u/j/jgross/.local64/lib/ocaml
+  Camlp4 library in                 : +camlp5
+  Native dynamic link support       : true
+  CoqIde                            : no
+  Documentation                     : None
+  Web browser                       : firefox -remote "OpenURL(%s,new-tab)" || firefox %s &
+  Coq web site                      : http://coq.inria.fr/
+
+  Paths for true installation:
+  - the Coq binaries will be copied in /afs/csail.mit.edu/u/j/jgross/.local64/bin
+  - the Coq library will be copied in /afs/csail.mit.edu/u/j/jgross/.local64/lib/coq
+  - the Coqide configuration files will be copied in /afs/csail.mit.edu/u/j/jgross/.local64/etc/xdg/coq
+  - the Coqide data files will be copied in /afs/csail.mit.edu/u/j/jgross/.local64/share/coq
+  - the Coq man pages will be copied in /afs/csail.mit.edu/u/j/jgross/.local64/share/man
+  - the Coq documentation will be copied in /afs/csail.mit.edu/u/j/jgross/.local64/share/doc/coq
+  - the Coq Emacs mode will be copied in /afs/csail.mit.edu/u/j/jgross/.local64/share/emacs/site-lisp
+  - the Coqdoc LaTeX files will be copied in /afs/csail.mit.edu/u/j/jgross/.local64/share/emacs/site-lisp
+
+If anything is wrong above, please restart './configure'.
+
+*Warning* To compile the system for a new architecture
+          don't forget to do a 'make clean' before './configure'.
+
+*Warning* To compile the system for a new architecture
+          don't forget to do a 'make clean' before './configure'.
+jgross@ cagnode17:~/coq-trunk$ uname -a
+Linux cagnode17 2.6.32-5-xen-amd64 [BZ#1](https://github.com/coq/coq/issues?q=is%3Aissue%20%22Original%20bug%20ID%3A%20BZ%231%22) SMP Sun Sep 23 13:49:30 UTC 2012 x86_64 GNU/Linux
+
+
+Comment author: @JasonGross
+
+git log tells me
+
+commit a681e57e3c76dff2fe710ce533179ea659d8de0b
+Author: Enrico Tassi <Enrico.Tassi@ inria.fr>
+Date:   Tue Dec 24 18:20:22 2013 +0100
+
+    STM: capture type checking error (Closes: 3195)
+
+    Also, the future chain that reaches the kernel is greedy.
+    If the user executes step by step, then the error is raised immediately.
+
+
+Comment author: @pirbo
+
+I don't see at all how it could occurs. Can you still see these warnings or can I close the bug ?
+
+
+Comment author: @pirbo
+
+De:	Jason Gross <notifications@ github.com>
+Sujet:	Re: [coqdev] [coq] Makefiles use $(foo), not $foo, for variables (#7)
+
+I forgot to mention in the commit message that this fixes bug [BZ#3200](https://github.com/coq/coq/issues?q=is%3Aissue%20%22Original%20bug%20ID%3A%20BZ%233200%22). I can't get to the bug tracker now, so I can't respond to Pierre Boutillier and close that bug.
+
+

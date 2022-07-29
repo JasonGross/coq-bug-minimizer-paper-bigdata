@@ -1,0 +1,1 @@
+Why not use WSL (Windows Subsystem for Linux), which doesn't have this limitation?  I find the old version very functional and the new version (in Windows 2004, not widely available yet) has a full virtual machine for WSL.

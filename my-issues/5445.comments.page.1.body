@@ -1,0 +1,23 @@
+Comment author: @JasonGross
+
+The [nsatz] procedure is purely constructive, and so should not add axioms.  
+Yet it does, because Classical_Prop is required by Rtopology is required by MVT 
+ is required by PSeries_reg is required by Rtrigo is required by Reals is  
+required by Nsatz, and Classical_Prop contains axioms.
+
+
+Comment author: @ppedrot
+
+Well, it already requires Reals, which add the axioms of existence of reals. The latter are very classical, e.g. they imply LPO and EM in Type over negated statements...
+
+
+Comment author: @JasonGross
+
+Sure.  I think that it should be possible to use nsatz over fields without loading up all of the machinery about reals.  At the bare minimum, the plugin should be declared in a file that doesn't load any axioms.  Preferably, the tactics should be, too.  Maybe add an Nsatz_tactic.v file that defines all the the tactics, but doesn't load anything about reals, and is exported by Nsatz.v
+
+
+Comment author: @ppedrot
+
+That's probably the way to go indeed.
+
+

@@ -1,0 +1,8 @@
+Comment author: @JasonGross
+
+This is because the Mac OS `time` does not accept the `-f` argument.  The 
+"solution" is to `brew install gnu-time` and use `gtime`, but how can this be 
+made portable?
+
+
+Fixed 31098bfe8fa98a072330b851afb3a4f0916527ab

@@ -1,0 +1,89 @@
+Comment author: @JasonGross
+
+See 
+https://github.com/JasonGross/slow-coq-examples/tree/master/slow_fiat_crypto_vm_native_no_op, 
+ or the attached zip file.  There are two [native_compute]s each of which takes 
+about 200-250 seconds.  See README.md for details.  The corresponding 
+[vm_compute]s take about 15-20 seconds, which matches with the time 
+[native_compute] spends in user-space.  Note that native_compute spends almost 
+no time in system-space; where is the extra 180--235 seconds spent?  Also, why 
+is [native_compute] so slow here?
+
+
+Comment author: @JasonGross
+
+Created attachment 822
+fiat-crypto repo displaying issue
+
+> Attached file: [slow_fiat_crypto_vm_native_no_op.zip](https://coq.inria.fr/bugfiles/attachment.cgi?id=822) (application/zip, 417445 bytes)
+> Description:   fiat-crypto repo displaying issue
+
+
+Comment author: @psteckler
+
+Here's a profile for the [native_compute] in AddCoordinatesSlowExample.v:
+
+-   19.75%  ocamlopt.opt  ocamlopt.opt                     [.] camlLambda__iter_2033
+   - camlLambda__iter_2033
+      - 95.11% camlLambda__free_2181
+         - 69.18% camlList__iter_1252
+            + camlLambda__free_2181
+         + 30.11% camlLambda__iter_2033
+         + 0.70% camlLambda__free_2181
+      + 4.29% camlList__iter_1252
+      + 0.59% camlLambda__iter_2033
+-   15.86%  coqtop        libc-2.23.so                     [.] __mcount_internal
+   - __mcount_internal
+      - 95.16% _mcount
+         + 36.78% camlCList__it_list_f_1844
+         + 8.66% caml_make_vect
+         + 7.24% mark_slice
+         + 4.81% camlHashset__loop_1413
+         + 4.44% camlHashcons__hcons_1279
+         + 3.07% camlHashcons__hashcons_1315
+         + 2.21% camlConstr__map_with_binders_5057
+         + 1.84% camlMap__find_1288
+         + 1.28% camlNames__hashcons_3028
+         + 1.06% camlCArray__smartmap_2002
+         + 1.00% caml_alloc_shr
+
+
+Comment author: @psteckler
+
+To record my email comment here:
+
+I looked at the OCaml file that's generated for the [native_compute],
+it's 273K lines of code, about 25M.
+
+Compiling that surely takes awhile.
+
+
+Comment author: @psteckler
+
+Compiling the generated file on the command line takes about 4m30sec on my laptop.
+
+
+Comment author: @maximedenes
+
+Jason, didn't you measure the compilation time?! I guess you did, because compiling is not exactly doing nothing. Can you confirm it takes 200-250 after compilation?
+
+
+Comment author: @maximedenes
+
+As a reminder, using [native_compute] doesn't make sense when the actual computation time is negligible w.r.t. the compilation time.
+
+
+Comment author: @JasonGross
+
+> Can you confirm it takes 200-250 after compilation?
+
+What do you mean by this?  I just ran [Time] on [native_compute].  Feel free to close this as resolved wontfix, though it would be nice if there were a more connect representation that compiled more quickly.
+
+In any case, if most of the time is spent in compilation, I'm still confused why that is counted as real time but not as user time nor system time.
+
+
+Comment author: @maximedenes
+
+Because you measured only the coqtop/coqc process whereas compilation is done by OCaml.
+
+

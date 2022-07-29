@@ -1,0 +1,16 @@
+Comment author: @JasonGross
+```coq
+Definition id1 {T} (x : T) := x.
+Definition id2 {T} (x : T) := x.
+Definition oid1 {T} (x : T) : T. exact x. Qed.
+Definition oid2 {T} (x : T) : T. exact x. Qed.
+Check eq_refl : id1 _ = id2 _. (* id1 ?y = id2 (id1 ?y) *)
+Check eq_refl : id1 _ = oid2 _. (* id1 (oid2 ?y0) = oid2 ?y0 *)
+(** Can we make [id2] behave like [oid2]? *)
+Opaque id2.
+Check eq_refl : id1 _ = id2 _. (* id1 ?y = id2 (id1 ?y) *)
+Strategy expand [id1].
+Check eq_refl : id1 _ = id2 _. (* id1 ?y = id2 (id1 ?y) *)
+(** Apparently not *)
+```
+

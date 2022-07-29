@@ -1,0 +1,116 @@
+Comment author: @JasonGross
+
+I propose that we have
+  Set Ltac Profile Cutoff 2%. (* default value, as in 8.4 *)
+and, to get printing of all calls, including those that show up as negative or 
+inf or over 100,
+  Unset Ltac Profile Cutoff.
+(or maybe [Set Ltac Profile Cutoff None.])
+
+Here's a contrived example where I would want [myidtac] to not show up:
+
+Require Coq.ZArith.BinInt.
+Ltac myidtac := idtac; idtac.
+Ltac sleep := myidtac; let sleep := (eval vm_compute in 
+Coq.ZArith.BinInt.Z.div_eucl) in idtac.
+   
+Set Ltac Profiling.
+Goal True.
+  do 10 sleep.
+  Show Ltac Profile.
+(* total time:      0.356s                                                      
+                                                                                
+                                                  
+                                                                                
+                                                                                
+                                                  
+ tactic                                   local  total   calls       max        
+                                                                                
+                                                  
+────────────────────────────────────────┴──────┴──────┴───────┴─────────┘       
+                                                                                
+                                                  
+─sleep --------------------------------- 100.0% 100.0%      10    0.060s        
+                                                                                
+                                                  
+─myidtac -------------------------------   0.0%   0.0%      10    0.000s        
+                                                                                
+                                                  
+                                                                                
+                                                                                
+                                                  
+ tactic                                   local  total   calls       max        
+                                                                                
+                                                  
+────────────────────────────────────────┴──────┴──────┴───────┴─────────┘       
+                                                                                
+                                                  
+─sleep --------------------------------- 100.0% 100.0%      10    0.060s        
+                                                                                
+                                                  
+└myidtac -------------------------------   0.0%   0.0%      10    0.000s        
+                                                                                
+                                                  
+                                                                                
+                                                                                
+                                                  
+ *)
+
+
+Comment author: @ejgallego
+
+I am not sure I fully understand the details here, but shouldn't that functionality live in the IDE/Client?
+
+
+Comment author: @JasonGross
+
+Sure, in the same way that syntax highlighting should live in the IDE/client.  When you [Print] something, coqc will do syntax highlighting.  When you run coqc with -profile-ltac, you should not see a table with every single low-level tactic run in the file, you should only see the biggest offenders (at least, you should have that option).  (Also, coqtop / coqtop -emacs is a client, no?)
+
+
+Comment author: @ejgallego
+
+Hi Jason, 
+
+indeed good point! coqtop is not yet a client, IMHO it would be great if that could happen for 8.7.
+
+And that is the crux of the matter, Set Ltac Profile ... doesn't live at the coqtop level but in a more global level, similar to Vernac. My worry is that such coqtop specific options affect other backends due to the printing code querying the option...
+
+For instance, I have been working on a new batch compiler (sercomp) which works truly as a client of the API and it would be great if it didn't have to care about such options (or at least would be local/contained on the API, that is to say, printing a profile could be `pr_prof_data : pr_prof_data_opts -> prof_data -> pp_doc`
+
+
+Comment author: @gares
+
+Emilio I fully agree with you, but Coq /today/ is far from that, so many things end up in the document.  So one more does not really change the game.
+
+Related to that, if you take v8.6, now master stores in Profile_ltac.data (not exported) a map state_id -> profiling_info_for_that_tactic_call.  When one prints, coq filters this data keeping only relevant entries and sums them up.  
+
+I think it is a nice test case for serapi/UI.  You need to export a bit more functions,  but then you can probably provide, in the UI, a better presentation of the data (per line, per proof, ...).  See for example the "flame graph" we
+have in ssr: http://ssr.msr-inria.inria.fr/~jenkins/annotated-old/theories/PFsection14.time.html
+One could now subdivide the flame into the contribution of each tactic (not very useful for mathcomp, but still...)
+
+
+Comment author: @gares
+
+I think I should better explain:
+- the profiling data is sent as feedback
+- the profiling data is stored in master (observes and stores)
+- the profiling data reaches the UI
+
+So you have freedom:
+- process the feedback in the UI and display it immediately
+- accumulate the feedback in the UI, and display it only on demand
+- ignore it, and rather query when you like master (you need to export some API)
+
+
+Comment author: @JasonGross
+
+This is currently blocking me from using -profile-ltac as part of my standard 
+build process, since the amount of output that it gives me is so much as to 
+make it useless.
+
+
+Comment author: @gares
+
+I'll try to code it next week, this one I'm busy.
+
+

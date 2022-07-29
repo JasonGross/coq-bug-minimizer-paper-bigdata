@@ -1,0 +1,75 @@
+Comment author: @JasonGross
+
+Here is a recreated log from PG:
+```
+
+$ echo 'Add Search Blacklist "Private_" "_subproof".  Set Printing Depth 50 . 
+Remove Search Blacklist "Private_" "_subproof".
+Add Search Blacklist "Private_" "_subproof".
+Set Printing Width 133. Time Require Import Coq.micromega.Lia Coq.omega.Omega. 
+Backtrack 6 0 0 .
+Set Printing Width 133. Time Require Import Coq.micromega.Lia Coq.omega.Omega. 
+Backtrack 9 0 0 .
+Set Printing Width 133. Time Require Import Coq.micromega.Lia Coq.omega.Omega. 
+Backtrack 12 0 0 .
+Set Printing Width 133. Time Require Import Coq.micromega.Lia Coq.omega.Omega. 
+Backtrack 15 0 0 .
+Set Printing Width 133. Time Require Import Coq.micromega.Lia Coq.omega.Omega.' 
+| ~/.local64/coq/coq-8.6.1/bin/coqtop -debug -q -emacs
+
+Welcome to Coq 8.6.1 (July 2017)
+<infomsg>Skipping rcfile loading.</infomsg>
+
+<prompt>Coq < 1 || 0 < </prompt>
+<prompt>Coq < 2 || 0 < </prompt>
+<prompt>Coq < 2 || 0 < </prompt>
+<prompt>Coq < 4 || 0 < </prompt>
+<prompt>Coq < 5 || 0 < </prompt>
+<prompt>Coq < 6 || 0 < </prompt><infomsg>[Loading ML file z_syntax_plugin.cmxs 
+... done]</infomsg>
+<infomsg>[Loading ML file quote_plugin.cmxs ... done]</infomsg>
+<infomsg>[Loading ML file newring_plugin.cmxs ... done]</infomsg>
+<infomsg>[Loading ML file omega_plugin.cmxs ... done]</infomsg>
+<infomsg>[Loading ML file micromega_plugin.cmxs ... done]</infomsg>
+<infomsg>Finished transaction in 0.521 secs (0.472u,0.048s) 
+(successful)</infomsg>
+
+<prompt>Coq < 7 || 0 < </prompt>
+
+<prompt>Coq < 6 || 0 < </prompt>
+<prompt>Coq < 9 || 0 < </prompt><infomsg>Finished transaction in 0.94 secs 
+(0.9u,0.04s) (successful)</infomsg>
+
+<prompt>Coq < 10 || 0 < </prompt>
+
+<prompt>Coq < 9 || 0 < </prompt>
+<prompt>Coq < 12 || 0 < </prompt><infomsg>Finished transaction in 5.627 secs 
+(5.596u,0.035s) (successful)</infomsg>
+
+<prompt>Coq < 13 || 0 < </prompt>
+
+<prompt>Coq < 12 || 0 < </prompt>
+<prompt>Coq < 15 || 0 < </prompt><infomsg>Finished transaction in 12.644 secs 
+(12.62u,0.027s) (successful)</infomsg>
+
+<prompt>Coq < 16 || 0 < </prompt>
+
+<prompt>Coq < 15 || 0 < </prompt>
+<prompt>Coq < 18 || 0 < </prompt><infomsg>Finished transaction in 25.585 secs 
+(25.564u,0.027s) (successful)</infomsg>
+
+<prompt>Coq < 19 || 0 < </prompt>
+```
+
+
+Comment author: @silene
+
+I cannot reproduce it. I even tried adding more iterations. While performances slowly degrade, the situation is nowhere as exponential as yours (more like quadratic). After a few more iterations, it takes about one second per iteration. That said, as far as I can tell, most of the time is wasted in the OCaml runtime managing its internal data structures for dynamic linking. So it might well depend on your OCaml compiler. Mine is 4.04.0.
+
+
+Comment author: @ppedrot
+
+Strange. It seems that adding a Printf at the first line of Nativelib.call_linker makes the problem disappear...
+
+
+Is this a native compile issue? I don't have a coq with native enabled to test.

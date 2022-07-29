@@ -1,0 +1,24 @@
+Comment author: @JasonGross
+
+Adding a hint to a currently unused database can break existing scripts in 
+other files.  This is terrible.
+
+Certainly, this will break backwards compatibility, so it should be redefined 
+to [intuition auto with *] in the Compat file.  But this should not be the 
+default, as it leads to very fragile scripts.
+
+
+Comment author: @JasonGross
+
+Also dintuition and firstorder
+
+
+Comment author: @JasonGross
+
+Actually the upgrade / future-proofing process should be mostly automatable.  
+If we can get a version of [auto] that prints out which databases it uses, and 
+a tactic that indicates the line number that it was called from, building a 
+development should provide enough information to replace [intuition] with 
+[intuition auto with $dbs] automatically.  It'd be nice to provide this script.
+
+

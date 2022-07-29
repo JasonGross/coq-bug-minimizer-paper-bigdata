@@ -1,0 +1,61 @@
+Comment author: @JasonGross
+
+(* File reduced by coq-bug-finder from original input, then from 273 lines to 246 lines, then from 265 lines to 258 lines, then from 242 lines to 198 lines, then from 206 lines to 100 lines\
+, then from 74 lines to 42 lines *)
+(* coqc version 8.5beta2 (October 2015) compiled on Oct 2 2015 13:24:5 with OCaml 4.01.0
+   coqtop version cagnode13:/afs/csail.mit.edu/u/j/jgross/coq-8.5,v8.5 (beedccef9ddc8633c705d7c5ee2f1bbbb3ec8a47) *)
+Require Coq.FSets.FMapAVL.
+Axiom label : Set.
+Axiom W : Set.
+Module Export LabelKey.
+  Definition t := label.
+  Definition eq : t -> t -> Prop := @ eq t.
+  Axiom lt : forall (l1 l2 : label), Prop.
+  Axiom eq_refl : forall x : t, eq x x.
+  Axiom eq_sym : forall x y : t, eq x y -> eq y x.
+  Axiom eq_trans : forall x y z : t, eq x y -> eq y z -> eq x z.
+  Axiom lt_trans : forall x y z : t, lt x y -> lt y z -> lt x z.
+  Axiom lt_not_eq : forall x y : t, lt x y -> ~ eq x y.
+  Axiom compare : forall (x y : t), Structures.OrderedType.Compare lt eq x y.
+  Axiom eq_dec : forall x y, { eq x y } + { ~ eq x y }.
+End LabelKey.
+Module LabelMap := FMapAVL.Make(LabelKey).
+Section machine.
+  Variable (pc : Type).
+  Variable (state : Type).
+  Inductive propX : list Type -> Type :=
+  | Cptr : forall G, pc -> (state -> propX G) -> propX G
+  | Var0 : forall G A, A -> propX (A :: G).
+  Definition PropX := propX nil.
+End machine.
+Definition assert := nat -> PropX W nat.
+Axiom m : LabelMap.t assert.
+Definition specs' : option (nat -> PropX W nat)
+  := @ LabelMap.fold
+       assert
+       _ (* interestingly, filling this in with [option (nat -> PropX W nat)] makes the type error go away *)
+       (fun _ _ x => x)
+       m
+       None.
+(* Toplevel input, characters 15-151:
+Error: Illegal application:
+The term "LabelMap.fold" of type
+ "forall elt A : Type,
+  (LabelMap.key -> elt -> A -> A) -> LabelMap.t elt -> A -> A"
+cannot be applied to the terms
+ "assert" : "Type"
+ "option (nat -> PropX W nat)" : "Type"
+ "fun (_ : LabelMap.key) (_ : assert) (x : option (nat -> PropX W nat)) => x"
+   : "LabelMap.key ->
+      assert -> option (nat -> PropX W nat) -> option (nat -> PropX W nat)"
+ "m" : "LabelMap.t assert"
+ "None" : "option (nat -> PropX W nat)"
+The 2nd term has type "Type@ {max(Set, Coq.Init.Datatypes.13)}"
+which should be coercible to "Type@ {Coq.FSets.FMapAVL.631}". *)
+
+
+Comment author: @silene
+
+I cannot reproduce it. I guess it has been fixed by one of Matthieu's recent patches.
+
+

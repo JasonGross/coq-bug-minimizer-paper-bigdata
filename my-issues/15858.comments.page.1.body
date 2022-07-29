@@ -1,0 +1,7 @@
+Is it the same timing if you do Admitted immediately after Proof?
+I will check, but I believe Admitted right after Proof is instantaneous
+If I do `Admitted` immedaitely after `Proof`, it takes 0.005s.
+What if you do `Unset Keep Admitted Variables.` before the admitted?
+> What if you do `Unset Keep Admitted Variables.` before the admitted?
+
+Do I have to do it before the beginning of the proof?  If I stick it right before `Admitted`, the `Admitted` is still slow (228.732 s, this time, the extra 28s probably due to variable workload of my machine?)

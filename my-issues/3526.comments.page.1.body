@@ -1,0 +1,5 @@
+Comment author: @JasonGross
+
+Coq lets me name a file "in.v", and do [Require Import foo.in.", but won't let me make or talk about a module called "in".  Either Coq should permit [Module in.] to succeed, or should forbid calling a file "in.v".
+
+

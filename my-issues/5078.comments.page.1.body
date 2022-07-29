@@ -1,0 +1,60 @@
+Comment author: @JasonGross
+
+What causes this behavior?
+
+Tactic Notation "unfold_hyp" hyp(H) := cbv delta [H].
+Goal True -> Type.
+  intro H''.
+  unfold_hyp H''. (* success?! *)
+  cbv delta [H'']. (* Error: Cannot coerce H'' to an evaluable reference. *)
+
+
+Comment author: @silene
+
+I am pretty sure this is a duplicate of another bug, but I cannot find it right now. Basically, "delta" requires its arguments to have a body (which kind of makes sense), but the check is performed only at parsing-time, and tactic notations make it possible to subvert this check.
+
+
+Comment author: @JasonGross
+
+I agree that cbv delta should fail if you hand it something with no body.  I'm still confused about tactic notations, though.
+
+If your explanation is what's happening, how is it that [Ltac] doesn't have this problem?
+
+Ltac mydelta H := cbv delta [H].
+Goal True -> let x := True in True.
+  intros H x.
+  mydelta x. (* success *)
+  mydelta H. (* Error: Ltac variable H is bound to H which cannot be coerced to an evaluable reference. *)
+
+
+Comment author: @ppedrot
+
+Short answer: Ltac semantics. The only fix I know of is dumping Ltac once and for all.
+
+
+Comment author: @herbelin
+
+By curiosity, I investigated this issue. There was actually a bug in testing evaluable local hypotheses which was revealed by, afaicu, a change of the meaning of "hyp" in 8.6 (it indeed worked as expected in 8.5). I fixed it.
+
+The reason the test worked for a direct call to cbv is that for cbv, H'' was seen as a reference before being coerced to an evaluable reference. For Ltac, it was seen as a term before being coerced to an evaluable reference. For "hyp", in the notation, it was seen as an ident before being coerced to an evaluable reference (but perhaps only as a term in 8.5). And the bug was in the ident to evaluable coercion.
+
+For Ltac 2.0, I don't know what is the strategy:
+- Would a check on H being evaluable done by cbv?
+- Would there be an explicit type "evaluable" and a check done at the time of being typechecked in this type, with explicit coercions to go from this type to other possible types assignable to an evaluable reference?
+
+
+Comment author: @ppedrot
+
+I would probably favour the second option. I find intellectually satisfying that primitive tactics should have a short specification and should make coffee, while the richest heuristic-using ones are derived from user-side.
+
+
+Comment author: @ppedrot
+
+(In reply to Pierre-Marie Pédrot from comment [BZ#5](https://github.com/coq/coq/issues?q=is%3Aissue%20%22Original%20bug%20ID%3A%20BZ%235%22))
+> I would probably favour the second option. I find intellectually satisfying
+> that primitive tactics should have a short specification and should make
+> coffee, while the richest heuristic-using ones are derived from user-side.
+
+This reads "should *not* make coffee" obviously.
+
+

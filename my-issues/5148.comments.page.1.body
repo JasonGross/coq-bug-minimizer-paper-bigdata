@@ -1,0 +1,59 @@
+Comment author: @JasonGross
+
+To build in 8.4pl1-6, 8.5, 8.5pl1, 8.5pl2, or v8.6, run: make
+
+In src/Specific/X86/Exponent25519.v, there is an execution of an Ltac 
+reification procedure that can run for over 90 hours without finishing.  The 
+typeclass log will display the progress each time the tactic recurses under 
+binders.
+
+
+Comment author: @JasonGross
+
+Created attachment 775
+development with slow file
+
+> Attached file: [slow_fiat_crypto_reify.zip](https://coq.inria.fr/bugfiles/attachment.cgi?id=775) (application/zip, 85768 bytes)
+> Description:   development with slow file
+
+
+Comment author: @ppedrot
+
+The usual suspect: evar normalization, together with a typeclass-specific hotspot, namely the Class_tactics.evar_dependencies function which keeps calling Evarutil.undefined_evars_of_evar_info on huge terms.
+
+
+Comment author: @ppedrot
+
+I have a patch to mitigate the second issue, even though this still runs too slowly for me to check whether this makes the resolution tractable. If you want to try it, I can publish it.
+
+An important remark though, after reading your example more closely, I'm smelling the odour of hidden costs due to deeply nested pattern-matching. I know that you're probably trying to keep working with 8.4, but I'd bet that turning your pairs into primitive records would give you exponential speedup, as it is a common fact. Inductive-based records are defective by design, I'd dare to say.
+
+
+Comment author: @JasonGross
+
+There's now a version at 
+https://github.com/JasonGross/slow-coq-examples/tree/master/slow_fiat_crypto_reify_primproj 
+that uses a primitive version of [prod].  I'm not sure if the explicit 
+destructuring lets negate the effect of primitive projections; do you know if 
+they do?
+
+Is there any reason to not include the patch you have in 8.6?
+
+
+Comment author: @ppedrot
+
+> I'm not sure if the explicit destructuring lets negate the
+> effect of primitive projections; do you know if they do?
+That's unclear to me, and depends on the elaboration of such binding lets. I know that there is a few compatibility flags that you can turn off to change its behaviour, but that's way to messy for my little mind.
+
+> Is there any reason to not include the patch you have in 8.6?
+I don't like it, because it adds the cache in the extra field of evars. This means that potentially a lot of memory can be wasted in there, and this was indeed the reason for the performance bug reported by B. Pierce a few months ago. I've been cautious since. I'd love seeing a way to drop this cache when a evar is defined, which is easy to implement generically, but may not be considered as a bugfix for 8.6.
+
+
+Comment author: @ppedrot
+
+Is this bug still valid since the merge of EConstr?
+
+
+@JasonGross ping.
+Without further notice, I'll close this bug. Reopen it if still present.

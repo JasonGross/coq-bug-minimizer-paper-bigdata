@@ -1,0 +1,4 @@
+Note that this adds about an hour of overhead to any minimization job involving metacoq
+Maybe has @TheoWinterhalter informations about that.
+I think CI was setup by @mattam82 and @yforster.
+This is a metacoq issue, we are not responsible for their build system.

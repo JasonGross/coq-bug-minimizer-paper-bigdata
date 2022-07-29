@@ -1,0 +1,20 @@
+Comment author: @JasonGross
+
+This code works in 8.4, fails in 8.6, because [intuition] specializes a section 
+variable and then [auto] refuses to apply a lemma that depends on it.
+
+Axiom admit : forall {T}, T.
+Section foo.
+  Context (A B C : Prop) (H : A -> B).
+  Lemma H' : A -> C.
+  Proof. intro a; generalize (H a); apply admit. Qed.
+
+  Hint Immediate H'.
+
+  Goal A -> C /\ C.
+    intros.
+    intuition.
+  Qed.
+End foo.
+
+

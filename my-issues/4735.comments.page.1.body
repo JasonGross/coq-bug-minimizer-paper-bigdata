@@ -1,0 +1,60 @@
+Comment author: @JasonGross
+
+Here is some code that worked in 8.4 but fails in 8.5.  What's going on?
+```coq
+Require Import Coq.Classes.Morphisms Coq.Relations.Relation_Definitions.
+
+Inductive TypeCode : Set :=
+| cnat
+| carrow (A B : TypeCode).
+
+Fixpoint interp_TypeCode (t : TypeCode) : Set
+  := match t with
+     | cnat => nat
+     | carrow A B => interp_TypeCode A -> interp_TypeCode B
+     end%type.
+
+Fixpoint Proper_relation_for (T : TypeCode) : relation (interp_TypeCode T)
+  := match T return relation (interp_TypeCode T) with
+     | carrow A B => (Proper_relation_for A ==> Proper_relation_for B)%signature
+     | _ => eq
+     end.
+
+Goal Proper_relation_for (carrow cnat cnat) (fun x => x) (fun x => x).
+  intros ???.
+  progress subst.
+```
+
+Comment author: @herbelin
+
+There are more places where, when unfolding a constant hiding a fixpoint, the recursive call is reusing the constant name rather than using the "fix" expression. Apparently, intros is using this change, and, therefore, "Proper_relation_for cnat" is not anymore unfolded.
+
+The change was requested by several users and is natural. It can be compensated in your case by using e.g. simpl before intros.
+
+Of course, this raises again the question of how much can Coq be improved (and reusing a name rather than the underlying "fix" construction is commonly considered to be an improvement) while not strongly breaking scripts.
+
+The rest of this comment is thinking aloud...
+
+There are different approaches in general (compatibility flags, translators, etc.) but in the case of reasoning up to convertibility, and here, this is somehow what it is about (as e.g. also in recent [BZ#4717](https://github.com/coq/coq/issues?q=is%3Aissue%20%22Original%20bug%20ID%3A%20BZ%234717%22)) it looks to me that noone has a good answer. Typically, who should be responsible of unfolding "Proper_relation_for cnat" in your example? Should it be "intros"? Should it be the user? Should "subst" recognize that "Proper_relation_for cna" hides an equality?
+
+One side question: in your original example, is "intros" part of an ltac definition or at toplevel. For instance, a general feeling about ltac definitions seems to be that they use only clearly specified not too smart tactics.
+
+
+Comment author: @JasonGross
+
+In my actual use-case, the workaround was to selectively [unfold Proper_relation_for at 1] before [intro]; [simpl] does way too much.
+
+I ran into another case of what is probably the same underlying issue; a [Definition] that in 8.4 inferred a type for a binder that had a bare fixpoint applied to a constructor, while in 8.5 the inferred type was the name of the fixpoint applied to the constructor.  This broke one of my ltac pattern matches that I wrote to handle the unfolded definition.  The workaround was to change the pattern match and explicitly give the binder the 8.5 annotation.
+
+I agree that this is an improvement, but it's yet another incompatibility.  Even just having a script that automatically flags precisely when there are any differences in execution between 8.4 and 8.5 (be they differently inferred types, different paths of tactic execution, different interpretations, etc.) would already be a huge help in tracking down these issues.
+
+Unless this change in the conversion algorithm deserves a compatibility option/flag (which it might), perhaps the resolution to this is "invalid", and the only change required is to note this in the CHANGELOG and in COMPATIBILITY.
+
+
+Regarding your thinking: 
+In this case, I'd say the [intros] is responsible for the unfolding, whatever that means.  It should definitely not be [subst]; that would make [subst] unreasonably slow in cases where you have hypotheses which are slow to put in head normal form.
+
+In my original example, the [intro] is part of a big [repeat match goal with ... | _ => intro | ... end].
+
+
+Old incompatibility that has sedimented since, let's close.

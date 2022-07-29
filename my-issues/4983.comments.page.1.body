@@ -1,0 +1,656 @@
+Comment author: @JasonGross
+
+The extremely simple example given in the reference manual for psatz takes 40 
+seconds on my machine, and spawns at least as many csdp processes as I have 
+cores.  (Luckily, subsequent runs are fast.)
+
+Require Import Coq.ZArith.ZArith Coq.micromega.Psatz.
+Local Open Scope Z_scope.
+Goal forall x, -x ^ 2 >= 0 -> x - 1 >= 0 -> False.
+Proof.
+  intro.
+  Time psatz Z 2. (* Finished transaction in 38.539 secs (0.009u,0.008s) 
+(successful) *)
+
+The machine has 6 physical cores (12 with hyperthreading) (each Intel(R) 
+Xeon(R) CPU E5-1650 v3 @  3.50GHz) with 64 GB of RAM.
+
+
+Comment author: @fajb
+
+I am puzzled by this behaviour.
+Especially the spawing of csdp processes. The coqtop process is supposed to spawn one csdp process at a time and wait for its completion.
+
+After removing the proof cache (csdp.cache), can you reproduce this behaviour with 8.5 ? BTW, what is your version of Ocaml?
+
+
+Comment author: @fajb
+
+I cannot reproduce your bug with coq.8.6.dev and ocaml 4.03.0.
+Is anyone having the same issue ?
+Could it be a OS issue or a csdp issue ?
+
+
+Comment author: @JasonGross
+
+Yes, it's consistently reproducible: each time I remove csdp.cache, it takes about 40s the first time.  I'll see if it happens with 8.5 as well as 8.6, and I'll see if I can spin up a VM or a travis instance that reproduces the problem.
+
+I built Coq v8.6 (dabe6d0e1d1782d3e9647e04aa1bf161765ad882) with OCaml 4.02.3 from opam, though I think when cdsp was running, 4.01.0 was the OCaml in path.
+
+Here are some system stats:
+$  coqc --config
+LOCAL=0
+COQLIB=/usr/local/google/home/jagro/.local64/coq/coq-v8.6/lib/coq/
+DOCDIR=/usr/local/google/home/jagro/.local64/coq/coq-v8.6/share/doc/coq/
+OCAMLFIND=/usr/local/google/home/jagro/.opam/4.02.3/bin/ocamlfind
+CAMLP4=camlp5
+CAMLP4O=/usr/local/google/home/jagro/.opam/4.02.3/bin/camlp5o
+CAMLP4BIN=/usr/local/google/home/jagro/.opam/4.02.3/bin/
+CAMLP4LIB=/usr/local/google/home/jagro/.opam/4.02.3/lib/camlp5
+CAMLP4OPTIONS=-loc loc
+HASNATDYNLINK=true
+$ csdp
+CSDP 6.1.1
+ 
+Usage: 
+
+csdp <input problem> [<final solution>] [<initial solution>]
+$ apt-get -s install coinor-csdp
+NOTE: This is only a simulation!
+      apt-get needs root privileges for real execution.
+      Keep also in mind that locking is deactivated,
+      so don't depend on the relevance to the real current situation!
+Reading package lists... Done
+Building dependency tree       
+Reading state information... Done
+coinor-csdp is already the newest version (6.1.1-1).
+0 upgraded, 0 newly installed, 0 to remove and 0 not upgraded.
+$ lsb_release -a
+LSB Version:    core-2.0-amd64:core-2.0-noarch:core-3.0-amd64:core-3.0-noarch:core-3.1-amd64:core-3.1-noarch:core-3.2-amd64:core-3.2-noarch:core-4.0-amd64:core-4.0-noarch:core-4.1-amd64:core-4.1-noarch:cxx-3.0-amd64:cxx-3.0-noarch:cxx-3.1-amd64:cxx-3.1-noarch:cxx-3.2-amd64:cxx-3.2-noarch:cxx-4.0-amd64:cxx-4.0-noarch:cxx-4.1-amd64:cxx-4.1-noarch:desktop-3.1-amd64:desktop-3.1-noarch:desktop-3.2-amd64:desktop-3.2-noarch:desktop-4.0-amd64:desktop-4.0-noarch:desktop-4.1-amd64:desktop-4.1-noarch:graphics-2.0-amd64:graphics-2.0-noarch:graphics-3.0-amd64:graphics-3.0-noarch:graphics-3.1-amd64:graphics-3.1-noarch:graphics-3.2-amd64:graphics-3.2-noarch:graphics-4.0-amd64:graphics-4.0-noarch:graphics-4.1-amd64:graphics-4.1-noarch:languages-3.2-amd64:languages-3.2-noarch:languages-4.0-amd64:languages-4.0-noarch:languages-4.1-amd64:languages-4.1-noarch:multimedia-3.2-amd64:multimedia-3.2-noarch:multimedia-4.0-amd64:multimedia-4.0-noarch:multimedia-4.1-amd64:multimedia-4.1-noarch:printing-3.2-amd64:printing-3.2-noarch:printing-4.0-amd64:printing-4.0-noarch:printing-4.1-amd64:printing-4.1-noarch:qt4-3.1-amd64:qt4-3.1-noarch:security-4.0-amd64:security-4.0-noarch:security-4.1-amd64:security-4.1-noarch
+Distributor ID: Ubuntu
+Description:    Ubuntu 14.04 LTS
+Release:        14.04
+Codename:       trusty
+$ uname -a
+Linux [...] 3.13.0-85-generic [BZ#129](https://github.com/coq/coq/issues?q=is%3Aissue%20%22Original%20bug%20ID%3A%20BZ%23129%22)-Ubuntu SMP Thu Mar 17 20:50:15 UTC 2016 x86_64 x86_64 x86_64 GNU/Linux
+
+
+Comment author: @fajb
+
+I suspect the culprit is csdp itself.
+
+Recent versions of csdp can be multi-core which may explain it spawns many processes.
+
+I also remember that fine-tuning the compiler flags has a dramatic impact on csdp.
+
+PS: For the record, I am running a pre-built mono-core CSDP 6.0.1.
+I tested with 8.6 and it works fine.
+
+
+Comment author: @silene
+
+I cannot reproduce it either. I tried with Coq 8.5 and CSDP 6.1.1. Micromega sequentially launches 8 instances of csdp; every csdp process creates 3 additional threads to max out the cores. But every process terminates in a split second and the whole tactic takes about 0.2 seconds.
+
+
+Comment author: @ppedrot
+
+I can't reproduce the issue on my i7-4600U laptop, but I can indeed reproduce it on pyrolyse which uses a 32-core Xeon E5-2650. So this may have to do with the number of CPU. The version of CSDP is slightly different, I don't know if this has an effect (Debian Unstable 6.1.1-1+b1 vs. Ubuntu Precise 6.1.1-1).
+
+
+Comment author: @fajb
+
+Created attachment 754
+test case
+
+Would you mind running csdp on sos.dat-s and send me the output ?
+
+tar -xvf test-case.tar
+cd test-case
+csdp sos.dat-s
+
+Thanks,
+--
+Frederic
+
+> Attached file: [test-case.tar](https://coq.inria.fr/bugfiles/attachment.cgi?id=754) (application/x-tar, 4096 bytes)
+> Description:   test case
+
+
+Comment author: @JasonGross
+
+jagro@ jagro0:~/Downloads$ tar -xvf test-case.tar
+test-case/
+test-case/param.csdp
+test-case/sos.dat-s
+jagro@ jagro0:~/Downloads$ cd test-case
+jagro@ jagro0:~/Downloads/test-case$ csdp sos.dat-s 2>&1 | tee csdp-sos-dat-s.log
+Iter:  0 Ap: 0.00e+00 Pobj:  0.0000000e+00 Ad: 0.00e+00 Dobj:  0.0000000e+00 
+Iter:  1 Ap: 1.00e+00 Pobj: -3.0263307e+01 Ad: 9.00e-01 Dobj:  1.0164032e+00 
+Iter:  2 Ap: 1.00e+00 Pobj: -1.3920293e+01 Ad: 9.00e-01 Dobj:  9.1922350e-01 
+Iter:  3 Ap: 1.00e+00 Pobj: -1.4227229e+00 Ad: 7.29e-01 Dobj:  1.0157536e+00 
+Iter:  4 Ap: 1.00e+00 Pobj:  9.7614684e-01 Ad: 9.00e-01 Dobj:  1.0014493e+00 
+Iter:  5 Ap: 1.00e+00 Pobj:  9.9998011e-01 Ad: 9.00e-01 Dobj:  1.0001448e+00 
+Iter:  6 Ap: 1.00e+00 Pobj:  1.0000000e+00 Ad: 9.00e-01 Dobj:  1.0000145e+00 
+Iter:  7 Ap: 1.00e+00 Pobj:  1.0000000e+00 Ad: 9.00e-01 Dobj:  1.0000014e+00 
+Iter:  8 Ap: 1.00e+00 Pobj:  1.0000000e+00 Ad: 9.00e-01 Dobj:  1.0000001e+00 
+Iter:  9 Ap: 1.00e+00 Pobj:  9.9999757e-01 Ad: 9.00e-01 Dobj:  1.0000000e+00 
+Iter: 10 Ap: 1.00e+00 Pobj:  9.9999974e-01 Ad: 9.00e-01 Dobj:  1.0000000e+00 
+Iter: 11 Ap: 1.00e+00 Pobj:  9.9999997e-01 Ad: 9.00e-01 Dobj:  1.0000000e+00 
+Iter: 12 Ap: 1.00e+00 Pobj:  1.0000000e+00 Ad: 9.00e-01 Dobj:  1.0000000e+00 
+Success: SDP solved
+Primal objective value: 1.0000000e+00 
+Dual objective value: 1.0000000e+00 
+Relative primal infeasibility: 1.32e-14 
+Relative dual infeasibility: 3.64e-11 
+Real Relative Gap: -7.83e-13 
+XZ Relative Gap: 6.17e-09 
+DIMACS error measures: 1.59e-14 0.00e+00 4.39e-11 0.00e+00 -7.83e-13 6.17e-09
+Elements time: 0.135900 
+Factor time: 0.000042 
+Other time: 0.598860 
+Total time: 0.734802
+
+
+Comment author: @fajb
+
+Created attachment 755
+All the sos problems
+
+Silly me. I provided only the successful csdp instance.
+
+Bear with me and be kind enough to try all the attached csdp instances: sosxxx.dat-s.
+
+I also attached my outputs : sosxxx.out
+
+> Attached file: [test-case-all.tar](https://coq.inria.fr/bugfiles/attachment.cgi?id=755) (application/x-tar, 17920 bytes)
+> Description:   All the sos problems
+
+
+Comment author: @JasonGross
+
+jagro@ jagro0:~/Downloads$ tar -xvf test-case-all.tar 
+test-case/
+test-case/param.csdp
+test-case/sos19824d.dat-s
+test-case/sos19824d.out
+test-case/sos23df78.dat-s
+test-case/sos23df78.out
+test-case/sos52b7f4.dat-s
+test-case/sos52b7f4.out
+test-case/sos71ee5e.dat-s
+test-case/sos71ee5e.out
+test-case/sos9174a9.dat-s
+test-case/sos9174a9.out
+test-case/sosa1f79f.dat-s
+test-case/sosa1f79f.out
+test-case/sosd6995a.dat-s
+test-case/sosd6995a.out
+jagro@ jagro0:~/Downloads$ cd test-case/
+jagro@ jagro0:~/Downloads/test-case$ for i in *.dat-s; do echo $i; (csdp $i 2>&1 | tee $i.out); done
+sos19824d.dat-s
+Iter:  0 Ap: 0.00e+00 Pobj:  0.0000000e+00 Ad: 0.00e+00 Dobj:  0.0000000e+00 
+Iter:  1 Ap: 1.00e+00 Pobj: -7.5103360e+00 Ad: 9.00e-01 Dobj:  5.0210041e-01 
+Iter:  2 Ap: 1.00e+00 Pobj:  5.8656836e+01 Ad: 6.56e-01 Dobj:  4.8730919e-01 
+Iter:  3 Ap: 5.90e-01 Pobj:  6.8180182e+04 Ad: 5.73e-03 Dobj:  4.9434506e-01 
+Iter:  4 Ap: 1.00e+00 Pobj:  1.2536662e+08 Ad: 2.25e-02 Dobj:  4.8361567e-01 
+Declaring dual infeasibility.
+Success: SDP is dual infeasible
+Certificate of dual infeasibility: tr(CX)=1.00000e+00, ||A(X)||=7.97661e-09
+Elements time: 0.053956 
+Factor time: 0.000027 
+Other time: 0.321490 
+Total time: 0.375473 
+sos23df78.dat-s
+Iter:  0 Ap: 0.00e+00 Pobj:  0.0000000e+00 Ad: 0.00e+00 Dobj:  0.0000000e+00 
+Iter:  1 Ap: 1.00e+00 Pobj: -1.2809798e+01 Ad: 9.00e-01 Dobj:  1.1979448e+00 
+Iter:  2 Ap: 1.00e+00 Pobj:  4.7091541e+02 Ad: 2.82e-01 Dobj:  1.1190737e+00 
+Iter:  3 Ap: 1.00e+00 Pobj:  4.6067015e+05 Ad: 3.09e-02 Dobj:  1.1142723e+00 
+Iter:  4 Ap: 1.00e+00 Pobj:  7.3482526e+10 Ad: 2.47e-03 Dobj:  1.1140211e+00 
+Declaring dual infeasibility.
+Success: SDP is dual infeasible
+Certificate of dual infeasibility: tr(CX)=1.00000e+00, ||A(X)||=1.36087e-11
+Elements time: 0.066348 
+Factor time: 0.000026 
+Other time: 0.289674 
+Total time: 0.356048 
+sos52b7f4.dat-s
+Iter:  0 Ap: 0.00e+00 Pobj:  0.0000000e+00 Ad: 0.00e+00 Dobj:  0.0000000e+00 
+Iter:  1 Ap: 1.00e+00 Pobj: -4.6855819e+01 Ad: 8.62e-01 Dobj:  2.6992626e+00 
+Iter:  2 Ap: 1.00e+00 Pobj:  2.3511749e+01 Ad: 8.01e-01 Dobj:  1.1927785e+00 
+Iter:  3 Ap: 7.67e-01 Pobj:  9.4043232e+02 Ad: 1.94e-01 Dobj:  1.3438151e+00 
+Iter:  4 Ap: 1.00e+00 Pobj:  5.5757075e+04 Ad: 1.07e-01 Dobj:  1.3123786e+00 
+Iter:  5 Ap: 1.00e+00 Pobj:  6.7408263e+07 Ad: 2.61e-02 Dobj:  1.3081079e+00 
+Iter:  6 Ap: 1.00e+00 Pobj:  8.7336023e+12 Ad: 2.51e-03 Dobj:  1.3077231e+00 
+Declaring dual infeasibility.
+Success: SDP is dual infeasible
+Certificate of dual infeasibility: tr(CX)=1.00000e+00, ||A(X)||=1.61720e-13
+Elements time: 0.066667 
+Factor time: 0.000027 
+Other time: 0.318194 
+Total time: 0.384888 
+sos71ee5e.dat-s
+Iter:  0 Ap: 0.00e+00 Pobj:  0.0000000e+00 Ad: 0.00e+00 Dobj:  0.0000000e+00 
+Iter:  1 Ap: 1.00e+00 Pobj: -3.0263307e+01 Ad: 9.00e-01 Dobj:  1.0164032e+00 
+Iter:  2 Ap: 1.00e+00 Pobj: -1.3920293e+01 Ad: 9.00e-01 Dobj:  9.1922350e-01 
+Iter:  3 Ap: 1.00e+00 Pobj: -1.4227229e+00 Ad: 7.29e-01 Dobj:  1.0157536e+00 
+Iter:  4 Ap: 1.00e+00 Pobj:  9.7614684e-01 Ad: 9.00e-01 Dobj:  1.0014493e+00 
+Iter:  5 Ap: 1.00e+00 Pobj:  9.9998011e-01 Ad: 9.00e-01 Dobj:  1.0001448e+00 
+Iter:  6 Ap: 1.00e+00 Pobj:  1.0000000e+00 Ad: 9.00e-01 Dobj:  1.0000145e+00 
+Iter:  7 Ap: 1.00e+00 Pobj:  1.0000000e+00 Ad: 9.00e-01 Dobj:  1.0000014e+00 
+Iter:  8 Ap: 1.00e+00 Pobj:  1.0000000e+00 Ad: 9.00e-01 Dobj:  1.0000001e+00 
+Iter:  9 Ap: 1.00e+00 Pobj:  9.9999757e-01 Ad: 9.00e-01 Dobj:  1.0000000e+00 
+Iter: 10 Ap: 1.00e+00 Pobj:  9.9999974e-01 Ad: 9.00e-01 Dobj:  1.0000000e+00 
+Iter: 11 Ap: 1.00e+00 Pobj:  9.9999997e-01 Ad: 9.00e-01 Dobj:  1.0000000e+00 
+Iter: 12 Ap: 1.00e+00 Pobj:  1.0000000e+00 Ad: 9.00e-01 Dobj:  1.0000000e+00 
+Success: SDP solved
+Primal objective value: 1.0000000e+00 
+Dual objective value: 1.0000000e+00 
+Relative primal infeasibility: 1.32e-14 
+Relative dual infeasibility: 3.64e-11 
+Real Relative Gap: -7.83e-13 
+XZ Relative Gap: 6.17e-09 
+DIMACS error measures: 1.59e-14 0.00e+00 4.39e-11 0.00e+00 -7.83e-13 6.17e-09
+Elements time: 0.291098 
+Factor time: 0.000046 
+Other time: 1.045385 
+Total time: 1.336529 
+sos9174a9.dat-s
+Iter:  0 Ap: 0.00e+00 Pobj:  0.0000000e+00 Ad: 0.00e+00 Dobj:  0.0000000e+00 
+Iter:  1 Ap: 1.00e+00 Pobj: -1.2809798e+01 Ad: 9.00e-01 Dobj:  1.1979448e+00 
+Iter:  2 Ap: 1.00e+00 Pobj:  4.7091541e+02 Ad: 2.82e-01 Dobj:  1.1190737e+00 
+Iter:  3 Ap: 1.00e+00 Pobj:  4.6067015e+05 Ad: 3.09e-02 Dobj:  1.1142723e+00 
+Iter:  4 Ap: 1.00e+00 Pobj:  7.3482526e+10 Ad: 2.47e-03 Dobj:  1.1140211e+00 
+Declaring dual infeasibility.
+Success: SDP is dual infeasible
+Certificate of dual infeasibility: tr(CX)=1.00000e+00, ||A(X)||=1.36087e-11
+Elements time: 0.066268 
+Factor time: 0.000037 
+Other time: 0.286670 
+Total time: 0.352975 
+sosa1f79f.dat-s
+Iter:  0 Ap: 0.00e+00 Pobj:  0.0000000e+00 Ad: 0.00e+00 Dobj:  0.0000000e+00 
+Iter:  1 Ap: 1.00e+00 Pobj: -7.5103360e+00 Ad: 9.00e-01 Dobj:  5.0210041e-01 
+Iter:  2 Ap: 1.00e+00 Pobj:  5.8656836e+01 Ad: 6.56e-01 Dobj:  4.8730919e-01 
+Iter:  3 Ap: 5.90e-01 Pobj:  6.8180182e+04 Ad: 5.73e-03 Dobj:  4.9434506e-01 
+Iter:  4 Ap: 1.00e+00 Pobj:  1.2536662e+08 Ad: 2.25e-02 Dobj:  4.8361567e-01 
+Declaring dual infeasibility.
+Success: SDP is dual infeasible
+Certificate of dual infeasibility: tr(CX)=1.00000e+00, ||A(X)||=7.97661e-09
+Elements time: 0.065004 
+Factor time: 0.000026 
+Other time: 0.332421 
+Total time: 0.397451 
+sosd6995a.dat-s
+Iter:  0 Ap: 0.00e+00 Pobj:  0.0000000e+00 Ad: 0.00e+00 Dobj:  0.0000000e+00 
+Iter:  1 Ap: 1.00e+00 Pobj: -1.2809798e+01 Ad: 9.00e-01 Dobj:  1.1979448e+00 
+Iter:  2 Ap: 1.00e+00 Pobj:  4.7091541e+02 Ad: 2.82e-01 Dobj:  1.1190737e+00 
+Iter:  3 Ap: 1.00e+00 Pobj:  4.6067015e+05 Ad: 3.09e-02 Dobj:  1.1142723e+00 
+Iter:  4 Ap: 1.00e+00 Pobj:  7.3482526e+10 Ad: 2.47e-03 Dobj:  1.1140211e+00 
+Declaring dual infeasibility.
+Success: SDP is dual infeasible
+Certificate of dual infeasibility: tr(CX)=1.00000e+00, ||A(X)||=1.36087e-11
+Elements time: 0.070690 
+Factor time: 0.000027 
+Other time: 0.363561 
+Total time: 0.434278
+
+
+Comment author: @fajb
+
+Hi Jason,
+
+The running time printed by your csdp is consistently 1000 times mine.
+Are you running csdp inside a VM ? I cannot believe that your multi-core is 1000 times slower than mine. This probably does not explain you observed slowdown of 40s but is highly suspicious.
+
+In the absence of further information or insight, I intend to close this bug (csdp bug). 
+
+
+PS: If noboby experiences problems with CSDP 6.0.1, I would update the doc and advise to use this particular version.
+
+
+Comment author: @JasonGross
+
+I am not running inside a VM.  If you have a machine that's uniformly 1000x faster, it would be able to compile all of Coq in under half a second, and I want to know where I can get a machine like that.
+
+I have 64 GB of RAM, and `cat /proc/cpuinfo` tells me about 12 processors like this:
+vendor_id	: GenuineIntel
+cpu family	: 6
+model		: 63
+model name	: Intel(R) Xeon(R) CPU E5-1650 v3 @  3.50GHz
+stepping	: 2
+microcode	: 0x36
+cpu MHz		: 1200.000
+cache size	: 15360 KB
+physical id	: 0
+siblings	: 12
+core id		: 5
+cpu cores	: 6
+apicid		: 11
+initial apicid	: 11
+fpu		: yes
+fpu_exception	: yes
+cpuid level	: 15
+wp		: yes
+flags		: fpu vme de pse tsc msr pae mce cx8 apic sep mtrr pge mca cmov pat pse36 clflush dts acpi mmx fxsr sse sse2 ss ht tm pbe syscall nx pdpe1gb rdtscp lm constant_tsc arch_perfmon pebs bts rep_good nopl xtopology nonstop_tsc aperfmperf eagerfpu pni pclmulqdq dtes64 monitor ds_cpl vmx smx est tm2 ssse3 fma cx16 xtpr pdcm pcid dca sse4_1 sse4_2 x2apic movbe popcnt tsc_deadline_timer aes xsave avx f16c rdrand lahf_lm abm ida arat epb xsaveopt pln pts dtherm tpr_shadow vnmi flexpriority ept vpid fsgsbase tsc_adjust bmi1 avx2 smep bmi2 erms invpcid
+bogomips	: 6983.87
+clflush size	: 64
+cache_alignment	: 64
+address sizes	: 46 bits physical, 48 bits virtual
+power management:
+
+
+Comment author: @JasonGross
+
+When I use the pre-built csdp 6.1.0 from https://projects.coin-or.org/Csdp/, I get (on the original problem in the bug report) Finished transaction in 0.057 secs (0.007u,0.008s) (successful), which is indeed about 1000x faster.
+
+
+Comment author: @JasonGross
+
+It does not seem to be the version of csdp that is bad; when I run on the packaged CSDP 6.1.1-1 in Ubuntu 14.04 on Travis (https://travis-ci.org/JasonGross/csdp-test/jobs/156602103), it runs quickly (about 400x faster than on my machine with the same csdp).  I am inclined to think that it has something to do with the number of cores; perhaps the aptitude distributed version of csdp uses different code when it detects enough cores, and that code runs more slowly?
+
+
+Comment author: @JasonGross
+
+Indeed, this seems to be the issue, as I can verify with taskset -c 0.  Can Coq force csdp to only use one core (possibly conditioned on whether or not an option is set)?
+
+$ for i in *.dat-s; do echo $i; (/usr/bin/csdp $i 2>&1 | tee $i.out); done # multiple cores
+sos19824d.dat-s
+Iter:  0 Ap: 0.00e+00 Pobj:  0.0000000e+00 Ad: 0.00e+00 Dobj:  0.0000000e+00 
+Iter:  1 Ap: 1.00e+00 Pobj: -7.5103360e+00 Ad: 9.00e-01 Dobj:  5.0210041e-01 
+Iter:  2 Ap: 1.00e+00 Pobj:  5.8656836e+01 Ad: 6.56e-01 Dobj:  4.8730919e-01 
+Iter:  3 Ap: 5.90e-01 Pobj:  6.8180182e+04 Ad: 5.73e-03 Dobj:  4.9434506e-01 
+Iter:  4 Ap: 1.00e+00 Pobj:  1.2536662e+08 Ad: 2.25e-02 Dobj:  4.8361567e-01 
+Declaring dual infeasibility.
+Success: SDP is dual infeasible
+Certificate of dual infeasibility: tr(CX)=1.00000e+00, ||A(X)||=7.97661e-09
+Elements time: 0.046631 
+Factor time: 0.000025 
+Other time: 0.272863 
+Total time: 0.319519 
+sos23df78.dat-s
+Iter:  0 Ap: 0.00e+00 Pobj:  0.0000000e+00 Ad: 0.00e+00 Dobj:  0.0000000e+00 
+Iter:  1 Ap: 1.00e+00 Pobj: -1.2809798e+01 Ad: 9.00e-01 Dobj:  1.1979448e+00 
+Iter:  2 Ap: 1.00e+00 Pobj:  4.7091541e+02 Ad: 2.82e-01 Dobj:  1.1190737e+00 
+Iter:  3 Ap: 1.00e+00 Pobj:  4.6067015e+05 Ad: 3.09e-02 Dobj:  1.1142723e+00 
+Iter:  4 Ap: 1.00e+00 Pobj:  7.3482526e+10 Ad: 2.47e-03 Dobj:  1.1140211e+00 
+Declaring dual infeasibility.
+Success: SDP is dual infeasible
+Certificate of dual infeasibility: tr(CX)=1.00000e+00, ||A(X)||=1.36087e-11
+Elements time: 0.044078 
+Factor time: 0.000026 
+Other time: 0.207769 
+Total time: 0.251873 
+sos52b7f4.dat-s
+Iter:  0 Ap: 0.00e+00 Pobj:  0.0000000e+00 Ad: 0.00e+00 Dobj:  0.0000000e+00 
+Iter:  1 Ap: 1.00e+00 Pobj: -4.6855819e+01 Ad: 8.62e-01 Dobj:  2.6992626e+00 
+Iter:  2 Ap: 1.00e+00 Pobj:  2.3511749e+01 Ad: 8.01e-01 Dobj:  1.1927785e+00 
+Iter:  3 Ap: 7.67e-01 Pobj:  9.4043232e+02 Ad: 1.94e-01 Dobj:  1.3438151e+00 
+Iter:  4 Ap: 1.00e+00 Pobj:  5.5757075e+04 Ad: 1.07e-01 Dobj:  1.3123786e+00 
+Iter:  5 Ap: 1.00e+00 Pobj:  6.7408263e+07 Ad: 2.61e-02 Dobj:  1.3081079e+00 
+Iter:  6 Ap: 1.00e+00 Pobj:  8.7336023e+12 Ad: 2.51e-03 Dobj:  1.3077231e+00 
+Declaring dual infeasibility.
+Success: SDP is dual infeasible
+Certificate of dual infeasibility: tr(CX)=1.00000e+00, ||A(X)||=1.61720e-13
+Elements time: 0.066665 
+Factor time: 0.000036 
+Other time: 0.344291 
+Total time: 0.410992 
+sos71ee5e.dat-s
+Iter:  0 Ap: 0.00e+00 Pobj:  0.0000000e+00 Ad: 0.00e+00 Dobj:  0.0000000e+00 
+Iter:  1 Ap: 1.00e+00 Pobj: -3.0263307e+01 Ad: 9.00e-01 Dobj:  1.0164032e+00 
+Iter:  2 Ap: 1.00e+00 Pobj: -1.3920293e+01 Ad: 9.00e-01 Dobj:  9.1922350e-01 
+Iter:  3 Ap: 1.00e+00 Pobj: -1.4227229e+00 Ad: 7.29e-01 Dobj:  1.0157536e+00 
+Iter:  4 Ap: 1.00e+00 Pobj:  9.7614684e-01 Ad: 9.00e-01 Dobj:  1.0014493e+00 
+Iter:  5 Ap: 1.00e+00 Pobj:  9.9998011e-01 Ad: 9.00e-01 Dobj:  1.0001448e+00 
+Iter:  6 Ap: 1.00e+00 Pobj:  1.0000000e+00 Ad: 9.00e-01 Dobj:  1.0000145e+00 
+Iter:  7 Ap: 1.00e+00 Pobj:  1.0000000e+00 Ad: 9.00e-01 Dobj:  1.0000014e+00 
+Iter:  8 Ap: 1.00e+00 Pobj:  1.0000000e+00 Ad: 9.00e-01 Dobj:  1.0000001e+00 
+Iter:  9 Ap: 1.00e+00 Pobj:  9.9999757e-01 Ad: 9.00e-01 Dobj:  1.0000000e+00 
+Iter: 10 Ap: 1.00e+00 Pobj:  9.9999974e-01 Ad: 9.00e-01 Dobj:  1.0000000e+00 
+Iter: 11 Ap: 1.00e+00 Pobj:  9.9999997e-01 Ad: 9.00e-01 Dobj:  1.0000000e+00 
+Iter: 12 Ap: 1.00e+00 Pobj:  1.0000000e+00 Ad: 9.00e-01 Dobj:  1.0000000e+00 
+Success: SDP solved
+Primal objective value: 1.0000000e+00 
+Dual objective value: 1.0000000e+00 
+Relative primal infeasibility: 1.32e-14 
+Relative dual infeasibility: 3.64e-11 
+Real Relative Gap: -7.83e-13 
+XZ Relative Gap: 6.17e-09 
+DIMACS error measures: 1.59e-14 0.00e+00 4.39e-11 0.00e+00 -7.83e-13 6.17e-09
+Elements time: 0.140656 
+Factor time: 0.000042 
+Other time: 0.569587 
+Total time: 0.710284 
+sos9174a9.dat-s
+Iter:  0 Ap: 0.00e+00 Pobj:  0.0000000e+00 Ad: 0.00e+00 Dobj:  0.0000000e+00 
+Iter:  1 Ap: 1.00e+00 Pobj: -1.2809798e+01 Ad: 9.00e-01 Dobj:  1.1979448e+00 
+Iter:  2 Ap: 1.00e+00 Pobj:  4.7091541e+02 Ad: 2.82e-01 Dobj:  1.1190737e+00 
+Iter:  3 Ap: 1.00e+00 Pobj:  4.6067015e+05 Ad: 3.09e-02 Dobj:  1.1142723e+00 
+Iter:  4 Ap: 1.00e+00 Pobj:  7.3482526e+10 Ad: 2.47e-03 Dobj:  1.1140211e+00 
+Declaring dual infeasibility.
+Success: SDP is dual infeasible
+Certificate of dual infeasibility: tr(CX)=1.00000e+00, ||A(X)||=1.36087e-11
+Elements time: 0.044745 
+Factor time: 0.000027 
+Other time: 0.232256 
+Total time: 0.277028 
+sosa1f79f.dat-s
+Iter:  0 Ap: 0.00e+00 Pobj:  0.0000000e+00 Ad: 0.00e+00 Dobj:  0.0000000e+00 
+Iter:  1 Ap: 1.00e+00 Pobj: -7.5103360e+00 Ad: 9.00e-01 Dobj:  5.0210041e-01 
+Iter:  2 Ap: 1.00e+00 Pobj:  5.8656836e+01 Ad: 6.56e-01 Dobj:  4.8730919e-01 
+Iter:  3 Ap: 5.90e-01 Pobj:  6.8180182e+04 Ad: 5.73e-03 Dobj:  4.9434506e-01 
+Iter:  4 Ap: 1.00e+00 Pobj:  1.2536662e+08 Ad: 2.25e-02 Dobj:  4.8361567e-01 
+Declaring dual infeasibility.
+Success: SDP is dual infeasible
+Certificate of dual infeasibility: tr(CX)=1.00000e+00, ||A(X)||=7.97661e-09
+Elements time: 0.043816 
+Factor time: 0.000026 
+Other time: 0.247621 
+Total time: 0.291463 
+sosd6995a.dat-s
+Iter:  0 Ap: 0.00e+00 Pobj:  0.0000000e+00 Ad: 0.00e+00 Dobj:  0.0000000e+00 
+Iter:  1 Ap: 1.00e+00 Pobj: -1.2809798e+01 Ad: 9.00e-01 Dobj:  1.1979448e+00 
+Iter:  2 Ap: 1.00e+00 Pobj:  4.7091541e+02 Ad: 2.82e-01 Dobj:  1.1190737e+00 
+Iter:  3 Ap: 1.00e+00 Pobj:  4.6067015e+05 Ad: 3.09e-02 Dobj:  1.1142723e+00 
+Iter:  4 Ap: 1.00e+00 Pobj:  7.3482526e+10 Ad: 2.47e-03 Dobj:  1.1140211e+00 
+Declaring dual infeasibility.
+Success: SDP is dual infeasible
+Certificate of dual infeasibility: tr(CX)=1.00000e+00, ||A(X)||=1.36087e-11
+Elements time: 0.042661 
+Factor time: 0.000026 
+Other time: 0.234043 
+Total time: 0.276730 
+
+
+$ for i in *.dat-s; do echo $i; (taskset -c 0 /usr/bin/csdp $i 2>&1 | tee $i.out); done # single core
+sos19824d.dat-s
+Iter:  0 Ap: 0.00e+00 Pobj:  0.0000000e+00 Ad: 0.00e+00 Dobj:  0.0000000e+00 
+Iter:  1 Ap: 1.00e+00 Pobj: -7.5103360e+00 Ad: 9.00e-01 Dobj:  5.0210041e-01 
+Iter:  2 Ap: 1.00e+00 Pobj:  5.8656836e+01 Ad: 6.56e-01 Dobj:  4.8730919e-01 
+Iter:  3 Ap: 5.90e-01 Pobj:  6.8180182e+04 Ad: 5.73e-03 Dobj:  4.9434506e-01 
+Iter:  4 Ap: 1.00e+00 Pobj:  1.2536662e+08 Ad: 2.25e-02 Dobj:  4.8361567e-01 
+Declaring dual infeasibility.
+Success: SDP is dual infeasible
+Certificate of dual infeasibility: tr(CX)=1.00000e+00, ||A(X)||=7.97661e-09
+Elements time: 0.000016 
+Factor time: 0.000023 
+Other time: 0.000649 
+Total time: 0.000688 
+sos23df78.dat-s
+Iter:  0 Ap: 0.00e+00 Pobj:  0.0000000e+00 Ad: 0.00e+00 Dobj:  0.0000000e+00 
+Iter:  1 Ap: 1.00e+00 Pobj: -1.2809798e+01 Ad: 9.00e-01 Dobj:  1.1979448e+00 
+Iter:  2 Ap: 1.00e+00 Pobj:  4.7091541e+02 Ad: 2.82e-01 Dobj:  1.1190737e+00 
+Iter:  3 Ap: 1.00e+00 Pobj:  4.6067015e+05 Ad: 3.09e-02 Dobj:  1.1142723e+00 
+Iter:  4 Ap: 1.00e+00 Pobj:  7.3482526e+10 Ad: 2.47e-03 Dobj:  1.1140211e+00 
+Declaring dual infeasibility.
+Success: SDP is dual infeasible
+Certificate of dual infeasibility: tr(CX)=1.00000e+00, ||A(X)||=1.36087e-11
+Elements time: 0.000015 
+Factor time: 0.000022 
+Other time: 0.000630 
+Total time: 0.000667 
+sos52b7f4.dat-s
+Iter:  0 Ap: 0.00e+00 Pobj:  0.0000000e+00 Ad: 0.00e+00 Dobj:  0.0000000e+00 
+Iter:  1 Ap: 1.00e+00 Pobj: -4.6855819e+01 Ad: 8.62e-01 Dobj:  2.6992626e+00 
+Iter:  2 Ap: 1.00e+00 Pobj:  2.3511749e+01 Ad: 8.01e-01 Dobj:  1.1927785e+00 
+Iter:  3 Ap: 7.67e-01 Pobj:  9.4043232e+02 Ad: 1.94e-01 Dobj:  1.3438151e+00 
+Iter:  4 Ap: 1.00e+00 Pobj:  5.5757075e+04 Ad: 1.07e-01 Dobj:  1.3123786e+00 
+Iter:  5 Ap: 1.00e+00 Pobj:  6.7408263e+07 Ad: 2.61e-02 Dobj:  1.3081079e+00 
+Iter:  6 Ap: 1.00e+00 Pobj:  8.7336023e+12 Ad: 2.51e-03 Dobj:  1.3077231e+00 
+Declaring dual infeasibility.
+Success: SDP is dual infeasible
+Certificate of dual infeasibility: tr(CX)=1.00000e+00, ||A(X)||=1.61720e-13
+Elements time: 0.000021 
+Factor time: 0.000022 
+Other time: 0.000586 
+Total time: 0.000629 
+sos71ee5e.dat-s
+Iter:  0 Ap: 0.00e+00 Pobj:  0.0000000e+00 Ad: 0.00e+00 Dobj:  0.0000000e+00 
+Iter:  1 Ap: 1.00e+00 Pobj: -3.0263307e+01 Ad: 9.00e-01 Dobj:  1.0164032e+00 
+Iter:  2 Ap: 1.00e+00 Pobj: -1.3920293e+01 Ad: 9.00e-01 Dobj:  9.1922350e-01 
+Iter:  3 Ap: 1.00e+00 Pobj: -1.4227229e+00 Ad: 7.29e-01 Dobj:  1.0157536e+00 
+Iter:  4 Ap: 1.00e+00 Pobj:  9.7614684e-01 Ad: 9.00e-01 Dobj:  1.0014493e+00 
+Iter:  5 Ap: 1.00e+00 Pobj:  9.9998011e-01 Ad: 9.00e-01 Dobj:  1.0001448e+00 
+Iter:  6 Ap: 1.00e+00 Pobj:  1.0000000e+00 Ad: 9.00e-01 Dobj:  1.0000145e+00 
+Iter:  7 Ap: 1.00e+00 Pobj:  1.0000000e+00 Ad: 9.00e-01 Dobj:  1.0000014e+00 
+Iter:  8 Ap: 1.00e+00 Pobj:  1.0000000e+00 Ad: 9.00e-01 Dobj:  1.0000001e+00 
+Iter:  9 Ap: 1.00e+00 Pobj:  9.9999757e-01 Ad: 9.00e-01 Dobj:  1.0000000e+00 
+Iter: 10 Ap: 1.00e+00 Pobj:  9.9999974e-01 Ad: 9.00e-01 Dobj:  1.0000000e+00 
+Iter: 11 Ap: 1.00e+00 Pobj:  9.9999997e-01 Ad: 9.00e-01 Dobj:  1.0000000e+00 
+Iter: 12 Ap: 1.00e+00 Pobj:  1.0000000e+00 Ad: 9.00e-01 Dobj:  1.0000000e+00 
+Success: SDP solved
+Primal objective value: 1.0000000e+00 
+Dual objective value: 1.0000000e+00 
+Relative primal infeasibility: 1.32e-14 
+Relative dual infeasibility: 3.64e-11 
+Real Relative Gap: -7.83e-13 
+XZ Relative Gap: 6.17e-09 
+DIMACS error measures: 1.59e-14 0.00e+00 4.39e-11 0.00e+00 -7.83e-13 6.17e-09
+Elements time: 0.000024 
+Factor time: 0.000018 
+Other time: 0.000659 
+Total time: 0.000700 
+sos9174a9.dat-s
+Iter:  0 Ap: 0.00e+00 Pobj:  0.0000000e+00 Ad: 0.00e+00 Dobj:  0.0000000e+00 
+Iter:  1 Ap: 1.00e+00 Pobj: -1.2809798e+01 Ad: 9.00e-01 Dobj:  1.1979448e+00 
+Iter:  2 Ap: 1.00e+00 Pobj:  4.7091541e+02 Ad: 2.82e-01 Dobj:  1.1190737e+00 
+Iter:  3 Ap: 1.00e+00 Pobj:  4.6067015e+05 Ad: 3.09e-02 Dobj:  1.1142723e+00 
+Iter:  4 Ap: 1.00e+00 Pobj:  7.3482526e+10 Ad: 2.47e-03 Dobj:  1.1140211e+00 
+Declaring dual infeasibility.
+Success: SDP is dual infeasible
+Certificate of dual infeasibility: tr(CX)=1.00000e+00, ||A(X)||=1.36087e-11
+Elements time: 0.000015 
+Factor time: 0.000020 
+Other time: 0.000466 
+Total time: 0.000501 
+sosa1f79f.dat-s
+Iter:  0 Ap: 0.00e+00 Pobj:  0.0000000e+00 Ad: 0.00e+00 Dobj:  0.0000000e+00 
+Iter:  1 Ap: 1.00e+00 Pobj: -7.5103360e+00 Ad: 9.00e-01 Dobj:  5.0210041e-01 
+Iter:  2 Ap: 1.00e+00 Pobj:  5.8656836e+01 Ad: 6.56e-01 Dobj:  4.8730919e-01 
+Iter:  3 Ap: 5.90e-01 Pobj:  6.8180182e+04 Ad: 5.73e-03 Dobj:  4.9434506e-01 
+Iter:  4 Ap: 1.00e+00 Pobj:  1.2536662e+08 Ad: 2.25e-02 Dobj:  4.8361567e-01 
+Declaring dual infeasibility.
+Success: SDP is dual infeasible
+Certificate of dual infeasibility: tr(CX)=1.00000e+00, ||A(X)||=7.97661e-09
+Elements time: 0.000010 
+Factor time: 0.000015 
+Other time: 0.000417 
+Total time: 0.000442 
+sosd6995a.dat-s
+Iter:  0 Ap: 0.00e+00 Pobj:  0.0000000e+00 Ad: 0.00e+00 Dobj:  0.0000000e+00 
+Iter:  1 Ap: 1.00e+00 Pobj: -1.2809798e+01 Ad: 9.00e-01 Dobj:  1.1979448e+00 
+Iter:  2 Ap: 1.00e+00 Pobj:  4.7091541e+02 Ad: 2.82e-01 Dobj:  1.1190737e+00 
+Iter:  3 Ap: 1.00e+00 Pobj:  4.6067015e+05 Ad: 3.09e-02 Dobj:  1.1142723e+00 
+Iter:  4 Ap: 1.00e+00 Pobj:  7.3482526e+10 Ad: 2.47e-03 Dobj:  1.1140211e+00 
+Declaring dual infeasibility.
+Success: SDP is dual infeasible
+Certificate of dual infeasibility: tr(CX)=1.00000e+00, ||A(X)||=1.36087e-11
+Elements time: 0.000020 
+Factor time: 0.000022 
+Other time: 0.000592 
+Total time: 0.000634
+
+
+Comment author: @JasonGross
+
+The user time of your test case grows roughly linearly with the number of processors csdp is allowed to use, and the real time grows as well, though somewhat slower:
+$ cat test.sh
+#!/bin/bash
+for i in *.dat-s; do /usr/bin/csdp $i 2>/dev/null >/dev/null; done
+exit 0
+$ for j in $(seq 0 11); do /usr/bin/time -f "$j (real: %e, user: %U, sys: %S, mem: %M ko)" taskset -c 0-$j ./test.sh; done
+0 (real: 0.01, user: 0.00, sys: 0.01, mem: 1860 ko)
+1 (real: 0.01, user: 0.00, sys: 0.01, mem: 1880 ko)
+2 (real: 1.58, user: 3.10, sys: 0.03, mem: 5964 ko)
+3 (real: 1.57, user: 4.61, sys: 0.02, mem: 1892 ko)
+4 (real: 1.58, user: 6.20, sys: 0.01, mem: 1900 ko)
+5 (real: 1.66, user: 6.75, sys: 0.01, mem: 1908 ko)
+6 (real: 1.86, user: 8.72, sys: 0.00, mem: 1916 ko)
+7 (real: 1.09, user: 6.70, sys: 0.02, mem: 1928 ko)
+8 (real: 2.23, user: 12.77, sys: 0.08, mem: 3968 ko)
+9 (real: 2.26, user: 14.76, sys: 0.10, mem: 1944 ko)
+10 (real: 2.51, user: 15.85, sys: 0.09, mem: 6028 ko)
+11 (real: 2.51, user: 17.63, sys: 0.09, mem: 1964 ko)
+
+
+Comment author: @silene
+
+There certainly seems to be something wrong with your version of csdp. That is what I get on a 16-core server:
+
+$ for j in $(seq 0 15); do /usr/bin/time -f "$j (real: %e, user: %U, sys: %S, mem: %M ko)" taskset -c 0-$j ./test.sh; done
+0 (real: 0.01, user: 0.00, sys: 0.00, mem: 4208 ko)
+1 (real: 0.01, user: 0.00, sys: 0.00, mem: 4152 ko)
+2 (real: 0.01, user: 0.00, sys: 0.00, mem: 4152 ko)
+3 (real: 0.01, user: 0.00, sys: 0.00, mem: 4076 ko)
+4 (real: 0.01, user: 0.00, sys: 0.00, mem: 4032 ko)
+5 (real: 0.01, user: 0.00, sys: 0.00, mem: 4208 ko)
+6 (real: 0.01, user: 0.00, sys: 0.00, mem: 4092 ko)
+7 (real: 0.01, user: 0.00, sys: 0.00, mem: 4104 ko)
+8 (real: 0.01, user: 0.00, sys: 0.00, mem: 4036 ko)
+9 (real: 0.01, user: 0.00, sys: 0.00, mem: 4200 ko)
+10 (real: 0.01, user: 0.00, sys: 0.00, mem: 4108 ko)
+11 (real: 0.01, user: 0.00, sys: 0.00, mem: 4264 ko)
+12 (real: 0.01, user: 0.00, sys: 0.00, mem: 4100 ko)
+13 (real: 0.01, user: 0.00, sys: 0.00, mem: 4072 ko)
+14 (real: 0.01, user: 0.00, sys: 0.00, mem: 4232 ko)
+15 (real: 0.01, user: 0.00, sys: 0.00, mem: 4152 ko)
+
+You should report your issue upstream.
+
+
+Comment author: @JasonGross
+
+Pierre-Marie, can you reproduce the behavior I mentioned on pyrolyse?  Guillaume, which csdp are you running?  (From debian / apt-get, or elsewhere?)
+
+
+Comment author: @JasonGross
+
+Reported at https://bugs.launchpad.net/ubuntu/+source/coinor-csdp/+bug/1619055
+
+
+Comment author: @silene
+
+When using debian's 6.1.1-1 version instead (and its dependencies from jessie), I get the following results:
+
+0 (real: 0.00, user: 0.00, sys: 0.00, mem: 4268 ko)
+1 (real: 0.01, user: 0.00, sys: 0.00, mem: 4276 ko)
+2 (real: 0.12, user: 0.22, sys: 0.00, mem: 4128 ko)
+3 (real: 0.01, user: 0.00, sys: 0.00, mem: 4292 ko)
+4 (real: 0.03, user: 0.08, sys: 0.00, mem: 4304 ko)
+5 (real: 0.01, user: 0.01, sys: 0.01, mem: 4128 ko)
+6 (real: 0.04, user: 0.19, sys: 0.00, mem: 4152 ko)
+7 (real: 0.01, user: 0.01, sys: 0.02, mem: 4216 ko)
+8 (real: 0.02, user: 0.09, sys: 0.03, mem: 4180 ko)
+9 (real: 0.01, user: 0.02, sys: 0.04, mem: 4208 ko)
+10 (real: 0.01, user: 0.02, sys: 0.04, mem: 4220 ko)
+11 (real: 0.01, user: 0.02, sys: 0.05, mem: 4352 ko)
+12 (real: 0.05, user: 0.47, sys: 0.00, mem: 4360 ko)
+13 (real: 0.01, user: 0.06, sys: 0.03, mem: 4380 ko)
+14 (real: 0.01, user: 0.03, sys: 0.07, mem: 4256 ko)
+15 (real: 0.01, user: 0.03, sys: 0.10, mem: 4288 ko)
+
+The timing are now a lot noisier, but it still does not exhibit the linear behavior you are experiencing.
+
+From what I can tell, the difference between the Debian build and the prebuilt one on Coin-or's site is that the latter does not use OpenMP. So perhaps OpenMP does not work properly on your computer.
+
+

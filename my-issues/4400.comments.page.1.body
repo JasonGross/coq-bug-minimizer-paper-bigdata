@@ -1,0 +1,77 @@
+Comment author: @JasonGross
+
+(* -*- coq-prog-args: ("-emacs" "-require" "Coq.Compat.Coq84" "-compat" "8.4") -*- *)
+Require Import Coq.Lists.List Coq.Logic.JMeq.
+Set Printing Universes.
+Inductive Foo (I : Type -> Type) (A : Type) : Type :=
+| foo (B : Type) : A -> I B -> Foo I A.
+Definition Family := Type -> Type.
+Definition FooToo : Family -> Family := Foo.
+Definition optionize (I : Type -> Type) (A : Type) := option (I A).
+Definition bar (I : Type -> Type) (A : Type) : A -> option (I A) -> Foo(optionize I) A := foo (optionize I) A A.
+Record Rec (I : Type -> Type) := { rec : forall A : Type, A -> I A -> Foo I A }.
+Definition barRec : Rec (optionize id) := {| rec := bar id |}.
+Inductive Empty {T} : T -> Prop := .
+Theorem empty (family : Family) (a : fold_right prod unit (map (Foo family)
+nil)) (b : unit) :
+  Empty (a, b) -> False.
+Proof.
+  intro e.
+  Fail generalize_eqs_vars e. (*
+The command has indeed failed with message:
+Refiner was given an argument "Foo family" of type
+ "Type@ {Coq.Init.Datatypes.23} -> Type@ {Coq.Init.Datatypes.23}" instead of
+ "Type@ {Top.3} -> Type@ {Coq.Init.Datatypes.23}". *)
+  let t := match type of prod with ?T -> _ => constr:T end in
+  let t' := match type of foo with forall (x : _) (y : ?T), _ => constr:T end in
+  (*pose (t -> t);
+  pose (t' -> t);*)
+  pose (Foo family : t' -> t).
+  (* gives:
+(Foo family : Type@ {Top.3} -> Type@ {Coq.Init.Datatypes.23})
+    : Type@ {Top.3} -> Type@ {Coq.Init.Datatypes.23} *)
+
+
+This is based on https://coq.inria.fr/bugs/show_bug.cgi?id=4394#c4.
+
+
+Comment author: @JasonGross
+
+Responding to https://coq.inria.fr/bugs/show_bug.cgi?id=4394#c4 here:
+
+For whatever reason, generalize_eq_vars is trying to unify [Type@ {Coq.Init.Datatypes.23} -> Type@ {Coq.Init.Datatypes.23}] with [Type@ {Top.3} -> Type@ {Coq.Init.Datatypes.23}] in Coq 8.5, but not in Coq 8.4.  The behavior you were seeing is mostly (all?) an artifact of this.  The following code fails in both 8.4 and 8.5 (universe inconsistency: Cannot enforce Coq.Init.Datatypes.23 = Top.3 because Top.3 < Coq.Init.Datatypes.23):
+
+(* -*- coq-prog-args: ("-emacs" "-require" "Coq.Compat.Coq84" "-compat" "8.4") -*- *)
+Require Import Coq.Lists.List Coq.Logic.JMeq.
+Set Printing Universes.
+Inductive Foo (I : Type -> Type) (A : Type) : Type :=
+| foo (B : Type) : A -> I B -> Foo I A.
+Definition Family := Type -> Type.
+Definition FooToo : Family -> Family := Foo.
+Definition optionize (I : Type -> Type) (A : Type) := option (I A).
+Definition bar (I : Type -> Type) (A : Type) : A -> option (I A) -> Foo(optionize I) A := foo (optionize I) A A.
+Record Rec (I : Type -> Type) := { rec : forall A : Type, A -> I A -> Foo I A }.
+Definition barRec : Rec (optionize id) := {| rec := bar id |}.
+Inductive Empty {T} : T -> Prop := .
+Theorem empty (family : Family) (a : fold_right prod unit (map (Foo family)
+nil)) (b : unit) :
+  Empty (a, b) -> False.
+Proof.
+  intro e.
+  let t := match type of prod with ?T -> _ => constr:T end in
+  let t' := match type of foo with forall (x : _) (y : ?T), _ => constr:T end in
+  pose (eq_refl : (t -> t) = (t' -> t)); admit. (* N.B. 8.5 catches the universe inconsistency on [pose], 8.4 only catches it on [admit] *)
+
+Removing either [FooToo] or [barRec] makes this command succeed in both 8.4 and 8.5.  I suspect most of the other changes (modulo removing [A] from [Foo], which is essential to this test) also behave the same here between 8.4 and 8.5.
+
+
+Comment author: @mattam82
+
+Fix upcoming in 8.5, it was actually an issue with the refiner not retyping the polymorphic inductive applications right.
+
+
+Comment author: @maximedenes
+
+Isn't the first example still failing with the current 8.5 branch?
+
+

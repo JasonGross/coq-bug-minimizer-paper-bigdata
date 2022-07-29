@@ -1,0 +1,19 @@
+Comment author: @JasonGross
+
+This code fails on [Check].  It should either fail on [Coercion] (or, at the very least, emit a warning), or succeed.  I'd prefer that it succeeds.
+
+Coercion foo (x : nat) : Set.
+Admitted.
+Check (_ : nat) : Set.
+
+
+Comment author: @ppedrot
+
+Probably a missing hook somewhere.
+
+
+Comment author: @silene
+
+Fixed by commit f51dca0. Thanks for the report.
+
+

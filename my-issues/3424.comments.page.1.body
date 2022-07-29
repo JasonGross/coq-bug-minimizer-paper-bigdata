@@ -1,0 +1,52 @@
+Comment author: @JasonGross
+
+```coq
+(* -*- mode: coq; coq-prog-args: ("-emacs" "-indices-matter") -*- *)
+(* File reduced by coq-bug-finder from original input, then from 6056 lines to 215 lines, then from 229 lines to 220 lines, then from\
+ 226 lines to 40 lines *)
+Set Universe Polymorphism.
+Inductive paths {A : Type} (a : A) : A -> Type := idpath : paths a a where "x = y" := (@ paths _ x y) : type_scope.
+Class Contr_internal (A : Type) := BuildContr { center : A ; contr : (forall y : A, center = y) }.
+Inductive trunc_index : Type := minus_two | trunc_S (x : trunc_index).
+Bind Scope trunc_scope with trunc_index.
+Fixpoint IsTrunc_internal (n : trunc_index) (A : Type) : Type :=
+  match n with
+    | minus_two => Contr_internal A
+    | trunc_S n' => forall (x y : A), IsTrunc_internal n' (x = y)
+  end.
+Notation minus_one:=(trunc_S minus_two).
+Notation "0" := (trunc_S minus_one) : trunc_scope.
+Class IsTrunc (n : trunc_index) (A : Type) : Type := Trunc_is_trunc : IsTrunc_internal n A.
+Notation IsHProp := (IsTrunc minus_one).
+Notation IsHSet := (IsTrunc 0).
+Goal forall (A : Type) (a b : A) (H' : IsHSet A), { x : Type & IsHProp x }.
+intros.
+eexists.
+exact (H' a b).
+Undo.
+apply (H' a b).
+(* Toplevel input, characters 7-13:
+Error: In environment
+A : Type
+a : A
+b : A
+H' : IsHSet A
+Unable to unify "Contr_internal (?194 = ?195)" with
+ "forall x y : ?14,
+  (fix IsTrunc_internal (n : trunc_index) (A : Type) {struct n} :
+   Type :=
+     match n with
+     | minus_two => Contr_internal A
+     | trunc_S n' => forall x0 y0 : A, IsTrunc_internal n' (x0 = y0)
+     end) minus_two (x = y)".
+ *)
+```
+
+It is possibly an issue with not reducing fixpoints?
+
+
+Comment author: @ppedrot
+
+Fixed in trunk.
+
+

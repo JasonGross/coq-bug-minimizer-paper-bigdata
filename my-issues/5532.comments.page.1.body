@@ -1,0 +1,40 @@
+Comment author: @JasonGross
+
+I'd like to see a type of thing (e.g., "p pattern") that makes this work:
+
+```coq
+  Local Notation mkmatch0 e p
+    := match e with
+       | p => true
+       | _ => false
+       end.
+  Local Notation "'mkmatch' [[ e ]] [[ p ]]"
+    := match e with
+       | p => true
+       | _ => false
+       end
+         (at level 0).
+  Fail Check mkmatch0 _ ((0, 0)%core). (* Error: This expression should be a 
+name. *)
+  Check mkmatch [[ _ ]] [[ ((0, 0)%core) ]]. (* Error: This expression should 
+be a name. *)
+```
+@herbelin How hard is this to implement?
+It looks like this may be covered by #982?
+Yes, in #982, the two examples work (using a `pattern` in the second one):
+```coq
+  Local Notation mkmatch0 e p
+    := match e with
+       | p => true
+       | _ => false
+       end.
+  Local Notation "'mkmatch' [[ e ]] [[ p ]]"
+    := match e with
+       | p => true
+       | _ => false
+       end
+         (at level 0, p pattern).
+  Check mkmatch0 _ ((0, 0)%core).
+  Check mkmatch [[ _ ]] [[ ((0, 0)%core) ]]. 
+```
+However, to have the printing working, one needs to deactivate printing of `match` on pairs as a `let` by doing `Remove Printing Let prod.`.

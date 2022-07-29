@@ -1,0 +1,17 @@
+Comment author: @JasonGross
+
+$ d:/Coq-8.7/bin/coq_makefile -o test
+Fatal error: exception Sys_error("./lib/tools/CoqMakefile.in: No such file or 
+directory")
+
+
+Comment author: @maximedenes
+
+Can you try this one with 8.7+beta2?
+
+
+Comment author: @JasonGross
+
+Fixed with 8.7+beta2.  Very timely release
+
+

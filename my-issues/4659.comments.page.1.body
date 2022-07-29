@@ -1,0 +1,52 @@
+Comment author: @JasonGross
+
+Here is code that only works (in both 8.4 and 8.5) if you remove the [Import Nat]:
+```coq
+Require Import Coq.Numbers.Natural.Peano.NPeano.
+Import Nat.
+Goal forall x y (p : x = y :> nat) (f f' : nat -> nat -> nat) (k a : nat),
+                   f a (match p with eq_refl => k end) = f' a k.
+Proof.
+  intros.
+  match goal with
+  | [ |- ?f _ (match ?p with eq_refl => ?k end) = ?f' _ ?k ]
+    => destruct p
+  end.
+```
+If you leave in the [Import nat], it complains about (match ?p with eq_refl => ?k end) with "Error: Non supported pattern."  What's going on here?
+
+(I'm not sure whether this is a problem with Ltac, or with the standard library.)
+
+
+Comment author: @JasonGross
+
+The culprit seems to be
+```coq
+Module BackportEq (E:Eq)(F:IsEq E) <: IsEqOrig E.
+ Definition eq_refl := F.eq_equiv.(@ Equivalence_Reflexive _ _). 
+ Definition eq_sym := F.eq_equiv.(@ Equivalence_Symmetric _ _).
+ Definition eq_trans := F.eq_equiv.(@ Equivalence_Transitive _ _).
+End BackportEq.
+```
+
+It is kind-of confusing that adding:
+```coq
+Definition eq_refl := @ eq_refl nat.
+Arguments eq_refl {x}, x.
+```
+
+makes the following parse but not work:
+```coq
+Goal forall x y (p : x = y :> nat), match p with eq_refl => 0 end = match p with Coq.Init.Logic.eq_refl => 0 end.
+reflexivity.
+Qed.
+```
+
+At the very least, Coq should almost certainly emit a warning if there is a [match] with a pattern variable whose name is a constructor for an inductive datatype.
+
+
+Comment author: @ppedrot
+
+I agree that this looks like a real bug, but my knowledge on pattern-matching elaboration is a bit terse :/
+
+

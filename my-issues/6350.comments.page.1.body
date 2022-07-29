@@ -1,0 +1,45 @@
+Hum, I guess the regression is there.
+Still I don't get your use case. In particular now that we impose the use of `From`, packages should always have a root.
+
+The fix is to contemplate empty strings in here
+  https://github.com/coq/coq/blob/master/tools/coq_makefile.ml#L117
+> Still I don't get your use case. In particular now that we impose the use of From, packages should always have a root.
+
+We don't actually impose that.
+Indeed, we don't. What made you think that we did @gares?
+> Still I don't get your use case.
+
+I don't have one in particular.  It just so happened that one of the coq-tools' test-suite files used `-Q . ""`.  I've changed it to not do that, under the assumption that this won't be fixed soon.  If it does get fixed, I can revert https://github.com/JasonGross/coq-tools/commit/7124c3a4e7c40af0484bffa1cdb955ecda04be4b when 8.7.1 is released.
+Hum, I'm pretty sure coq_makefile gives you warning if your project has no root.
+Note that the `From X Require Y` business was added to disambiguate `Y` but it only works if
+user-contribs is populated of subdirectories (`X` in the example above). So I expect all project to either `-R theories/ X` or `-Q theories/ X`... in both cases things are installed in `coq-contribs/X`... if `X` is null, then they end up in the root of `coq-contribs` and that is not a good idea.
+
+Hence I asked for the usecase, and indeed there is no usecase...
+The bug is there, IMHO an error should be given (or at least avoid losing the empty string in the escape function I pointed to).
+IIUC this bug is minor because there is no use case. So it's fine if this one misses 8.7.2 but it would still be good to fix.
+This has just come up in a project of mine. We have some generated files in, say `generated/` and some manual files in, say, `theories/`, but we want the contents of both directories to be part of the top-level Coq module name space. So we used to have
+```
+-Q ../generated ""
+```
+in the `_CoqProject` file of `theories`.
+
+How should we do this under the new regime?
+Ha,
+```
+-Q ../generated ''
+```
+works. But that is some serious code-smell there :-)
+Hmpf, but that does not work with `coqide` :-(
+@gares Given the recent comments, do you think something can be done to help alleviate this bug? (It would have to be a quick fix, today, to make it into 8.7.2.)
+A only mildly educated guess would be that changing this line 
+https://github.com/coq/coq/blob/52d666a7a83e4023d9f5cd7324ed81c7f7926156/tools/coq_makefile.ml#L127
+from
+```
+let quote s = if String.contains s ' ' then "'" ^ s ^ "'" else s
+```
+to (pseudo-code, I am not fluent in OCaml)
+```
+let quote s = if String.contains s ' ' || String.null s then "'" ^ s ^ "'" else s
+```
+might fix it.
+(I’ll try to create a PR)

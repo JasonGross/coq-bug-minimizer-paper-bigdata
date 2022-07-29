@@ -1,0 +1,5 @@
+Comment author: @JasonGross
+
+The tactic [setoid_etransitivity] exists, but is not listed in http://coq.inria.fr/refman/general-index.html.
+
+

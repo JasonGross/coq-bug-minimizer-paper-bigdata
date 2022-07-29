@@ -1,0 +1,8 @@
+Comment author: @JasonGross
+
+Since the makefile hard-codes "$(COQBIN)/coqtop", and Windows builds 
+coqtop.exe, not coqtop, setting COQBIN does not work.
+
+
+This seems not relevant anymore, different mechanisms are used.
+Or are you talking about `coq_makefile`, if so, please reopen with a repro case please.

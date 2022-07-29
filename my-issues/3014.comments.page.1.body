@@ -1,0 +1,16 @@
+Comment author: @JasonGross
+
+Hint Resolve foo : bar baz.
+
+works, but 
+
+Hint Rewrite foo : bar baz.
+
+does not.  Hint Rewrite should accept multiple databases.
+
+
+Comment author: @ppedrot
+
+Fixed in r16512.
+
+

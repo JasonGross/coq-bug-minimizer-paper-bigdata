@@ -1,0 +1,104 @@
+In particular, I would like to be able to declare the following things:
+- The identifier `s` should not appear as a type name nor a constructor name nor a constant name nor a function argument nor a local name binding anywhere in the code
+- No identifier nor type name nor constructor name should have a qualified name ending with the path fragment `a.b.c` (i.e., I want to say that `Definition succ` in `Module Pervasives` should be renamed without needing to rename `Definition succ` at top level)
+- No module should have a qualified name ending with the path fragment `a.b.c` (i.e., avoid naming modules `Pervasives`; avoid naming modules `Pervasives.String`)
+
+I started trying to implement this at https://github.com/JasonGross/coq/tree/extraction-blacklist-ident, but I don't understand how the extraction code is structured well enough to know where the right place to define these things is.
+
+cc @letouzey 
+I suffered this issue in https://github.com/coq/coq/pull/8252#discussion_r219342270.
+The following code fails on 31b5f7a6:
+```coq
+From Coq Require Import
+     ExtrOcamlBasic
+     BinInt.
+
+Extract Inductive nat =>
+"Z.t" [ "Z.zero" "Z.succ" ]
+      "(fun fO fS n -> if Z.sign n <= 0 then fO () else fS (Z.pred n))".
+
+Extraction TestCompile O.
+Extraction TestCompile Z.zero.
+
+Example test := (O, Z.zero).
+Fail Extraction TestCompile test.
+```
+```
+Error: Unbound type constructor Z.t
+The command has indeed failed with message:
+Compilation of file /var/folders/d5/f_vqb7sj4cn26rl4cyfxd6f00000gn/T/testextractiondd0449.ml failed with exit code 2
+```
+```ocaml
+type positive =
+| XI of positive
+| XO of positive
+| XH
+
+type z =
+| Z0
+| Zpos of positive
+| Zneg of positive
+
+module Z =
+ struct
+  (** val zero : z **)
+
+  let zero =
+    Z0
+ end
+
+(** val test : Z.t * z **)
+
+let test =
+  (Z.zero, Z.zero)
+```
+As a result, I had to use a compatibility layer to avoid the name conflict: https://github.com/coq/coq/blob/31b5f7a64729e1d93fe1d70067ef6ab070639234/theories/extraction/ExtrOcamlNatBigInt.v#L29-L32
+@JasonGross :
+
+>  No identifier nor type name nor constructor name should have a qualified name ending with the path fragment `a.b.c` (i.e., I want to say that `Definition succ` in `Module Pervasives` should be renamed without needing to rename `Definition succ` at top level)
+> 
+>  No module should have a qualified name ending with the path fragment `a.b.c` (i.e., avoid naming modules `Pervasives`; avoid naming modules `Pervasives.String`)
+
+When you're talking about `a.b.c`, are you saying that the blacklist should also accept module names, or qualified names?
+
+In the [#10936](https://github.com/coq/coq/issues/10936#issue-511424960) example, do you intend `Inductive int` to be extracted to `int0 = int`?
+
+In the example [above](https://github.com/coq/coq/issues/11987#issuecomment-969331895), do you intend to have `Z` in the blacklist and the extraction of Coq module `Z` to go a module named `Z0`?
+> When you're talking about a.b.c, are you saying that the blacklist should also accept module names, or qualified names?
+
+I'm saying there should be a separate blacklist for each OCaml namespace (type, module, constant, constructor, etc) (though I suppose it's not that bad if all the blacklists are combined), and also that these blacklists should accept qualified names, and that a given declaration should be renamed only if it's possible to refer to the extracted version by some qualified name whose suffix is the given qualified name.
+
+
+> In the [#10936](https://github.com/coq/coq/issues/10936#issue-511424960) example, do you intend `Inductive int` to be extracted to `int0 = int`?
+
+Yes
+
+> In the example [above](https://github.com/coq/coq/issues/11987#issuecomment-969331895), do you intend to have `Z` in the blacklist and the extraction of Coq module `Z` to go a module named `Z0`?
+
+Yes, assuming we put `Z` in the module blacklist (which may or may not be the same as the constant blacklist)
+Actually, it is less and less clear to me that we can make something out of qualified names in the blacklist because OCaml resolution of qualified names is different than in Coq and a more recent module name (say `Z`) would hide the whole of a former module of same name, including the fields of the former module which are not defined in the more recent module. In particular, in the above example, I don't really see an alternative to put the module `Z` itself in the blacklist.
+
+
+Regarding your branch, there are two commits which add OCaml/Haskell keywords. I'd say that it is worth to already make a PR out of them. What do you think?
+> Actually, it is less and less clear to me that we can make something out of qualified names in the blacklist because OCaml resolution of qualified names is different than in Coq and a more recent module name (say `Z`) would hide the whole of a former module of same name, including the fields of the former module which are not defined in the more recent module. In particular, in the above example, I don't really see an alternative to put the module `Z` itself in the blacklist.
+
+<strike>I think you're reversing the purpose of the blacklist.  If `Z` in OCaml were an inner module, say, `Stdlib.Z`, then we don't need to rename a top-level `module Z` to avoid interfering with extracted `Stdlib.Z`, right?  We'd only need to rename a `module Z` inside a `module Stdlib`.</strike>  But I think maybe I see what you're saying: if I want to access `String.make`, then not only do I need to avoid having a `val make` in my own `module String`, but I need to avoid having a `module String` altogether?  If that is the case, then I think you're right, and we should just allow blacklisting modules, but not qualified names.
+> Regarding your branch, there are two commits which add OCaml/Haskell keywords. I'd say that it is worth to already make a PR out of them. What do you think?
+
+That sounds reasonable.  I don't currently have the motivation to create/shepard this PR, but I might try to make such a PR soon (along with one solving https://github.com/coq/coq/issues/15180, which should be solvable in a relatively straightforward way).  Feel free to take over the commits and make a PR yourself with them in the meantime though.
+> we should just allow blacklisting modules, but not qualified names.
+
+I would say that we need both.
+
+For the `test` example above, we would need an `Extraction Module Blacklist Z` but for the example of #10936 we would need an `Extraction Identifier Blacklist int`, which your branch solves. So, I would say that we could start from your branch and add an `Extraction Module Blacklist ...`. What do you think?
+> I would say that we need both.
+
+I meant blacklisting unqualified modules and unqualified identifiers, but not qualified modules nor qualified identifiers.
+
+> For the `test` example above, we would need an `Extraction Module Blacklist Z` but for the example of #10936 we would need an `Extraction Identifier Blacklist int`, which your branch solves. So, I would say that we could start from your branch and add an `Extraction Module Blacklist ...`. What do you think?
+
+Yes, that sounds good.  I think I gave up because I did not understand the extraction infrastructure well enough.
+
+> I meant blacklisting unqualified modules and unqualified identifiers, but not qualified modules nor qualified identifiers.
+
+Yes, that's what I meant too.

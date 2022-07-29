@@ -1,0 +1,45 @@
+Comment author: @JasonGross
+
+(* File reduced by coq-bug-finder from original input, then from 7593 lines to 243 lines, then from 256 lines to 102 lines, then from\
+ 104 lines to 28 lines *)
+(* coqc version trunk (September 2014) compiled on Sep 17 2014 0:22:30 with OCaml 4.01.0
+   coqtop version cagnode16:/afs/csail.mit.edu/u/j/jgross/coq-trunk,trunk (d34e1eed232c84590ddb80d70db9f7f7cf13584a) *)
+Set Primitive Projections.
+Set Implicit Arguments.
+Record prod (A B : Type) := pair { fst : A ; snd : B }.
+Notation "x * y" := (prod x y) : type_scope.
+Notation "( x , y , .. , z )" := (pair .. (pair x y) .. z) : core_scope.
+Class UnitSubuniverse := { O : Type -> Type ; O_unit : forall T, T -> O T }.
+Class ReflectiveSubuniverse := { rsubu_usubu : UnitSubuniverse ; O_rectnd : forall {P Q : Type} (f : P -> Q), O P -> Q }.
+Global Existing Instance rsubu_usubu.
+Context {subU : ReflectiveSubuniverse}.
+Goal forall (A B : Type) (x : O A * O B) (x0 : B),
+       { g : _ & O_rectnd (fun z : A * B => (O_unit (fst z), O_unit (snd z)))
+                          (O_rectnd (fun a : A => O_unit (a, x0)) (fst x)) =
+                 g x0 }.
+  eexists.
+  match goal with
+    | [ |- context[?e] ] => is_evar e; let e' := fresh "e'" in pose (e' := e)
+  end.
+  change ?g with e'. (* Stack overflow *)
+
+
+Comment author: @mattam82
+
+This seems to be due to change ?g interpreting ?g as a MatchingVar evar hence as a Meta g, while it's really not once out of the context[?e] expression.
+
+
+Comment author: @herbelin
+
+Actually, the bug is not related to the support for parsing evars. It comes from r16525 in May 2013.
+
+Still, there is a question about whether we allow to refer to existing evars in the pattern given to change. As of today, ?g is not interpreted as the existing evar ?g but as a fresh hole. This raises the question whether we give a different syntax to ?g as an existing evar and ?g as a fresh hole, or whether we don't introduce new syntax but interpret ?g possibly as an existing evar and otherwise as a fresh hole.
+
+Fixed in trunk (not present in 8.4).
+
+
+Comment author: @JasonGross
+
+Maybe existing evars should get a different syntax ([??g], or [?g?] or something else entirely?) so they can be used unambiguously in patterns?
+
+

@@ -1,0 +1,3 @@
+On current 8.8 (c0eedb5bdcb815132f404e19d6bf59730ae6e2df), this gives a universe inconsistency error instead.
+Now we get `Error: Universe inconsistency. Cannot enforce foo.8 < l because l = l = foo.8.`
+kinda weird to see `l = l` but let whoever cares open a new issue.

@@ -1,0 +1,17 @@
+If it jumps to a file, it should have file offsets (in # of chars).  I believe the version you're using is printing the info to the console even without `-debug`.  Like this:
+
+```
+db_loc returns ToplevelInput: 33 40
+```
+
+With a filename in place of `ToplevelInput`.
+
+Maybe see if what you're getting suggests anything.
+```
+server:db_upd_bpts ToplevelInput: 1212 true
+db_loc returns ToplevelInput: 1212 1225
+db_loc returns /home/jgross/Documents/GitHub/fiat-crypto+14252/rewriter/src/Rewriter/Rewriter/AllTactics.v: 20387 20787
+```
+But it jumps to the top
+The issue seems to be that if the buffer is not already open, then the debugger fails to jump.  If the buffer is already open, the jump happens fine.
+Should be fixed now in #14252.

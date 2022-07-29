@@ -1,0 +1,43 @@
+Comment author: @JasonGross
+
+$ cat A.v
+Set Suggest Proof Using.
+Module B.
+  Section C.
+    Variable D : Set.
+    Theorem E : Set.
+      exact D.
+    Qed.
+  End C.
+End B.
+$ cat A/B.v
+Set Suggest Proof Using.
+Section C.
+  Variable D : Set.
+  Theorem E : Set.
+    exact D.
+  Qed.
+End C.
+$ coqc -quick -R . foo A.v A/B.v
+The proof of foo.A.B#C#E should start with: Proof using All.
+The proof of foo.A.B#C#E should start with: Proof using All.
+
+If there is no separate filename component, it is impossible to systematically automate the insertion of [Proof using] identifiers using https://github.com/JasonGross/coq-tools/blob/master/proof-using-helper.py.
+
+
+Comment author: @ppedrot
+
+I think this looks wrong. Coq should rather complain about the fact you use a module path both for a file and a directory and forbid you to do it.
+
+
+Comment author: @JasonGross
+
+I'm not sure I agree with that.  Until Coq gets proper namespaces, I've found 
+that a good way to organize things is to have a folder A/, with a bunch of 
+files, and then have a file A.v which [Include]s all of those files.  This 
+allows parallel compilation while having everything in a shared namespace, 
+without having to recreate the directory structure in modules in every file.
+
+
+@JasonGross the aux files have a natural filename component so you should probably use those instead of parsing interactive output.
+So I suggest we WONTFIX this issue.

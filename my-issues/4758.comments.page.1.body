@@ -1,0 +1,32 @@
+Comment author: @JasonGross
+
+Here is a change that was confusing to track down:
+
+Section foo.
+  Context (admit : forall {T}, T).
+  Existing Class False.
+  Global Instance: False.
+  Proof.
+    apply admit.
+  Qed.
+
+  Goal True.
+    clear admit.
+    Typeclasses eauto := debug.
+    pose (_ : False).
+(* 8.4:
+1.1: exact False_instance_0 on
+False
+no backtrack on False after normevars *)
+(* 8.5:
+Debug: 1: no match for False , 1 possibilities
+Debug: 1: no match for False , 1 possibilities
+The command has indeed failed with message:
+Cannot infer this placeholder of type "False" (no type class instance found). *)
+
+
+The log should note that it found an instance, but the instance was no longer valid due to cleared section variables.  Possibly, in -compat 8.4 mode, Coq should emit such a warning message even when Typeclasses Debug is not set.
+
+(Also, why do I get two lines in the trace of the tc resolution?)
+
+

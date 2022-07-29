@@ -1,0 +1,27 @@
+Comment author: @JasonGross
+
+Set Implicit Arguments.
+Record foo := { fx : Set }.
+Set Primitive Projections.
+Record bar := { bx : Set }.
+Definition Foo (f : foo) : f = f.
+  destruct f; admit.
+Defined.
+Definition Bar (b : bar) : b = b.
+  destruct b; admit.
+Defined.
+Goal forall f b, Foo f = Foo f -> Bar b = Bar b.
+  intros f b.
+  destruct f, b.
+  simpl.
+  progress unfold Bar. (* success *)
+  progress unfold Foo. (* failed to progress *)
+
+I expect [simpl] to behave identically with respect to [Foo] and [Bar].
+
+
+Comment author: @mattam82
+
+The definitions are really not identical with the admit like this, as the first has a blocking match above the admit, whereas the second has the admit at the head of the term, so they don't have the same simplification behavior. On the other hand, if Foo and Bar are defined as [destruct f as [fx]; destruct fx; admit], they both have the destruction of [f] at the head, and simpl didn't reduce the primitive version as it should have. It is fixed in trunk now.
+
+

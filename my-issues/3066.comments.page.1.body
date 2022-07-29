@@ -1,0 +1,54 @@
+Comment author: @JasonGross
+
+The following works:
+
+Local Reserved Notation "'F'".
+Record Foo :=
+  {
+    Foo_VeryLongFieldNameOfFoo :> Type where "'F'" := Foo_VeryLongFieldNameOfFoo;
+    Foo_Law : F = F
+  }.
+
+The following do not:
+
+Record Foo :=
+  {
+    Foo_VeryLongFieldNameOfFoo :> Type where F := Foo_VeryLongFieldNameOfFoo;
+    Foo_Law : F = F
+  }.
+
+(* Toplevel input, characters 82-83:                                                                                                        
+Syntax error: [one_decl_notation] expected after 'where' (in [vernac:decl_notation]). *)
+
+
+Comment author: @ppedrot
+
+What do you expect it to do? Add a let binding or define a notation?
+
+
+Comment author: @JasonGross
+
+I expect it to define an alias
+
+Am I correctly remembering that notations defined in 'where' clauses in records are scoped to the definition of the record (that is, not
+
+
+Comment author: @JasonGross
+
+Oops, I did not finish that last comment before clicking submit.  Here is what I meant to say:
+
+I expect it to define an abbreviation (in the sense of http://coq.inria.fr/V8.4pl2/refman/Reference-Manual014.html#hevea_default798).  (Oops, I had called it an alias before.), which I think might be another name for a notation without quotes.
+
+There is already a way of defining let bindings in records, namely
+
+Record Foo :=
+  {
+    Foo_VeryLongFieldNameOfFoo :> Type;
+    F := Foo_VeryLongFieldNameOfFoo;
+    Foo_Law : F = F
+  }.
+
+
+As a side note: am I correctly remembering that notations defined in 'where' clauses in records are scoped to the definition of the record (that is, do not persist after the record is defined).
+
+

@@ -1,0 +1,31 @@
+Comment author: @JasonGross
+
+The `include` lines should be wrapped in something like
+
+ifneq ($(filter-out clean archclean printenv,$(MAKECMDGOALS)),)
+...
+endif
+
+so that `make clean; make clean` doesn't run coqdep many times in between.
+
+
+Comment author: @JasonGross
+
+Er, it should actually be
+
+ifneq ($(filter-out clean archclean printenv,$(MAKECMDGOALS)),)
+-include ...
+else
+ifeq ($(MAKECMDGOALS),)
+-include ...
+endif
+endif
+
+so that we also handle the case of the implicit 'all' rule.
+
+
+Comment author: @silene
+
+Fixed by commit 3fb81fe. Thanks for the code snippet.
+
+

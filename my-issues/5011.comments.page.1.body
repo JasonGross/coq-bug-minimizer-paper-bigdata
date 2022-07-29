@@ -1,0 +1,16 @@
+Comment author: @JasonGross
+
+In Coq v8.6 (dabe6d0e1d1782d3e9647e04aa1bf161765ad882), as well as 8.5pl2 and 
+8.4pl6:
+
+Record decoder (n : nat) W :=
+  { decode : W -> nat }.
+Existing Class decoder. (* Anomaly: Uncaught exception Reduction.NotArity. 
+Please report. *)
+
+
+Comment author: @ppedrot
+
+Fixed in c1c488d.
+
+

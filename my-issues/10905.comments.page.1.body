@@ -1,0 +1,35 @@
+I might be tired, but I'm a bit lost:
+```shell
+gares@ollypat:/tmp$ make
+echo b
+b
+gares@ollypat:/tmp$ make A=3
+echo 3
+3
+gares@ollypat:/tmp$ cat Makefile 
+A := a
+A := b
+
+all:
+	echo $(A)
+```
+where the second line `A := b` is morally from the included file. Why is that different for coq makefile?
+I mean, it both works to override in the .local file, and in the command line.
+The issue is not passing the variable to `make`, but passing it to `coq_makefile`
+> where the second line `A := b` is morally from the included file.
+
+Note additionally that `Makefile.conf` gets included *before* the setting of `OTHERFLAGS` (and if you want to change this, I think you need to change all of the `:=` to `=` for the `# Put in place old names` bit), and so it is the setting in the Coq-generated `Makefile` that overrides the one in `Makefile.conf` (for `OTHERFLAGS`), rather than the other way around.
+Is there any way to make `coq_makefile` emit `override` directives for the variable assignments it gets from the command line?  (Or were you suggesting that as a proposal for changing `coq_makefile`?)
+Sorry, I think I misunderstood the issue.
+I think that with coq_makefile 2 I've changed the design but not deprecated the old way of doing things. Let me try to explain.
+
+In coq_makefile 1 there are two ways to override, passing VAR=x to coq_makefile (or put it in _CoqProject) and passing the VAR=x to make on the command line.
+
+In coq_makefile 2 you can override by putting VAR=x in Makefile.local or passing VAR=x it to make on the command line. For backward compatibility, since many _CoqProject file contain VAR=x, I did not remove that possibility, but I guess it never got tested for OTHEFLAGS (maybe there was no OTHERFLAGS=.. in the wild, pretty sure I saw stuff like COQC=.. and I guess it still works).
+
+The reason why I think VAR=x does not belong to _CoqProject is that its *syntax* is specific to make, even the escaping rules for strings are. UIs are supposed to do something with this file, so the plan was to move all make specific code (including extra targets, see the deprecated -phony & co) to Makefile.local and leave in _CoqProject only Coq specific stuff (the list of files, the loadpath, extra command line arguments to enable features...)
+
+So, unless there is a use can for still supporting VAR=x in _CoqProject or in the command line of coq_makefile, I believe we should avoid doing that and use the other override mechanisms.
+
+
+I believe the solution for `OTHERFLAGS` in particular is to use `-arg` in `_CoqProject`.  I don't recall if I had a use-case where `-arg` does not work, so I'm closing this issue.

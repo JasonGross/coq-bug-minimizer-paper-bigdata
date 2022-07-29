@@ -1,0 +1,16 @@
+Comment author: @JasonGross
+
+I've been told (https://github.com/HoTT/coq/issues/3) that the following code generates "Error: There is an inductive name deep in a "in" clause." in the trunk version coq; it executes fine in v8.4:
+
+Require Import Omega.
+Theorem foo : forall (n m : nat) (pf : n = m),
+                match pf in _ = N with 
+                  | eq_refl => unit
+                end.
+
+
+Comment author: @pirbo
+
+fixed and put in test-suite. It is r16133
+
+

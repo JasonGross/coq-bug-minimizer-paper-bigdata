@@ -1,0 +1,19 @@
+Comment author: @JasonGross
+
+I would like to be able to do
+
+Definition foo : Bar := baz.
+Existing Instance foo | 100.
+
+and have it be the same as
+
+Instance foo : Bar | 100 := baz.
+
+This is especially useful for, e.g., making Axioms into instances.
+
+
+Comment author: @ppedrot
+
+Granted in trunk r16645.
+
+

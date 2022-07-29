@@ -1,0 +1,8 @@
+Comment author: @JasonGross
+
+I would like this to work:
+```coq
+Inductive A' := B' (_ : let T := unit in unit).
+Scheme Equality for A'.
+```
+

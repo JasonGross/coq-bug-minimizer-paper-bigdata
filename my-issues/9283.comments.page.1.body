@@ -1,0 +1,17 @@
+Note that `Set Keyed Unification` seems to fix this bug.  Is this intended?
+
+Also note that `Set Keyed Unification` is *still* not documented (cf #4551)
+I'd bet that this is a duplicate of #9135.
+@ppedrot I can believe that #9135 is part of the problem, but there is another very strange quirk here, which is that if I replace
+```coq
+Lemma lem2 : forall x, Interp Foo x = x.
+```
+with
+```coq
+Lemma lem2 : Interp Foo = (fun x => x).
+```
+Then the `rewrite` fails to go through (which is what I expect).
+Is there the same issue with ssr's rewrite?
+@JasonGross there are several calls to unification occurring, and not all of them disregard the opacity status. #9135 is due to the pretyper not respecting opacity, which ultimately affects refine, but the rewrite matching algorithm might still respect it, which would explain what you observe.
+See also #6317
+cf https://github.com/coq/coq/issues/1639 ?

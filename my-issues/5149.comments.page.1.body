@@ -1,0 +1,236 @@
+Comment author: @JasonGross
+
+Goal forall (base_type_code : Type) (t : base_type_code) (flat_type : Type) 
+            (t' : flat_type) (exprf interp_flat_type0 interp_flat_type1 : 
+flat_type -> Type)
+            (v v' : interp_flat_type1 t'),
+    v = v' ->
+    forall (interpf : forall t0 : flat_type, exprf t0 -> interp_flat_type1 t0)
+           (SmartVarVar : forall t0 : flat_type, interp_flat_type1 t0 -> 
+interp_flat_type0 t0)
+           (Tbase : base_type_code -> flat_type) (x : exprf (Tbase t))
+           (x' : interp_flat_type1 (Tbase t)) (T : Type)
+           (flatten_binding_list : forall t0 : flat_type,
+               interp_flat_type0 t0 -> interp_flat_type1 t0 -> list T)
+           (P : T -> list T -> Prop) (prod : Type -> Type -> Type)
+           (s : forall x0 : base_type_code, prod (exprf (Tbase x0)) 
+(interp_flat_type1 (Tbase x0)) -> T)
+           (pair : forall A B : Type, A -> B -> prod A B),
+      P (s t (pair (exprf (Tbase t)) (interp_flat_type1 (Tbase t)) x x'))
+        (flatten_binding_list t' (SmartVarVar t' v') v) ->
+      (forall (t0 : base_type_code) (t'0 : flat_type) (v0 : interp_flat_type1 
+t'0)
+              (x0 : exprf (Tbase t0)) (x'0 : interp_flat_type1 (Tbase t0)),
+          P (s t0 (pair (exprf (Tbase t0)) (interp_flat_type1 (Tbase t0)) x0 
+x'0))
+            (flatten_binding_list t'0 (SmartVarVar t'0 v0) v0) -> interpf 
+(Tbase t0) x0 = x'0) ->
+      interpf (Tbase t) x = x'.
+Proof.
+  intros ?????????????????????? interpf_SmartVarVar.
+  solve [ unshelve (subst; eapply interpf_SmartVarVar; eassumption) ] || fail 
+"too early".
+  Undo.
+  solve [ unshelve (eapply interpf_SmartVarVar; subst; eassumption) ]. (* 
+Error: No applicable tactic. *)
+
+
+
+
+Note that if I do
+
+  eapply interpf_SmartVarVar; subst; eassumption.
+  Grab Existential Variables.
+  { exfalso.
+
+I get the very strange error message "Error: Incorrect number of goals 
+(expected 1 tactic)." on [exfalso].
+
+
+Comment author: @JasonGross
+
+Bisecting gives:
+
+0b417c12eb10bb29bcee04384b6c0855cb9de73a is the first bad commit
+commit 0b417c12eb10bb29bcee04384b6c0855cb9de73a
+Author: Matthieu Sozeau <matthieu.sozeau@ inria.fr>
+Date:   Wed Oct 5 17:50:45 2016 +0200
+
+    unification.ml: fix for bug [BZ#4763](https://github.com/coq/coq/issues?q=is%3Aissue%20%22Original%20bug%20ID%3A%20BZ%234763%22), unif regression
+    
+    Do not force all remaining conversions problems to be solved after the
+    _first_ solution of an evar, but only at the end of assignment of terms
+    to evars in w_merge. This was hell to track down, thanks for the help of
+    Maxime. contribs pass and HoTT too.
+
+
+Comment author: @herbelin
+
+Hi Jason,
+
+This is not properly related to "subst". The only role of "subst" here is to produce an evar instantiated twice with the same variable so that it is not invertible canonically (the evar is "?v0@ {v:=v'; v':=v'}" to be unified with "v'").
+
+The removal of the consider_remaining_unif_problems in 0b417c12eb did that eassumption does not try anymore to find a (heuristic) instance for "?v0".
+
+One does not see it because not all pending conversion problems are actually printed. This is something we observed with Théo that the so-called pending evar "candidates" are not printed.
+
+I guess that a fix would not be too difficult, knowing however that we are here at the border of the design of what we want in terms of interactivity with unification.
+
+For the record, a much shorter example:
+
+Goal forall x x' : nat, x = x' -> S x = S x -> exists y, S y = S x.
+intros.
+eexists.
+rewrite <- H.
+eassumption.
+(* goal of type "nat" remaining on the shelf *)
+
+As for the "Incorrect number of goals", I would suspect this is another bug.
+
+
+Comment author: @mattam82
+
+Interesting... should we print the evar candidates as well then? About the current issue, I think there's a little issue, how come w_unify just restricts the candidates of ?y but doesn't add a ?y[x:=x,x':=x] = x problem as well? It seems that the information is lost to me.
+
+
+Comment author: @herbelin
+
+(In reply to Matthieu Sozeau from comment [BZ#3](https://github.com/coq/coq/issues?q=is%3Aissue%20%22Original%20bug%20ID%3A%20BZ%233%22))
+> Interesting... should we print the evar candidates as well then?
+
+As soon as pending problems are printed, yes, evar candidates should be printed as well.
+
+> About the
+> current issue, I think there's a little issue, how come w_unify just
+> restricts the candidates of ?y but doesn't add a ?y[x:=x,x':=x] = x problem
+> as well? It seems that the information is lost to me.
+
+Candidates can be and are indeed used to represent this kind of global pending constraint in a local way. This equation is indeed equivalent to instantiating ?y by either x or x'.
+
+Why does w_unify do that? Because some part of evarconv and evarsolve do it in general, and presumably did it here.
+
+
+Comment author: @mattam82
+
+(In reply to Hugo Herbelin from comment [BZ#4](https://github.com/coq/coq/issues?q=is%3Aissue%20%22Original%20bug%20ID%3A%20BZ%234%22))
+> (In reply to Matthieu Sozeau from comment [BZ#3](https://github.com/coq/coq/issues?q=is%3Aissue%20%22Original%20bug%20ID%3A%20BZ%233%22))
+> > Interesting... should we print the evar candidates as well then?
+> 
+> As soon as pending problems are printed, yes, evar candidates should be
+> printed as well.
+
+Ok, will do in a separate commit then.
+
+> > About the
+> > current issue, I think there's a little issue, how come w_unify just
+> > restricts the candidates of ?y but doesn't add a ?y[x:=x,x':=x] = x problem
+> > as well? It seems that the information is lost to me.
+> 
+> Candidates can be and are indeed used to represent this kind of global
+> pending constraint in a local way. This equation is indeed equivalent to
+> instantiating ?y by either x or x'.
+> 
+> Why does w_unify do that? Because some part of evarconv and evarsolve do it
+> in general, and presumably did it here.
+
+I see, my overlook, they should indeed be seen as a pending disjunction of constraints.
+I was worried in 0b417c12eb that entirely removing the consider_remaining in favor of reconsider would stop solving some preexisting problems and this test-case shows it can even apply to problems that w_unify produces itself. By putting it back we're making a choice that w_unify always solves the existing and new unif constraints (candidates included) or fails. I guess we'll have to think about how to control this in the future indeed, as I can see tactic users wanting at least both "extreme" behaviors (always solve them or never make a choice) and maybe some in between as well.
+
+
+Comment author: @mattam82
+
+The fix is being tested here:
+https://ci.inria.fr/coq/view/coq-contribs/job/coq-contribs/504/console
+
+
+Comment author: @mattam82
+
+The other bug (expected 1 tactic) should be investigated too, but my fix revealed another bug in error printing. The two are being tested here: https://ci.inria.fr/coq/view/coq-contribs/job/coq-contribs/508/console
+
+
+Comment author: @mattam82
+
+Ok, after discussions with Enrico and Maxime, here's another proposal for a fix:
+
+https://github.com/mattam82/coq/commit/7efd26d177ed7a050fe8a1ca000a7fd8af96a4b9
+
+
+Adds a new multi-goal tactic [solve_constraints] that forces solving of
+unification constraints and evar candidates to be solved.
+Adds an option [Set Eager Tactic Unification] that launches
+[solve_constraints] at every [.], on by default, preserving the 8.4
+behavior of tactics. 
+
+With this in place, eassumption. does run consider_remaining_unif_problems, choosing a solution. The initial example goes through if we remove unshelve or add an explicit solve_constraints after eassumption (with or without the unshelve).
+
+https://ci.inria.fr/coq/view/coq-contribs/job/coq-contribs/516/console
+
+
+Comment author: @mattam82
+
+Another try. Some test-suite files change behavior, failing explicitely when consider_remaining fails now. https://ci.inria.fr/coq/view/coq-contribs/job/coq-contribs/518/
+
+
+Comment author: @maximedenes
+
+I like the proposal a lot, but it may be time to also rename [consider_remaining_unif_problems] into [heuristic_solve_constraints], [heuristic_solve_postponed] or something like that.
+
+
+Comment author: @maximedenes
+
+Two questions:
+
+1) how does solve_constraints (when called at ".") relate to shelving?
+
+2) what exactly is the change of behavior? I thought you told me yesterday that consider_remaining_unif_problems would fail if it could not solve the constraints. So how does solve_constraints introduce more failures?
+
+
+Comment author: @mattam82
+
+solve_constraints_heuristically sounds good to me.
+1) It's a multi-goal tactic, it's global and it works if there are only shelved goals too. The "." becomes equivalent to "; all:solve_constraints"
+2) refine didn't call consider_remaining before, it silently left unification constraints.
+
+
+Comment author: @mattam82
+
+How about "Set Tactic Unification Use Heuristics" instead of my "Eager" btw? When unset it should really mean that the unifier makes no choice and leaves the constraints that have multiple solutions.
+
+
+Comment author: @mattam82
+
+It passed the contribs, making a PR for review before merge!
+
+
+Comment author: @herbelin
+
+As an add-on, I like the idea of reflecting the function applying unification "heuristic" as a proper tactic.
+
+I feel that it is however a bit early to provide an option to (de)activating it in the sense that I see a couple of behaviors to be changed before embarking into a model giving to the user a better control on unification.
+
+1) For instance, it happens that refine actually calls consider_remaining_unif_problems but the error is not fatal when consider_remaining_unif_problems fails (this is because it calls consider_remaining_unif_problems via Pretyping.apply_heuristics with the fail_evar flag to false).
+
+For instance, if the following generates unresolved unification constraints
+
+Goal forall x:nat, True /\ x = x.
+intro x. refine (nat_rect _ _ _ x).
+
+The following does not, even though the statement looks superficially similar and that there are still several solutions for the return predicate:
+
+Goal forall x:nat, x = x.
+intro x. refine (nat_rect _ _ _ x).
+
+2) Unification is currently not enough designed in such a way that heuristics are only applied in consider_remaining_unif_problems. There are choices, especially f.o. heuristics tried early already in evarconv.
+
+So, to go in the direction of a clear separation of the use of heuristics outside of the main loop decomposing unification problems into many-solutions elementary constraints, I feel that we have to work first on the unification algorithm itself.
+
+An alternative is otherwise to clearly tag the option "Tactic Unification Use Heuristics" as experimental so that we can think more at the underlying general design.
+
+
+Comment author: @mattam82
+
+The fix for 8.5 is discussed here: https://github.com/coq/coq/pull/330
+The addendum for 8.6 (user-accessible tactic and mode with no constraint solving) here:
+https://github.com/coq/coq/pull/331
+
+

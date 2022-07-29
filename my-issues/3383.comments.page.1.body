@@ -1,0 +1,42 @@
+Comment author: @JasonGross
+
+Goal forall b : bool, match b as b' return if b' then True else True with true => I | false => I end = match b as b' return if b' then True else True with true => I | false => I end.
+intro.
+lazymatch goal with
+| [ |- appcontext[match ?b as b' return @ ?P b' with true => ?t | false => ?f end] ]
+  => change (match b as b' return P b with true => t | false => f end) with (@ bool_rect P t f)
+end.
+(* Toplevel input, characters 153-154:
+Error: The reference P was not found in the current environment. *)
+
+
+Comment author: @JasonGross
+
+This is still open in 8.5.
+
+
+Comment author: @herbelin
+
+Hi Jason,
+
+This bug is not easy to solve properly as Coq is done because the pattern is not type-checked by Coq. If you give an "in" clause explicitly, it will work.
+
+I committed a weak fix which tells to add an "in" clause.
+
+Hugo
+
+
+Comment author: @JasonGross
+
+Thanks!
+
+For future reference, the revised tactic code is:
+
+lazymatch goal with
+| [ |- appcontext[match ?b as b' in bool return @ ?P b' with true => ?t | false => ?f end] ]
+  => change (match b as b' in bool return P b' with true => t | false => f end) with (@ bool_rect P t f b)
+end.
+
+(I had to fix typos in both the return clause and the arguments to bool_rect to get it to work.)
+
+

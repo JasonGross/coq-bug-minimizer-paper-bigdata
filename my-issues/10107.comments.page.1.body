@@ -1,0 +1,91 @@
+FTR, this is part of my long-term todo list.
+Here is another test-case, where I have a(n I think) reasonably hand-written version of something like `context` that is 800x-1600x slower in Ltac2 than the built-in version:
+```coq
+Fixpoint fact (n : nat) :=
+  match n with
+  | O => 1
+  | S n' => fact n' * S n'
+  end.
+Require Import Ltac2.Ltac2.
+Require Import Ltac2.Constr.
+Require Import Ltac2.Control.
+Require Import Ltac2.Notations.
+Ltac2 rec fold_right f init ls :=
+  match ls with
+  | [] => init
+  | x :: xs => f x (fold_right f init xs)
+  end.
+Ltac2 rec app ls1 ls2 :=
+  match ls1 with
+  | [] => ls2
+  | x :: xs => x :: app xs ls2
+  end.
+Ltac2 rec rev ls :=
+  match ls with
+  | [] => []
+  | x :: xs => app (rev xs) [x]
+  end.
+Ltac2 rec fold_left f ls init :=
+  match ls with
+  | [] => init
+  | x :: xs => fold_left f xs (f init x)
+  end.
+Ltac2 rec map f ls :=
+  match ls with
+  | [] => []
+  | x :: xs => f x :: map f xs
+  end.
+Ltac2 rec concat_list sep ls :=
+  match ls with
+  | [] => Message.of_string ""
+  | x :: xs
+    => match xs with
+       | [] => x
+       | _ => Message.concat x (Message.concat sep (concat_list sep xs))
+       end
+  end.
+Ltac2 rec iter tac ls :=
+  match ls with
+  | [] => ()
+  | x :: xs => tac x; iter tac xs
+  end.
+Ltac2 rec seq' start endv :=
+  match Int.equal start endv with
+  | true => []
+  | false => start :: seq' (Int.add start 1) endv
+  end.
+Ltac2 rec seq start len := seq' start (Int.add start len).
+Ltac2 rec array_iter f ls :=
+  iter (fun i => f (Array.get ls i)) (seq 0 (Array.length ls)).
+Ltac2 rec find (id : ident) (term : constr) :=
+  match Constr.Unsafe.kind term with
+  | Constr.Unsafe.Rel _ => ()
+  | Constr.Unsafe.Var id' => () (* ... *)
+  | Constr.Unsafe.Meta _ => ()
+  | Constr.Unsafe.Evar _ _ => ()
+  | Constr.Unsafe.Sort _ => ()
+  | Constr.Unsafe.Cast c cst ty => find id c; find id ty
+  | Constr.Unsafe.Prod id' a b => () (* ... *); find id a; find id b
+  | Constr.Unsafe.Lambda id' a b => () (* ... *); find id a; find id b
+  | Constr.Unsafe.LetIn id' a b c => () (* ... *); find id a; find id b; find id c
+  | Constr.Unsafe.App f xs => find id f; array_iter (find id) xs
+  | Constr.Unsafe.Constant _ _ => ()
+  | Constr.Unsafe.Ind _ _ => ()
+  | Constr.Unsafe.Constructor _ _ => ()
+  | Constr.Unsafe.Case _ c r body => find id c; find id r; array_iter (find id) body
+  | Constr.Unsafe.Fix _ _ _ ts vs => array_iter (find id) ts; array_iter (find id) vs
+  | Constr.Unsafe.CoFix _ _ ts vs => array_iter (find id) ts; array_iter (find id) vs
+  | Constr.Unsafe.Proj _ v => find id v
+  end.
+Goal True.
+  ltac1:(pose proof True as x;
+         let n := constr:(8) in
+         let v := (eval cbv in (fact n)) in
+         let c := constr:(eq_refl : fact n = v) in
+         do 5 pose c).
+  Time let v := Control.hyps () in
+       let i := @x in
+       iter (fun (h, body, ty) => find i ty; match body with Some b => find i b | None => () end) v.
+  (* Finished transaction in 17.031 secs (16.539u,0.008s) (successful) *)
+  Time ltac1:(try let x := match goal with x : Prop |- _ => x end in match goal with H : context[x] |- _ => idtac end). (* Finished transaction in 0.229 secs (0.156u,0.s) (successful) *)
+```

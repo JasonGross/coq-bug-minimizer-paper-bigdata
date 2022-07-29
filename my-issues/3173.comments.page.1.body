@@ -1,0 +1,9 @@
+Comment author: @JasonGross
+
+I want to be able to say
+
+Local Module Notation Foo.A := Bar.A.
+
+And then have a mix-in/pseudo- module Foo and a module A in Foo, locally, but once I close the section or module or file, I want any references to Foo.A to be replaced by references to Bar.A.
+
+

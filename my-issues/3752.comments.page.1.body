@@ -1,0 +1,15 @@
+Comment author: @JasonGross
+
+I can't find any mention of it in http://coq.inria.fr/refman/Reference-Manual010.html#hevea_tactic35.  What does it do?
+
+
+Comment author: @Zimmi48
+
+I don't know when this was fixed but at https://coq.inria.fr/refman/Reference-Manual010.html#hevea_tactic38 we can read:
+
+> introduction over * introduces all forthcoming quantified variables
+> appearing in a row; introduction over ** introduces all forthcoming
+> quantified variables or hypotheses until the goal is not any more a
+> quantification or an implication.
+
+

@@ -1,0 +1,61 @@
+Comment author: @JasonGross
+
+It would be nice, especially for debugging, if error messages about type errors included enough information to know which parts didn't unify.  I would like the error message to also have something such as 'In a subterm, could not unify given term "nat" with expected term "Set"', or similar.  I recall there recently being a fix that reprinted terms in such error messages with [Set Printing All] if they were equivalent, but this does not help with confusing error messages such as
+
+The term "A" has type
+ "@ Adjunction (* Top.695 Top.696 Top.697 Top.698 Top.699 Top.700 Top.701
+    Top.717 Top.718 Top.719 Top.720 Top.721 *) H C D F G"
+while it is expected to have type
+ "@ Adjunction (* Top.756 Top.757 Top.758 Top.759 Top.760 Top.761 Top.762
+    Top.763 Top.764 Top.765 Top.766 Top.767 Top.768 Top.769 Top.770 Top.771
+    Top.772 *) H C D F G".
+
+(https://github.com/HoTT/coq/issues/56).  So I would like to know, e.g., which part of the unification algorithm failed, and which universes it was trying to identify and failing on.
+
+
+Comment author: @ppedrot
+
+That should not too difficult to do. I will look into it when I have some time.
+
+
+Comment author: STyx &lt;<PlaSTyx@free.fr>&gt;
+
+Formulation:
+
+Let's consider that message
+"The term <term> has type <S> while it is expected to have type <S'>."
+
+Often, strings <S> and <S'> are identical. 
+Then "Display all low-level contents" should (I hope !?) solve that problem.
+
+Patch:
+
+Coq could (/should) be improved like that (roughly speaking) :
+   get <S> and <S'>
+will be replaced by
+   save level
+   repeat
+     get <S> and <S'>
+     dec level
+   until <S> != <S'>
+   restore level
+
+Example:
+
+Goal forall x : Set, x=x:>Type -> x=x:>Set.
+intros x H; exact H.
+
+gives
+The term "H" has type "x = x" while it is expected to have type "x = x".
+
+
+Comment author: @JasonGross
+
+I think this has been implemented in Coq 8.5, and can thus be closed, but I don't have time to test it at the moment.
+
+
+Comment author: @ppedrot
+
+Yes, I did implement it.
+
+

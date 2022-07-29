@@ -1,0 +1,29 @@
+Comment author: @JasonGross
+
+Consider the following code:
+
+Require Import Program.
+
+Inductive Even : nat -> Prop :=
+| evenO : Even O
+| evenS : forall n, Odd n -> Even (S n)
+with Odd : nat -> Prop :=
+| oddS : forall n, Even n -> Odd (S n).
+
+Program Fixpoint doubleE {n} (e : Even n) : Even (2 * n)
+  := _
+with doubleO {n} (o : Odd n) : Odd (S (2 * n))
+     := _.
+Obligation 1.
+
+
+The message in trunk (Error: More than one program with unsolved obligations: doubleO, doubleE) is better than the message in 8.4 (Error: More than one program with unsolved obligations), but I think both should include the syntax that should be used; I'd like something like
+
+Error: More than one program with unsolved obligations: doubleO, doubleE.  Use the "of" clause to specify, as in "Obligation 1 of doubleO".
+
+
+Comment author: @ppedrot
+
+Fixed in aa6a7fc.
+
+

@@ -1,0 +1,22 @@
+Comment author: @JasonGross
+
+Axiom f : Type -> Type -> Type.
+
+Check f Set (Set : Type). (* f Set (Set:Type) *)
+Check (f Set Set) : Type. (* f Set Set:Type *)
+
+
+This seems a bit backwards...  Presumably the parser should not be changed, but 
+the pretty-printer should, to insert spaces around the colon, if nothing else.
+
+
+Comment author: @gmalecha
+
+Created pull request: https://github.com/coq/coq/pull/73
+
+
+Comment author: @maximedenes
+
+Fixed in 8.5 by Gregory Malecha.
+
+

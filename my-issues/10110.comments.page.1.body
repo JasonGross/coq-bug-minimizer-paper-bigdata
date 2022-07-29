@@ -1,0 +1,4 @@
+Is it possible to do this in user-space with `Ltac2 Notation`, or does it have to be hard-coded?  Note that the branches should be automatically thunked if it's done in user space.
+
+cc @ppedrot ?
+Probably doable user-land, but you'd have to be careful for associativity. It'd be more robust to have such a basic syntactic sugar directly in the AST. Doing so would also allow to implement the if-then no-else case as done in OCaml with an implicit unit value in the else branch.

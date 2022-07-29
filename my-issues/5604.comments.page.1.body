@@ -1,0 +1,27 @@
+Comment author: @JasonGross
+
+I'd like this to work:
+
+Tactic Notation "cidtac" message_token_list(msgs) :=
+  let dummy := match goal with
+               | _ => idtac msgs
+               end in
+  constr:(I).
+
+
+Comment author: @herbelin
+
+Probably not a lot to do, like exporting "message_token_list" in the GLOBAL of g_ltac.ml4, and adding a line for message_token_list in plugins/ltac/pltac.ml, if ever someone wants to try.
+
+
+Comment author: @ppedrot
+
+That's probably not going to work, because you also need to tweak idtac to recognize variables bound in the environment. That is, yet another change in the runtime to work around a crappy notation system.
+
+
+Comment author: @ppedrot
+
+Also, note that the entry point Hugo was mentioning should rather be Tacentries.register_tactic_notation_entry.
+
+
+Duplicate of #3913

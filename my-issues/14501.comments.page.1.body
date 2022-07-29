@@ -1,0 +1,368 @@
+Typing `.` followed by BACKSPACE results in a single `.`
+Note that input works fine in, e.g., notepad
+This might be caused by the modifiers map.
+
+When upgrading from a version of CoqIDE to another, or when alternating between different versions of CoqIDE, the configuration of modifiers might get modified and some specific items of the menus become active even without pressing a modifier.
+
+This can be checked in the Preferences, tab shortcut, to see if for one of the 4 menus, no modifiers at all are required.
+
+If this is the problem. Deleting the CoqIDE configuration files (or reactivating the modifiers in the preferences) might fix the issue.
+> This can be checked in the Preferences, tab shortcut, to see if for one of the 4 menus, no modifiers at all are required.
+
+Does not seem to be the case, we'll post a screenshot momentarily.
+
+Another oddity: Typing `-` followed by a space does not result in a space after the `-`; space needs to be typed twice.
+Also, I don't think any other versions of the Coq Platform have ever been installed on this machine.
+![image](https://user-images.githubusercontent.com/52704397/122937629-c1321100-d38f-11eb-88e5-d4dd7bc4c9a6.png)
+
+> Deleting the CoqIDE configuration files
+
+Where do they live/what's the path to the file to delete?
+> Where do they live/what's the path to the file to delete?
+
+It should be in the GTK config (obtained following the rules described at
+https://developer.gnome.org/glib/unstable/glib-Miscellaneous-Utility-Functions.html#g-get-user-config-dir).
+
+My guess about modifier maps was wrong. You may try, but not sure reinitializing the config files would do something.
+I will try deleting those files.  Do you have any other hypotheses?  I have in-person access to the computer for the next couple of days
+I assume the folder is `%LocalAppData%\gtk-3.0`, based on https://docs.gtk.org/glib/func.get_user_config_dir.html?  That folder is already empty.  Or do you mean I assume the folder is `%LocalAppData%\coq`?  That folder has two files, which I've renamed to have the `.txt` extension so I can attach them here: 
+[coqide.keys.txt](https://github.com/coq/coq/files/6951944/coqide.keys.txt)
+[coqiderc.txt](https://github.com/coq/coq/files/6951945/coqiderc.txt)
+
+Deleting them did not fix anything.
+No idea about what's happening. Is it only CoqIDE or also other gtk-based applications, like gimp? Even assuming that a wrong keyboard configuration, or a wrong input method comes into play, what could it be which gives this strange mapping.
+
+The idea that a modifier is by default always set does not seem compatible with qopafgjklx working well since p, a, j, c e.g. would not work well (they are each used in at least one of templates, queries, navigation, view, edit menus).
+I don't think it's a modifier, because `.` does nothing, but `.` followed by, e.g., the up arrow (or space, any arrow key, or enter, or backspace, or tab, or escape), results in a `.`.  There are a bunch of characters where `.` followed by that character results in `.` followed by the character, for example all the characters in ``` `1234567890-=~!@#$%^&*()_+QWEYUIOP{}|qweyuiop[]\AFGJK:"afgjk;'zxcvb,./ZXCVB<>?``` (however `.` followed by any of `RrTtSsDdHhLlNMnm` gives nothing)
+`.` followed by TAB is really weird, as it acts identially to TAB followed by `.` (i.e., `.` followed by TAB followed by `<` gives two spaces followed by `.<`)
+
+The characters that don't work well are: `-<,.`.  All of these seem to behave in the strange way that `.` does, and this is consistent across multiple restarts, across uninstalling and reinstalling Coq platform, across creating new user accounts.  I'll check out gimp and older versions of CoqIDE next.
+
+(Edit: This is all typed by @JasonGross , working from my friend's computer.)
+CoqIDE 8.4 works fine.  Which version switched from gtk+2 to gtk+3?
+Indeed, Coq 8.10, the first release to use GTK+3 according to the changelog, shows the same issue as 8.13.  Let my try gimp.
+The [gimp website](https://www.gimp.org/release-notes/gimp-2.10.html) says:
+> The next big update will be v3.0 that will feature GTK+3 port and a lot of internal changes.
+
+So I don't think gimp is a useful comparison point.  Do you know any other gtk+3 windows apps?
+Here's a recording of the CoqIDE behavior, btw:
+[recording-of-coqide-behavior.zip](https://github.com/coq/coq/files/6954231/recording-of-coqide-behavior.zip)
+Edit: Apparently the windows recording tool isn't all that useful, here.
+Interestingly, `-` followed by some letters (like `o`) gives a diacritic(?)
+Unfortunately, CoqIDE 8.10 wasn't just the first version that used GTK3 but also the one that introduced the input mode for Unicode characters. So it's a bit difficult to distinguish between the two. Ever since that version, I have experienced a similar problem: `/\` followed by space results in the `\` being transformed into a `Δ`. To be able to type `/\` I have to type the space before, go back and insert the `\`.
+There was a three-day window in March 2019 during which CoqIDE was built with GTK3 but the Unicode input mode was not there. I will try to build and test a version from this time to check if my own occurrence of this bug (I assume it's the same bug) is already there.
+~~FWIW, I was wrong to suspect the Unicode input mode. I was able to confirm that the issue that I have observed has appeared with the switch to GTK3.~~ I retract that: I can't reproduce anymore with a version after the GTK3 switch.
+I don't know what I did wrong previously when doing my tests, but actually, the PR that introduced the input problem that I've hit was #8560. To reproduce:
+
+```
+nix-shell -p '((import <nixpkgs> {}).coqPackages.coq.override { version = "1d68c24736b4cf68ac0c2f70122e3f3d28f0e876"; coq-version = "8.10"; })' --pure --run coqide
+# type /\ followed by space, observe that \ is transformed into Δ
+nix-shell -p '((import <nixpkgs> {}).coqPackages.coq.override { version = "582d92dfd7a3f8fe5cb2bbf24c2f1e200a479053"; coq-version = "8.10"; })' --pure --run coqide
+# do the same thing, it works fine
+```
+The PR discussion suggests that passing `-unicode foo` for an empty file `foo` to CoqIDE might fix this behavior.  I'll test on this machine when I get a chance.  @Zimmi48 , does this fix your issue?
+Passing `-unicode foo` on Windows seems to result in CoqIDE opening a file called `foo.v`....
+Could someone make a Windows installer for some version of CoqIDE with this PR disabled (or disablable via some menu), so I can test it?
+> Passing `-unicode foo` on Windows seems to result in CoqIDE opening a file called `foo.v`....
+
+It's not `-unicode`, it's `-unicode-bindings`. And I confirmed that this does indeed solve the issue.
+I've experimented with copying the `default.bindings` file, removing a large chunk and passing it to `coqide` with the `-unicode-bindings` option, and instead of solving the issue, it just changed the Unicode character that `/\` followed by space generates. In fact, AFAICS, it suffices that there is one binding defined in this file and the character will be printed when I type `/\` followed by space. For instance, with
+
+```
+\boxbox ⧉
+```
+
+it will print ⧉. But it seems like this works with any binding.
+
+```
+\phi φ 2
+```
+
+will print `φ`.
+It felt very strange that no one else had reported a similar issue since it was introduced in Coq 8.10. It must be pretty rare. So I felt like it must be something that we've configured in our input methods. For my part, it turns out that it was related to having defined Shift+Space to create non-breakable spaces. Removing that part of my keyboard configuration (removing `nbsp:level2` at https://github.com/Zimmi48/dotfiles/blob/5e00ee743a93819554492e631e73e1d9863c4e38/configuration-base.nix#L171) makes the problem vanish.
+Passing `-unicode-bindings foo` for an empty file `foo` does not fix this problem, so it seems they are separate issues.
+Additionally, `-` followed by a letter can produce the following ligatures: `ēūīōāĒŪĪŌĀ`.  `,` followed by a letter generally produces `,` followed by that letter (much like `,,` or `--`), except that `,o` produces nothing.  `<` followed by any letter other than `z` or `Z` produces `<` followed by that letter, while following `<` by `z` or `Z` produces `ž` or `Ž` respectively.
+I've tried the `gtk3-demo` app that is installed via the instructions at https://pygobject.readthedocs.io/en/latest/getting_started.html#windows-logo-windows.  This app does not suffer from the input problem when I run the "Entry Buffer" (GtkEntryBuffer) nor the Text View -> Hypertext.  The input problem with CoqIDE happens even in the file search for "File -> Open", so the problem does not seem specific to the kind of input buffer, nor does it seem to be a general Gtk3 problem.  I continue to be baffled by this.
+I wonder if @MSoegtropIMC or @jfehrle (or @coq/coqide-maintainers or @coq/windows-build-maintainers) have any ideas, given that I've only seen this issue on Windows, and have only seen it on one Windows machine.
+Installing MobaXterm and WSL2 on the machine, and installing CoqIDE 8.13.2 via `opam install coqide` in WSL2, and using X-forwarding to run CoqIDE results in the input mode problem going away.  So it seems specific to the gtk-3 bundled with the CoqIDE Windows installer or something?  Is there a way to get access to the gtk3-demo program of that gtk-3?
+May I ask if a Windows IME is used (like Chinese, Japanese, Korean, ...)? This might not work well because afaik GTK comes with its own IME (not sure how to use it, though).
+
+Can someone reproduce this issue without an IME installed on Windows (say English, French, German, ...)
+
+In case there is an IME active in Windows, what happens if it is switched off?
+Pretty sure there's no IME installed, but how do I check?
+Not sure - would have to check, but I guess this would be visible somewhere in the keyboard settings.
+[This section](https://coq.inria.fr/distrib/current/refman/practical-tools/coqide.html#bindings-for-input-of-unicode-symbols) of the manual describes one input mapping mechanism.  e.g. Entering `\pi` followed by SHIFT-SPACE will convert it to `π`.  This works for me when I run native Windows CoqIDE 8.13.0.
+
+If you run CoqIDE with `-debug`, it will print messages for each keystroke.  That might give you some clues.
+
+[Here](https://docs.gtk.org/gtk3/class.IMContext.html) is a description of the GTK input method: You might check if it works:
+
+> For instance, the default GTK+ input method implements the input of arbitrary Unicode code points by holding down the Control and Shift keys and then typing “U” followed by the hexadecimal digits of the code point. When releasing the Control and Shift keys, preediting ends and the character is inserted as text. Ctrl+Shift+u20AC for example results in the € sign.
+
+Not the complete description: I need to press Ctrl+Shift+u, then regular `20ac`.  The `€` appears when I type the next character, say a space.  I suppose that's to allow for correcting the input with backspace.
+
+Windows input method settings are in "Advanced Keyboard Settings".
+
+These days I routinely compile and run CoqIDE with WSL2/Ubuntu rather than native Windows.
+
+BTW, have you used MobaXterm much?  I've had a few issues with VcXsrv--the XWindows clipboard is not shared with native Windows apps, doesn't handle 4K resolution very well.  I also see glitchy behavior at times (missing screen updates)--not easy to tell if it's VcXsrv or perhaps GTK flakiness.
+> May I ask if a Windows IME is used (like Chinese, Japanese, Korean, ...)? This might not work well because afaik GTK comes with its own IME (not sure how to use it, though).
+
+Are you talking about this?
+![image](https://user-images.githubusercontent.com/52704397/129153217-1fdf0340-bc17-4259-89a0-e95d922001e6.png)
+
+Removing "English (India)" and restarting CoqIDE does not fix the issue.
+> [This section](https://coq.inria.fr/distrib/current/refman/practical-tools/coqide.html#bindings-for-input-of-unicode-symbols) of the manual describes one input mapping mechanism. e.g. Entering `\pi` followed by SHIFT-SPACE will convert it to `π`. This works for me when I run native Windows CoqIDE 8.13.0.
+
+This works fine.
+
+
+
+> If you run CoqIDE with `-debug`, it will print messages for each keystroke. That might give you some clues.
+
+Here's the log:
+<details><summary>log</summary>
+
+```
+[DEBUG] Signal ignored (normal if Win32)
+(Spawn  ,596) EXEC: .\coqidetop.opt.exe -main-channel 127.0.0.1:62408:62409 -control-channel 127.0.0.1:62406:62407 --xml_format=Ppcmds -async-proofs off -debug
+(Spawned,192) starting controller thread
+[DEBUG] Start eval_call Init None
+[DEBUG] End eval_call
+[DEBUG] End of Coqide.main
+[DEBUG] Signal ignored (normal if Win32)
+[pid 192] <-- Init None
+[pid 192] --> GOOD 1
+[DEBUG] Handling coqtop answer
+[DEBUG] Start eval_call SetOptions [(["Diffs"],off);(["Printing";"Coercions"],false);(["Printing";"Matching"],true);(["Printing";"Notations"],true);(["Printing";"Existential";"Instances"],false);(["Printing";"Unfocused"],false);(["Printing";"Goal";"Names"],false);(["Printing";"Parentheses"],false);(["Printing";"Implicit"],false);(["Printing";"All"],false);(["Printing";"Universes"],false)]
+[DEBUG] End eval_call
+[pid 192] <-- SetOptions [(["Diffs"],off);(["Printing";"Coercions"],false);(["Printing";"Matching"],true);(["Printing";"Notations"],true);(["Printing";"Existential";"Instances"],false);(["Printing";"Unfocused"],false);(["Printing";"Goal";"Names"],false);(["Printing";"Parentheses"],false);(["Printing";"Implicit"],false);(["Printing";"All"],false);(["Printing";"Universes"],false)]
+[pid 192] --> GOOD 
+[DEBUG] Handling coqtop answer
+[DEBUG] selection_bound moved
+got key '-' (45, )
+got key '-' (45, )
+[DEBUG] begin_action_cb
+[DEBUG] prev_insert moved
+[DEBUG] insert_cb 0
+[DEBUG] target moved
+[DEBUG] end_action_cb
+[DEBUG] begin_action_cb
+[DEBUG] prev_insert moved
+[DEBUG] insert_cb 1
+[DEBUG] target deleted
+[DEBUG] target moved
+[DEBUG] end_action_cb
+got key '-' (45, )
+got key 'o' (111, )
+[DEBUG] begin_action_cb
+[DEBUG] prev_insert moved
+[DEBUG] insert_cb 2
+[DEBUG] target deleted
+[DEBUG] target moved
+[DEBUG] end_action_cb
+got key '-' (45, )
+got key '' (65506, SHIFT)
+got key '<' (60, SHIFT)
+[DEBUG] begin_action_cb
+[DEBUG] prev_insert moved
+[DEBUG] insert_cb 3
+[DEBUG] target deleted
+[DEBUG] target moved
+[DEBUG] end_action_cb
+[DEBUG] begin_action_cb
+[DEBUG] prev_insert moved
+[DEBUG] insert_cb 4
+[DEBUG] target deleted
+[DEBUG] target moved
+[DEBUG] end_action_cb
+got key 'a' (97, )
+[DEBUG] begin_action_cb
+[DEBUG] prev_insert moved
+[DEBUG] insert_cb 5
+[DEBUG] target deleted
+[DEBUG] target moved
+[DEBUG] end_action_cb
+got key 'b' (98, )
+[DEBUG] begin_action_cb
+[DEBUG] prev_insert moved
+[DEBUG] insert_cb 6
+[DEBUG] target deleted
+[DEBUG] target moved
+[DEBUG] end_action_cb
+got key 'c' (99, )
+[DEBUG] begin_action_cb
+[DEBUG] prev_insert moved
+[DEBUG] insert_cb 7
+[DEBUG] target deleted
+[DEBUG] target moved
+[DEBUG] end_action_cb
+```
+</details>
+
+The CoqIDE buffer reads `--ō-<abc`, and the `--` showed up all at once, as did `-<`.  Doing `-` followed by backspace and then `-` followed by space gave
+```
+got key '-' (45, )
+got key '' (65288, )
+[DEBUG] begin_action_cb
+[DEBUG] prev_insert moved
+[DEBUG] insert_cb 8
+[DEBUG] target deleted
+[DEBUG] target moved
+[DEBUG] end_action_cb
+[DEBUG] begin_action_cb
+[DEBUG] prev_insert moved
+[DEBUG] end_action_cb
+got key '-' (45, )
+got key ' ' (32, )
+[DEBUG] begin_action_cb
+[DEBUG] prev_insert moved
+[DEBUG] insert_cb 9
+[DEBUG] target deleted
+[DEBUG] target moved
+[DEBUG] end_action_cb
+```
+with one `-` for each pair in the buffer.
+
+> [Here](https://docs.gtk.org/gtk3/class.IMContext.html) is a description of the GTK input method: You might check if it works:
+
+It does.  `CTRL+SHIFT+U20AC` gives , while `CTRL+SHIFT+U` followed by `20ac` gives €
+
+> Windows input method settings are in "Advanced Keyboard Settings"
+
+![image](https://user-images.githubusercontent.com/52704397/129154748-332b1318-e35b-4ecd-928c-8ca429fcc0df.png)
+![image](https://user-images.githubusercontent.com/52704397/129154828-99806019-6062-429b-8fd7-628e9bc3ea2c.png)
+![image](https://user-images.githubusercontent.com/52704397/129154847-7c2f1408-14d9-462b-a244-2eeab5846434.png)
+
+
+> BTW, have you used MobaXterm much?
+
+It's a bit annoying that I have to either enable all X11 connections or else click "yes" three times for each CoqIDE launch, but otherwise it seems to work pretty well.  I haven't used it all that much though.
+Is this relevant?
+![image](https://user-images.githubusercontent.com/52704397/129155290-a7e28140-fb71-4852-a7cd-f8d60c7df161.png)
+
+I guess an English (India) keyboard doesn't allow you to write in Sanskrit or so, so it should be fine.
+
+In one of your screen shots I saw that you have some sort of Emoji panel - possibly this comes with some sort of IME like keyboard translation which conflicts with GTK.
+
+Can you please supply a debug log as above with a clear description on what keys you pressed, what happened in CoqIDE and what you did expect for a few cases which don't match your expectation?
+The debug log in the details above has the following issues:
+In
+```
+got key '-' (45, )
+got key '-' (45, )
+[DEBUG] begin_action_cb
+[DEBUG] prev_insert moved
+[DEBUG] insert_cb 0
+[DEBUG] target moved
+[DEBUG] end_action_cb
+[DEBUG] begin_action_cb
+[DEBUG] prev_insert moved
+[DEBUG] insert_cb 1
+[DEBUG] target deleted
+[DEBUG] target moved
+[DEBUG] end_action_cb
+```
+I pressed `-` twice.  After the first `-` no character was inserted.  After the second, `--` was inserted.  It seems that this is the general pattern: CoqIDE emits "get_key" without inserting any character.
+
+In
+```
+got key '-' (45, )
+got key 'o' (111, )
+[DEBUG] begin_action_cb
+[DEBUG] prev_insert moved
+[DEBUG] insert_cb 2
+[DEBUG] target deleted
+[DEBUG] target moved
+[DEBUG] end_action_cb
+```
+I typed `-o`.  After `-`, no character was inserted.  After `o`, the single ligature was inserted.
+
+
+Is this enough explanation?
+(My expectation is that after any non-modifier keypress, I the character gets immediately inserted.)
+@JasonGross : thanks - it is clear now.
+
+Can you please use SysInternals (now Microsoft) ProcMon to get a list of files CoqIDE opens during startup? I suspect it find some odd GTK configuration file somewhere and ProcMon would be the easiest reliable method to find out.
+All events including "file" from a process starting with coqide:
+[coqide-file-Logfile.zip](https://github.com/coq/coq/files/6976009/coqide-file-Logfile.zip)
+
+Filtering for only the ones including gtk in the path:
+[coqide-file-gtk-Logfile.zip](https://github.com/coq/coq/files/6976029/coqide-file-gtk-Logfile.zip)
+
+All events from a process starting with coqide:
+[coqide-Logfile.zip](https://github.com/coq/coq/files/6976035/coqide-Logfile.zip)
+
+Debug logs from my system, appears consistent with an IM issue: When I type `--`, I see the following debug output (yours doesn't show anything between the two "got key" messages.  
+
+```
+got key '-' (45, MOD2)
+[DEBUG] begin_action_cb
+[DEBUG] prev_insert moved
+[DEBUG] insert_cb 0
+[DEBUG] target moved
+[DEBUG] end_action_cb
+got key '-' (45, MOD2)
+[DEBUG] begin_action_cb
+[DEBUG] prev_insert moved
+[DEBUG] insert_cb 1
+[DEBUG] target deleted
+[DEBUG] target moved
+[DEBUG] end_action_cb
+```
+
+For CTRL-SHIFT-U 00ac I see:
+```
+got key '' (85, SHIFT CONTROL MOD2)
+got key '0' (48, MOD2)
+got key '0' (48, MOD2)
+got key 'a' (97, MOD2)
+got key 'c' (99, MOD2)
+got key ' ' (32, MOD2)
+```
+
+Whereas for `\pi' (a feature of Coq itself), I see
+
+```
+got key '\' (92, )
+[DEBUG] begin_action_cb
+[DEBUG] prev_insert moved
+[DEBUG] insert_cb 0
+[DEBUG] target moved
+[DEBUG] end_action_cb
+got key 'p' (112, )
+[DEBUG] begin_action_cb
+[DEBUG] prev_insert moved
+[DEBUG] insert_cb 1
+[DEBUG] target deleted
+[DEBUG] target moved
+[DEBUG] end_action_cb
+got key 'i' (105, )
+[DEBUG] begin_action_cb
+[DEBUG] prev_insert moved
+[DEBUG] insert_cb 2
+[DEBUG] target deleted
+[DEBUG] target moved
+[DEBUG] end_action_cb
+got key '' (65505, SHIFT)
+got key ' ' (32, SHIFT)
+[DEBUG] begin_action_cb
+[DEBUG] prev_insert moved
+[DEBUG] delete_cb 0 3
+[DEBUG] prev_insert moved
+[DEBUG] target deleted
+[DEBUG] target moved
+[DEBUG] insert_cb 0
+[DEBUG] target deleted
+[DEBUG] target moved
+[DEBUG] end_action_cb
+```
+What do you get if you type "set" in a command window?  (In WSL, I need to have `LANG=C.UTF-8`, though I don't remember the exact problem that fixed.)
+
+> It's a bit annoying that I have to either enable all X11 connections or else click "yes" three times for each CoqIDE launch, but otherwise it seems to work pretty well. I haven't used it all that much though.
+
+You should be able to configure your firewall to accept all X11 connections from WSL and reject those from other sources.  I have this: one entry for each of {TCP, UCP} X {Public, Private} and designate your usual network as private.  Probably requires some trial and error to get right.
+
+![image](https://user-images.githubusercontent.com/1253341/129239336-515c2b37-6e7f-43b2-93cc-c28c8eb85c60.png)
+

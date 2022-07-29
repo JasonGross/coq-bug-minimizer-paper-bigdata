@@ -1,0 +1,325 @@
+See also https://coq.zulipchat.com/#narrow/stream/237656-Coq-devs.20.26.20plugin.20devs/topic/CoqIDE.20icons/near/238799658
+If I do 
+```bash
+cat > $HOME/.config/gtk-3.0/settings.ini <<EOF
+[Settings]
+gtk-theme-name = Adwaita
+gtk-icon-theme-name = Adwaita
+gtk-sound-theme-name = Adwaita
+gtk-icon-sizes = panel-menu-bar=24,24
+EOF
+```
+then the error messages stop mentioning Yaru and instead say
+```
+
+(coqide:15094): Gtk-WARNING **: 17:17:16.251: Error loading theme icon 'document-save' for stock: Icon 'document-save' not present in theme Adwaita
+
+(coqide:15094): Gtk-WARNING **: 17:17:16.254: Error loading theme icon 'window-close' for stock: Icon 'window-close' not present in theme Adwaita
+
+(coqide:15094): Gtk-WARNING **: 17:17:16.254: Error loading theme icon 'go-down' for stock: Icon 'go-down' not present in theme Adwaita
+
+(coqide:15094): Gtk-WARNING **: 17:17:16.255: Error loading theme icon 'go-up' for stock: Icon 'go-up' not present in theme Adwaita
+
+(coqide:15094): Gtk-WARNING **: 17:17:16.256: Error loading theme icon 'go-top' for stock: Icon 'go-top' not present in theme Adwaita
+
+(coqide:15094): Gtk-WARNING **: 17:17:16.256: Error loading theme icon 'go-bottom' for stock: Icon 'go-bottom' not present in theme Adwaita
+
+(coqide:15094): Gtk-WARNING **: 17:17:16.256: Error loading theme icon 'system-run' for stock: Icon 'system-run' not present in theme Adwaita
+
+(coqide:15094): Gtk-WARNING **: 17:17:16.256: Error loading theme icon 'process-stop' for stock: Icon 'process-stop' not present in theme Adwaita
+
+(coqide:15094): Gtk-WARNING **: 17:17:16.257: Error loading theme icon 'go-previous' for stock: 
+
+(coqide:15094): Gtk-WARNING **: 17:17:16.257: Error loading theme icon 'go-next' for stock: 
+
+(coqide:15094): Gtk-WARNING **: 17:17:16.346: Error loading theme icon 'document-new' for stock: Icon 'document-new' not present in theme Adwaita
+
+(coqide:15094): Gtk-WARNING **: 17:17:16.347: Error loading theme icon 'window-close' for stock: Icon 'window-close' not present in theme Adwaita
+
+(coqide:15094): Gtk-WARNING **: 17:17:18.516: Error loading theme icon 'go-previous' for stock: 
+
+(coqide:15094): Gtk-WARNING **: 17:17:18.533: Error loading theme icon 'go-previous' for stock: 
+
+(coqide:15094): Gtk-WARNING **: 17:17:18.550: Error loading theme icon 'go-previous' for stock: 
+
+(coqide:15094): Gtk-WARNING **: 17:17:18.566: Error loading theme icon 'go-previous' for stock: 
+
+(coqide:15094): Gtk-WARNING **: 17:17:18.584: Error loading theme icon 'go-previous' for stock: 
+
+(coqide:15094): Gtk-WARNING **: 17:17:18.600: Error loading theme icon 'go-previous' for stock: 
+
+(coqide:15094): Gtk-WARNING **: 17:17:18.616: Error loading theme icon 'go-previous' for stock: 
+
+(coqide:15094): Gtk-WARNING **: 17:17:18.633: Error loading theme icon 'go-previous' for stock: 
+
+(coqide:15094): Gtk-WARNING **: 17:17:18.650: Error loading theme icon 'go-previous' for stock: 
+
+(coqide:15094): Gtk-WARNING **: 17:17:18.667: Error loading theme icon 'go-previous' for stock: 
+
+(coqide:15094): Gtk-WARNING **: 17:17:18.685: Error loading theme icon 'go-previous' for stock: 
+
+(coqide:15094): Gtk-WARNING **: 17:17:18.701: Error loading theme icon 'go-previous' for stock: 
+
+(coqide:15094): Gtk-WARNING **: 17:17:18.717: Error loading theme icon 'go-previous' for stock: 
+
+(coqide:15094): Gtk-WARNING **: 17:17:18.738: Error loading theme icon 'process-stop' for stock: Icon 'process-stop' not present in theme Adwaita
+
+(coqide:15094): Gtk-WARNING **: 17:17:18.739: Error loading theme icon 'go-previous' for stock: 
+
+(coqide:15094): Gtk-WARNING **: 17:17:18.749: Error loading theme icon 'process-stop' for stock: Icon 'process-stop' not present in theme Adwaita
+
+(coqide:15094): Gtk-WARNING **: 17:17:18.766: Error loading theme icon 'process-stop' for stock: Icon 'process-stop' not present in theme Adwaita
+
+(coqide:15094): Gtk-WARNING **: 17:17:18.783: Error loading theme icon 'process-stop' for stock: Icon 'process-stop' not present in theme Adwaita
+
+(coqide:15094): Gtk-WARNING **: 17:17:18.800: Error loading theme icon 'process-stop' for stock: Icon 'process-stop' not present in theme Adwaita
+
+(coqide:15094): Gtk-WARNING **: 17:17:18.817: Error loading theme icon 'process-stop' for stock: Icon 'process-stop' not present in theme Adwaita
+
+(coqide:15094): Gtk-WARNING **: 17:17:18.834: Error loading theme icon 'process-stop' for stock: Icon 'process-stop' not present in theme Adwaita
+
+(coqide:15094): Gtk-WARNING **: 17:17:18.850: Error loading theme icon 'process-stop' for stock: Icon 'process-stop' not present in theme Adwaita
+
+(coqide:15094): Gtk-WARNING **: 17:17:18.866: Error loading theme icon 'process-stop' for stock: Icon 'process-stop' not present in theme Adwaita
+
+(coqide:15094): Gtk-WARNING **: 17:17:18.883: Error loading theme icon 'process-stop' for stock: Icon 'process-stop' not present in theme Adwaita
+
+(coqide:15094): Gtk-WARNING **: 17:17:18.902: Error loading theme icon 'process-stop' for stock: Icon 'process-stop' not present in theme Adwaita
+
+(coqide:15094): Gtk-WARNING **: 17:17:18.927: Error loading theme icon 'system-run' for stock: Icon 'system-run' not present in theme Adwaita
+
+(coqide:15094): Gtk-WARNING **: 17:17:18.927: Error loading theme icon 'process-stop' for stock: Icon 'process-stop' not present in theme Adwaita
+
+(coqide:15094): Gtk-WARNING **: 17:17:18.933: Error loading theme icon 'system-run' for stock: Icon 'system-run' not present in theme Adwaita
+
+(coqide:15094): Gtk-WARNING **: 17:17:18.950: Error loading theme icon 'system-run' for stock: Icon 'system-run' not present in theme Adwaita
+
+(coqide:15094): Gtk-WARNING **: 17:17:18.967: Error loading theme icon 'system-run' for stock: Icon 'system-run' not present in theme Adwaita
+
+(coqide:15094): Gtk-WARNING **: 17:17:18.983: Error loading theme icon 'system-run' for stock: Icon 'system-run' not present in theme Adwaita
+
+(coqide:15094): Gtk-WARNING **: 17:17:19.000: Error loading theme icon 'system-run' for stock: Icon 'system-run' not present in theme Adwaita
+
+(coqide:15094): Gtk-WARNING **: 17:17:19.016: Error loading theme icon 'system-run' for stock: Icon 'system-run' not present in theme Adwaita
+
+(coqide:15094): Gtk-WARNING **: 17:17:19.033: Error loading theme icon 'system-run' for stock: Icon 'system-run' not present in theme Adwaita
+
+(coqide:15094): Gtk-WARNING **: 17:17:19.050: Error loading theme icon 'system-run' for stock: Icon 'system-run' not present in theme Adwaita
+
+(coqide:15094): Gtk-WARNING **: 17:17:19.067: Error loading theme icon 'system-run' for stock: Icon 'system-run' not present in theme Adwaita
+
+(coqide:15094): Gtk-WARNING **: 17:17:19.083: Error loading theme icon 'system-run' for stock: Icon 'system-run' not present in theme Adwaita
+
+(coqide:15094): Gtk-WARNING **: 17:17:19.099: Error loading theme icon 'go-bottom' for stock: Icon 'go-bottom' not present in theme Adwaita
+
+(coqide:15094): Gtk-WARNING **: 17:17:19.100: Error loading theme icon 'system-run' for stock: Icon 'system-run' not present in theme Adwaita
+
+(coqide:15094): Gtk-WARNING **: 17:17:19.116: Error loading theme icon 'go-bottom' for stock: Icon 'go-bottom' not present in theme Adwaita
+
+(coqide:15094): Gtk-WARNING **: 17:17:19.133: Error loading theme icon 'go-bottom' for stock: Icon 'go-bottom' not present in theme Adwaita
+
+(coqide:15094): Gtk-WARNING **: 17:17:19.150: Error loading theme icon 'go-bottom' for stock: Icon 'go-bottom' not present in theme Adwaita
+
+(coqide:15094): Gtk-WARNING **: 17:17:19.166: Error loading theme icon 'go-bottom' for stock: Icon 'go-bottom' not present in theme Adwaita
+
+(coqide:15094): Gtk-WARNING **: 17:17:19.183: Error loading theme icon 'go-bottom' for stock: Icon 'go-bottom' not present in theme Adwaita
+
+(coqide:15094): Gtk-WARNING **: 17:17:19.199: Error loading theme icon 'go-bottom' for stock: Icon 'go-bottom' not present in theme Adwaita
+
+(coqide:15094): Gtk-WARNING **: 17:17:19.216: Error loading theme icon 'go-bottom' for stock: Icon 'go-bottom' not present in theme Adwaita
+
+(coqide:15094): Gtk-WARNING **: 17:17:19.233: Error loading theme icon 'go-bottom' for stock: Icon 'go-bottom' not present in theme Adwaita
+
+(coqide:15094): Gtk-WARNING **: 17:17:19.249: Error loading theme icon 'go-bottom' for stock: Icon 'go-bottom' not present in theme Adwaita
+
+(coqide:15094): Gtk-WARNING **: 17:17:19.266: Error loading theme icon 'go-bottom' for stock: Icon 'go-bottom' not present in theme Adwaita
+
+(coqide:15094): Gtk-WARNING **: 17:17:19.283: Error loading theme icon 'go-bottom' for stock: Icon 'go-bottom' not present in theme Adwaita
+
+(coqide:15094): Gtk-WARNING **: 17:17:19.300: Error loading theme icon 'go-bottom' for stock: Icon 'go-bottom' not present in theme Adwaita
+
+(coqide:15094): Gtk-WARNING **: 17:17:19.316: Error loading theme icon 'go-bottom' for stock: Icon 'go-bottom' not present in theme Adwaita
+
+(coqide:15094): Gtk-WARNING **: 17:17:19.332: Error loading theme icon 'go-bottom' for stock: Icon 'go-bottom' not present in theme Adwaita
+
+(coqide:15094): Gtk-WARNING **: 17:17:19.349: Error loading theme icon 'go-bottom' for stock: Icon 'go-bottom' not present in theme Adwaita
+
+(coqide:15094): Gtk-WARNING **: 17:17:19.367: Error loading theme icon 'go-bottom' for stock: Icon 'go-bottom' not present in theme Adwaita
+
+(coqide:15094): Gtk-WARNING **: 17:17:19.367: Error loading theme icon 'system-run' for stock: Icon 'system-run' not present in theme Adwaita
+
+(coqide:15094): Gtk-WARNING **: 17:17:19.383: Error loading theme icon 'system-run' for stock: Icon 'system-run' not present in theme Adwaita
+
+(coqide:15094): Gtk-WARNING **: 17:17:19.399: Error loading theme icon 'system-run' for stock: Icon 'system-run' not present in theme Adwaita
+
+(coqide:15094): Gtk-WARNING **: 17:17:19.416: Error loading theme icon 'system-run' for stock: Icon 'system-run' not present in theme Adwaita
+
+(coqide:15094): Gtk-WARNING **: 17:17:19.416: Error loading theme icon 'process-stop' for stock: Icon 'process-stop' not present in theme Adwaita
+
+(coqide:15094): Gtk-WARNING **: 17:17:19.433: Error loading theme icon 'process-stop' for stock: Icon 'process-stop' not present in theme Adwaita
+
+(coqide:15094): Gtk-WARNING **: 17:17:19.433: Error loading theme icon 'go-previous' for stock: 
+
+(coqide:15094): Gtk-WARNING **: 17:17:19.449: Error loading theme icon 'go-previous' for stock: 
+
+(coqide:15094): Gtk-WARNING **: 17:17:19.467: Error loading theme icon 'go-previous' for stock: 
+
+(coqide:15094): Gtk-WARNING **: 17:17:19.483: Error loading theme icon 'go-previous' for stock: 
+
+(coqide:15094): Gtk-WARNING **: 17:17:19.500: Error loading theme icon 'go-previous' for stock: 
+
+(coqide:15094): Gtk-WARNING **: 17:17:19.516: Error loading theme icon 'go-previous' for stock: 
+
+(coqide:15094): Gtk-WARNING **: 17:17:19.534: Error loading theme icon 'go-previous' for stock: 
+
+(coqide:15094): Gtk-WARNING **: 17:17:21.400: Error loading theme icon 'go-next' for stock: 
+
+(coqide:15094): Gtk-WARNING **: 17:17:21.416: Error loading theme icon 'go-next' for stock: 
+
+(coqide:15094): Gtk-WARNING **: 17:17:21.434: Error loading theme icon 'go-next' for stock: 
+
+(coqide:15094): Gtk-WARNING **: 17:17:21.451: Error loading theme icon 'go-next' for stock: 
+
+(coqide:15094): Gtk-WARNING **: 17:17:21.467: Error loading theme icon 'go-previous' for stock: 
+
+(coqide:15094): Gtk-WARNING **: 17:17:21.468: Error loading theme icon 'go-next' for stock: 
+
+(coqide:15094): Gtk-WARNING **: 17:17:21.484: Error loading theme icon 'go-previous' for stock: 
+
+(coqide:15094): Gtk-WARNING **: 17:17:21.500: Error loading theme icon 'go-previous' for stock: 
+
+(coqide:15094): Gtk-WARNING **: 17:17:21.517: Error loading theme icon 'go-previous' for stock: 
+
+(coqide:15094): Gtk-WARNING **: 17:17:21.533: Error loading theme icon 'go-previous' for stock: 
+
+(coqide:15094): Gtk-WARNING **: 17:17:21.551: Error loading theme icon 'process-stop' for stock: Icon 'process-stop' not present in theme Adwaita
+
+(coqide:15094): Gtk-WARNING **: 17:17:21.552: Error loading theme icon 'go-previous' for stock: 
+
+(coqide:15094): Gtk-WARNING **: 17:17:21.567: Error loading theme icon 'process-stop' for stock: Icon 'process-stop' not present in theme Adwaita
+
+(coqide:15094): Gtk-WARNING **: 17:17:21.584: Error loading theme icon 'process-stop' for stock: Icon 'process-stop' not present in theme Adwaita
+
+(coqide:15094): Gtk-WARNING **: 17:17:21.600: Error loading theme icon 'process-stop' for stock: Icon 'process-stop' not present in theme Adwaita
+
+(coqide:15094): Gtk-WARNING **: 17:17:21.616: Error loading theme icon 'process-stop' for stock: Icon 'process-stop' not present in theme Adwaita
+
+(coqide:15094): Gtk-WARNING **: 17:17:21.633: Error loading theme icon 'process-stop' for stock: Icon 'process-stop' not present in theme Adwaita
+
+(coqide:15094): Gtk-WARNING **: 17:17:21.651: Error loading theme icon 'system-run' for stock: Icon 'system-run' not present in theme Adwaita
+
+(coqide:15094): Gtk-WARNING **: 17:17:21.652: Error loading theme icon 'process-stop' for stock: Icon 'process-stop' not present in theme Adwaita
+
+(coqide:15094): Gtk-WARNING **: 17:17:21.667: Error loading theme icon 'system-run' for stock: Icon 'system-run' not present in theme Adwaita
+
+(coqide:15094): Gtk-WARNING **: 17:17:21.683: Error loading theme icon 'system-run' for stock: Icon 'system-run' not present in theme Adwaita
+
+(coqide:15094): Gtk-WARNING **: 17:17:21.701: Error loading theme icon 'system-run' for stock: Icon 'system-run' not present in theme Adwaita
+
+(coqide:15094): Gtk-WARNING **: 17:17:21.718: Error loading theme icon 'system-run' for stock: Icon 'system-run' not present in theme Adwaita
+
+(coqide:15094): Gtk-WARNING **: 17:17:21.734: Error loading theme icon 'system-run' for stock: Icon 'system-run' not present in theme Adwaita
+
+(coqide:15094): Gtk-WARNING **: 17:17:21.750: Error loading theme icon 'go-bottom' for stock: Icon 'go-bottom' not present in theme Adwaita
+
+(coqide:15094): Gtk-WARNING **: 17:17:21.750: Error loading theme icon 'system-run' for stock: Icon 'system-run' not present in theme Adwaita
+
+(coqide:15094): Gtk-WARNING **: 17:17:21.767: Error loading theme icon 'go-bottom' for stock: Icon 'go-bottom' not present in theme Adwaita
+
+(coqide:15094): Gtk-WARNING **: 17:17:21.783: Error loading theme icon 'go-bottom' for stock: Icon 'go-bottom' not present in theme Adwaita
+
+(coqide:15094): Gtk-WARNING **: 17:17:21.800: Error loading theme icon 'go-bottom' for stock: Icon 'go-bottom' not present in theme Adwaita
+
+(coqide:15094): Gtk-WARNING **: 17:17:21.816: Error loading theme icon 'go-bottom' for stock: Icon 'go-bottom' not present in theme Adwaita
+
+(coqide:15094): Gtk-WARNING **: 17:17:21.833: Error loading theme icon 'go-bottom' for stock: Icon 'go-bottom' not present in theme Adwaita
+
+(coqide:15094): Gtk-WARNING **: 17:17:21.850: Error loading theme icon 'go-bottom' for stock: Icon 'go-bottom' not present in theme Adwaita
+
+(coqide:15094): Gtk-WARNING **: 17:17:21.866: Error loading theme icon 'go-bottom' for stock: Icon 'go-bottom' not present in theme Adwaita
+
+(coqide:15094): Gtk-WARNING **: 17:17:21.883: Error loading theme icon 'go-bottom' for stock: Icon 'go-bottom' not present in theme Adwaita
+
+(coqide:15094): Gtk-WARNING **: 17:17:21.901: Error loading theme icon 'go-bottom' for stock: Icon 'go-bottom' not present in theme Adwaita
+
+(coqide:15094): Gtk-WARNING **: 17:17:21.901: Error loading theme icon 'system-run' for stock: Icon 'system-run' not present in theme Adwaita
+
+(coqide:15094): Gtk-WARNING **: 17:17:21.917: Error loading theme icon 'system-run' for stock: Icon 'system-run' not present in theme Adwaita
+```
+```
+$ find /usr/share/icons/Adwaita/ -name "*ave*"
+/usr/share/icons/Adwaita/scalable/places/folder-saved-search-symbolic.svg
+/usr/share/icons/Adwaita/scalable/actions/document-save-as-symbolic.svg
+/usr/share/icons/Adwaita/scalable/actions/document-save-symbolic.svg
+/usr/share/icons/Adwaita/scalable/apps/preferences-desktop-screensaver-symbolic.svg
+/usr/share/icons/Adwaita/scalable/categories/emoji-travel-symbolic.svg
+```
+Does this seem right?  Can someone else with a working CoqIDE tell me whether or not they have more files?
+The solution is `sudo apt-get install adwaita-icon-theme-full`.  Should this dependency and fix be documented somewhere?
+I see these on my system:
+
+```
+$ sudo apt list --installed
+Listing... Done
+    :
+adwaita-icon-theme/bionic,bionic,now 3.28.0-1ubuntu1 all [installed,automatic]
+adwaita-icon-theme-full/bionic,bionic,now 3.28.0-1ubuntu1 all [installed]
+```
+
+And the following icons.  The "scalable" in your pathnames suggests a scalable icon, while the `32x32` in my list suggests a fixed-size icon.
+
+```
+$ find /usr/share/icons/Adwaita/ -name "*ave*"
+/usr/share/icons/Adwaita/512x512/places/folder-saved-search.png
+/usr/share/icons/Adwaita/512x512/actions/document-save.png
+/usr/share/icons/Adwaita/512x512/actions/document-save-as.png
+/usr/share/icons/Adwaita/64x64/places/folder-saved-search-symbolic.symbolic.png
+/usr/share/icons/Adwaita/64x64/actions/document-save-as-symbolic.symbolic.png
+/usr/share/icons/Adwaita/64x64/actions/document-save-symbolic.symbolic.png
+/usr/share/icons/Adwaita/64x64/apps/preferences-desktop-screensaver-symbolic.symbolic.png
+/usr/share/icons/Adwaita/22x22/places/folder-saved-search.png
+/usr/share/icons/Adwaita/22x22/actions/document-save.png
+/usr/share/icons/Adwaita/22x22/actions/document-save-as.png
+/usr/share/icons/Adwaita/22x22/apps/preferences-desktop-screensaver.png
+/usr/share/icons/Adwaita/32x32/places/folder-saved-search.png
+/usr/share/icons/Adwaita/32x32/places/folder-saved-search-symbolic.symbolic.png
+/usr/share/icons/Adwaita/32x32/actions/document-save.png
+/usr/share/icons/Adwaita/32x32/actions/document-save-as-symbolic.symbolic.png
+/usr/share/icons/Adwaita/32x32/actions/document-save-as.png
+/usr/share/icons/Adwaita/32x32/actions/document-save-symbolic.symbolic.png
+/usr/share/icons/Adwaita/32x32/apps/preferences-desktop-screensaver-symbolic.symbolic.png
+/usr/share/icons/Adwaita/32x32/apps/preferences-desktop-screensaver.png
+/usr/share/icons/Adwaita/16x16/places/folder-saved-search.png
+/usr/share/icons/Adwaita/16x16/places/folder-saved-search-symbolic.symbolic.png
+/usr/share/icons/Adwaita/16x16/actions/document-save.png
+/usr/share/icons/Adwaita/16x16/actions/document-save-as-symbolic.symbolic.png
+/usr/share/icons/Adwaita/16x16/actions/document-save-as.png
+/usr/share/icons/Adwaita/16x16/actions/document-save-symbolic.symbolic.png
+/usr/share/icons/Adwaita/16x16/apps/preferences-desktop-screensaver-symbolic.symbolic.png
+/usr/share/icons/Adwaita/16x16/apps/preferences-desktop-screensaver.png
+/usr/share/icons/Adwaita/scalable/places/folder-saved-search-symbolic.svg
+/usr/share/icons/Adwaita/scalable/actions/document-save-as-symbolic.svg
+/usr/share/icons/Adwaita/scalable/actions/document-save-symbolic.svg
+/usr/share/icons/Adwaita/scalable/apps/preferences-desktop-screensaver-symbolic.svg
+/usr/share/icons/Adwaita/256x256/apps/preferences-desktop-screensaver.png
+/usr/share/icons/Adwaita/96x96/places/folder-saved-search-symbolic.symbolic.png
+/usr/share/icons/Adwaita/96x96/actions/document-save-as-symbolic.symbolic.png
+/usr/share/icons/Adwaita/96x96/actions/document-save-symbolic.symbolic.png
+/usr/share/icons/Adwaita/96x96/apps/preferences-desktop-screensaver-symbolic.symbolic.png
+/usr/share/icons/Adwaita/48x48/places/folder-saved-search.png
+/usr/share/icons/Adwaita/48x48/places/folder-saved-search-symbolic.symbolic.png
+/usr/share/icons/Adwaita/48x48/actions/document-save.png
+/usr/share/icons/Adwaita/48x48/actions/document-save-as-symbolic.symbolic.png
+/usr/share/icons/Adwaita/48x48/actions/document-save-as.png
+/usr/share/icons/Adwaita/48x48/actions/document-save-symbolic.symbolic.png
+/usr/share/icons/Adwaita/48x48/apps/preferences-desktop-screensaver-symbolic.symbolic.png
+/usr/share/icons/Adwaita/48x48/apps/preferences-desktop-screensaver.png
+/usr/share/icons/Adwaita/24x24/places/folder-saved-search.png
+/usr/share/icons/Adwaita/24x24/places/folder-saved-search-symbolic.symbolic.png
+/usr/share/icons/Adwaita/24x24/actions/document-save.png
+/usr/share/icons/Adwaita/24x24/actions/document-save-as-symbolic.symbolic.png
+/usr/share/icons/Adwaita/24x24/actions/document-save-as.png
+/usr/share/icons/Adwaita/24x24/actions/document-save-symbolic.symbolic.png
+/usr/share/icons/Adwaita/24x24/apps/preferences-desktop-screensaver-symbolic.symbolic.png
+/usr/share/icons/Adwaita/24x24/apps/preferences-desktop-screensaver.png
+```

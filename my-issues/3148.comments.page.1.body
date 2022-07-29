@@ -1,0 +1,44 @@
+Comment author: @JasonGross
+
+I want a variant of @ ? patterns which act like [pattern], so that I can do something like
+
+Parameter f : nat -> nat -> nat -> nat -> nat.
+Parameter x : nat -> nat.
+
+Goal True.
+  lazymatch constr:(fun x => f 0 (x 1) 2 (x 1)) with
+    | (fun x => @ @ ?F (x ?k)) => pose F; pose k
+  end.
+
+and have it be equivalent to
+
+  let G := constr:(fun x => f 0 (x 1) 2 (x 1)) in
+  let H := fresh in
+  let FT := fresh in
+  let kT := fresh in
+  let F := fresh in
+  let k := fresh in
+  evar (FT : Type); evar (F : FT); subst FT;
+  evar (kT : Type); evar (k : kT); subst kT; 
+  assert (H : forall x, G x = G x);
+  [ let x := fresh in
+    intro x;
+    cbv beta;
+    let k' := match goal with |- appcontext[x ?k] => constr:(k) end in
+    let G' := match goal with |- ?G' = _ => constr:(G') end in
+    let G'' := fresh in
+    pose G' as G'';
+    pattern (x k') in G'';
+    match goal with
+      | [ H := ?f (x k') |- _ ] => constr_eq H G'';
+                              let F' := (eval unfold F in F) in
+                              unify f F'
+    end;
+    let k'' := (eval unfold k in k) in
+    unify k' k'';
+    reflexivity
+  | clear H ];
+  pose F; pose k; subst F k.
+
+
+Duplicate of #7091.

@@ -1,0 +1,21 @@
+Comment author: @JasonGross
+
+Module R.
+  Record A := {}.
+  Scheme Equality for A. (* Success *)
+End R.
+
+Module I.
+  Inductive A := {}.
+  Scheme Equality for A. (* Error: Unexpected error during scheme creation: 
+Error: x is used in conclusion. *)
+End I.
+
+
+Comment author: @herbelin
+
+
+
+*** This bug has been marked as a duplicate of bug [BZ#5282](https://github.com/coq/coq/issues?q=is%3Aissue%20%22Original%20bug%20ID%3A%20BZ%235282%22) ***
+
+

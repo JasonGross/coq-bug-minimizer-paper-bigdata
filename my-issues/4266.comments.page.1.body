@@ -1,0 +1,27 @@
+Comment author: @JasonGross
+
+Quoting a co-worker of mine on the fix:
+The problem has to do with the '-pp' parameter that you are giving
+ocaml to use the camlp5o preprocessor; notice that in the command you
+posted, camlp5o never even runs. For whatever reason, it fails when
+the filename of camlp5o is in quotes.
+
+Broken:
+ocaml ... -pp '"D:\CoqSDK-2\bin/camlp5o" ...' ...
+
+Works:
+ocaml ... -pp 'D:\CoqSDK-2\bin/camlp5o ...' ...
+
+The '-pp' is automatically added by coq_makefile. You can manually fix
+it by replacing
+
+PP?=-pp '"$(CAMLP4BIN)$(CAMLP4)o" -I "$(CAMLLIB)" -I . $(COQSRCLIBS)
+$(CAMLP4EXTEND) $(GRAMMARS) $(CAMLP4OPTIONS) -impl'
+
+with
+
+PP?=-pp '$(CAMLP4BIN)$(CAMLP4)o -I "$(CAMLLIB)" -I . $(COQSRCLIBS)
+$(CAMLP4EXTEND) $(GRAMMARS) $(CAMLP4OPTIONS) -impl'
+
+
+The makefile uses a different method for the preprocessor now so this should be alleviated.

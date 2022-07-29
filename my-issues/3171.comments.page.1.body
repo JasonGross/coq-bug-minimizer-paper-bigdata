@@ -1,0 +1,56 @@
+Comment author: @JasonGross
+
+Please support mix-in modules, so that if I want to take the structure
+
+$ cat A/A.v
+$ cat A/B.v
+Require Import B.A.
+$ cat B/A.v
+Require Import A.A.
+$ cat B/B.v
+Require Import A.B.
+
+and put it in a single file, I need to do:
+
+Module _A_1.
+  Module A.
+  End A.
+End _A_1.
+Module _B_1.
+  Module A.
+    Require Import _A_1.A.
+  End A.
+End _B_1.
+Module A.
+  Include _A_1.
+  Module B.
+    Require Import _B_1.A.
+  End B.
+End A.
+Module B.
+  Include _B_1.
+  Module B.
+    Require Import A.B.
+  End B.
+End B.
+
+This is terrible.  If files are actually modules, then Coq should support mix-in modules (directories).  It would not be terrible if these mix-in modules could only contain modules (no parameters/definitions/etc), but it would be preferable to have namespaces.  If not, Coq should have a better story for namespacing in general.
+
+
+Comment author: @JasonGross
+
+That's not quite right, though, see e.g. #1736.  Perhaps what I want is the ability to declare module names with dots in them, so that I can do
+```
+Module A.B.
+  ...
+End A.B.
+```
+And this will create a "mix-in" module "A" with a module "B" inside of it, mimicing directory structure.
+
+
+I guess a more precise version of this request is that I'd like to be able to write something like
+```coq
+AbsoluteModule A.B.C.
+End A.B.C.
+```
+and have Coq create a module `C` with the [`ModPath.t`](https://github.com/coq/coq/blob/76e20b5efcf4ad8ff75a64d40c1280565eb3330e/kernel/names.ml#L276-L281) kernel name `MPdot(MPfile ["B"; "A"], "C")`.  I'm fine if this feature is marked unsafe or low-level or undocumented or something like that, but it's really quite essential to being able to inline files in Coq.

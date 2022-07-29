@@ -1,0 +1,38 @@
+Comment author: @JasonGross
+
+The fix to bug [BZ#4582](https://github.com/coq/coq/issues?q=is%3Aissue%20%22Original%20bug%20ID%3A%20BZ%234582%22) introduced problems that are worse than the problem that it solved.  Scripts which import vector notations and use singleton lists are broken in 8.5pl1.  The following notations need to be updated.
+
+$ git grep 'Notation "\s*\[\s*[^;]\+;\s*\.\.'
+Sorting/Mergesort.v:Local Notation "[ a ; .. ; b ]" := (a :: .. (b :: []) ..).
+Sorting/PermutSetoid.v:Local Notation "[ a ; .. ; b ]" := (a :: .. (b :: []) ..).
+Sorting/Sorted.v:Local Notation "[ a ; .. ; b ]" := (a :: .. (b :: []) ..) (at level 0).
+Vectors/VectorDef.v:Notation " [ x ; .. ; y ] " := (cons _ x _ .. (cons _ y _ (nil _)) ..) : vector_scope
+
+
+Comment author: @ppedrot
+
+The evergreen bug of non-scaling notations... Do you think this will be enough?
+
+
+Comment author: @JasonGross
+
+What do you mean by enough?  I think these are the only notations in the standard library which clash with the singleton list notation, unless I got my regex wrong.
+
+For the longer term, it might be nice to have a core file in the stdlib that reserves all of the notations used in the stdlib, so that the parser won't change dependending on which files you import.
+
+
+Comment author: @ppedrot
+
+All right, after reviewing a bit this code, the only problematic instance is the one from VectorDef, as all the other notations are local and thus do not escape their module. Correct me if I'm wrong.
+
+
+Comment author: @JasonGross
+
+That seems accurate.
+
+
+Comment author: @ppedrot
+
+Fixed by 2ee92b2.
+
+

@@ -1,0 +1,1 @@
+Looks again like bad algorithmic in name handling, but this time in notations. An important part of the time is passed in `Glob_ops.glob_visible_short_qualid` trying to compute the names of accessible global definitions. Why this happens with `BinInt` imported, I am not sure.

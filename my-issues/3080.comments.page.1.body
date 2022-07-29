@@ -1,0 +1,32 @@
+Comment author: @JasonGross
+
+I would like a way to do the following without the [%function]:
+
+Delimit Scope function_scope with function.
+(*Bind Scope function_scope with Funclass.*)
+Definition foo (A : Type -> Type) := A.
+Notation "f 'o' g" := (fun x => f (g x)) (at level 40, left associativity) : function_scope.
+Check foo (@ id Type o @ id Type)%function.
+
+I think it would be conceptually cleaner to demote the special status of [type_scope] and define it very early on as [Bind Scope type_scope with Sortclass.]  Then you could add something like [Bind Scope function_scope with Funclass.], and [Delimit Scope function_scope with function.] to, e.g., Notations.v.  Alternatively, if this is actually more complicated or not worth the effort, I'd like to see a [function_scope] like [type_scope], so that in the above code, [Print foo.] would give [Argument scopes are [function_scope type_scope]] rather than [Argument scopes are [_ type_scope]].
+
+
+Comment author: @JasonGross
+
+How hard is this to implement (either adding [Bind Scope foo_scope with Sortclass] and [Bind Scope foo_scope with Funclass], or, failing that, adding a special [function_scope] which is like [type_scope])?  Any chance this could make it in to the next 8.5 beta?  (Or if you point me to the code that does [type_scope], I could possibly submit a pull request?)
+
+
+Comment author: @herbelin
+
+This can probably be experimented by hacking the function Notation.compute_scope_class, adding a field ScopeFun to the type Notation.scope_class.
+
+Note that type_scope is known internally, before any .v file is loaded, so as to interpret terms which are known at parsing time to be types. So, it is a priori difficult to have it defined in a .v file.
+
+Hope it helps.
+
+
+Comment author: @ppedrot
+
+This has been fixed by 16536fd734, right?
+
+

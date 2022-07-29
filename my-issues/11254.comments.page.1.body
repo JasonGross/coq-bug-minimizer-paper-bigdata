@@ -1,0 +1,4 @@
+Looks like it could be related to #10246 (cc @herbelin @ejgallego).
+This is indeed related to #10246. See a fix at #11254.
+
+PS: a work-around is to use `coqc -coqlib foo --version`.

@@ -1,0 +1,16 @@
+Comment author: @JasonGross
+```coq
+Set Primitive Projections.
+Record Foo := { bar : Set }.
+Class Baz (F : Foo) := { qux :> bar F }.
+Coercion qux : Baz >-> bar.
+(* Error: Found target class bar instead of bar. *)
+```
+I imagine this error message would extremely confusing to anyone unaware of eta-expanded projections.  In any case, `@bar` and `bar` should be treated as the same coercion class.
+
+
+Comment author: @mattam82
+
+I fixed this, but I'm still unhappy with this compatibility layer that confuses the two versions of the projection... Maybe we should have bar_eta and qux_eta definitions instead of the same name.
+
+

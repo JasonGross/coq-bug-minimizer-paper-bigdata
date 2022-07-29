@@ -1,0 +1,11 @@
+(I am reporting this because I just ran into a case where `Redirect "/tmp/foo"` is unusable: if multiple users are building the same project on the same machine, it will give a "permission denied" error on trying to write to the file in `/tmp`.)
+At least it seems to be possible to create per-user paths:
+
+~~~~~
+Welcome to Coq 8.8.2 (October 2018)
+
+Coq < Cd "~".
+/home/browse
+~~~~~
+
+I still think that `Redirect` does not really make sense of a vernac command (https://github.com/coq/coq/issues/4953) and I am guessing all use cases are (in the long run) better served by redirecting the output of `coqc` in `Makefile` (or improving the interaction protocol, as I think was the case with the original motivation for adding redirect).

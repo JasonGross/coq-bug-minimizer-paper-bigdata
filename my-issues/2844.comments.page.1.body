@@ -1,0 +1,36 @@
+Comment author: @JasonGross
+
+In the following code, the first check runs fine, the second produces "Error: bar is not a registered projection."
+
+Set Implicit Arguments.
+
+Record foo (A : Type) := {
+  baz' := A;
+  bar' : A -> Type
+  }.
+
+Definition baz A (f : foo A) := f.(baz').
+Definition bar A (f : foo A) : @ baz A f -> Type := f.(bar').
+
+Parameter A : Type.
+Parameter f : foo A.
+Parameter a : A.
+
+Check f.(bar) a.
+Check f.(bar).
+
+
+This is unexpected; I expect that either both checks succeed, or both checks fail.  I'm not sure whether the fact that [f.(bar) a] works is a feature, or a bug:
+I've used code like this for "fake" record fields, so that I can define a sort-polymorphic record one way and then pretend that all it's fields have a more convenient type (convertible with the type of the original field).  (It's possible that implementing enhancement [BZ#2840](https://github.com/coq/coq/issues?q=is%3Aissue%20%22Original%20bug%20ID%3A%20BZ%232840%22) would end up making this unnecessary, I'm not sure.)
+
+
+Comment author: @ppedrot
+
+Looks more like a parsing problem. The grammar entry for those projections accepts any entry of the form "C (x1 := t1) ... (xn := tn) u1 ... un" inside the parentheses, where C is a reference, and ti, ui are terms.
+
+
+Comment author: @silene
+
+The issue seems to have been fixed in 8.5.
+
+

@@ -1,0 +1,29 @@
+Comment author: @JasonGross
+
+I'd like to see something like this work:
+```
+Notation "'do' {{ body }}"
+  := (fun T R (continue break : T -> R) => body)
+       (continue local binder, break local binder, at level 0).
+
+Check do {{ continue 0 }}.
+```
+More formally, having
+```
+Notation "expr" := (val) (x local binder).
+```
+and writing 
+```
+Check something.
+```
+should be equivalent to
+```
+Notation "'with_binder' x 'do' expr" := (val).
+```
+and writing
+```
+Check with_binder x do something.
+```
+Does that make sense?
+
+

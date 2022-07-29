@@ -1,0 +1,66 @@
+Comment author: @JasonGross
+
+(* File reduced by coq-bug-finder from original input, then from 5752 lines to 3828 lines, then from 2707 lines to 193 lines, then from 202 lines to 20 lines *)
+Lemma match_bool_fn b A B xT xF
+: match b as b return forall x : A, B b x with
+    | true => xT
+    | false => xF
+  end
+  = fun x : A => match b as b return B b x with
+                   | true => xT x
+                   | false => xF x
+                 end.
+admit.
+Defined.
+Lemma match_bool_comm_1 (b : bool) A B (F : forall x : A, B x) t f
+: (if b as b return B (if b then t else f) then F t else F f)
+  = F (if b then t else f).
+admit.
+Defined.
+Hint Rewrite match_bool_fn : matchdb.
+Hint Rewrite match_bool_comm_1 : matchdb. (* Toplevel input, characters 0-41:
+Anomaly: File "tactics/term_dnet.ml", line 197, characters 8-14: Assertion failed.
+Please report. *)
+
+
+Comment author: @silene
+
+This is a regression with respect to 8.4. Here is a reduced testcase.
+
+Inductive T := Foo : T.
+Axiom (b : T) (R : forall x : T, Prop) (f : forall x : T, R x).
+Axiom a1 : match b with Foo => f end = f.
+Axiom a2 : match b with Foo => f b end = f b.
+Hint Rewrite a1 : bar.
+Hint Rewrite a2 : bar.
+
+With respect to bug [BZ#3509](https://github.com/coq/coq/issues?q=is%3Aissue%20%22Original%20bug%20ID%3A%20BZ%233509%22), the hints are added one after the other instead of both at once.
+
+
+Comment author: @ppedrot
+
+
+> This is a regression with respect to 8.4. Here is a reduced testcase.
+> 
+> Inductive T := Foo : T.
+> Axiom (b : T) (R : forall x : T, Prop) (f : forall x : T, R x).
+> Axiom a1 : match b with Foo => f end = f.
+> Axiom a2 : match b with Foo => f b end = f b.
+> Hint Rewrite a1 : bar.
+> Hint Rewrite a2 : bar.
+> 
+> With respect to bug [BZ#3509](https://github.com/coq/coq/issues?q=is%3Aissue%20%22Original%20bug%20ID%3A%20BZ%233509%22), the hints are added one after the other instead
+> of both at once.
+
+Right, I am the culprit:
+
+dc438047cc7d20d4f2df6ab703689814a7552623 is the first bad commit
+commit dc438047cc7d20d4f2df6ab703689814a7552623
+Author: Pierre-Marie Pédrot <pierre-marie.pedrot@ inria.fr>
+Date:   Fri Feb 28 15:18:45 2014 +0100
+
+    Removing a Pervasives.compare in Term_dnet.
+
+Not sure why it breaks the code though.
+
+

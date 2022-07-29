@@ -1,0 +1,12 @@
+Indeed. Also related to #4805 for `zify` (and also `romega`).
+
+Let us first finish the ongoing transition of the documentation to Sphinx, in order not to redo this twice (or lose it during the transition).
+
+In the meantime, the interested users could have a look at [PreOmega.v](../blob/master/plugins/omega/PreOmega.v) (in particular the top comment) and [g_omega.ml4](../blob/master/plugins/omega/g_omega.ml4).
+Given that the transition to Sphinx is going to be tight for 8.8+beta1, I'll put the 8.8.0 milestone on this issue and the other one to remind to do this right after the transition.
+@letouzey Now that the Sphinx migration is done, it could be the right time to handle this and other documentation issues.
+> @letouzey Now that the Sphinx migration is done, it could be the right time to handle this and other documentation issues.
+
+but if you don't have time, please update the milestone accordingly
+Didn't hear back, removing the milestone.
+Fixed by #11288.

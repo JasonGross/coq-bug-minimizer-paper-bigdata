@@ -1,0 +1,21 @@
+Comment author: @JasonGross
+
+Coq should *silently* drop invalid bindings that result from COQPATH.  It is 
+annoying enough that to use COQPATH, I must have a directory whose logical name 
+and physical name match which contains my development.  It seems absurd to 
+additionally require that there be no other directories in the parent 
+directory.  At the very least, it should be possible to silence this warning.  
+Probably, the warning should either not exist, or be silenced by default, as in 
+8.5.
+
+
+Comment author: @maximedenes
+
+Fixed in v8.6 branch.
+
+
+Comment author: @JasonGross
+
+Thanks!
+
+

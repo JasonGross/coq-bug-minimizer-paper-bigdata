@@ -1,0 +1,24 @@
+Comment author: @JasonGross
+
+Paste this into coqide:
+
+Goal True.
+  Tactic Notation "foo" := idtac.
+  foo.
+
+
+Then click "evaluate to bottom" to get this anomaly.  I can't get it to show up in PG nor coqc, so I suspect a bug in async processing.
+
+
+Comment author: @gares
+
+Right the bug is there.
+
+In the meanwhile don't put non-tactics between proof and Qed.
+
+
+Comment author: @gares
+
+Will push soon the fix.
+
+

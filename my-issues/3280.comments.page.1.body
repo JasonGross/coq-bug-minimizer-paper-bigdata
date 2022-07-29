@@ -1,0 +1,545 @@
+Comment author: @JasonGross
+
+Created attachment 457
+Plot of timings
+
+Here is a file that stress-tests dependence of [apply f_equal] on term size:
+
+Fixpoint twos (n : nat) (A : Type) :=
+  match n with
+    | 0 => A
+    | S n' => twos n' (prod A A)
+  end.
+
+Ltac display := match goal with |- let n := ?k in _ => idtac k "Time apply f_equal." end; hnf; unfold twos; cbv beta.
+
+Goal let n := 1 in twos n Set = twos n Set. display. Time apply f_equal. Abort.
+Goal let n := 2 in twos n Set = twos n Set. display. Time apply f_equal. Abort.
+Goal let n := 3 in twos n Set = twos n Set. display. Time apply f_equal. Abort.
+Goal let n := 4 in twos n Set = twos n Set. display. Time apply f_equal. Abort.
+Goal let n := 5 in twos n Set = twos n Set. display. Time apply f_equal. Abort.
+Goal let n := 6 in twos n Set = twos n Set. display. Time apply f_equal. Abort.
+Goal let n := 7 in twos n Set = twos n Set. display. Time apply f_equal. Abort.
+Goal let n := 8 in twos n Set = twos n Set. display. Time apply f_equal. Abort.
+Goal let n := 9 in twos n Set = twos n Set. display. Time apply f_equal. Abort.
+Goal let n := 10 in twos n Set = twos n Set. display. Time apply f_equal. Abort.
+Goal let n := 11 in twos n Set = twos n Set. display. Time apply f_equal. Abort.
+=>al let n := 12 in twos n Set = twos n Set. display. Time apply f_equal. Abort.
+Goal let n := 13 in twos n Set = twos n Set. display. Time apply f_equal. Abort.
+Goal let n := 15 in twos n Set = twos n Set. display. Time apply f_equal. Abort.
+Goal let n := 16 in twos n Set = twos n Set. display. Time apply f_equal. Abort.
+Goal let n := 17 in twos n Set = twos n Set. display. Time apply f_equal. Abort.
+Goal let n := 18 in twos n Set = twos n Set. display. Time apply f_equal. Abort.
+Goal let n := 19 in twos n Set = twos n Set. display. Time apply f_equal. Abort.
+Goal let n := 20 in twos n Set = twos n Set. display. Time apply f_equal. Abort.
+
+The timings for 8.4pl3 are:
+1 Time apply f_equal. Finished transaction in 0. secs (0.u,0.s)
+2 Time apply f_equal. Finished transaction in 0. secs (0.u,0.s)
+3 Time apply f_equal. Finished transaction in 0. secs (0.u,0.s)
+4 Time apply f_equal. Finished transaction in 0. secs (0.u,0.s)
+5 Time apply f_equal. Finished transaction in 0. secs (0.u,0.s)
+6 Time apply f_equal. Finished transaction in 0. secs (0.u,0.s)
+7 Time apply f_equal. Finished transaction in 0. secs (0.u,0.s)
+8 Time apply f_equal. Finished transaction in 0. secs (0.004001u,0.s)
+9 Time apply f_equal. Finished transaction in 0. secs (0.004u,0.004001s)
+10 Time apply f_equal. Finished transaction in 0. secs (0.020002u,0.s)
+11 Time apply f_equal. Finished transaction in 0. secs (0.048003u,0.004s)
+12 Time apply f_equal. Finished transaction in 0. secs (0.104006u,0.s)
+13 Time apply f_equal. Finished transaction in 1. secs (0.188011u,0.012001s)
+15 Time apply f_equal. Finished transaction in 1. secs (0.80805u,0.012s)
+16 Time apply f_equal. Finished transaction in 2. secs (1.620101u,0.016001s)
+17 Time apply f_equal. Finished transaction in 3. secs (3.280205u,0.024002s)
+18 Time apply f_equal. Finished transaction in 6. secs (6.55641u,0.068004s)
+19 Time apply f_equal. Finished transaction in 13. secs (13.236827u,0.112007s)
+20 Time apply f_equal. Finished transaction in 30. secs (29.897869u,0.304019s)
+
+
+For coq trunk (eb15c59bb2f79f0154a0c37e43cdf4e90235c053) are:
+1 Time apply f_equal. Finished transaction in 0. secs (0.u,0.s)
+2 Time apply f_equal. Finished transaction in 0. secs (0.u,0.s)
+3 Time apply f_equal. Finished transaction in 0. secs (0.u,0.s)
+4 Time apply f_equal. Finished transaction in 0. secs (0.u,0.s)
+5 Time apply f_equal. Finished transaction in 0. secs (0.u,0.s)
+6 Time apply f_equal. Finished transaction in 0.001 secs (0.u,0.s)
+7 Time apply f_equal. Finished transaction in 0.003 secs (0.u,0.s)
+8 Time apply f_equal. Finished transaction in 0.006 secs (0.u,0.004s)
+9 Time apply f_equal. Finished transaction in 0.012 secs (0.004u,0.008s)
+10 Time apply f_equal. Finished transaction in 0.026 secs (0.011u,0.016s)
+11 Time apply f_equal. Finished transaction in 0.054 secs (0.032u,0.024s)
+12 Time apply f_equal. Finished transaction in 0.112 secs (0.06u,0.052s)
+13 Time apply f_equal. Finished transaction in 0.19 secs (0.156u,0.032s)
+15 Time apply f_equal. Finished transaction in 0.704 secs (0.688u,0.016s)
+16 Time apply f_equal. Finished transaction in 1.614 secs (1.604u,0.008s)
+17 Time apply f_equal. Finished transaction in 2.728 secs (2.708u,0.024s)
+18 Time apply f_equal. Finished transaction in 6.7 secs (6.64u,0.06s)
+19 Time apply f_equal. Finished transaction in 11.352 secs (11.352u,0.s)
+20 Time apply f_equal. Finished transaction in 23.091 secs (22.977u,0.116s)
+
+For label n, there are 4 * 2^n words in the goal (for example, for 1, the goal is (@ eq Type (prod Set Set) (prod Set Set))).
+
+
+A plot of timings is attached; I'll also attach the Mathematica notebook that generated it.
+
+Here is a script that generates a Coq file for stress-testing on things other than binary trees:
+
+```bash
+#!/bin/bash
+
+if [ -z "$3" ]; then
+    echo "Usage: $0 FILENAME TOTAL-ITERATIONS MAX-DUP"
+    exit 1
+fi
+
+if [ -z "$COQC" ]; then
+    COQC=coqc
+fi
+
+OUT="$1"
+FILENAME="$1.v"
+TOTAL="$2"
+MAX_DUP="$3"
+
+#echo "$FILENAME"
+
+cat > "$FILENAME" <<EOF
+Goal True. idtac "{'base', 'exponent', 'time'}". idtac "{". Admitted.
+EOF
+
+for i in $(seq 1 $MAX_DUP)
+do
+    echo -n "Inductive iter$i " >> "$FILENAME"
+    for j in $(seq 1 $i)
+    do
+        echo -n "A$j " >> "$FILENAME"
+    done
+    echo " :=" >> "$FILENAME"
+    echo -n "  build$i : " >> "$FILENAME"
+    for j in $(seq 1 $i)
+    do
+        echo -n "A$j -> ">> "$FILENAME"
+    done
+    echo -n "iter$i" >> "$FILENAME"
+    for j in $(seq 1 $i)
+    do
+        echo -n " A$j" >> "$FILENAME"
+    done
+    echo "." >> "$FILENAME"
+    cat >> "$FILENAME" <<EOF
+Fixpoint do$i (n : nat) (A : Type) :=
+  match n with
+    | 0 => A
+EOF
+    echo -n "    | S n' => do$i n' (iter$i" >> "$FILENAME"
+    for j in $(seq 1 $i)
+    do
+        echo -n " A" >> "$FILENAME"
+    done
+    echo ")" >> "$FILENAME"
+    echo "  end." >> "$FILENAME"
+
+    echo "Ltac display$i := match goal with |- let n := ?k in _ => "'idtac "{ '"$i"' ," k ","'" end; hnf; unfold do$i; cbv beta." >> "$FILENAME"
+done
+
+for i in $(seq 1 $MAX_DUP)
+do
+    for k in $(seq 1 $TOTAL)
+    do
+        echo "Goal let n := $k in do$i n Set = do$i n Set. display$i. Time apply f_equal. Admitted." >> "$FILENAME"
+    done
+done
+
+echo 'Goal True. idtac "}". Admitted.' >> "$FILENAME"
+
+#echo "$COQC $FILENAME > $OUT"
+
+$COQC "$FILENAME" | sed s'/Finished transaction in \([0-9\.]\+\) secs.*/\1},/g'
+```
+> Attached file: [Coq Timings.png](https://coq.inria.fr/bugfiles/attachment.cgi?id=457) (image/png, 8049 bytes)
+> Description:   Plot of timings
+
+
+  
+Comment author: @JasonGross
+
+Created attachment 458
+Mathematica file generating the timings plot
+
+> Attached file: [Coq Timings.nb](https://coq.inria.fr/bugfiles/attachment.cgi?id=458) (text/plain, 27024 bytes)
+> Description:   Mathematica file generating the timings plot
+
+
+Comment author: @ppedrot
+
+The [apply] tactic does unification. Why do you expect it to be constant-time?
+
+
+Comment author: @JasonGross
+
+Ideally (in a world with perfect hash-consing, or something), it would find that the terms it's trying to unify are identical because they have the same cached hashes, and wouldn't have to explore the entire term.
+
+
+Comment author: @JasonGross
+
+Note that this does not seem to have anything to do with universes, and that [refine] is slower than [apply].  Here is a script (using [apply]) that does things with [nat] rather than sets, and the timings for this script, and the same script with [apply f_equal] replaced with [refine (f_equal _ _)].
+
+
+Axiom nat_prod : nat -> nat -> nat.
+Fixpoint twos (n : nat) (A : nat) :=
+  match n with
+    | 0 => A
+    | S n' => twos n' (nat_prod A A)
+  end.
+Ltac display := match goal with |- let n := ?k in _ => idtac k "Time apply f_equal." end; hnf; unfold twos; cbv beta.
+Axiom k : nat.
+Goal let n := 1 in twos n k = twos n k. display. Time apply f_equal. Abort.
+Goal let n := 2 in twos n k = twos n k. display. Time apply f_equal. Abort.
+Goal let n := 3 in twos n k = twos n k. display. Time apply f_equal. Abort.
+Goal let n := 4 in twos n k = twos n k. display. Time apply f_equal. Abort.
+Goal let n := 5 in twos n k = twos n k. display. Time apply f_equal. Abort.
+Goal let n := 6 in twos n k = twos n k. display. Time apply f_equal. Abort.
+Goal let n := 7 in twos n k = twos n k. display. Time apply f_equal. Abort.
+Goal let n := 8 in twos n k = twos n k. display. Time apply f_equal. Abort.
+Goal let n := 9 in twos n k = twos n k. display. Time apply f_equal. Abort.
+Goal let n := 10 in twos n k = twos n k. display. Time apply f_equal. Abort.
+Goal let n := 11 in twos n k = twos n k. display. Time apply f_equal. Abort.
+Goal let n := 12 in twos n k = twos n k. display. Time apply f_equal. Abort.
+Goal let n := 13 in twos n k = twos n k. display. Time apply f_equal. Abort.
+Goal let n := 14 in twos n k = twos n k. display. Time apply f_equal. Abort.
+Goal let n := 15 in twos n k = twos n k. display. Time apply f_equal. Abort.
+Goal let n := 16 in twos n k = twos n k. display. Time apply f_equal. Abort.
+Goal let n := 17 in twos n k = twos n k. display. Time apply f_equal. Abort.
+Goal let n := 18 in twos n k = twos n k. display. Time apply f_equal. Abort.
+Goal let n := 19 in twos n k = twos n k. display. Time apply f_equal. Abort.
+Goal let n := 20 in twos n k = twos n k. display. Time apply f_equal. Abort.
+
+
+
+
+
+
+
+1 Time apply f_equal. Finished transaction in 0. secs (0.u,0.s)
+2 Time apply f_equal. Finished transaction in 0. secs (0.u,0.s)
+3 Time apply f_equal. Finished transaction in 0. secs (0.004001u,0.s)
+4 Time apply f_equal. Finished transaction in 0. secs (0.u,0.s)
+5 Time apply f_equal. Finished transaction in 0. secs (0.004u,0.s)
+6 Time apply f_equal. Finished transaction in 0. secs (0.u,0.s)
+7 Time apply f_equal. Finished transaction in 0. secs (0.004u,0.s)
+8 Time apply f_equal. Finished transaction in 0. secs (0.004001u,0.s)
+9 Time apply f_equal. Finished transaction in 0. secs (0.012001u,0.s)
+10 Time apply f_equal. Finished transaction in 0. secs (0.020001u,0.s)
+11 Time apply f_equal. Finished transaction in 0. secs (0.040002u,0.s)
+12 Time apply f_equal. Finished transaction in 0. secs (0.104007u,0.s)
+13 Time apply f_equal. Finished transaction in 1. secs (0.216014u,0.s)
+14 Time apply f_equal. Finished transaction in 0. secs (0.440028u,0.004s)
+15 Time apply f_equal. Finished transaction in 1. secs (0.876055u,0.012001s)
+16 Time apply f_equal. Finished transaction in 2. secs (1.872117u,0.024001s)
+17 Time apply f_equal. Finished transaction in 4. secs (4.024252u,0.040003s)
+18 Time apply f_equal. Finished transaction in 8. secs (8.624539u,0.060004s)
+19 Time apply f_equal. Finished transaction in 17. secs (16.565035u,0.116007s)
+20 Time apply f_equal. Finished transaction in 38. secs (38.178386u,0.272017s)
+
+
+1 Time refine (f_equal _ _). Finished transaction in 0. secs (0.u,0.s)
+2 Time refine (f_equal _ _). Finished transaction in 0. secs (0.u,0.s)
+3 Time refine (f_equal _ _). Finished transaction in 0. secs (0.004u,0.s)
+4 Time refine (f_equal _ _). Finished transaction in 0. secs (0.u,0.s)
+5 Time refine (f_equal _ _). Finished transaction in 0. secs (0.u,0.s)
+6 Time refine (f_equal _ _). Finished transaction in 0. secs (0.u,0.s)
+7 Time refine (f_equal _ _). Finished transaction in 0. secs (0.004001u,0.s)
+8 Time refine (f_equal _ _). Finished transaction in 0. secs (0.004u,0.s)
+9 Time refine (f_equal _ _). Finished transaction in 0. secs (0.008001u,0.s)
+10 Time refine (f_equal _ _). Finished transaction in 0. secs (0.024002u,0.s)
+11 Time refine (f_equal _ _). Finished transaction in 0. secs (0.044002u,0.004001s)
+12 Time refine (f_equal _ _). Finished transaction in 0. secs (0.104006u,0.s)
+13 Time refine (f_equal _ _). Finished transaction in 0. secs (0.272017u,0.s)
+14 Time refine (f_equal _ _). Finished transaction in 1. secs (0.47603u,0.004s)
+15 Time refine (f_equal _ _). Finished transaction in 1. secs (1.068067u,0.004s)
+16 Time refine (f_equal _ _). Finished transaction in 2. secs (2.120133u,0.024001s)
+17 Time refine (f_equal _ _). Finished transaction in 5. secs (4.668292u,0.036002s)
+18 Time refine (f_equal _ _). Finished transaction in 11. secs (10.764672u,0.132008s)
+19 Time refine (f_equal _ _). Finished transaction in 26. secs (25.705607u,0.180011s)
+20 Time refine (f_equal _ _). Finished transaction in 101. secs (100.546284u,0.64004s)
+
+
+Comment author: @JasonGross
+
+This doesn't seem to be quite linear, though I'm not sure what kind of function it is.
+
+
+Comment author: @JasonGross
+
+After some debugging with Hugo yesterday at IHP (I'm in Paris until next Thursday), we discovered that this ~linear dependence on term size shows up in many tactics, e.g., destruct, revert, case, exact, ...  This creates a wall of term size beyond which interactive theorem proving is impossible, or at least very frustrating and time-consuming.  After a few hours looking at the problem with me yesterday, Hugo found that the time in the case of [revert] is ~entirely due to unification, and can be fixed by replacing "refine" with "refine_no_check" (I think he'll be making a commit soon).  (Perhaps a test-case should be added to the complexity test-suite.)
+
+Here is an example displaying the dependence of various tactics on the size of the goal:
+
+```coq
+Require Import String.
+Open Scope string_scope.
+Axiom nat_prod : nat -> nat -> nat.
+Fixpoint twos (n : nat) (A : nat) :=
+  match n with
+    | 0 => A
+    | S n' => twos n' (nat_prod A A)
+  end.
+Ltac display label := match goal with |- let n := ?k in _ => idtac k label end; hnf; unfold twos; cbv beta.
+Axiom k : nat.
+
+Notation hide := (_ = _).
+
+Goal forall p : nat * nat, let n := 16 in twos n k = twos n k. intro p. display "revert". Time revert p. (* 2.23 secs *) Admitted.
+Goal forall p : nat * nat, let n := 16 in twos n k = twos n k. intro p. display "generalize goal; intro; revert". Time match goal with |- ?G => generalize G end. (* 2.48 secs *) Time intro. (* 0.06 secs *) Time revert p. (* 0.056 secs *) Admitted.
+Goal forall p : nat * nat, let n := 11 in twos n k = twos n k. intro p. display "set goal; revert". Time match goal with |- ?G => set (x := G) end. (* 2.35 secs (* notice the 11, not 16 *) *) Time revert p. (* 0.02 secs *) Admitted.
+Goal forall p : nat * nat, let n := 16 in twos n k = twos n k. intro p. display "destruct". Time destruct p. (* 5.13 secs *) Admitted.
+Goal forall p : nat * nat, let n := 16 in twos n k = twos n k. intro p. display "case". Time case p. (* 4.35 secs *) Admitted.
+Goal forall p : nat * nat, let n := 14 in twos n (nat_prod (fst p) (snd p)) = twos n (nat_prod (fst p) (snd p)). intro p. display "revert dep". Time revert p. (* 3.77 secs *) Admitted.
+Goal forall p : nat * nat, let n := 14 in twos n (nat_prod (fst p) (snd p)) = twos n (nat_prod (fst p) (snd p)). intro p. display "destruct dep". Time destruct p. (* 6.44 secs *) Admitted.
+Goal forall p : nat * nat, let n := 14 in twos n (nat_prod (fst p) (snd p)) = twos n (nat_prod (fst p) (snd p)). intro p. display "case dep". Time case p. (* 6.92 secs *) Admitted.
+```
+
+  
+Comment author: @ppedrot
+
+> After some debugging with Hugo yesterday at IHP (I'm in Paris until next
+> Thursday), we discovered that this ~linear dependence on term size shows up
+> in many tactics, e.g., destruct, revert, case, exact, ...  This creates a
+> wall of term size beyond which interactive theorem proving is impossible, or
+> at least very frustrating and time-consuming.
+
+Well well, linear complexity is not what I would call Gonthier's famous « wall of complexity ». I would be pleased to be able to decide intuitionistic propositional logic in linear time!
+
+But yep, I understand your frustration.
+
+
+Comment author: @JasonGross
+
+I would not complain (or, at least, not as much :-) ) if tactics doing interesting things were linear in term size.  For example, rewrite does magic (maybe apply does too), so I'm mostly fine with having to jump through hoops to get the type-checker to not type-check things too many time.  But I expect [generalize] to depend on the goal size after generalization, not on the size of the term I'm generalizing, at least in cases where there are no terms which almost match but don't.  (So, e.g., [match goal with |- ?G => generalize G end] is something I expect to be instantaneous.  Generalizing a deep tree with leaves of [nat] in a goal which is a deep tree with many leaves of [nat + nat], but one subtree that matches what I'm generalizing---I'm fine with that taking a long time.)
+
+
+Comment author: @mattam82
+
+On my machine and with the current trunk, refine is faster than apply, and this all seems pretty linear to me (measurements are fishy though): 
+
+1 Time apply f_equal.
+Finished transaction in 0. secs (0.u,0.s)
+2 Time apply f_equal.
+Finished transaction in 0. secs (0.u,0.s)
+3 Time apply f_equal.
+Finished transaction in 0. secs (0.u,0.s)
+4 Time apply f_equal.
+Finished transaction in 0. secs (0.u,0.s)
+5 Time apply f_equal.
+Finished transaction in 0. secs (0.u,0.s)
+6 Time apply f_equal.
+Finished transaction in 0. secs (0.u,0.s)
+7 Time apply f_equal.
+Finished transaction in 0. secs (0.u,0.s)
+8 Time apply f_equal.
+Finished transaction in 0.001 secs (0.001u,0.s)
+9 Time apply f_equal.
+Finished transaction in 0.002 secs (0.001u,0.s)
+10 Time apply f_equal.
+Finished transaction in 0.005 secs (0.003u,0.001s)
+11 Time apply f_equal.
+Finished transaction in 0.014 secs (0.01u,0.003s)
+12 Time apply f_equal.
+Finished transaction in 0.028 secs (0.02u,0.007s)
+13 Time apply f_equal.
+Finished transaction in 0.051 secs (0.039u,0.012s)
+14 Time apply f_equal.
+Finished transaction in 0.114 secs (0.088u,0.025s)
+15 Time apply f_equal.
+Finished transaction in 0.153 secs (0.152u,0.s)
+16 Time apply f_equal.
+Finished transaction in 0.428 secs (0.42u,0.007s)
+17 Time apply f_equal.
+Finished transaction in 0.485 secs (0.48u,0.005s)
+18 Time apply f_equal.
+Finished transaction in 1.05 secs (1.032u,0.018s)
+19 Time apply f_equal.
+Finished transaction in 2.474 secs (2.414u,0.058s)
+20 Time apply f_equal.
+Finished transaction in 5.948 secs (5.629u,0.292s)
+
+
+The next batch is actually refines:
+
+1 Time apply f_equal.
+Finished transaction in 0. secs (0.u,0.s)
+2 Time apply f_equal.
+Finished transaction in 0. secs (0.u,0.s)
+3 Time apply f_equal.
+Finished transaction in 0. secs (0.u,0.s)
+4 Time apply f_equal.
+Finished transaction in 0. secs (0.u,0.s)
+5 Time apply f_equal.
+Finished transaction in 0. secs (0.u,0.s)
+6 Time apply f_equal.
+Finished transaction in 0. secs (0.u,0.s)
+7 Time apply f_equal.
+Finished transaction in 0. secs (0.u,0.s)
+8 Time apply f_equal.
+Finished transaction in 0. secs (0.u,0.s)
+9 Time apply f_equal.
+Finished transaction in 0. secs (0.u,0.s)
+10 Time apply f_equal.
+Finished transaction in 0. secs (0.u,0.s)
+11 Time apply f_equal.
+Finished transaction in 0.001 secs (0.001u,0.s)
+12 Time apply f_equal.
+Finished transaction in 0.005 secs (0.005u,0.s)
+13 Time apply f_equal.
+Finished transaction in 0.011 secs (0.011u,0.s)
+14 Time apply f_equal.
+Finished transaction in 0.026 secs (0.026u,0.s)
+15 Time apply f_equal.
+Finished transaction in 0.06 secs (0.059u,0.s)
+16 Time apply f_equal.
+Finished transaction in 0.112 secs (0.112u,0.s)
+17 Time apply f_equal.
+Finished transaction in 0.212 secs (0.212u,0.s)
+18 Time apply f_equal.
+Finished transaction in 0.858 secs (0.841u,0.002s)
+19 Time apply f_equal.
+Finished transaction in 0.916 secs (0.882u,0.033s)
+20 Time apply f_equal.
+Finished transaction in 1.894 secs (1.796u,0.097s)
+
+
+Comment author: @JasonGross
+
+My timings on trunk () are only 2x slower, which might just be a difference in machine:
+
+10 Time apply f_equal.
+Finished transaction in 0.007 secs (0.004u,0.004s)
+11 Time apply f_equal.
+Finished transaction in 0.015 secs (0.008u,0.008s)
+12 Time apply f_equal.
+Finished transaction in 0.038 secs (0.032u,0.004s)
+13 Time apply f_equal.
+Finished transaction in 0.097 secs (0.072u,0.024s)
+14 Time apply f_equal.
+Finished transaction in 0.222 secs (0.176u,0.048s)
+15 Time apply f_equal.
+Finished transaction in 0.398 secs (0.4u,0.s)
+16 Time apply f_equal.
+Finished transaction in 0.999 secs (0.984u,0.016s)
+17 Time apply f_equal.
+Finished transaction in 1.209 secs (1.204u,0.004s)
+18 Time apply f_equal.
+Finished transaction in 2.422 secs (2.392u,0.028s)
+19 Time apply f_equal.
+Finished transaction in 6.12 secs (6.016u,0.104s)
+20 Time apply f_equal.
+Finished transaction in 13.045 secs (12.688u,0.356s)
+
+And refine is marginally faster (though the time for 20 is very, very fishy)
+10 Time refine (f_equal _ _).
+Finished transaction in 0.002 secs (0.u,0.s)
+11 Time refine (f_equal _ _).
+Finished transaction in 0.004 secs (0.003u,0.s)
+12 Time refine (f_equal _ _).
+Finished transaction in 0.01 secs (0.008u,0.004s)
+13 Time refine (f_equal _ _).
+Finished transaction in 0.029 secs (0.024u,0.004s)
+14 Time refine (f_equal _ _).
+Finished transaction in 0.07 secs (0.056u,0.012s)
+15 Time refine (f_equal _ _).
+Finished transaction in 0.175 secs (0.16u,0.016s)
+16 Time refine (f_equal _ _).
+Finished transaction in 0.311 secs (0.312u,0.s)
+17 Time refine (f_equal _ _).
+Finished transaction in 0.554 secs (0.552u,0.s)
+18 Time refine (f_equal _ _).
+Finished transaction in 1.579 secs (1.524u,0.056s)
+19 Time refine (f_equal _ _).
+Finished transaction in 5.285 secs (5.228u,0.06s)
+20 Time refine (f_equal _ _).
+Finished transaction in 4.806 secs (4.644u,0.164s)
+
+
+Comment author: @JasonGross
+
+Note that [rewrite] seems to be a particularly bad offender, being about twice as slow as [apply f_equal]:
+
+$ cat ~/tmp/slow_rewrite.v
+Axiom nat_prod : nat -> nat -> nat.
+Fixpoint twos (n : nat) (A : nat) :=
+  match n with
+    | O => A
+    | S n' => twos n' (nat_prod A A)
+  end.
+Ltac display := match goal with |- let n := ?k in _ => idtac (*k "Time apply f_equal."*) end; hnf; unfold twos; cbv beta.
+Axiom k : nat.
+Axiom x y : nat.
+Axiom H : x = y.
+Notation foo := (nat_prod _ _).
+Goal twos 0 x = twos 0 x. lazy. idtac "trivial rewrite". Time rewrite H. Admitted.
+Goal let n := 16 in prod (twos 0 x = twos 0 x) (twos n k = twos n k). display. idtac "rewrite H". Time rewrite H. Admitted.
+Goal let n := 16 in prod (twos 0 x = twos 0 x) (twos n k = twos n k). display. idtac "rewrite !H (2)". Time rewrite !H. Admitted.
+Goal let n := 16 in prod (twos 0 x = twos 0 x) (twos n k = twos n k). display. idtac "repeat rewrite H (2)". Time repeat rewrite H. Admitted.
+Goal let n := 16 in prod (twos 0 x = twos 0 x) (twos n k = twos n k). display. idtac "split; [ rewrite H | apply f_equal ]". Time split. Time rewrite H. admit. Time apply f_equal. Admitted.
+Goal let n := 16 in prod (twos 0 x = twos 0 x) (twos n k = twos n k). display. idtac "split; [ rewrite !H (2) | apply f_equal ]". Time split. Time rewrite !H. admit. Time apply f_equal. Admitted.
+Goal let n := 16 in prod (twos 0 x = twos 0 x) (twos n k = twos n k). display. idtac "split; [ repeat rewrite H (2) | apply f_equal ]". Time split. Time repeat rewrite H. admit. Time apply f_equal. Admitted.
+
+Goal let n := 16 in prod (twos 1 x = twos 1 x) (twos n k = twos n k). display. idtac "rewrite H". Time rewrite H. Admitted.
+Goal let n := 16 in prod (twos 1 x = twos 1 x) (twos n k = twos n k). display. idtac "rewrite !H (4)". Time rewrite !H. Admitted.
+Goal let n := 16 in prod (twos 1 x = twos 1 x) (twos n k = twos n k). display. idtac "repeat rewrite H (4)". Time repeat rewrite H. Admitted.
+Goal let n := 16 in prod (twos 1 x = twos 1 x) (twos n k = twos n k). display. idtac "split; [ rewrite H | apply f_equal ]". Time split. Time rewrite H. admit. Time apply f_equal. Admitted.
+Goal let n := 16 in prod (twos 1 x = twos 1 x) (twos n k = twos n k). display. idtac "split; [ rewrite !H (4) | apply f_equal ]". Time split. Time rewrite !H. admit. Time apply f_equal. Admitted.
+Goal let n := 16 in prod (twos 1 x = twos 1 x) (twos n k = twos n k). display. idtac "split; [ repeat rewrite H (4) | apply f_equal ]". Time split. Time repeat rewrite H. admit. Time apply f_equal. Admitted.
+
+$ ~/.local64/coq/coq-trunk/bin/coqc ~/tmp/slow_rewrite.v | tee ~/tmp/slow_rewrite-trunk.timings
+...
+$ cat ~/tmp/slow_rewrite-trunk.timings | tr '\n' '%' | sed s'/%Finished transaction in//g' | tr '%' '\n'
+
+trivial rewrite 0. secs (0.004u,0.s)
+rewrite H 1.816 secs (1.74u,0.076s)
+rewrite !H (2) 2.15 secs (2.12u,0.028s)
+repeat rewrite H (2) 1.85 secs (1.852u,0.s)
+split; [ rewrite H | apply f_equal ] 1.532 secs (1.528u,0.004s) 0. secs (0.u,0.s) 0.732 secs (0.732u,0.s)
+split; [ rewrite !H (2) | apply f_equal ] 1.064 secs (1.056u,0.012s) 0. secs (0.u,0.s) 1.348 secs (1.34u,0.008s)
+split; [ repeat rewrite H (2) | apply f_equal ] 1.227 secs (1.224u,0.s) 0. secs (0.u,0.s) 1.227 secs (1.228u,0.s)
+rewrite H 1.64 secs (1.64u,0.s)
+rewrite !H (4) 1.921 secs (1.92u,0.s)
+repeat rewrite H (4) 1.967 secs (1.968u,0.s)
+split; [ rewrite H | apply f_equal ] 1.059 secs (1.06u,0.s) 0. secs (0.u,0.s) 0.745 secs (0.744u,0.s)
+split; [ rewrite !H (4) | apply f_equal ] 1.256 secs (1.244u,0.012s) 0. secs (0.u,0.s) 0.738 secs (0.74u,0.s)
+split; [ repeat rewrite H (4) | apply f_equal ] 1.515 secs (1.504u,0.012s) 0. secs (0.u,0.s) 0.861 secs (0.852u,0.012s)
+split; [ repeat rewrite H (4) | apply f_equal ] 1.249 secs (1.208u,0.04s) 0. secs (0.u,0.s) 0.723 secs (0.716u,0.008s)
+split; [ rewrite !H (4) | apply f_equal ] 1.317 secs (1.288u,0.032s) 0. secs (0.u,0.s) 0.72 secs (0.696u,0.024s)
+split; [ rewrite H | apply f_equal ] 1.624 secs (1.612u,0.012s) 0. secs (0.u,0.s) 0.712 secs (0.712u,0.s)
+repeat rewrite H (4) 2.053 secs (2.052u,0.004s)
+rewrite !H (4) 1.938 secs (1.912u,0.024s)
+
+
+Comment author: @JasonGross
+
+Also, the timings in interactive mode are misleading; there seems to be a constant ~0.1s overhead associated with all full tactics (e.g., Time idtac. and Time do 1000 idtac. both tell me 0.1-0.2 seconds) when I am operating on a small goal and there is another large goal.)
+
+
+Comment author: @JasonGross
+
+In 8.4, `set` is a particularly bad offender:
+```coq
+Fixpoint twos (n : nat) (A : Type) :=
+  match n with
+    | 0 => A
+    | S n' => twos n' (prod A A)
+  end.
+
+Ltac display := match goal with |- let n := ?k in _ => idtac k "Time apply f_equal." end; hnf; unfold twos; cbv beta.
+
+Notation hide := (_ = _).
+
+Ltac myset x y := pose y as x; change y with x.
+
+Goal let n := 11 in twos n Set = twos n Set. display. Time match goal with |- ?G => set (G' := G) end. Abort. (* Finished transaction in 4. secs (3.668u,0.032s) *)
+Goal let n := 11 in twos n Set = twos n Set. display. Time match goal with |- ?G => myset G' G end. Abort. (* Finished transaction in 0. secs (0.064u,0.s) *)
+```
+But in 8.5, `set` is much, much faster, and ends up being 4x faster than `myset` (when n = 20), rather than 50x slower (when n = 11).
+
+
+So, I think this bug is invalid. Unification is expected to be at least linear in the size of the terms it manipulates.
+I will split this up into various issues that I believe still exist

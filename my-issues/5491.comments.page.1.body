@@ -1,0 +1,78 @@
+Comment author: @JasonGross
+
+It's really annoying to track down universe inconsistencies when I can't figure 
+out what constant a given universe is associated to.  But printing module 
+functors doesn't show me their universes.  For example:
+
+Require Import Coq.FSets.FMapAVL.
+
+Set Printing Universes.
+Print FMapAVL.Make.
+(*
+Module
+Make
+ : Funsig (X0:OrderedType.OrderedType)
+     Sig
+       Module E
+       Module Raw
+       Variant bst
+       Definition this
+       Definition is_bst
+       Definition t
+       Definition key
+       Definition empty
+       Definition is_empty
+       Definition add
+       Definition remove
+       Definition mem
+       Definition find
+       Definition map
+       Definition mapi
+       Definition map2
+       Definition elements
+       Definition cardinal
+       Definition fold
+       Definition equal
+       Definition MapsTo
+       Definition In
+       Definition Empty
+       Definition eq_key
+       Definition eq_key_elt
+       Definition lt_key
+       Parameter MapsTo_1
+       Parameter mem_1
+       Parameter mem_2
+       Parameter empty_1
+       Parameter is_empty_1
+       Parameter is_empty_2
+       Parameter add_1
+       Parameter add_2
+       Parameter add_3
+       Parameter remove_1
+       Parameter remove_2
+       Parameter remove_3
+       Parameter find_1
+       Parameter find_2
+       Parameter fold_1
+       Parameter elements_1
+       Parameter elements_2
+       Parameter elements_3
+       Parameter elements_3w
+       Parameter cardinal_1
+       Definition Equal
+       Definition Equiv
+       Definition Equivb
+       Parameter Equivb_Equivb
+       Parameter equal_1
+       Parameter equal_2
+       Parameter map_1
+       Parameter map_2
+       Parameter mapi_1
+       Parameter mapi_2
+       Parameter map2_1
+       Parameter map2_2
+     End
+:= Functor (X0:OrderedType.OrderedType) (IntMake Int.Z_as_Int FAKETOP4)
+*)
+
+

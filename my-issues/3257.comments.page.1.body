@@ -1,0 +1,58 @@
+Comment author: @JasonGross
+
+Require Import Setoid Program Morphisms.
+Instance pointwise_refl A B (eqB : relation B) `{Reflexive _ eqB} : Reflexive (pointwise_relation A eqB).
+Proof.
+  compute in *; auto.
+Defined.
+Definition remove_forall_eq0 A x B (P : A -> B -> Prop)
+: pointwise_relation _ (flip impl) (fun z => forall y : A, y = x -> P y z) (P x).
+Proof. 
+(*1 subgoals, subgoal 1 (ID 36)
+  
+  A : Type
+  x : A
+  B : Type
+  P : A -> B -> Prop
+  ============================
+   pointwise_relation B (flip impl)
+     (fun z : B => forall y : A, y = x -> P y z) (P x)
+
+
+(dependent evars:)
+*)
+  reflexivity.
+(* 2 subgoals, subgoal 1 (ID 47)
+  
+  A : Type
+  x : A
+  B : Type
+  P : A -> B -> Prop
+  ============================
+   B
+
+subgoal 2 (ID 48) is:
+ pointwise_relation B (flip impl) (fun z : B => forall y : A, y = x -> P y z)
+   (P x)
+
+(dependent evars:)
+ *)
+
+
+
+
+
+I expect the [reflexivity] tactic to always either fail or to fully solve the goal.
+
+
+Comment author: @silene
+
+Here is a testcase reduced further. Matthieu, it seems like rewrite.ml:setoid_proof should make sure that fn actually solved the goal.
+
+Require Import Setoid Morphisms.
+Lemma foo A B (P : B -> Prop) :
+  pointwise_relation _ impl (fun z => A -> P z) P.
+Proof.
+setoid_reflexivity.
+
+

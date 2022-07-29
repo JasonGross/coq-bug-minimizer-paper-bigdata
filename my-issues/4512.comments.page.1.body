@@ -1,0 +1,1638 @@
+Comment author: @JasonGross
+
+Created attachment 653
+Image of problem
+
+You have to click "more info" and "run anyway" to install it.
+
+> Attached file: [75d5d22c-c1b2-11e5-8c47-796caa6047db[1].png](https://coq.inria.fr/bugfiles/attachment.cgi?id=653) (image/png, 155399 bytes)
+> Description:   Image of problem
+
+
+Comment author: @gares
+
+Indeed my key expired yesterday... my understanding was that by signing *and* time stamping the binary would stay OK even after the expiration date, but I guess I missed something.
+
+Thanks for reporting.
+
+
+Comment author: @maximedenes
+
+Enrico, are you sure this is because the key expired? It shows "Unknown Publisher", that's a bit strange.
+
+Anyway, I guess we need a key to fix this problem. I'll try to get one.
+
+
+Comment author: @gares
+
+I tried them on my VM and they were OK, so I guess windows is not very pecise in the errore message.
+
+
+Comment author: @gares
+
+I confirm that my virtual machine likes the installer (and I've not installed in it any extra certificate/whatever).
+
+So either the difference is in the CAs accepted by windows 10 (I've windows 7),
+or windows 7 does not check the expiration date of keys and windows 10 does.
+
+Jason, can you try out the 8.5rc1 installer?  Is the rc1 still valid?
+
+
+Comment author: @JasonGross
+
+The certificate seems to be fine, for both rc1 and the released version...  I'm still trying to figure out a reliable reproduction method; it seems to only happen the first time I run the binary downloaded from the website.
+
+
+Comment author: @JasonGross
+
+The smartscreen warning only shows up the first time I run the binary.  Running 
+anyway modifies the binary so that it doesn't show up the second time.  The 
+certificate seems fine.  The smartscreen warning doesn't show up at all for 
+8.5rc1.
+
+
+Comment author: @JasonGross
+
+Created attachment 654
+Windows App Cert Kit Results
+
+After some investigation with Maxime, I ran the Windows App Cert Kit (http://stackoverflow.com/a/28359323/377022, https://dev.windows.com/en-us/downloads/windows-10-sdk), and got the following results:
+
+Windows App Certification Kit - Test Results
+
+
+App name: 
+
+Coq Version 8.5
+
+
+App publisher: 
+
+Not Available
+
+
+App version: 
+
+8.5
+
+
+OS Version: 
+
+Microsoft Windows 10 Enterprise (10.0.10240.0)
+
+
+Kit Version: 
+
+10.0
+
+
+Architecture: 
+
+x64
+
+
+Report time: 
+
+1/23/2016 2:13:38 PM
+
+
+
+Overall result: FAILED
+
+
+
+
+Clean reversible install test
+
+
+
+
+
+WARNING
+
+
+Remove all non-shared files and folders
+
+•Warning: The non-shared files and folders test detected the following errors:◦File 'C:\Coq\gtk-2.0\im-multipress.conf' was not deleted.
+◦File 'C:\Coq\gtk-2.0\gtkrc' was not deleted.
+
+
+•Impact if not fixed:  A user might remove an app to free up disk space or to return the computer to the state before installing the app. The uninstall process must restore the machine to its original state for the best user experience. 
+
+
+•How to fix: Remove all the files and Add/Remove Program entries. See link below for more information:
+Installer Properties
+
+
+
+
+PASSED
+
+
+Do not force an immediate reboot during installation
+
+
+
+PASSED
+
+
+Do not force an immediate reboot during uninstallation
+
+
+
+FAILED
+
+
+Write appropriate Add/Remove Program values
+
+•Error Found:  The registry population test detected the following error: app didn’t create the required registry entries. 
+◦A non-optional value 'Publisher' is missing or invalid for program Coq Version 8.5.
+◦An optional value 'VersionMajor' is missing or invalid for program Coq Version 8.5.
+◦An optional value 'VersionMinor' is missing or invalid for program Coq Version 8.5.
+◦An optional value 'MajorVersion' is missing or invalid for program Coq Version 8.5.
+◦An optional value 'MinorVersion' is missing or invalid for program Coq Version 8.5.
+◦An optional value 'InstallLocation' is missing or invalid for program Coq Version 8.5.
+
+
+•Impact if not fixed:  Apps must create these registry entries DisplayName, InstallLocation, Publisher, UninstallString and ProductVersion. Apps that don’t create the required registry entries may not be found by enterprise inventory tools. This can cause problems with OS migrations and upgrades, and Windows telemetry tools may not accurately report info about the app. 
+
+
+•How to fix:  Add the necessary info to the app’s Windows Installer package so it can configure Add/Remove Programs in Control Panel correctly. Setting these properties automatically writes the corresponding values into the registry. See link below for more information: 
+Configuring Add/Remove Programs
+
+
+
+
+PASSED
+
+
+Single user registry check
+
+
+
+
+Install to the correct folders test
+
+
+
+
+
+WARNING
+
+
+Install to Program Files
+
+•Warning: The install to Program Files test detected the following errors:◦Program Coq Version 8.5 fails due to missing install location.
+
+
+•Impact if not fixed:  Native apps e.g. 32 and 64 bit must be installed to the %ProgramFiles% folder by default, note that 32 bit apps installing on x64 versions of Windows must be stored under %ProgramFiles(x86)%. Storing program files in another folder can cause access and security problems for the user. 
+
+
+•How to fix:  Write the files to the correct folders. See link below for more information: 
+Working with Known Folders
+
+
+
+
+PASSED
+
+
+Write to the %WINDIR% or %SystemDrive%
+
+
+
+PASSED
+
+
+Loading apps on Windows startup
+
+
+
+
+Digitally signed file test
+
+
+
+
+
+WARNING
+
+
+Install signed driver and executable files
+
+All unsigned files of the following extensions: EXEs, DLLs, SYS, DRV, OCX, SCR, and CPL will be reported.
+
+•Warning: The file, driver signing test detected the following errors: ◦Non-driver file C:\Coq\Uninstall.exe does not have a valid signature, either embedded or via a catalog file.
+◦Non-driver file C:\Coq\lib\gtk-2.0\modules\libgail.dll does not have a valid signature, either embedded or via a catalog file.
+◦Non-driver file C:\Coq\lib\gtk-2.0\2.10.0\engines\libwimp.dll does not have a valid signature, either embedded or via a catalog file.
+◦Non-driver file C:\Coq\lib\gtk-2.0\2.10.0\engines\libpixmap.dll does not have a valid signature, either embedded or via a catalog file.
+◦Non-driver file C:\Coq\bin\zlib1.dll does not have a valid signature, either embedded or via a catalog file.
+◦Non-driver file C:\Coq\bin\libxml2-2.dll does not have a valid signature, either embedded or via a catalog file.
+◦Non-driver file C:\Coq\bin\libtiff-5.dll does not have a valid signature, either embedded or via a catalog file.
+◦Non-driver file C:\Coq\bin\libstdc++-6.dll does not have a valid signature, either embedded or via a catalog file.
+◦Non-driver file C:\Coq\bin\librsvg-2-2.dll does not have a valid signature, either embedded or via a catalog file.
+◦Non-driver file C:\Coq\bin\libpopt-0.dll does not have a valid signature, either embedded or via a catalog file.
+◦Non-driver file C:\Coq\bin\libpng15-15.dll does not have a valid signature, either embedded or via a catalog file.
+◦Non-driver file C:\Coq\bin\libpixman-1-0.dll does not have a valid signature, either embedded or via a catalog file.
+◦Non-driver file C:\Coq\bin\libpangowin32-1.0-0.dll does not have a valid signature, either embedded or via a catalog file.
+◦Non-driver file C:\Coq\bin\libpangoft2-1.0-0.dll does not have a valid signature, either embedded or via a catalog file.
+◦Non-driver file C:\Coq\bin\libpangocairo-1.0-0.dll does not have a valid signature, either embedded or via a catalog file.
+◦Non-driver file C:\Coq\bin\libpango-1.0-0.dll does not have a valid signature, either embedded or via a catalog file.
+◦Non-driver file C:\Coq\bin\liblzma-5.dll does not have a valid signature, either embedded or via a catalog file.
+◦Non-driver file C:\Coq\bin\libjpeg-8.dll does not have a valid signature, either embedded or via a catalog file.
+◦Non-driver file C:\Coq\bin\libjasper-1.dll does not have a valid signature, either embedded or via a catalog file.
+◦Non-driver file C:\Coq\bin\libintl-8.dll does not have a valid signature, either embedded or via a catalog file.
+◦Non-driver file C:\Coq\bin\libhunspell-1.3-0.dll does not have a valid signature, either embedded or via a catalog file.
+◦Non-driver file C:\Coq\bin\libharfbuzz-0.dll does not have a valid signature, either embedded or via a catalog file.
+◦Non-driver file C:\Coq\bin\libgtkspell-0.dll does not have a valid signature, either embedded or via a catalog file.
+◦Non-driver file C:\Coq\bin\libgtksourceview-2.0-0.dll does not have a valid signature, either embedded or via a catalog file.
+◦Non-driver file C:\Coq\bin\libgtk-win32-2.0-0.dll does not have a valid signature, either embedded or via a catalog file.
+◦Non-driver file C:\Coq\bin\libgthread-2.0-0.dll does not have a valid signature, either embedded or via a catalog file.
+◦Non-driver file C:\Coq\bin\libgobject-2.0-0.dll does not have a valid signature, either embedded or via a catalog file.
+◦Non-driver file C:\Coq\bin\libgnomevfs-2-0.dll does not have a valid signature, either embedded or via a catalog file.
+◦Non-driver file C:\Coq\bin\libgnomeui-2-0.dll does not have a valid signature, either embedded or via a catalog file.
+◦Non-driver file C:\Coq\bin\libgnomecanvas-2-0.dll does not have a valid signature, either embedded or via a catalog file.
+◦Non-driver file C:\Coq\bin\libgnome-2-0.dll does not have a valid signature, either embedded or via a catalog file.
+◦Non-driver file C:\Coq\bin\libgmodule-2.0-0.dll does not have a valid signature, either embedded or via a catalog file.
+◦Non-driver file C:\Coq\bin\libglib-2.0-0.dll does not have a valid signature, either embedded or via a catalog file.
+◦Non-driver file C:\Coq\bin\libgladeui-1-11.dll does not have a valid signature, either embedded or via a catalog file.
+◦Non-driver file C:\Coq\bin\libglade-2.0-0.dll does not have a valid signature, either embedded or via a catalog file.
+◦Non-driver file C:\Coq\bin\libgio-2.0-0.dll does not have a valid signature, either embedded or via a catalog file.
+◦Non-driver file C:\Coq\bin\libgdk_pixbuf-2.0-0.dll does not have a valid signature, either embedded or via a catalog file.
+◦Non-driver file C:\Coq\bin\libgdk-win32-2.0-0.dll does not have a valid signature, either embedded or via a catalog file.
+◦Non-driver file C:\Coq\bin\libgconf-2-4.dll does not have a valid signature, either embedded or via a catalog file.
+◦Non-driver file C:\Coq\bin\libgcc_s_sjlj-1.dll does not have a valid signature, either embedded or via a catalog file.
+◦Non-driver file C:\Coq\bin\libgailutil-18.dll does not have a valid signature, either embedded or via a catalog file.
+◦Non-driver file C:\Coq\bin\libfreetype-6.dll does not have a valid signature, either embedded or via a catalog file.
+◦Non-driver file C:\Coq\bin\libfontconfig-1.dll does not have a valid signature, either embedded or via a catalog file.
+◦Non-driver file C:\Coq\bin\libffi-6.dll does not have a valid signature, either embedded or via a catalog file.
+◦Non-driver file C:\Coq\bin\libenchant.dll does not have a valid signature, either embedded or via a catalog file.
+◦Non-driver file C:\Coq\bin\libdbus-glib-1-2.dll does not have a valid signature, either embedded or via a catalog file.
+◦Non-driver file C:\Coq\bin\libdbus-1-3.dll does not have a valid signature, either embedded or via a catalog file.
+◦Non-driver file C:\Coq\bin\libcroco-0.6-3.dll does not have a valid signature, either embedded or via a catalog file.
+◦Non-driver file C:\Coq\bin\libcairo-2.dll does not have a valid signature, either embedded or via a catalog file.
+◦Non-driver file C:\Coq\bin\libbonoboui-2-0.dll does not have a valid signature, either embedded or via a catalog file.
+◦Non-driver file C:\Coq\bin\libbonobo-activation-4.dll does not have a valid signature, either embedded or via a catalog file.
+◦Non-driver file C:\Coq\bin\libbonobo-2-0.dll does not have a valid signature, either embedded or via a catalog file.
+◦Non-driver file C:\Coq\bin\libatk-1.0-0.dll does not have a valid signature, either embedded or via a catalog file.
+◦Non-driver file C:\Coq\bin\libart_lgpl_2-2.dll does not have a valid signature, either embedded or via a catalog file.
+◦Non-driver file C:\Coq\bin\libORBitCosNaming-2-0.dll does not have a valid signature, either embedded or via a catalog file.
+◦Non-driver file C:\Coq\bin\libORBit-imodule-2-0.dll does not have a valid signature, either embedded or via a catalog file.
+◦Non-driver file C:\Coq\bin\libORBit-2-0.dll does not have a valid signature, either embedded or via a catalog file.
+◦Non-driver file C:\Coq\bin\libIDL-2-0.dll does not have a valid signature, either embedded or via a catalog file.
+◦Non-driver file C:\Coq\bin\bz2-1.dll does not have a valid signature, either embedded or via a catalog file.
+◦Non-driver file C:\Coq\bin\libintl3.dll does not have a valid signature, either embedded or via a catalog file.
+◦Non-driver file C:\Coq\bin\libiconv2.dll does not have a valid signature, either embedded or via a catalog file.
+◦Non-driver file C:\Coq\bin\make.exe does not have a valid signature, either embedded or via a catalog file.
+◦Non-driver file C:\Coq\bin\gallina.exe does not have a valid signature, either embedded or via a catalog file.
+◦Non-driver file C:\Coq\bin\fake_ide.exe does not have a valid signature, either embedded or via a catalog file.
+◦Non-driver file C:\Coq\bin\coqworkmgr.exe does not have a valid signature, either embedded or via a catalog file.
+◦Non-driver file C:\Coq\bin\coqwc.exe does not have a valid signature, either embedded or via a catalog file.
+◦Non-driver file C:\Coq\bin\coqtop.exe does not have a valid signature, either embedded or via a catalog file.
+◦Non-driver file C:\Coq\bin\coqtop.byte.exe does not have a valid signature, either embedded or via a catalog file.
+◦Non-driver file C:\Coq\bin\coqmktop.exe does not have a valid signature, either embedded or via a catalog file.
+◦Non-driver file C:\Coq\bin\coqide.exe does not have a valid signature, either embedded or via a catalog file.
+◦Non-driver file C:\Coq\bin\coqide.byte.exe does not have a valid signature, either embedded or via a catalog file.
+◦Non-driver file C:\Coq\bin\coqdoc.exe does not have a valid signature, either embedded or via a catalog file.
+◦Non-driver file C:\Coq\bin\coqdep_boot.exe does not have a valid signature, either embedded or via a catalog file.
+◦Non-driver file C:\Coq\bin\coqdep.exe does not have a valid signature, either embedded or via a catalog file.
+◦Non-driver file C:\Coq\bin\coqchk.exe does not have a valid signature, either embedded or via a catalog file.
+◦Non-driver file C:\Coq\bin\coqchk.byte.exe does not have a valid signature, either embedded or via a catalog file.
+◦Non-driver file C:\Coq\bin\coqc.exe does not have a valid signature, either embedded or via a catalog file.
+◦Non-driver file C:\Coq\bin\coq_makefile.exe does not have a valid signature, either embedded or via a catalog file.
+◦Non-driver file C:\Coq\bin\coq-tex.exe does not have a valid signature, either embedded or via a catalog file.
+ If any of the above files are DLLs, OCX, SCR, CPL or EXEs that are not one of the application’s main executables (has a shortcut on start menu or desktop), they can safely be ignored. All others need to be signed to meet the Windows App Certification requirements. 
+•Impact if not fixed:  Having digitally signed files allows users to know that software is genuine. It makes it possible to detect that a file has been tampered with, such as by a virus. Windows has the ability to prevent any unsigned app from launching with administrator access. Sign the app if you want it to operate correctly in locked-down environments without popup or UAC messages. 
+
+•How to fix:  You can safely ignore the unsigned DLL, .OCX, .SCR, .CPL or .EXE files listed here that are not one of the app’s main executable, or a driver. All files except drivers must be Authenticode signed, drivers must be WHQL certified. See link below for more information: 
+Digital Signatures for Kernel Modules on Windows
+
+
+
+
+
+Support x64 Windows test
+
+
+
+
+
+PASSED
+
+
+Install platform specific files, and drivers
+
+
+
+
+OS version checking test
+
+
+
+
+
+PASSED
+
+
+Proper OS version checking
+
+
+
+
+User account control (UAC) test
+
+
+
+
+
+WARNING
+
+
+User account control run level
+
+•Warning: The UAC test detected the following errors:◦Executable C:\Coq\Uninstall.exe fails because it is not marked manifested.
+User facing shortcuts (Desktop or Start Menu) must be able to run as a Standard User e.g. “asInvoker”.◦ If any of the above files are manifested with uiAccess set to "True", you must request a waiver. 
+
+
+•Impact if not fixed:  An app that operates or installs only when the user is an administrator forces users to run the app with unnecessarily elevated permissions. 
+
+
+•How to fix: List the files in the app's manifest with the proper permissions. See link below for more information:
+User Account Control
+
+
+
+
+
+Adhere to system restart manager messages
+
+
+
+
+
+PASSED
+
+
+Don't block reboot
+
+
+
+
+Safe mode test
+
+
+
+
+
+PASSED
+
+
+Do not load services and drivers in safe mode
+
+
+
+
+Multiuser session test
+
+
+
+
+
+PASSED
+
+
+Multi user check logs
+
+
+
+PASSED
+
+
+Multi user registry check
+
+
+
+PASSED
+
+
+Do not write to the 'Users' folder
+
+
+
+
+Deployment and launch tests
+
+
+
+
+
+PASSED
+
+
+Crashes and hangs
+
+
+
+
+Compatibility and resiliency test
+
+
+
+
+
+PASSED
+
+
+Compatibility fixes
+
+
+
+PASSED
+
+
+User mode hooking using AppInit_DLLs
+
+
+
+WARNING
+
+
+Compatibility manifest
+
+•Warning: The compatibility manifest test encountered the following errors:◦File C:\Coq\Uninstall.exe doesn't have a compatibility manifest.
+
+
+•Impact if not fixed:  The compatibility section of the app manifest helps the operating system provide your app the proper compatibility behavior under different versions of Windows. 
+
+
+•How to fix:  Ensure your app is manifested and the compatibility section includes the appropriate values. 
+ Application Manifest 
+
+
+
+
+
+Windows security features test
+
+
+
+
+
+WARNING
+
+
+Binary analyzer
+
+•Warning: The binary analyzer test detected the following errors:◦File C:\Coq\Uninstall.exe has failed the DBCheck check.
+◦File C:\Coq\Uninstall.exe has failed the NXCheck check.
+◦File C:\Coq\Uninstall.exe has failed the SafeSEHCheck check.
+◦File C:\Coq\lib\gtk-2.0\modules\libgail.dll has failed the DBCheck check.
+◦File C:\Coq\lib\gtk-2.0\modules\libgail.dll has failed the NXCheck check.
+◦File C:\Coq\lib\gtk-2.0\modules\libgail.dll has failed the SafeSEHCheck check.
+◦File C:\Coq\lib\gtk-2.0\2.10.0\engines\libwimp.dll has failed the DBCheck check.
+◦File C:\Coq\lib\gtk-2.0\2.10.0\engines\libwimp.dll has failed the NXCheck check.
+◦File C:\Coq\lib\gtk-2.0\2.10.0\engines\libwimp.dll has failed the SafeSEHCheck check.
+◦File C:\Coq\lib\gtk-2.0\2.10.0\engines\libpixmap.dll has failed the DBCheck check.
+◦File C:\Coq\lib\gtk-2.0\2.10.0\engines\libpixmap.dll has failed the NXCheck check.
+◦File C:\Coq\lib\gtk-2.0\2.10.0\engines\libpixmap.dll has failed the SafeSEHCheck check.
+◦File C:\Coq\bin\zlib1.dll has failed the DBCheck check.
+◦File C:\Coq\bin\zlib1.dll has failed the NXCheck check.
+◦File C:\Coq\bin\zlib1.dll has failed the SafeSEHCheck check.
+◦File C:\Coq\bin\libxml2-2.dll has failed the DBCheck check.
+◦File C:\Coq\bin\libxml2-2.dll has failed the NXCheck check.
+◦File C:\Coq\bin\libxml2-2.dll has failed the SafeSEHCheck check.
+◦File C:\Coq\bin\libtiff-5.dll has failed the DBCheck check.
+◦File C:\Coq\bin\libtiff-5.dll has failed the NXCheck check.
+◦File C:\Coq\bin\libtiff-5.dll has failed the SafeSEHCheck check.
+◦File C:\Coq\bin\libstdc++-6.dll has failed the DBCheck check.
+◦File C:\Coq\bin\libstdc++-6.dll has failed the NXCheck check.
+◦File C:\Coq\bin\libstdc++-6.dll has failed the SafeSEHCheck check.
+◦File C:\Coq\bin\librsvg-2-2.dll has failed the DBCheck check.
+◦File C:\Coq\bin\librsvg-2-2.dll has failed the NXCheck check.
+◦File C:\Coq\bin\librsvg-2-2.dll has failed the SafeSEHCheck check.
+◦File C:\Coq\bin\libpopt-0.dll has failed the DBCheck check.
+◦File C:\Coq\bin\libpopt-0.dll has failed the NXCheck check.
+◦File C:\Coq\bin\libpopt-0.dll has failed the SafeSEHCheck check.
+◦File C:\Coq\bin\libpng15-15.dll has failed the DBCheck check.
+◦File C:\Coq\bin\libpng15-15.dll has failed the NXCheck check.
+◦File C:\Coq\bin\libpng15-15.dll has failed the SafeSEHCheck check.
+◦File C:\Coq\bin\libpixman-1-0.dll has failed the DBCheck check.
+◦File C:\Coq\bin\libpixman-1-0.dll has failed the NXCheck check.
+◦File C:\Coq\bin\libpixman-1-0.dll has failed the SafeSEHCheck check.
+◦File C:\Coq\bin\libpangowin32-1.0-0.dll has failed the DBCheck check.
+◦File C:\Coq\bin\libpangowin32-1.0-0.dll has failed the NXCheck check.
+◦File C:\Coq\bin\libpangowin32-1.0-0.dll has failed the SafeSEHCheck check.
+◦File C:\Coq\bin\libpangoft2-1.0-0.dll has failed the DBCheck check.
+◦File C:\Coq\bin\libpangoft2-1.0-0.dll has failed the NXCheck check.
+◦File C:\Coq\bin\libpangoft2-1.0-0.dll has failed the SafeSEHCheck check.
+◦File C:\Coq\bin\libpangocairo-1.0-0.dll has failed the DBCheck check.
+◦File C:\Coq\bin\libpangocairo-1.0-0.dll has failed the NXCheck check.
+◦File C:\Coq\bin\libpangocairo-1.0-0.dll has failed the SafeSEHCheck check.
+◦File C:\Coq\bin\libpango-1.0-0.dll has failed the DBCheck check.
+◦File C:\Coq\bin\libpango-1.0-0.dll has failed the NXCheck check.
+◦File C:\Coq\bin\libpango-1.0-0.dll has failed the SafeSEHCheck check.
+◦File C:\Coq\bin\liblzma-5.dll has failed the DBCheck check.
+◦File C:\Coq\bin\liblzma-5.dll has failed the NXCheck check.
+◦File C:\Coq\bin\liblzma-5.dll has failed the SafeSEHCheck check.
+◦File C:\Coq\bin\libjpeg-8.dll has failed the DBCheck check.
+◦File C:\Coq\bin\libjpeg-8.dll has failed the NXCheck check.
+◦File C:\Coq\bin\libjpeg-8.dll has failed the SafeSEHCheck check.
+◦File C:\Coq\bin\libjasper-1.dll has failed the DBCheck check.
+◦File C:\Coq\bin\libjasper-1.dll has failed the NXCheck check.
+◦File C:\Coq\bin\libjasper-1.dll has failed the SafeSEHCheck check.
+◦File C:\Coq\bin\libintl-8.dll has failed the DBCheck check.
+◦File C:\Coq\bin\libintl-8.dll has failed the NXCheck check.
+◦File C:\Coq\bin\libintl-8.dll has failed the SafeSEHCheck check.
+◦File C:\Coq\bin\libhunspell-1.3-0.dll has failed the DBCheck check.
+◦File C:\Coq\bin\libhunspell-1.3-0.dll has failed the NXCheck check.
+◦File C:\Coq\bin\libhunspell-1.3-0.dll has failed the SafeSEHCheck check.
+◦File C:\Coq\bin\libharfbuzz-0.dll has failed the DBCheck check.
+◦File C:\Coq\bin\libharfbuzz-0.dll has failed the NXCheck check.
+◦File C:\Coq\bin\libharfbuzz-0.dll has failed the SafeSEHCheck check.
+◦File C:\Coq\bin\libgtkspell-0.dll has failed the DBCheck check.
+◦File C:\Coq\bin\libgtkspell-0.dll has failed the NXCheck check.
+◦File C:\Coq\bin\libgtkspell-0.dll has failed the SafeSEHCheck check.
+◦File C:\Coq\bin\libgtksourceview-2.0-0.dll has failed the DBCheck check.
+◦File C:\Coq\bin\libgtksourceview-2.0-0.dll has failed the NXCheck check.
+◦File C:\Coq\bin\libgtksourceview-2.0-0.dll has failed the SafeSEHCheck check.
+◦File C:\Coq\bin\libgtk-win32-2.0-0.dll has failed the DBCheck check.
+◦File C:\Coq\bin\libgtk-win32-2.0-0.dll has failed the NXCheck check.
+◦File C:\Coq\bin\libgtk-win32-2.0-0.dll has failed the SafeSEHCheck check.
+◦File C:\Coq\bin\libgthread-2.0-0.dll has failed the DBCheck check.
+◦File C:\Coq\bin\libgthread-2.0-0.dll has failed the NXCheck check.
+◦File C:\Coq\bin\libgthread-2.0-0.dll has failed the SafeSEHCheck check.
+◦File C:\Coq\bin\libgobject-2.0-0.dll has failed the DBCheck check.
+◦File C:\Coq\bin\libgobject-2.0-0.dll has failed the NXCheck check.
+◦File C:\Coq\bin\libgobject-2.0-0.dll has failed the SafeSEHCheck check.
+◦File C:\Coq\bin\libgnomevfs-2-0.dll has failed the DBCheck check.
+◦File C:\Coq\bin\libgnomevfs-2-0.dll has failed the NXCheck check.
+◦File C:\Coq\bin\libgnomevfs-2-0.dll has failed the SafeSEHCheck check.
+◦File C:\Coq\bin\libgnomeui-2-0.dll has failed the DBCheck check.
+◦File C:\Coq\bin\libgnomeui-2-0.dll has failed the NXCheck check.
+◦File C:\Coq\bin\libgnomeui-2-0.dll has failed the SafeSEHCheck check.
+◦File C:\Coq\bin\libgnomecanvas-2-0.dll has failed the DBCheck check.
+◦File C:\Coq\bin\libgnomecanvas-2-0.dll has failed the NXCheck check.
+◦File C:\Coq\bin\libgnomecanvas-2-0.dll has failed the SafeSEHCheck check.
+◦File C:\Coq\bin\libgnome-2-0.dll has failed the DBCheck check.
+◦File C:\Coq\bin\libgnome-2-0.dll has failed the NXCheck check.
+◦File C:\Coq\bin\libgnome-2-0.dll has failed the SafeSEHCheck check.
+◦File C:\Coq\bin\libgmodule-2.0-0.dll has failed the DBCheck check.
+◦File C:\Coq\bin\libgmodule-2.0-0.dll has failed the NXCheck check.
+◦File C:\Coq\bin\libgmodule-2.0-0.dll has failed the SafeSEHCheck check.
+◦File C:\Coq\bin\libglib-2.0-0.dll has failed the DBCheck check.
+◦File C:\Coq\bin\libglib-2.0-0.dll has failed the NXCheck check.
+◦File C:\Coq\bin\libglib-2.0-0.dll has failed the SafeSEHCheck check.
+◦File C:\Coq\bin\libgladeui-1-11.dll has failed the DBCheck check.
+◦File C:\Coq\bin\libgladeui-1-11.dll has failed the NXCheck check.
+◦File C:\Coq\bin\libgladeui-1-11.dll has failed the SafeSEHCheck check.
+◦File C:\Coq\bin\libglade-2.0-0.dll has failed the DBCheck check.
+◦File C:\Coq\bin\libglade-2.0-0.dll has failed the NXCheck check.
+◦File C:\Coq\bin\libglade-2.0-0.dll has failed the SafeSEHCheck check.
+◦File C:\Coq\bin\libgio-2.0-0.dll has failed the DBCheck check.
+◦File C:\Coq\bin\libgio-2.0-0.dll has failed the NXCheck check.
+◦File C:\Coq\bin\libgio-2.0-0.dll has failed the SafeSEHCheck check.
+◦File C:\Coq\bin\libgdk_pixbuf-2.0-0.dll has failed the DBCheck check.
+◦File C:\Coq\bin\libgdk_pixbuf-2.0-0.dll has failed the NXCheck check.
+◦File C:\Coq\bin\libgdk_pixbuf-2.0-0.dll has failed the SafeSEHCheck check.
+◦File C:\Coq\bin\libgdk-win32-2.0-0.dll has failed the DBCheck check.
+◦File C:\Coq\bin\libgdk-win32-2.0-0.dll has failed the NXCheck check.
+◦File C:\Coq\bin\libgdk-win32-2.0-0.dll has failed the SafeSEHCheck check.
+◦File C:\Coq\bin\libgconf-2-4.dll has failed the DBCheck check.
+◦File C:\Coq\bin\libgconf-2-4.dll has failed the NXCheck check.
+◦File C:\Coq\bin\libgconf-2-4.dll has failed the SafeSEHCheck check.
+◦File C:\Coq\bin\libgcc_s_sjlj-1.dll has failed the DBCheck check.
+◦File C:\Coq\bin\libgcc_s_sjlj-1.dll has failed the NXCheck check.
+◦File C:\Coq\bin\libgcc_s_sjlj-1.dll has failed the SafeSEHCheck check.
+◦File C:\Coq\bin\libgailutil-18.dll has failed the DBCheck check.
+◦File C:\Coq\bin\libgailutil-18.dll has failed the NXCheck check.
+◦File C:\Coq\bin\libgailutil-18.dll has failed the SafeSEHCheck check.
+◦File C:\Coq\bin\libfreetype-6.dll has failed the DBCheck check.
+◦File C:\Coq\bin\libfreetype-6.dll has failed the NXCheck check.
+◦File C:\Coq\bin\libfreetype-6.dll has failed the SafeSEHCheck check.
+◦File C:\Coq\bin\libfontconfig-1.dll has failed the DBCheck check.
+◦File C:\Coq\bin\libfontconfig-1.dll has failed the NXCheck check.
+◦File C:\Coq\bin\libfontconfig-1.dll has failed the SafeSEHCheck check.
+◦File C:\Coq\bin\libffi-6.dll has failed the DBCheck check.
+◦File C:\Coq\bin\libffi-6.dll has failed the NXCheck check.
+◦File C:\Coq\bin\libffi-6.dll has failed the SafeSEHCheck check.
+◦File C:\Coq\bin\libenchant.dll has failed the DBCheck check.
+◦File C:\Coq\bin\libenchant.dll has failed the NXCheck check.
+◦File C:\Coq\bin\libenchant.dll has failed the SafeSEHCheck check.
+◦File C:\Coq\bin\libdbus-glib-1-2.dll has failed the DBCheck check.
+◦File C:\Coq\bin\libdbus-glib-1-2.dll has failed the NXCheck check.
+◦File C:\Coq\bin\libdbus-glib-1-2.dll has failed the SafeSEHCheck check.
+◦File C:\Coq\bin\libdbus-1-3.dll has failed the DBCheck check.
+◦File C:\Coq\bin\libdbus-1-3.dll has failed the NXCheck check.
+◦File C:\Coq\bin\libdbus-1-3.dll has failed the SafeSEHCheck check.
+◦File C:\Coq\bin\libcroco-0.6-3.dll has failed the DBCheck check.
+◦File C:\Coq\bin\libcroco-0.6-3.dll has failed the NXCheck check.
+◦File C:\Coq\bin\libcroco-0.6-3.dll has failed the SafeSEHCheck check.
+◦File C:\Coq\bin\libcairo-2.dll has failed the DBCheck check.
+◦File C:\Coq\bin\libcairo-2.dll has failed the NXCheck check.
+◦File C:\Coq\bin\libcairo-2.dll has failed the SafeSEHCheck check.
+◦File C:\Coq\bin\libbonoboui-2-0.dll has failed the DBCheck check.
+◦File C:\Coq\bin\libbonoboui-2-0.dll has failed the NXCheck check.
+◦File C:\Coq\bin\libbonoboui-2-0.dll has failed the SafeSEHCheck check.
+◦File C:\Coq\bin\libbonobo-activation-4.dll has failed the DBCheck check.
+◦File C:\Coq\bin\libbonobo-activation-4.dll has failed the NXCheck check.
+◦File C:\Coq\bin\libbonobo-activation-4.dll has failed the SafeSEHCheck check.
+◦File C:\Coq\bin\libbonobo-2-0.dll has failed the DBCheck check.
+◦File C:\Coq\bin\libbonobo-2-0.dll has failed the NXCheck check.
+◦File C:\Coq\bin\libbonobo-2-0.dll has failed the SafeSEHCheck check.
+◦File C:\Coq\bin\libatk-1.0-0.dll has failed the DBCheck check.
+◦File C:\Coq\bin\libatk-1.0-0.dll has failed the NXCheck check.
+◦File C:\Coq\bin\libatk-1.0-0.dll has failed the SafeSEHCheck check.
+◦File C:\Coq\bin\libart_lgpl_2-2.dll has failed the DBCheck check.
+◦File C:\Coq\bin\libart_lgpl_2-2.dll has failed the NXCheck check.
+◦File C:\Coq\bin\libart_lgpl_2-2.dll has failed the SafeSEHCheck check.
+◦File C:\Coq\bin\libORBitCosNaming-2-0.dll has failed the DBCheck check.
+◦File C:\Coq\bin\libORBitCosNaming-2-0.dll has failed the NXCheck check.
+◦File C:\Coq\bin\libORBitCosNaming-2-0.dll has failed the SafeSEHCheck check.
+◦File C:\Coq\bin\libORBit-imodule-2-0.dll has failed the DBCheck check.
+◦File C:\Coq\bin\libORBit-imodule-2-0.dll has failed the NXCheck check.
+◦File C:\Coq\bin\libORBit-imodule-2-0.dll has failed the SafeSEHCheck check.
+◦File C:\Coq\bin\libORBit-2-0.dll has failed the DBCheck check.
+◦File C:\Coq\bin\libORBit-2-0.dll has failed the NXCheck check.
+◦File C:\Coq\bin\libORBit-2-0.dll has failed the SafeSEHCheck check.
+◦File C:\Coq\bin\libIDL-2-0.dll has failed the DBCheck check.
+◦File C:\Coq\bin\libIDL-2-0.dll has failed the NXCheck check.
+◦File C:\Coq\bin\libIDL-2-0.dll has failed the SafeSEHCheck check.
+◦File C:\Coq\bin\bz2-1.dll has failed the DBCheck check.
+◦File C:\Coq\bin\bz2-1.dll has failed the NXCheck check.
+◦File C:\Coq\bin\bz2-1.dll has failed the SafeSEHCheck check.
+◦File C:\Coq\lib\toploop\coqidetop.cmxs has failed the DBCheck check.
+◦File C:\Coq\lib\toploop\coqidetop.cmxs has failed the NXCheck check.
+◦File C:\Coq\lib\toploop\coqidetop.cmxs has failed the SafeSEHCheck check.
+◦File C:\Coq\lib\toploop\tacworkertop.cmxs has failed the DBCheck check.
+◦File C:\Coq\lib\toploop\tacworkertop.cmxs has failed the NXCheck check.
+◦File C:\Coq\lib\toploop\tacworkertop.cmxs has failed the SafeSEHCheck check.
+◦File C:\Coq\lib\toploop\queryworkertop.cmxs has failed the DBCheck check.
+◦File C:\Coq\lib\toploop\queryworkertop.cmxs has failed the NXCheck check.
+◦File C:\Coq\lib\toploop\queryworkertop.cmxs has failed the SafeSEHCheck check.
+◦File C:\Coq\lib\toploop\proofworkertop.cmxs has failed the DBCheck check.
+◦File C:\Coq\lib\toploop\proofworkertop.cmxs has failed the NXCheck check.
+◦File C:\Coq\lib\toploop\proofworkertop.cmxs has failed the SafeSEHCheck check.
+◦File C:\Coq\lib\plugins\syntax\z_syntax_plugin.cmxs has failed the DBCheck check.
+◦File C:\Coq\lib\plugins\syntax\z_syntax_plugin.cmxs has failed the NXCheck check.
+◦File C:\Coq\lib\plugins\syntax\z_syntax_plugin.cmxs has failed the SafeSEHCheck check.
+◦File C:\Coq\lib\plugins\syntax\string_syntax_plugin.cmxs has failed the DBCheck check.
+◦File C:\Coq\lib\plugins\syntax\string_syntax_plugin.cmxs has failed the NXCheck check.
+◦File C:\Coq\lib\plugins\syntax\string_syntax_plugin.cmxs has failed the SafeSEHCheck check.
+◦File C:\Coq\lib\plugins\syntax\r_syntax_plugin.cmxs has failed the DBCheck check.
+◦File C:\Coq\lib\plugins\syntax\r_syntax_plugin.cmxs has failed the NXCheck check.
+◦File C:\Coq\lib\plugins\syntax\r_syntax_plugin.cmxs has failed the SafeSEHCheck check.
+◦File C:\Coq\lib\plugins\syntax\numbers_syntax_plugin.cmxs has failed the DBCheck check.
+◦File C:\Coq\lib\plugins\syntax\numbers_syntax_plugin.cmxs has failed the NXCheck check.
+◦File C:\Coq\lib\plugins\syntax\numbers_syntax_plugin.cmxs has failed the SafeSEHCheck check.
+◦File C:\Coq\lib\plugins\syntax\nat_syntax_plugin.cmxs has failed the DBCheck check.
+◦File C:\Coq\lib\plugins\syntax\nat_syntax_plugin.cmxs has failed the NXCheck check.
+◦File C:\Coq\lib\plugins\syntax\nat_syntax_plugin.cmxs has failed the SafeSEHCheck check.
+◦File C:\Coq\lib\plugins\syntax\ascii_syntax_plugin.cmxs has failed the DBCheck check.
+◦File C:\Coq\lib\plugins\syntax\ascii_syntax_plugin.cmxs has failed the NXCheck check.
+◦File C:\Coq\lib\plugins\syntax\ascii_syntax_plugin.cmxs has failed the SafeSEHCheck check.
+◦File C:\Coq\lib\plugins\setoid_ring\newring_plugin.cmxs has failed the DBCheck check.
+◦File C:\Coq\lib\plugins\setoid_ring\newring_plugin.cmxs has failed the NXCheck check.
+◦File C:\Coq\lib\plugins\setoid_ring\newring_plugin.cmxs has failed the SafeSEHCheck check.
+◦File C:\Coq\lib\plugins\rtauto\rtauto_plugin.cmxs has failed the DBCheck check.
+◦File C:\Coq\lib\plugins\rtauto\rtauto_plugin.cmxs has failed the NXCheck check.
+◦File C:\Coq\lib\plugins\rtauto\rtauto_plugin.cmxs has failed the SafeSEHCheck check.
+◦File C:\Coq\lib\plugins\romega\romega_plugin.cmxs has failed the DBCheck check.
+◦File C:\Coq\lib\plugins\romega\romega_plugin.cmxs has failed the NXCheck check.
+◦File C:\Coq\lib\plugins\romega\romega_plugin.cmxs has failed the SafeSEHCheck check.
+◦File C:\Coq\lib\plugins\quote\quote_plugin.cmxs has failed the DBCheck check.
+◦File C:\Coq\lib\plugins\quote\quote_plugin.cmxs has failed the NXCheck check.
+◦File C:\Coq\lib\plugins\quote\quote_plugin.cmxs has failed the SafeSEHCheck check.
+◦File C:\Coq\lib\plugins\omega\omega_plugin.cmxs has failed the DBCheck check.
+◦File C:\Coq\lib\plugins\omega\omega_plugin.cmxs has failed the NXCheck check.
+◦File C:\Coq\lib\plugins\omega\omega_plugin.cmxs has failed the SafeSEHCheck check.
+◦File C:\Coq\lib\plugins\nsatz\nsatz_plugin.cmxs has failed the DBCheck check.
+◦File C:\Coq\lib\plugins\nsatz\nsatz_plugin.cmxs has failed the NXCheck check.
+◦File C:\Coq\lib\plugins\nsatz\nsatz_plugin.cmxs has failed the SafeSEHCheck check.
+◦File C:\Coq\lib\plugins\micromega\micromega_plugin.cmxs has failed the DBCheck check.
+◦File C:\Coq\lib\plugins\micromega\micromega_plugin.cmxs has failed the NXCheck check.
+◦File C:\Coq\lib\plugins\micromega\micromega_plugin.cmxs has failed the SafeSEHCheck check.
+◦File C:\Coq\lib\plugins\funind\recdef_plugin.cmxs has failed the DBCheck check.
+◦File C:\Coq\lib\plugins\funind\recdef_plugin.cmxs has failed the NXCheck check.
+◦File C:\Coq\lib\plugins\funind\recdef_plugin.cmxs has failed the SafeSEHCheck check.
+◦File C:\Coq\lib\plugins\fourier\fourier_plugin.cmxs has failed the DBCheck check.
+◦File C:\Coq\lib\plugins\fourier\fourier_plugin.cmxs has failed the NXCheck check.
+◦File C:\Coq\lib\plugins\fourier\fourier_plugin.cmxs has failed the SafeSEHCheck check.
+◦File C:\Coq\lib\plugins\firstorder\ground_plugin.cmxs has failed the DBCheck check.
+◦File C:\Coq\lib\plugins\firstorder\ground_plugin.cmxs has failed the NXCheck check.
+◦File C:\Coq\lib\plugins\firstorder\ground_plugin.cmxs has failed the SafeSEHCheck check.
+◦File C:\Coq\lib\plugins\extraction\extraction_plugin.cmxs has failed the DBCheck check.
+◦File C:\Coq\lib\plugins\extraction\extraction_plugin.cmxs has failed the NXCheck check.
+◦File C:\Coq\lib\plugins\extraction\extraction_plugin.cmxs has failed the SafeSEHCheck check.
+◦File C:\Coq\lib\plugins\derive\derive_plugin.cmxs has failed the DBCheck check.
+◦File C:\Coq\lib\plugins\derive\derive_plugin.cmxs has failed the NXCheck check.
+◦File C:\Coq\lib\plugins\derive\derive_plugin.cmxs has failed the SafeSEHCheck check.
+◦File C:\Coq\lib\plugins\decl_mode\decl_mode_plugin.cmxs has failed the DBCheck check.
+◦File C:\Coq\lib\plugins\decl_mode\decl_mode_plugin.cmxs has failed the NXCheck check.
+◦File C:\Coq\lib\plugins\decl_mode\decl_mode_plugin.cmxs has failed the SafeSEHCheck check.
+◦File C:\Coq\lib\plugins\cc\cc_plugin.cmxs has failed the DBCheck check.
+◦File C:\Coq\lib\plugins\cc\cc_plugin.cmxs has failed the NXCheck check.
+◦File C:\Coq\lib\plugins\cc\cc_plugin.cmxs has failed the SafeSEHCheck check.
+◦File C:\Coq\lib\plugins\btauto\btauto_plugin.cmxs has failed the DBCheck check.
+◦File C:\Coq\lib\plugins\btauto\btauto_plugin.cmxs has failed the NXCheck check.
+◦File C:\Coq\lib\plugins\btauto\btauto_plugin.cmxs has failed the SafeSEHCheck check.
+◦File C:\Coq\bin\libintl3.dll has failed the DBCheck check.
+◦File C:\Coq\bin\libintl3.dll has failed the NXCheck check.
+◦File C:\Coq\bin\libintl3.dll has failed the SafeSEHCheck check.
+◦File C:\Coq\bin\libiconv2.dll has failed the DBCheck check.
+◦File C:\Coq\bin\libiconv2.dll has failed the NXCheck check.
+◦File C:\Coq\bin\libiconv2.dll has failed the SafeSEHCheck check.
+◦File C:\Coq\bin\make.exe has failed the DBCheck check.
+◦File C:\Coq\bin\make.exe has failed the NXCheck check.
+◦File C:\Coq\bin\make.exe has failed the SafeSEHCheck check.
+◦File C:\Coq\bin\gallina.exe has failed the DBCheck check.
+◦File C:\Coq\bin\gallina.exe has failed the NXCheck check.
+◦File C:\Coq\bin\gallina.exe has failed the SafeSEHCheck check.
+◦File C:\Coq\bin\fake_ide.exe has failed the DBCheck check.
+◦File C:\Coq\bin\fake_ide.exe has failed the NXCheck check.
+◦File C:\Coq\bin\fake_ide.exe has failed the SafeSEHCheck check.
+◦File C:\Coq\bin\coqworkmgr.exe has failed the DBCheck check.
+◦File C:\Coq\bin\coqworkmgr.exe has failed the NXCheck check.
+◦File C:\Coq\bin\coqworkmgr.exe has failed the SafeSEHCheck check.
+◦File C:\Coq\bin\coqwc.exe has failed the DBCheck check.
+◦File C:\Coq\bin\coqwc.exe has failed the NXCheck check.
+◦File C:\Coq\bin\coqwc.exe has failed the SafeSEHCheck check.
+◦File C:\Coq\bin\coqtop.exe has failed the DBCheck check.
+◦File C:\Coq\bin\coqtop.exe has failed the NXCheck check.
+◦File C:\Coq\bin\coqtop.exe has failed the SafeSEHCheck check.
+◦File C:\Coq\bin\coqtop.byte.exe has failed the DBCheck check.
+◦File C:\Coq\bin\coqtop.byte.exe has failed the NXCheck check.
+◦File C:\Coq\bin\coqtop.byte.exe has failed the SafeSEHCheck check.
+◦File C:\Coq\bin\coqmktop.exe has failed the DBCheck check.
+◦File C:\Coq\bin\coqmktop.exe has failed the NXCheck check.
+◦File C:\Coq\bin\coqmktop.exe has failed the SafeSEHCheck check.
+◦File C:\Coq\bin\coqide.exe has failed the DBCheck check.
+◦File C:\Coq\bin\coqide.exe has failed the NXCheck check.
+◦File C:\Coq\bin\coqide.exe has failed the SafeSEHCheck check.
+◦File C:\Coq\bin\coqide.byte.exe has failed the DBCheck check.
+◦File C:\Coq\bin\coqide.byte.exe has failed the NXCheck check.
+◦File C:\Coq\bin\coqide.byte.exe has failed the SafeSEHCheck check.
+◦File C:\Coq\bin\coqdoc.exe has failed the DBCheck check.
+◦File C:\Coq\bin\coqdoc.exe has failed the NXCheck check.
+◦File C:\Coq\bin\coqdoc.exe has failed the SafeSEHCheck check.
+◦File C:\Coq\bin\coqdep_boot.exe has failed the DBCheck check.
+◦File C:\Coq\bin\coqdep_boot.exe has failed the NXCheck check.
+◦File C:\Coq\bin\coqdep_boot.exe has failed the SafeSEHCheck check.
+◦File C:\Coq\bin\coqdep.exe has failed the DBCheck check.
+◦File C:\Coq\bin\coqdep.exe has failed the NXCheck check.
+◦File C:\Coq\bin\coqdep.exe has failed the SafeSEHCheck check.
+◦File C:\Coq\bin\coqchk.exe has failed the DBCheck check.
+◦File C:\Coq\bin\coqchk.exe has failed the NXCheck check.
+◦File C:\Coq\bin\coqchk.exe has failed the SafeSEHCheck check.
+◦File C:\Coq\bin\coqchk.byte.exe has failed the DBCheck check.
+◦File C:\Coq\bin\coqchk.byte.exe has failed the NXCheck check.
+◦File C:\Coq\bin\coqchk.byte.exe has failed the SafeSEHCheck check.
+◦File C:\Coq\bin\coqc.exe has failed the DBCheck check.
+◦File C:\Coq\bin\coqc.exe has failed the NXCheck check.
+◦File C:\Coq\bin\coqc.exe has failed the SafeSEHCheck check.
+◦File C:\Coq\bin\coq_makefile.exe has failed the DBCheck check.
+◦File C:\Coq\bin\coq_makefile.exe has failed the NXCheck check.
+◦File C:\Coq\bin\coq_makefile.exe has failed the SafeSEHCheck check.
+◦File C:\Coq\bin\coq-tex.exe has failed the DBCheck check.
+◦File C:\Coq\bin\coq-tex.exe has failed the NXCheck check.
+◦File C:\Coq\bin\coq-tex.exe has failed the SafeSEHCheck check.
+
+
+•Impact if not fixed: If the app doesn’t use the available Windows protections, it can increase the vulnerability of the customer's computer to malware.
+
+
+•How to fix: Apply the SAFESEH, DYNAMICBASE, and NXCOMPAT options when you link the app. See link below for more information:
+Fixing Binary Analyzer Errors
+
+
+
+
+
+High-DPI support
+
+
+
+
+
+WARNING
+
+
+High-DPI
+
+•Warning: The DPI-aware manifest test detected the following errors:◦File C:\Coq\Uninstall.exe isn't manifested for DPI awareness.
+◦File C:\Coq\bin\coqtop.exe isn't manifested for DPI awareness.
+
+
+•Impact if not fixed:  Apps that are not DPI-aware but are running on a high-DPI display setting can exhibit incorrect scaling of UI elements, clipped text, and blurry images. 
+
+
+•How to fix:  It is recommended that you declare your app as DPI-aware in the app manifest. Apps should not use the SetProcessDPIAware API. 
+ Writing High-DPI Apps 
+
+
+
+
+I'll see what happens with 8.5rc1.
+
+> Attached file: [coq-report.htm](https://coq.inria.fr/bugfiles/attachment.cgi?id=654) (text/html, 113358 bytes)
+> Description:   Windows App Cert Kit Results
+
+
+Comment author: @JasonGross
+
+Created attachment 655
+Windows App Cert Kit Results (8.5rc1)
+
+Here's the rc1 report:
+Windows App Certification Kit - Test Results
+
+
+App name: 
+
+Coq Version 8.5rc1
+
+
+App publisher: 
+
+Not Available
+
+
+App version: 
+
+8.5rc1
+
+
+OS Version: 
+
+Microsoft Windows 10 Enterprise (10.0.10240.0)
+
+
+Kit Version: 
+
+10.0
+
+
+Architecture: 
+
+x64
+
+
+Report time: 
+
+1/23/2016 2:54:41 PM
+
+
+
+Overall result: FAILED
+
+
+
+
+Clean reversible install test
+
+
+
+
+
+WARNING
+
+
+Remove all non-shared files and folders
+
+•Warning: The non-shared files and folders test detected the following errors:◦File 'C:\Coq\gtk-2.0\im-multipress.conf' was not deleted.
+◦File 'C:\Coq\gtk-2.0\gtkrc' was not deleted.
+
+
+•Impact if not fixed:  A user might remove an app to free up disk space or to return the computer to the state before installing the app. The uninstall process must restore the machine to its original state for the best user experience. 
+
+
+•How to fix: Remove all the files and Add/Remove Program entries. See link below for more information:
+Installer Properties
+
+
+
+
+PASSED
+
+
+Do not force an immediate reboot during installation
+
+
+
+PASSED
+
+
+Do not force an immediate reboot during uninstallation
+
+
+
+FAILED
+
+
+Write appropriate Add/Remove Program values
+
+•Error Found:  The registry population test detected the following error: app didn’t create the required registry entries. 
+◦A non-optional value 'Publisher' is missing or invalid for program Coq Version 8.5rc1.
+◦An optional value 'VersionMajor' is missing or invalid for program Coq Version 8.5rc1.
+◦An optional value 'VersionMinor' is missing or invalid for program Coq Version 8.5rc1.
+◦An optional value 'MajorVersion' is missing or invalid for program Coq Version 8.5rc1.
+◦An optional value 'MinorVersion' is missing or invalid for program Coq Version 8.5rc1.
+◦An optional value 'InstallLocation' is missing or invalid for program Coq Version 8.5rc1.
+
+
+•Impact if not fixed:  Apps must create these registry entries DisplayName, InstallLocation, Publisher, UninstallString and ProductVersion. Apps that don’t create the required registry entries may not be found by enterprise inventory tools. This can cause problems with OS migrations and upgrades, and Windows telemetry tools may not accurately report info about the app. 
+
+
+•How to fix:  Add the necessary info to the app’s Windows Installer package so it can configure Add/Remove Programs in Control Panel correctly. Setting these properties automatically writes the corresponding values into the registry. See link below for more information: 
+Configuring Add/Remove Programs
+
+
+
+
+PASSED
+
+
+Single user registry check
+
+
+
+
+Install to the correct folders test
+
+
+
+
+
+WARNING
+
+
+Install to Program Files
+
+•Warning: The install to Program Files test detected the following errors:◦Program Coq Version 8.5rc1 fails due to missing install location.
+
+
+•Impact if not fixed:  Native apps e.g. 32 and 64 bit must be installed to the %ProgramFiles% folder by default, note that 32 bit apps installing on x64 versions of Windows must be stored under %ProgramFiles(x86)%. Storing program files in another folder can cause access and security problems for the user. 
+
+
+•How to fix:  Write the files to the correct folders. See link below for more information: 
+Working with Known Folders
+
+
+
+
+PASSED
+
+
+Write to the %WINDIR% or %SystemDrive%
+
+
+
+PASSED
+
+
+Loading apps on Windows startup
+
+
+
+
+Digitally signed file test
+
+
+
+
+
+WARNING
+
+
+Install signed driver and executable files
+
+All unsigned files of the following extensions: EXEs, DLLs, SYS, DRV, OCX, SCR, and CPL will be reported.
+
+•Warning: The file, driver signing test detected the following errors: ◦Non-driver file C:\Coq\Uninstall.exe does not have a valid signature, either embedded or via a catalog file.
+◦Non-driver file C:\Coq\lib\gtk-2.0\modules\libgail.dll does not have a valid signature, either embedded or via a catalog file.
+◦Non-driver file C:\Coq\lib\gtk-2.0\2.10.0\engines\libwimp.dll does not have a valid signature, either embedded or via a catalog file.
+◦Non-driver file C:\Coq\lib\gtk-2.0\2.10.0\engines\libpixmap.dll does not have a valid signature, either embedded or via a catalog file.
+◦Non-driver file C:\Coq\bin\zlib1.dll does not have a valid signature, either embedded or via a catalog file.
+◦Non-driver file C:\Coq\bin\libxml2-2.dll does not have a valid signature, either embedded or via a catalog file.
+◦Non-driver file C:\Coq\bin\libtiff-5.dll does not have a valid signature, either embedded or via a catalog file.
+◦Non-driver file C:\Coq\bin\libstdc++-6.dll does not have a valid signature, either embedded or via a catalog file.
+◦Non-driver file C:\Coq\bin\librsvg-2-2.dll does not have a valid signature, either embedded or via a catalog file.
+◦Non-driver file C:\Coq\bin\libpopt-0.dll does not have a valid signature, either embedded or via a catalog file.
+◦Non-driver file C:\Coq\bin\libpng15-15.dll does not have a valid signature, either embedded or via a catalog file.
+◦Non-driver file C:\Coq\bin\libpixman-1-0.dll does not have a valid signature, either embedded or via a catalog file.
+◦Non-driver file C:\Coq\bin\libpangowin32-1.0-0.dll does not have a valid signature, either embedded or via a catalog file.
+◦Non-driver file C:\Coq\bin\libpangoft2-1.0-0.dll does not have a valid signature, either embedded or via a catalog file.
+◦Non-driver file C:\Coq\bin\libpangocairo-1.0-0.dll does not have a valid signature, either embedded or via a catalog file.
+◦Non-driver file C:\Coq\bin\libpango-1.0-0.dll does not have a valid signature, either embedded or via a catalog file.
+◦Non-driver file C:\Coq\bin\liblzma-5.dll does not have a valid signature, either embedded or via a catalog file.
+◦Non-driver file C:\Coq\bin\libjpeg-8.dll does not have a valid signature, either embedded or via a catalog file.
+◦Non-driver file C:\Coq\bin\libjasper-1.dll does not have a valid signature, either embedded or via a catalog file.
+◦Non-driver file C:\Coq\bin\libintl-8.dll does not have a valid signature, either embedded or via a catalog file.
+◦Non-driver file C:\Coq\bin\libhunspell-1.3-0.dll does not have a valid signature, either embedded or via a catalog file.
+◦Non-driver file C:\Coq\bin\libharfbuzz-0.dll does not have a valid signature, either embedded or via a catalog file.
+◦Non-driver file C:\Coq\bin\libgtkspell-0.dll does not have a valid signature, either embedded or via a catalog file.
+◦Non-driver file C:\Coq\bin\libgtksourceview-2.0-0.dll does not have a valid signature, either embedded or via a catalog file.
+◦Non-driver file C:\Coq\bin\libgtk-win32-2.0-0.dll does not have a valid signature, either embedded or via a catalog file.
+◦Non-driver file C:\Coq\bin\libgthread-2.0-0.dll does not have a valid signature, either embedded or via a catalog file.
+◦Non-driver file C:\Coq\bin\libgobject-2.0-0.dll does not have a valid signature, either embedded or via a catalog file.
+◦Non-driver file C:\Coq\bin\libgnomevfs-2-0.dll does not have a valid signature, either embedded or via a catalog file.
+◦Non-driver file C:\Coq\bin\libgnomeui-2-0.dll does not have a valid signature, either embedded or via a catalog file.
+◦Non-driver file C:\Coq\bin\libgnomecanvas-2-0.dll does not have a valid signature, either embedded or via a catalog file.
+◦Non-driver file C:\Coq\bin\libgnome-2-0.dll does not have a valid signature, either embedded or via a catalog file.
+◦Non-driver file C:\Coq\bin\libgmodule-2.0-0.dll does not have a valid signature, either embedded or via a catalog file.
+◦Non-driver file C:\Coq\bin\libglib-2.0-0.dll does not have a valid signature, either embedded or via a catalog file.
+◦Non-driver file C:\Coq\bin\libgladeui-1-11.dll does not have a valid signature, either embedded or via a catalog file.
+◦Non-driver file C:\Coq\bin\libglade-2.0-0.dll does not have a valid signature, either embedded or via a catalog file.
+◦Non-driver file C:\Coq\bin\libgio-2.0-0.dll does not have a valid signature, either embedded or via a catalog file.
+◦Non-driver file C:\Coq\bin\libgdk_pixbuf-2.0-0.dll does not have a valid signature, either embedded or via a catalog file.
+◦Non-driver file C:\Coq\bin\libgdk-win32-2.0-0.dll does not have a valid signature, either embedded or via a catalog file.
+◦Non-driver file C:\Coq\bin\libgconf-2-4.dll does not have a valid signature, either embedded or via a catalog file.
+◦Non-driver file C:\Coq\bin\libgcc_s_sjlj-1.dll does not have a valid signature, either embedded or via a catalog file.
+◦Non-driver file C:\Coq\bin\libgailutil-18.dll does not have a valid signature, either embedded or via a catalog file.
+◦Non-driver file C:\Coq\bin\libfreetype-6.dll does not have a valid signature, either embedded or via a catalog file.
+◦Non-driver file C:\Coq\bin\libfontconfig-1.dll does not have a valid signature, either embedded or via a catalog file.
+◦Non-driver file C:\Coq\bin\libffi-6.dll does not have a valid signature, either embedded or via a catalog file.
+◦Non-driver file C:\Coq\bin\libenchant.dll does not have a valid signature, either embedded or via a catalog file.
+◦Non-driver file C:\Coq\bin\libdbus-glib-1-2.dll does not have a valid signature, either embedded or via a catalog file.
+◦Non-driver file C:\Coq\bin\libdbus-1-3.dll does not have a valid signature, either embedded or via a catalog file.
+◦Non-driver file C:\Coq\bin\libcroco-0.6-3.dll does not have a valid signature, either embedded or via a catalog file.
+◦Non-driver file C:\Coq\bin\libcairo-2.dll does not have a valid signature, either embedded or via a catalog file.
+◦Non-driver file C:\Coq\bin\libbonoboui-2-0.dll does not have a valid signature, either embedded or via a catalog file.
+◦Non-driver file C:\Coq\bin\libbonobo-activation-4.dll does not have a valid signature, either embedded or via a catalog file.
+◦Non-driver file C:\Coq\bin\libbonobo-2-0.dll does not have a valid signature, either embedded or via a catalog file.
+◦Non-driver file C:\Coq\bin\libatk-1.0-0.dll does not have a valid signature, either embedded or via a catalog file.
+◦Non-driver file C:\Coq\bin\libart_lgpl_2-2.dll does not have a valid signature, either embedded or via a catalog file.
+◦Non-driver file C:\Coq\bin\libORBitCosNaming-2-0.dll does not have a valid signature, either embedded or via a catalog file.
+◦Non-driver file C:\Coq\bin\libORBit-imodule-2-0.dll does not have a valid signature, either embedded or via a catalog file.
+◦Non-driver file C:\Coq\bin\libORBit-2-0.dll does not have a valid signature, either embedded or via a catalog file.
+◦Non-driver file C:\Coq\bin\libIDL-2-0.dll does not have a valid signature, either embedded or via a catalog file.
+◦Non-driver file C:\Coq\bin\bz2-1.dll does not have a valid signature, either embedded or via a catalog file.
+◦Non-driver file C:\Coq\bin\libintl3.dll does not have a valid signature, either embedded or via a catalog file.
+◦Non-driver file C:\Coq\bin\libiconv2.dll does not have a valid signature, either embedded or via a catalog file.
+◦Non-driver file C:\Coq\bin\make.exe does not have a valid signature, either embedded or via a catalog file.
+◦Non-driver file C:\Coq\bin\gallina.exe does not have a valid signature, either embedded or via a catalog file.
+◦Non-driver file C:\Coq\bin\fake_ide.exe does not have a valid signature, either embedded or via a catalog file.
+◦Non-driver file C:\Coq\bin\coqworkmgr.exe does not have a valid signature, either embedded or via a catalog file.
+◦Non-driver file C:\Coq\bin\coqwc.exe does not have a valid signature, either embedded or via a catalog file.
+◦Non-driver file C:\Coq\bin\coqtop.exe does not have a valid signature, either embedded or via a catalog file.
+◦Non-driver file C:\Coq\bin\coqtop.byte.exe does not have a valid signature, either embedded or via a catalog file.
+◦Non-driver file C:\Coq\bin\coqmktop.exe does not have a valid signature, either embedded or via a catalog file.
+◦Non-driver file C:\Coq\bin\coqide.exe does not have a valid signature, either embedded or via a catalog file.
+◦Non-driver file C:\Coq\bin\coqide.byte.exe does not have a valid signature, either embedded or via a catalog file.
+◦Non-driver file C:\Coq\bin\coqdoc.exe does not have a valid signature, either embedded or via a catalog file.
+◦Non-driver file C:\Coq\bin\coqdep_boot.exe does not have a valid signature, either embedded or via a catalog file.
+◦Non-driver file C:\Coq\bin\coqdep.exe does not have a valid signature, either embedded or via a catalog file.
+◦Non-driver file C:\Coq\bin\coqchk.exe does not have a valid signature, either embedded or via a catalog file.
+◦Non-driver file C:\Coq\bin\coqchk.byte.exe does not have a valid signature, either embedded or via a catalog file.
+◦Non-driver file C:\Coq\bin\coqc.exe does not have a valid signature, either embedded or via a catalog file.
+◦Non-driver file C:\Coq\bin\coq_makefile.exe does not have a valid signature, either embedded or via a catalog file.
+◦Non-driver file C:\Coq\bin\coq-tex.exe does not have a valid signature, either embedded or via a catalog file.
+ If any of the above files are DLLs, OCX, SCR, CPL or EXEs that are not one of the application’s main executables (has a shortcut on start menu or desktop), they can safely be ignored. All others need to be signed to meet the Windows App Certification requirements. 
+•Impact if not fixed:  Having digitally signed files allows users to know that software is genuine. It makes it possible to detect that a file has been tampered with, such as by a virus. Windows has the ability to prevent any unsigned app from launching with administrator access. Sign the app if you want it to operate correctly in locked-down environments without popup or UAC messages. 
+
+•How to fix:  You can safely ignore the unsigned DLL, .OCX, .SCR, .CPL or .EXE files listed here that are not one of the app’s main executable, or a driver. All files except drivers must be Authenticode signed, drivers must be WHQL certified. See link below for more information: 
+Digital Signatures for Kernel Modules on Windows
+
+
+
+
+
+Support x64 Windows test
+
+
+
+
+
+PASSED
+
+
+Install platform specific files, and drivers
+
+
+
+
+OS version checking test
+
+
+
+
+
+PASSED
+
+
+Proper OS version checking
+
+
+
+
+User account control (UAC) test
+
+
+
+
+
+WARNING
+
+
+User account control run level
+
+•Warning: The UAC test detected the following errors:◦Executable C:\Coq\Uninstall.exe fails because it is not marked manifested.
+User facing shortcuts (Desktop or Start Menu) must be able to run as a Standard User e.g. “asInvoker”.◦ If any of the above files are manifested with uiAccess set to "True", you must request a waiver. 
+
+
+•Impact if not fixed:  An app that operates or installs only when the user is an administrator forces users to run the app with unnecessarily elevated permissions. 
+
+
+•How to fix: List the files in the app's manifest with the proper permissions. See link below for more information:
+User Account Control
+
+
+
+
+
+Adhere to system restart manager messages
+
+
+
+
+
+PASSED
+
+
+Don't block reboot
+
+
+
+
+Safe mode test
+
+
+
+
+
+PASSED
+
+
+Do not load services and drivers in safe mode
+
+
+
+
+Multiuser session test
+
+
+
+
+
+PASSED
+
+
+Multi user check logs
+
+
+
+PASSED
+
+
+Multi user registry check
+
+
+
+PASSED
+
+
+Do not write to the 'Users' folder
+
+
+
+
+Deployment and launch tests
+
+
+
+
+
+PASSED
+
+
+Crashes and hangs
+
+
+
+
+Compatibility and resiliency test
+
+
+
+
+
+PASSED
+
+
+Compatibility fixes
+
+
+
+PASSED
+
+
+User mode hooking using AppInit_DLLs
+
+
+
+WARNING
+
+
+Compatibility manifest
+
+•Warning: The compatibility manifest test encountered the following errors:◦File C:\Coq\Uninstall.exe doesn't have a compatibility manifest.
+
+
+•Impact if not fixed:  The compatibility section of the app manifest helps the operating system provide your app the proper compatibility behavior under different versions of Windows. 
+
+
+•How to fix:  Ensure your app is manifested and the compatibility section includes the appropriate values. 
+ Application Manifest 
+
+
+
+
+
+Windows security features test
+
+
+
+
+
+WARNING
+
+
+Binary analyzer
+
+•Warning: The binary analyzer test detected the following errors:◦File C:\Coq\Uninstall.exe has failed the DBCheck check.
+◦File C:\Coq\Uninstall.exe has failed the NXCheck check.
+◦File C:\Coq\Uninstall.exe has failed the SafeSEHCheck check.
+◦File C:\Coq\lib\gtk-2.0\modules\libgail.dll has failed the DBCheck check.
+◦File C:\Coq\lib\gtk-2.0\modules\libgail.dll has failed the NXCheck check.
+◦File C:\Coq\lib\gtk-2.0\modules\libgail.dll has failed the SafeSEHCheck check.
+◦File C:\Coq\lib\gtk-2.0\2.10.0\engines\libwimp.dll has failed the DBCheck check.
+◦File C:\Coq\lib\gtk-2.0\2.10.0\engines\libwimp.dll has failed the NXCheck check.
+◦File C:\Coq\lib\gtk-2.0\2.10.0\engines\libwimp.dll has failed the SafeSEHCheck check.
+◦File C:\Coq\lib\gtk-2.0\2.10.0\engines\libpixmap.dll has failed the DBCheck check.
+◦File C:\Coq\lib\gtk-2.0\2.10.0\engines\libpixmap.dll has failed the NXCheck check.
+◦File C:\Coq\lib\gtk-2.0\2.10.0\engines\libpixmap.dll has failed the SafeSEHCheck check.
+◦File C:\Coq\bin\zlib1.dll has failed the DBCheck check.
+◦File C:\Coq\bin\zlib1.dll has failed the NXCheck check.
+◦File C:\Coq\bin\zlib1.dll has failed the SafeSEHCheck check.
+◦File C:\Coq\bin\libxml2-2.dll has failed the DBCheck check.
+◦File C:\Coq\bin\libxml2-2.dll has failed the NXCheck check.
+◦File C:\Coq\bin\libxml2-2.dll has failed the SafeSEHCheck check.
+◦File C:\Coq\bin\libtiff-5.dll has failed the DBCheck check.
+◦File C:\Coq\bin\libtiff-5.dll has failed the NXCheck check.
+◦File C:\Coq\bin\libtiff-5.dll has failed the SafeSEHCheck check.
+◦File C:\Coq\bin\libstdc++-6.dll has failed the DBCheck check.
+◦File C:\Coq\bin\libstdc++-6.dll has failed the NXCheck check.
+◦File C:\Coq\bin\libstdc++-6.dll has failed the SafeSEHCheck check.
+◦File C:\Coq\bin\librsvg-2-2.dll has failed the DBCheck check.
+◦File C:\Coq\bin\librsvg-2-2.dll has failed the NXCheck check.
+◦File C:\Coq\bin\librsvg-2-2.dll has failed the SafeSEHCheck check.
+◦File C:\Coq\bin\libpopt-0.dll has failed the DBCheck check.
+◦File C:\Coq\bin\libpopt-0.dll has failed the NXCheck check.
+◦File C:\Coq\bin\libpopt-0.dll has failed the SafeSEHCheck check.
+◦File C:\Coq\bin\libpng15-15.dll has failed the DBCheck check.
+◦File C:\Coq\bin\libpng15-15.dll has failed the NXCheck check.
+◦File C:\Coq\bin\libpng15-15.dll has failed the SafeSEHCheck check.
+◦File C:\Coq\bin\libpixman-1-0.dll has failed the DBCheck check.
+◦File C:\Coq\bin\libpixman-1-0.dll has failed the NXCheck check.
+◦File C:\Coq\bin\libpixman-1-0.dll has failed the SafeSEHCheck check.
+◦File C:\Coq\bin\libpangowin32-1.0-0.dll has failed the DBCheck check.
+◦File C:\Coq\bin\libpangowin32-1.0-0.dll has failed the NXCheck check.
+◦File C:\Coq\bin\libpangowin32-1.0-0.dll has failed the SafeSEHCheck check.
+◦File C:\Coq\bin\libpangoft2-1.0-0.dll has failed the DBCheck check.
+◦File C:\Coq\bin\libpangoft2-1.0-0.dll has failed the NXCheck check.
+◦File C:\Coq\bin\libpangoft2-1.0-0.dll has failed the SafeSEHCheck check.
+◦File C:\Coq\bin\libpangocairo-1.0-0.dll has failed the DBCheck check.
+◦File C:\Coq\bin\libpangocairo-1.0-0.dll has failed the NXCheck check.
+◦File C:\Coq\bin\libpangocairo-1.0-0.dll has failed the SafeSEHCheck check.
+◦File C:\Coq\bin\libpango-1.0-0.dll has failed the DBCheck check.
+◦File C:\Coq\bin\libpango-1.0-0.dll has failed the NXCheck check.
+◦File C:\Coq\bin\libpango-1.0-0.dll has failed the SafeSEHCheck check.
+◦File C:\Coq\bin\liblzma-5.dll has failed the DBCheck check.
+◦File C:\Coq\bin\liblzma-5.dll has failed the NXCheck check.
+◦File C:\Coq\bin\liblzma-5.dll has failed the SafeSEHCheck check.
+◦File C:\Coq\bin\libjpeg-8.dll has failed the DBCheck check.
+◦File C:\Coq\bin\libjpeg-8.dll has failed the NXCheck check.
+◦File C:\Coq\bin\libjpeg-8.dll has failed the SafeSEHCheck check.
+◦File C:\Coq\bin\libjasper-1.dll has failed the DBCheck check.
+◦File C:\Coq\bin\libjasper-1.dll has failed the NXCheck check.
+◦File C:\Coq\bin\libjasper-1.dll has failed the SafeSEHCheck check.
+◦File C:\Coq\bin\libintl-8.dll has failed the DBCheck check.
+◦File C:\Coq\bin\libintl-8.dll has failed the NXCheck check.
+◦File C:\Coq\bin\libintl-8.dll has failed the SafeSEHCheck check.
+◦File C:\Coq\bin\libhunspell-1.3-0.dll has failed the DBCheck check.
+◦File C:\Coq\bin\libhunspell-1.3-0.dll has failed the NXCheck check.
+◦File C:\Coq\bin\libhunspell-1.3-0.dll has failed the SafeSEHCheck check.
+◦File C:\Coq\bin\libharfbuzz-0.dll has failed the DBCheck check.
+◦File C:\Coq\bin\libharfbuzz-0.dll has failed the NXCheck check.
+◦File C:\Coq\bin\libharfbuzz-0.dll has failed the SafeSEHCheck check.
+◦File C:\Coq\bin\libgtkspell-0.dll has failed the DBCheck check.
+◦File C:\Coq\bin\libgtkspell-0.dll has failed the NXCheck check.
+◦File C:\Coq\bin\libgtkspell-0.dll has failed the SafeSEHCheck check.
+◦File C:\Coq\bin\libgtksourceview-2.0-0.dll has failed the DBCheck check.
+◦File C:\Coq\bin\libgtksourceview-2.0-0.dll has failed the NXCheck check.
+◦File C:\Coq\bin\libgtksourceview-2.0-0.dll has failed the SafeSEHCheck check.
+◦File C:\Coq\bin\libgtk-win32-2.0-0.dll has failed the DBCheck check.
+◦File C:\Coq\bin\libgtk-win32-2.0-0.dll has failed the NXCheck check.
+◦File C:\Coq\bin\libgtk-win32-2.0-0.dll has failed the SafeSEHCheck check.
+◦File C:\Coq\bin\libgthread-2.0-0.dll has failed the DBCheck check.
+◦File C:\Coq\bin\libgthread-2.0-0.dll has failed the NXCheck check.
+◦File C:\Coq\bin\libgthread-2.0-0.dll has failed the SafeSEHCheck check.
+◦File C:\Coq\bin\libgobject-2.0-0.dll has failed the DBCheck check.
+◦File C:\Coq\bin\libgobject-2.0-0.dll has failed the NXCheck check.
+◦File C:\Coq\bin\libgobject-2.0-0.dll has failed the SafeSEHCheck check.
+◦File C:\Coq\bin\libgnomevfs-2-0.dll has failed the DBCheck check.
+◦File C:\Coq\bin\libgnomevfs-2-0.dll has failed the NXCheck check.
+◦File C:\Coq\bin\libgnomevfs-2-0.dll has failed the SafeSEHCheck check.
+◦File C:\Coq\bin\libgnomeui-2-0.dll has failed the DBCheck check.
+◦File C:\Coq\bin\libgnomeui-2-0.dll has failed the NXCheck check.
+◦File C:\Coq\bin\libgnomeui-2-0.dll has failed the SafeSEHCheck check.
+◦File C:\Coq\bin\libgnomecanvas-2-0.dll has failed the DBCheck check.
+◦File C:\Coq\bin\libgnomecanvas-2-0.dll has failed the NXCheck check.
+◦File C:\Coq\bin\libgnomecanvas-2-0.dll has failed the SafeSEHCheck check.
+◦File C:\Coq\bin\libgnome-2-0.dll has failed the DBCheck check.
+◦File C:\Coq\bin\libgnome-2-0.dll has failed the NXCheck check.
+◦File C:\Coq\bin\libgnome-2-0.dll has failed the SafeSEHCheck check.
+◦File C:\Coq\bin\libgmodule-2.0-0.dll has failed the DBCheck check.
+◦File C:\Coq\bin\libgmodule-2.0-0.dll has failed the NXCheck check.
+◦File C:\Coq\bin\libgmodule-2.0-0.dll has failed the SafeSEHCheck check.
+◦File C:\Coq\bin\libglib-2.0-0.dll has failed the DBCheck check.
+◦File C:\Coq\bin\libglib-2.0-0.dll has failed the NXCheck check.
+◦File C:\Coq\bin\libglib-2.0-0.dll has failed the SafeSEHCheck check.
+◦File C:\Coq\bin\libgladeui-1-11.dll has failed the DBCheck check.
+◦File C:\Coq\bin\libgladeui-1-11.dll has failed the NXCheck check.
+◦File C:\Coq\bin\libgladeui-1-11.dll has failed the SafeSEHCheck check.
+◦File C:\Coq\bin\libglade-2.0-0.dll has failed the DBCheck check.
+◦File C:\Coq\bin\libglade-2.0-0.dll has failed the NXCheck check.
+◦File C:\Coq\bin\libglade-2.0-0.dll has failed the SafeSEHCheck check.
+◦File C:\Coq\bin\libgio-2.0-0.dll has failed the DBCheck check.
+◦File C:\Coq\bin\libgio-2.0-0.dll has failed the NXCheck check.
+◦File C:\Coq\bin\libgio-2.0-0.dll has failed the SafeSEHCheck check.
+◦File C:\Coq\bin\libgdk_pixbuf-2.0-0.dll has failed the DBCheck check.
+◦File C:\Coq\bin\libgdk_pixbuf-2.0-0.dll has failed the NXCheck check.
+◦File C:\Coq\bin\libgdk_pixbuf-2.0-0.dll has failed the SafeSEHCheck check.
+◦File C:\Coq\bin\libgdk-win32-2.0-0.dll has failed the DBCheck check.
+◦File C:\Coq\bin\libgdk-win32-2.0-0.dll has failed the NXCheck check.
+◦File C:\Coq\bin\libgdk-win32-2.0-0.dll has failed the SafeSEHCheck check.
+◦File C:\Coq\bin\libgconf-2-4.dll has failed the DBCheck check.
+◦File C:\Coq\bin\libgconf-2-4.dll has failed the NXCheck check.
+◦File C:\Coq\bin\libgconf-2-4.dll has failed the SafeSEHCheck check.
+◦File C:\Coq\bin\libgcc_s_sjlj-1.dll has failed the DBCheck check.
+◦File C:\Coq\bin\libgcc_s_sjlj-1.dll has failed the NXCheck check.
+◦File C:\Coq\bin\libgcc_s_sjlj-1.dll has failed the SafeSEHCheck check.
+◦File C:\Coq\bin\libgailutil-18.dll has failed the DBCheck check.
+◦File C:\Coq\bin\libgailutil-18.dll has failed the NXCheck check.
+◦File C:\Coq\bin\libgailutil-18.dll has failed the SafeSEHCheck check.
+◦File C:\Coq\bin\libfreetype-6.dll has failed the DBCheck check.
+◦File C:\Coq\bin\libfreetype-6.dll has failed the NXCheck check.
+◦File C:\Coq\bin\libfreetype-6.dll has failed the SafeSEHCheck check.
+◦File C:\Coq\bin\libfontconfig-1.dll has failed the DBCheck check.
+◦File C:\Coq\bin\libfontconfig-1.dll has failed the NXCheck check.
+◦File C:\Coq\bin\libfontconfig-1.dll has failed the SafeSEHCheck check.
+◦File C:\Coq\bin\libffi-6.dll has failed the DBCheck check.
+◦File C:\Coq\bin\libffi-6.dll has failed the NXCheck check.
+◦File C:\Coq\bin\libffi-6.dll has failed the SafeSEHCheck check.
+◦File C:\Coq\bin\libenchant.dll has failed the DBCheck check.
+◦File C:\Coq\bin\libenchant.dll has failed the NXCheck check.
+◦File C:\Coq\bin\libenchant.dll has failed the SafeSEHCheck check.
+◦File C:\Coq\bin\libdbus-glib-1-2.dll has failed the DBCheck check.
+◦File C:\Coq\bin\libdbus-glib-1-2.dll has failed the NXCheck check.
+◦File C:\Coq\bin\libdbus-glib-1-2.dll has failed the SafeSEHCheck check.
+◦File C:\Coq\bin\libdbus-1-3.dll has failed the DBCheck check.
+◦File C:\Coq\bin\libdbus-1-3.dll has failed the NXCheck check.
+◦File C:\Coq\bin\libdbus-1-3.dll has failed the SafeSEHCheck check.
+◦File C:\Coq\bin\libcroco-0.6-3.dll has failed the DBCheck check.
+◦File C:\Coq\bin\libcroco-0.6-3.dll has failed the NXCheck check.
+◦File C:\Coq\bin\libcroco-0.6-3.dll has failed the SafeSEHCheck check.
+◦File C:\Coq\bin\libcairo-2.dll has failed the DBCheck check.
+◦File C:\Coq\bin\libcairo-2.dll has failed the NXCheck check.
+◦File C:\Coq\bin\libcairo-2.dll has failed the SafeSEHCheck check.
+◦File C:\Coq\bin\libbonoboui-2-0.dll has failed the DBCheck check.
+◦File C:\Coq\bin\libbonoboui-2-0.dll has failed the NXCheck check.
+◦File C:\Coq\bin\libbonoboui-2-0.dll has failed the SafeSEHCheck check.
+◦File C:\Coq\bin\libbonobo-activation-4.dll has failed the DBCheck check.
+◦File C:\Coq\bin\libbonobo-activation-4.dll has failed the NXCheck check.
+◦File C:\Coq\bin\libbonobo-activation-4.dll has failed the SafeSEHCheck check.
+◦File C:\Coq\bin\libbonobo-2-0.dll has failed the DBCheck check.
+◦File C:\Coq\bin\libbonobo-2-0.dll has failed the NXCheck check.
+◦File C:\Coq\bin\libbonobo-2-0.dll has failed the SafeSEHCheck check.
+◦File C:\Coq\bin\libatk-1.0-0.dll has failed the DBCheck check.
+◦File C:\Coq\bin\libatk-1.0-0.dll has failed the NXCheck check.
+◦File C:\Coq\bin\libatk-1.0-0.dll has failed the SafeSEHCheck check.
+◦File C:\Coq\bin\libart_lgpl_2-2.dll has failed the DBCheck check.
+◦File C:\Coq\bin\libart_lgpl_2-2.dll has failed the NXCheck check.
+◦File C:\Coq\bin\libart_lgpl_2-2.dll has failed the SafeSEHCheck check.
+◦File C:\Coq\bin\libORBitCosNaming-2-0.dll has failed the DBCheck check.
+◦File C:\Coq\bin\libORBitCosNaming-2-0.dll has failed the NXCheck check.
+◦File C:\Coq\bin\libORBitCosNaming-2-0.dll has failed the SafeSEHCheck check.
+◦File C:\Coq\bin\libORBit-imodule-2-0.dll has failed the DBCheck check.
+◦File C:\Coq\bin\libORBit-imodule-2-0.dll has failed the NXCheck check.
+◦File C:\Coq\bin\libORBit-imodule-2-0.dll has failed the SafeSEHCheck check.
+◦File C:\Coq\bin\libORBit-2-0.dll has failed the DBCheck check.
+◦File C:\Coq\bin\libORBit-2-0.dll has failed the NXCheck check.
+◦File C:\Coq\bin\libORBit-2-0.dll has failed the SafeSEHCheck check.
+◦File C:\Coq\bin\libIDL-2-0.dll has failed the DBCheck check.
+◦File C:\Coq\bin\libIDL-2-0.dll has failed the NXCheck check.
+◦File C:\Coq\bin\libIDL-2-0.dll has failed the SafeSEHCheck check.
+◦File C:\Coq\bin\bz2-1.dll has failed the DBCheck check.
+◦File C:\Coq\bin\bz2-1.dll has failed the NXCheck check.
+◦File C:\Coq\bin\bz2-1.dll has failed the SafeSEHCheck check.
+◦File C:\Coq\lib\toploop\coqidetop.cmxs has failed the DBCheck check.
+◦File C:\Coq\lib\toploop\coqidetop.cmxs has failed the NXCheck check.
+◦File C:\Coq\lib\toploop\coqidetop.cmxs has failed the SafeSEHCheck check.
+◦File C:\Coq\lib\toploop\tacworkertop.cmxs has failed the DBCheck check.
+◦File C:\Coq\lib\toploop\tacworkertop.cmxs has failed the NXCheck check.
+◦File C:\Coq\lib\toploop\tacworkertop.cmxs has failed the SafeSEHCheck check.
+◦File C:\Coq\lib\toploop\queryworkertop.cmxs has failed the DBCheck check.
+◦File C:\Coq\lib\toploop\queryworkertop.cmxs has failed the NXCheck check.
+◦File C:\Coq\lib\toploop\queryworkertop.cmxs has failed the SafeSEHCheck check.
+◦File C:\Coq\lib\toploop\proofworkertop.cmxs has failed the DBCheck check.
+◦File C:\Coq\lib\toploop\proofworkertop.cmxs has failed the NXCheck check.
+◦File C:\Coq\lib\toploop\proofworkertop.cmxs has failed the SafeSEHCheck check.
+◦File C:\Coq\lib\plugins\syntax\z_syntax_plugin.cmxs has failed the DBCheck check.
+◦File C:\Coq\lib\plugins\syntax\z_syntax_plugin.cmxs has failed the NXCheck check.
+◦File C:\Coq\lib\plugins\syntax\z_syntax_plugin.cmxs has failed the SafeSEHCheck check.
+◦File C:\Coq\lib\plugins\syntax\string_syntax_plugin.cmxs has failed the DBCheck check.
+◦File C:\Coq\lib\plugins\syntax\string_syntax_plugin.cmxs has failed the NXCheck check.
+◦File C:\Coq\lib\plugins\syntax\string_syntax_plugin.cmxs has failed the SafeSEHCheck check.
+◦File C:\Coq\lib\plugins\syntax\r_syntax_plugin.cmxs has failed the DBCheck check.
+◦File C:\Coq\lib\plugins\syntax\r_syntax_plugin.cmxs has failed the NXCheck check.
+◦File C:\Coq\lib\plugins\syntax\r_syntax_plugin.cmxs has failed the SafeSEHCheck check.
+◦File C:\Coq\lib\plugins\syntax\numbers_syntax_plugin.cmxs has failed the DBCheck check.
+◦File C:\Coq\lib\plugins\syntax\numbers_syntax_plugin.cmxs has failed the NXCheck check.
+◦File C:\Coq\lib\plugins\syntax\numbers_syntax_plugin.cmxs has failed the SafeSEHCheck check.
+◦File C:\Coq\lib\plugins\syntax\nat_syntax_plugin.cmxs has failed the DBCheck check.
+◦File C:\Coq\lib\plugins\syntax\nat_syntax_plugin.cmxs has failed the NXCheck check.
+◦File C:\Coq\lib\plugins\syntax\nat_syntax_plugin.cmxs has failed the SafeSEHCheck check.
+◦File C:\Coq\lib\plugins\syntax\ascii_syntax_plugin.cmxs has failed the DBCheck check.
+◦File C:\Coq\lib\plugins\syntax\ascii_syntax_plugin.cmxs has failed the NXCheck check.
+◦File C:\Coq\lib\plugins\syntax\ascii_syntax_plugin.cmxs has failed the SafeSEHCheck check.
+◦File C:\Coq\lib\plugins\setoid_ring\newring_plugin.cmxs has failed the DBCheck check.
+◦File C:\Coq\lib\plugins\setoid_ring\newring_plugin.cmxs has failed the NXCheck check.
+◦File C:\Coq\lib\plugins\setoid_ring\newring_plugin.cmxs has failed the SafeSEHCheck check.
+◦File C:\Coq\lib\plugins\rtauto\rtauto_plugin.cmxs has failed the DBCheck check.
+◦File C:\Coq\lib\plugins\rtauto\rtauto_plugin.cmxs has failed the NXCheck check.
+◦File C:\Coq\lib\plugins\rtauto\rtauto_plugin.cmxs has failed the SafeSEHCheck check.
+◦File C:\Coq\lib\plugins\romega\romega_plugin.cmxs has failed the DBCheck check.
+◦File C:\Coq\lib\plugins\romega\romega_plugin.cmxs has failed the NXCheck check.
+◦File C:\Coq\lib\plugins\romega\romega_plugin.cmxs has failed the SafeSEHCheck check.
+◦File C:\Coq\lib\plugins\quote\quote_plugin.cmxs has failed the DBCheck check.
+◦File C:\Coq\lib\plugins\quote\quote_plugin.cmxs has failed the NXCheck check.
+◦File C:\Coq\lib\plugins\quote\quote_plugin.cmxs has failed the SafeSEHCheck check.
+◦File C:\Coq\lib\plugins\omega\omega_plugin.cmxs has failed the DBCheck check.
+◦File C:\Coq\lib\plugins\omega\omega_plugin.cmxs has failed the NXCheck check.
+◦File C:\Coq\lib\plugins\omega\omega_plugin.cmxs has failed the SafeSEHCheck check.
+◦File C:\Coq\lib\plugins\nsatz\nsatz_plugin.cmxs has failed the DBCheck check.
+◦File C:\Coq\lib\plugins\nsatz\nsatz_plugin.cmxs has failed the NXCheck check.
+◦File C:\Coq\lib\plugins\nsatz\nsatz_plugin.cmxs has failed the SafeSEHCheck check.
+◦File C:\Coq\lib\plugins\micromega\micromega_plugin.cmxs has failed the DBCheck check.
+◦File C:\Coq\lib\plugins\micromega\micromega_plugin.cmxs has failed the NXCheck check.
+◦File C:\Coq\lib\plugins\micromega\micromega_plugin.cmxs has failed the SafeSEHCheck check.
+◦File C:\Coq\lib\plugins\funind\recdef_plugin.cmxs has failed the DBCheck check.
+◦File C:\Coq\lib\plugins\funind\recdef_plugin.cmxs has failed the NXCheck check.
+◦File C:\Coq\lib\plugins\funind\recdef_plugin.cmxs has failed the SafeSEHCheck check.
+◦File C:\Coq\lib\plugins\fourier\fourier_plugin.cmxs has failed the DBCheck check.
+◦File C:\Coq\lib\plugins\fourier\fourier_plugin.cmxs has failed the NXCheck check.
+◦File C:\Coq\lib\plugins\fourier\fourier_plugin.cmxs has failed the SafeSEHCheck check.
+◦File C:\Coq\lib\plugins\firstorder\ground_plugin.cmxs has failed the DBCheck check.
+◦File C:\Coq\lib\plugins\firstorder\ground_plugin.cmxs has failed the NXCheck check.
+◦File C:\Coq\lib\plugins\firstorder\ground_plugin.cmxs has failed the SafeSEHCheck check.
+◦File C:\Coq\lib\plugins\extraction\extraction_plugin.cmxs has failed the DBCheck check.
+◦File C:\Coq\lib\plugins\extraction\extraction_plugin.cmxs has failed the NXCheck check.
+◦File C:\Coq\lib\plugins\extraction\extraction_plugin.cmxs has failed the SafeSEHCheck check.
+◦File C:\Coq\lib\plugins\derive\derive_plugin.cmxs has failed the DBCheck check.
+◦File C:\Coq\lib\plugins\derive\derive_plugin.cmxs has failed the NXCheck check.
+◦File C:\Coq\lib\plugins\derive\derive_plugin.cmxs has failed the SafeSEHCheck check.
+◦File C:\Coq\lib\plugins\decl_mode\decl_mode_plugin.cmxs has failed the DBCheck check.
+◦File C:\Coq\lib\plugins\decl_mode\decl_mode_plugin.cmxs has failed the NXCheck check.
+◦File C:\Coq\lib\plugins\decl_mode\decl_mode_plugin.cmxs has failed the SafeSEHCheck check.
+◦File C:\Coq\lib\plugins\cc\cc_plugin.cmxs has failed the DBCheck check.
+◦File C:\Coq\lib\plugins\cc\cc_plugin.cmxs has failed the NXCheck check.
+◦File C:\Coq\lib\plugins\cc\cc_plugin.cmxs has failed the SafeSEHCheck check.
+◦File C:\Coq\lib\plugins\btauto\btauto_plugin.cmxs has failed the DBCheck check.
+◦File C:\Coq\lib\plugins\btauto\btauto_plugin.cmxs has failed the NXCheck check.
+◦File C:\Coq\lib\plugins\btauto\btauto_plugin.cmxs has failed the SafeSEHCheck check.
+◦File C:\Coq\bin\libintl3.dll has failed the DBCheck check.
+◦File C:\Coq\bin\libintl3.dll has failed the NXCheck check.
+◦File C:\Coq\bin\libintl3.dll has failed the SafeSEHCheck check.
+◦File C:\Coq\bin\libiconv2.dll has failed the DBCheck check.
+◦File C:\Coq\bin\libiconv2.dll has failed the NXCheck check.
+◦File C:\Coq\bin\libiconv2.dll has failed the SafeSEHCheck check.
+◦File C:\Coq\bin\make.exe has failed the DBCheck check.
+◦File C:\Coq\bin\make.exe has failed the NXCheck check.
+◦File C:\Coq\bin\make.exe has failed the SafeSEHCheck check.
+◦File C:\Coq\bin\gallina.exe has failed the DBCheck check.
+◦File C:\Coq\bin\gallina.exe has failed the NXCheck check.
+◦File C:\Coq\bin\gallina.exe has failed the SafeSEHCheck check.
+◦File C:\Coq\bin\fake_ide.exe has failed the DBCheck check.
+◦File C:\Coq\bin\fake_ide.exe has failed the NXCheck check.
+◦File C:\Coq\bin\fake_ide.exe has failed the SafeSEHCheck check.
+◦File C:\Coq\bin\coqworkmgr.exe has failed the DBCheck check.
+◦File C:\Coq\bin\coqworkmgr.exe has failed the NXCheck check.
+◦File C:\Coq\bin\coqworkmgr.exe has failed the SafeSEHCheck check.
+◦File C:\Coq\bin\coqwc.exe has failed the DBCheck check.
+◦File C:\Coq\bin\coqwc.exe has failed the NXCheck check.
+◦File C:\Coq\bin\coqwc.exe has failed the SafeSEHCheck check.
+◦File C:\Coq\bin\coqtop.exe has failed the DBCheck check.
+◦File C:\Coq\bin\coqtop.exe has failed the NXCheck check.
+◦File C:\Coq\bin\coqtop.exe has failed the SafeSEHCheck check.
+◦File C:\Coq\bin\coqtop.byte.exe has failed the DBCheck check.
+◦File C:\Coq\bin\coqtop.byte.exe has failed the NXCheck check.
+◦File C:\Coq\bin\coqtop.byte.exe has failed the SafeSEHCheck check.
+◦File C:\Coq\bin\coqmktop.exe has failed the DBCheck check.
+◦File C:\Coq\bin\coqmktop.exe has failed the NXCheck check.
+◦File C:\Coq\bin\coqmktop.exe has failed the SafeSEHCheck check.
+◦File C:\Coq\bin\coqide.exe has failed the DBCheck check.
+◦File C:\Coq\bin\coqide.exe has failed the NXCheck check.
+◦File C:\Coq\bin\coqide.exe has failed the SafeSEHCheck check.
+◦File C:\Coq\bin\coqide.byte.exe has failed the DBCheck check.
+◦File C:\Coq\bin\coqide.byte.exe has failed the NXCheck check.
+◦File C:\Coq\bin\coqide.byte.exe has failed the SafeSEHCheck check.
+◦File C:\Coq\bin\coqdoc.exe has failed the DBCheck check.
+◦File C:\Coq\bin\coqdoc.exe has failed the NXCheck check.
+◦File C:\Coq\bin\coqdoc.exe has failed the SafeSEHCheck check.
+◦File C:\Coq\bin\coqdep_boot.exe has failed the DBCheck check.
+◦File C:\Coq\bin\coqdep_boot.exe has failed the NXCheck check.
+◦File C:\Coq\bin\coqdep_boot.exe has failed the SafeSEHCheck check.
+◦File C:\Coq\bin\coqdep.exe has failed the DBCheck check.
+◦File C:\Coq\bin\coqdep.exe has failed the NXCheck check.
+◦File C:\Coq\bin\coqdep.exe has failed the SafeSEHCheck check.
+◦File C:\Coq\bin\coqchk.exe has failed the DBCheck check.
+◦File C:\Coq\bin\coqchk.exe has failed the NXCheck check.
+◦File C:\Coq\bin\coqchk.exe has failed the SafeSEHCheck check.
+◦File C:\Coq\bin\coqchk.byte.exe has failed the DBCheck check.
+◦File C:\Coq\bin\coqchk.byte.exe has failed the NXCheck check.
+◦File C:\Coq\bin\coqchk.byte.exe has failed the SafeSEHCheck check.
+◦File C:\Coq\bin\coqc.exe has failed the DBCheck check.
+◦File C:\Coq\bin\coqc.exe has failed the NXCheck check.
+◦File C:\Coq\bin\coqc.exe has failed the SafeSEHCheck check.
+◦File C:\Coq\bin\coq_makefile.exe has failed the DBCheck check.
+◦File C:\Coq\bin\coq_makefile.exe has failed the NXCheck check.
+◦File C:\Coq\bin\coq_makefile.exe has failed the SafeSEHCheck check.
+◦File C:\Coq\bin\coq-tex.exe has failed the DBCheck check.
+◦File C:\Coq\bin\coq-tex.exe has failed the NXCheck check.
+◦File C:\Coq\bin\coq-tex.exe has failed the SafeSEHCheck check.
+
+
+•Impact if not fixed: If the app doesn’t use the available Windows protections, it can increase the vulnerability of the customer's computer to malware.
+
+
+•How to fix: Apply the SAFESEH, DYNAMICBASE, and NXCOMPAT options when you link the app. See link below for more information:
+Fixing Binary Analyzer Errors
+
+
+
+
+
+High-DPI support
+
+
+
+
+
+WARNING
+
+
+High-DPI
+
+•Warning: The DPI-aware manifest test detected the following errors:◦File C:\Coq\Uninstall.exe isn't manifested for DPI awareness.
+◦File C:\Coq\bin\coqtop.exe isn't manifested for DPI awareness.
+
+
+•Impact if not fixed:  Apps that are not DPI-aware but are running on a high-DPI display setting can exhibit incorrect scaling of UI elements, clipped text, and blurry images. 
+
+
+•How to fix:  It is recommended that you declare your app as DPI-aware in the app manifest. Apps should not use the SetProcessDPIAware API. 
+ Writing High-DPI Apps
+
+> Attached file: [coq-rc1-report.htm](https://coq.inria.fr/bugfiles/attachment.cgi?id=655) (text/html, 113412 bytes)
+> Description:   Windows App Cert Kit Results (8.5rc1)
+
+
+Comment author: @JasonGross
+
+If you download the installer in Internet Explorer (at least on Windows 8.1 and Windows 10), you get a message saying "The signature of coq-installer-8.5-win64.exe is corrupt or invalid."  Maybe the binary got modified after it was signed?  Can you reproduce this on your VM?
+
+
+Comment author: @JasonGross
+
+Created attachment 667
+Image of IE problem
+
+> Attached file: [Screenshot 2016-02-02 18.41.08.png](https://coq.inria.fr/bugfiles/attachment.cgi?id=667) (image/png, 95146 bytes)
+> Description:   Image of IE problem
+
+
+Comment author: @maximedenes
+
+I believe this was solved by using a different certificate. Thanks for reporting!
+
+

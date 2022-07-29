@@ -1,0 +1,170 @@
+Comment author: @JasonGross
+```coq
+Require Import Program.
+
+Inductive Even : nat -> Prop :=
+| evenO : Even O
+| evenS : forall n, Odd n -> Even (S n)
+with Odd : nat -> Prop :=
+| oddS : forall n, Even n -> Odd (S n).
+Axiom admit : forall {T}, T.
+Program Fixpoint doubleE {n} (e : Even n) : Even (2 * n)
+  := admit
+with doubleO {n} (o : Odd n) : Odd (S (2 * n))
+     := _.
+Next Obligation of doubleE. (* Anomaly: Could not find a solvable obligation.. Please report. *)
+
+```
+Comment author: @ppedrot
+
+It seems to have been fixed in current v8.5.
+
+
+Comment author: @tchajed
+
+Looks like this bug has regressed. Here's a git bisect (unfortunately there are 
+two fairly large commits due to a failing build, and I didn't try to get that 
+build to compile in order to test it):
+```
+git bisect start
+# bad: [8b73fd7c6ce423f8c8a2594e90200f2407795d52] Merge branch 'v8.6'
+git bisect bad 8b73fd7c6ce423f8c8a2594e90200f2407795d52
+# good: [064de6f6839c4ef963b83018812c5d4113eb2bb9] Fix bug [BZ#5045](https://github.com/coq/coq/issues?q=is%3Aissue%20%22Original%20bug%20ID%3A%20BZ%235045%22): [generalize] 
+creates ill-typed terms in 8.6.
+git bisect good 064de6f6839c4ef963b83018812c5d4113eb2bb9
+# good: [cfce4732363c7a93ffb7231335463d41c47074ea] Merge branch 'v8.5' into v8.6
+git bisect good cfce4732363c7a93ffb7231335463d41c47074ea
+# good: [8d7c8bb91bb1cee533bb3f94fe36a04343f08006] Merge PR#393: Replace 
+Typeops with Fast_typeops
+git bisect good 8d7c8bb91bb1cee533bb3f94fe36a04343f08006
+# good: [db1ef0aeba8bad6bb686f6adb465cb1fbb5229f3] Merge PR#473: [ci] Document 
+that sudo: false is slower
+git bisect good db1ef0aeba8bad6bb686f6adb465cb1fbb5229f3
+# good: [f1c5e2ce2a4515a7c90c5ca22aa6eff22dd2f5ff] [ide] Use "log via feedback".
+git bisect good f1c5e2ce2a4515a7c90c5ca22aa6eff22dd2f5ff
+# bad: [00b1ceb18db39334a357784a114e45a9012cf594] [extraction] Flush formatters 
+at end of output.
+git bisect bad 00b1ceb18db39334a357784a114e45a9012cf594
+# skip: [f0341076aa60a84177a6b46db0d8d50df220536b] [error] Move back 
+fatal_error to toplevel
+git bisect skip f0341076aa60a84177a6b46db0d8d50df220536b
+# good: [14155762a7cd46ed6a3e9cf2a58e11ee1244b188] [pp] Replace `Pp.Tag` by 
+`Ppstyle.tag` = `string list`
+git bisect good 14155762a7cd46ed6a3e9cf2a58e11ee1244b188
+# bad: [5b8bfee9d80e550cd81e326ec134430b2a4797a5] [pp] Make feedback the only 
+logging mechanism.
+git bisect bad 5b8bfee9d80e550cd81e326ec134430b2a4797a5
+# good: [6c521565323ae8af22fb03e65664ef944da6ecdf] [pp] Force well-tagged docs 
+by construction.
+git bisect good 6c521565323ae8af22fb03e65664ef944da6ecdf
+# good: [7440be4ffaf6ace5b8e94354c9a56462f45fa2dd] [pp] Remove redundant white 
+spacing pp construct.
+git bisect good 7440be4ffaf6ace5b8e94354c9a56462f45fa2dd
+# good: [eb68e001f2ebbf09dc32c999e9c9b0f116c0a530] [feedback] Allow to remove 
+feedback listeners.
+git bisect good eb68e001f2ebbf09dc32c999e9c9b0f116c0a530
+# only skipped commits left to test
+# possible first bad commit: [5b8bfee9d80e550cd81e326ec134430b2a4797a5] [pp] 
+Make feedback the only logging mechanism.
+# possible first bad commit: [f0341076aa60a84177a6b46db0d8d50df220536b] [error] 
+Move back fatal_error to toplevel
+```
+
+Comment author: @ejgallego
+
+oh let me have a look, but this certainly seems strange.
+
+
+Comment author: @ejgallego
+
+Hey Ted, are you sure that db1ef0aeba8bad6bb686f6adb465cb1fbb5229f3 is good:
+
+Coq < Toplevel input, characters 0-27:
+> Next Obligation of doubleE.
+> ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Anomaly: Could not find a solvable obligation.. Please report at
+http://coq.inria.fr/bugs/.
+
+Coq < Coq < 
+egallego@ kaguya:~/external/coq-master$ git log -n1
+commit db1ef0aeba8bad6bb686f6adb465cb1fbb5229f3
+
+Note that prior to my Pp tree, there were two different error handling paths and it seems indeed that some errors were masked! This is fixed now, so indeed your rebase script may have been incorrectly detecting the problem.
+
+[by the way it indeed seems that I botched the buildability of a couple of commits in my rebase of the pp branch wrt to safe_string, since today I've implemented myself much stricter procedures as discussed on github]
+
+
+Comment author: @ejgallego
+
+Indeed it is clearly consistent that 
+
+# bad: [5b8bfee9d80e550cd81e326ec134430b2a4797a5] [pp] Make feedback the only 
+logging mechanism.
+
+is the first bad commit as indeed this is the main commit that removes the error masking.
+
+
+Comment author: @ejgallego
+
+064de6f6839c4ef963b83018812c5d4113eb2bb9 seems bad too (or I am blind)
+
+
+Comment author: @ejgallego
+
+Ok it is not masking per se, but in the new code it prints an Error header instead of an Anomaly header, grrrrr... I will fix now.
+
+
+Comment author: @tchajed
+
+Awesome, thanks for taking a look!
+
+Sorry for not doing some more digging; my script was fairly broken. I wasn't 
+relying on its exit status via git bisect run so it half worked but it wasn't 
+correctly re-compiling. Seems like somehow that led to a bug anyway, which is 
+great. Here's an actual git bisect log, which leads to the more plausible 
+commit 9f5e2487 (see 
+https://github.com/coq/coq/commit/9f5e248704f1574b0acbb9bddd287e40daac8727).
+```
+git bisect start
+# good: [2cb554aa772c5c6d179c6a4611b70d459073a316] Exporting a generic argument 
+induction_arg. As a consequence, simplifying and generalizing the grammar 
+entries for injection, discriminate and simplify_eq.
+git bisect good 2cb554aa772c5c6d179c6a4611b70d459073a316
+# bad: [8b73fd7c6ce423f8c8a2594e90200f2407795d52] Merge branch 'v8.6'
+git bisect bad 8b73fd7c6ce423f8c8a2594e90200f2407795d52
+# bad: [df1de9fa318f1924d92fb39c4bc67c16f3d31db4] Merge remote-tracking branch 
+'github/printcandidates' into v8.6
+git bisect bad df1de9fa318f1924d92fb39c4bc67c16f3d31db4
+# bad: [687d510cb43db5029fb4545c3b12ac20cf99197a] Pushing error backtrace in 
+unification reraise.
+git bisect bad 687d510cb43db5029fb4545c3b12ac20cf99197a
+# good: [f46f4ecec94953930fca6bbbc9fdb83a7a1025fc] Fixed bug [BZ#4622](https://github.com/coq/coq/issues?q=is%3Aissue%20%22Original%20bug%20ID%3A%20BZ%234622%22).
+git bisect good f46f4ecec94953930fca6bbbc9fdb83a7a1025fc
+# good: [d47273cea29099c296e1b702ab25aa8272ab6831] Allow `STDTIME=foo make`
+git bisect good d47273cea29099c296e1b702ab25aa8272ab6831
+# bad: [d9009ceedf928ef9567f7b3045c46df00662c21d] Merge branch 'v8.5' into v8.6
+git bisect bad d9009ceedf928ef9567f7b3045c46df00662c21d
+# bad: [dabe6d0e1d1782d3e9647e04aa1bf161765ad882] Merge remote-tracking branch 
+'gforge/v8.5' into v8.6
+git bisect bad dabe6d0e1d1782d3e9647e04aa1bf161765ad882
+# good: [273b8725e28e109b33f044079a36515d42068a8d] Merge remote-tracking branch 
+'gforge/v8.5' into v8.6
+git bisect good 273b8725e28e109b33f044079a36515d42068a8d
+# bad: [9f5e248704f1574b0acbb9bddd287e40daac8727] Fix bug [BZ#3886](https://github.com/coq/coq/issues?q=is%3Aissue%20%22Original%20bug%20ID%3A%20BZ%233886%22), generation of 
+obligations of fixes
+git bisect bad 9f5e248704f1574b0acbb9bddd287e40daac8727
+# good: [ad39b5c127e1ff3d16adc1d0264617d461616111] Merge branch 'bug4754' into 
+v8.5
+git bisect good ad39b5c127e1ff3d16adc1d0264617d461616111
+# good: [25ef9dda0311213bb2f6e2b9cd0b87be2128599b] Fix [BZ#4769](https://github.com/coq/coq/issues?q=is%3Aissue%20%22Original%20bug%20ID%3A%20BZ%234769%22), univ poly and 
+elim schemes in sections
+git bisect good 25ef9dda0311213bb2f6e2b9cd0b87be2128599b
+# first bad commit: [9f5e248704f1574b0acbb9bddd287e40daac8727] Fix bug [BZ#3886](https://github.com/coq/coq/issues?q=is%3Aissue%20%22Original%20bug%20ID%3A%20BZ%233886%22), 
+generation of obligations of fixes
+```
+
+Comment author: @ejgallego
+
+This looks indeed sensible to me, sorry for the previous problem!
+
+

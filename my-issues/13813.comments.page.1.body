@@ -1,0 +1,29 @@
+Why would you do that (download the sources for V8.14+alpha). It's a technical tag to make git describe work which points to the first commit not in 8.13
+FTR, master has coq_version properly set.
+> Why would you do that (download the sources for V8.14+alpha).
+
+Because I was overzealous in trying to support all versions of Coq in my launchpad ppa, and I presumed the alpha versions were supposed to be supported.  And 8.13+alpha also has `coq_version` correctly set to `8.13+alpha` (I have not checked the other +alpha tags yet).
+Compiling any version with tag alpha makes no sense to me. As I was explaining it is a technical tag, it is not a released version.
+
+The invariant you point out is hard to impose: one would need the RM to branch off and immediately prepare a PR bumping the version for master *and* impose this is the first PR merged after the branching.
+>The invariant you point out is hard to impose: one would need the RM to branch off and immediately prepare a PR bumping the version for master and impose this is the first PR merged after the branching.
+
+Alternatively bump the master version and branch after it's merged using whatever the previous commit was for the branch.
+ie the branch can be based on past master instead of current master.
+> Alternatively bump the master version and branch after it's merged using whatever the previous commit was for the branch.
+ie the branch can be based on past master instead of current master.
+
+Ah, this seems like a good strategy to me
+Indeed the alpha tag is just there so we have `git describe` work properly, but it is a tag that should not be used as it is a basically random commit.
+
+I had indeed noticed that the tag was not pointing to the commit updating the version in configure as we did in previous releases, I think we should try to do this indeed, it is not so hard [you merge then you branch].
+
+I didn't submit a bug report as I thought nobody else would notice and re-tagging was like a big hammer to fix what amounts to an annoyance, but indeed no detail escapes the eyes of Jason :)
+> Alternatively bump the master version and branch after it's merged using whatever the previous commit was for the branch.
+> ie the branch can be based on past master instead of current master.
+
+This preserve the invariant that tag alpha has +alpha in configure, but not that the tag corresponds to the first commit not in the branch.
+I'm fine with not re-tagging, this is meant to be more of a "if the ordering is not documented in the release document, it seems like it should be".  If the order is already documented there, and the V8.14+alpha was just a messup, feel free to close this without changing anything.
+>This preserve the invariant that tag alpha has +alpha in configure, but not that the tag corresponds to the first commit not in the branch.
+
+It does though, you get to pick the branch commit to satisfy that.

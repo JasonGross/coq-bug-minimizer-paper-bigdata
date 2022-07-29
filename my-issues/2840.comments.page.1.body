@@ -1,0 +1,22 @@
+Comment author: @JasonGross
+
+It'd be really nice to be able to use [Definition] without giving up sort-polymorphism.  For example, I can write the following code.
+
+Set Printing Universes.
+Inductive foo (A B : Type) := Foo : A -> B -> foo A B.
+Definition foo' (A B : Type) := foo B A.
+Check foo. (* Type (* Top.1 *) -> Type (* Top.2 *) -> Type (* max(Top.1, Top.2) *) *)
+Check foo'. (* Type (* Top.7 *) -> Type (* Top.8 *) -> Type (* max(Top.8, Top.7) *) *)
+Check foo nat nat. (* Set *)
+Check foo' nat nat. (* Type (* max(Top.8, Top.7) *) *)
+
+Given that [foo'] isn't much different from [foo], it would be really nice if the last of these gave me [Set].
+
+
+Comment author: @ppedrot
+
+
+
+*** This bug has been marked as a duplicate of bug [BZ#2298](https://github.com/coq/coq/issues?q=is%3Aissue%20%22Original%20bug%20ID%3A%20BZ%232298%22) ***
+
+

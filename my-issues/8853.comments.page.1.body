@@ -1,0 +1,7 @@
+What is the relation to #8483?
+I think it is mostly independent of #8483.  There is a bit of overlap in terms of "what type should the primitive syntax for ascii recognize?"  (Although it is also possible to be mostly agnostic on that, and have a separate `Register` invocation for each of the 256 primitive ascii characters.)  But I think mainly this enhancement would make the stdlib `string` type less special.
+> Now that Numeral Notations has been merged, it would be nice to be able to also register string and ascii syntax notations in userland.
+
+That makes sense, yes. The setup looks good.
+@JasonGross What's the performance of the byte type? I did some experiments with it a little while ago and it seemed much slower than using something like `N` because the functions that process it are so large, e.g. the equality checker is 2^16 cases.
+I did some experiments a while ago using byte^numbytes instead of word and observed significant (3x) speedup over the bedrock word type (though using the 2^8-case versions functions that go through bool^8). I think the difference comes from "some experiments" being an ill-defined measure; is there something specific that we should benchmark?

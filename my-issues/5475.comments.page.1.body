@@ -1,0 +1,54 @@
+Comment author: @JasonGross
+
+This is a regression since 8.6: the printout of the goal has changed so that PG 
+no longer picks it up as the goal.
+
+
+Comment author: @JasonGross
+
+I suspect the issue is that the goal printing should not be wrapped in 
+"<infomsg>", but I'm not sure
+
+
+Comment author: @ejgallego
+
+Oh indeed sorry I got the logic wrong in 63cfc77ddf3586262d905dc351b58669d185a55e
+
+
+Comment author: @ejgallego
+
+https://github.com/coq/coq/pull/571 should fix it.
+
+I did try so many approaches in the branch that led to the bug that I in fact got lost...
+
+
+Comment author: @JasonGross
+
+I think this is a blocker, in the sense that I don't think Coq 8.7 should be 
+released until it works correctly with the standard version of PG (or, at 
+least, with a version of PG that also works with company-coq).  In particular, 
+this bug effectively breaks the intended use of -emacs (along with the bug 
+about error handling, which, AIUI, is waiting on input from the PG team?)
+
+
+Comment author: @ejgallego
+
+The error handling situation in -emacs needs clarification. What it is for sure is that there is a PG bug.
+
+8.6 included the markers for some error messages (try for example `Drop` on a native `coqtop -emacs` or `Print a` vs `Print Module a`) and you will see it broken.
+
+It is true that the vast majority of error messages in 8.6 were indeed printed without the marker, so that was an unfortunate choice, but on the other hand it will hopefully make us close the inconsistency for good.
+
+
+Comment author: @ejgallego
+
+In both cases, it is hard to call them "Coq bugs", but more of a case of lack of specification of the Emacs output format AFAICS. (Maybe I have missed it)
+
+
+Comment author: @ejgallego
+
+I know that it is not a popular line of thought, but personally I consider all the problems originating from the reliance on unspecified behavior as wishlist items.
+
+Maxime points out that a large set of Coq's behavior could be considered "unspecified", and he is likely right, but I see no other way towards the successful maintenance of this piece of software than to start to specify what it should do.
+
+

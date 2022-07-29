@@ -1,0 +1,13 @@
+Comment author: @JasonGross
+
+Ltac goal := match goal with |- ?G => G end.
+Ltac idtac_goal_n n := let G := goal in idtac n G.
+Goal (exists n m : nat, m = 1).
+Proof.
+  repeat unshelve refine (ex_intro _ _ _).
+  par:((idtac_goal_n 0; exact 0) + (idtac_goal_n 1; exact 1) + (idtac_goal_n 2; exact eq_refl)).
+Defined. (* Error: The term "eq_refl" has type "1 = 1" while it is expected to have type "0 = 1". *)
+
+The error should be caught by [par]
+
+

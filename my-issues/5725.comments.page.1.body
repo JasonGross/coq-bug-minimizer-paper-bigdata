@@ -1,0 +1,100 @@
+Comment author: @JasonGross
+
+See 
+https://launchpadlibrarian.net/336362429/buildlog_ubuntu-trusty-amd64.coq-8.7+beta1_8.7~beta1-1~trusty~ppa70_BUILDING.txt.gz
+
+make[5]: Entering directory 
+`/build/coq-8.7+beta1-PAMo24/coq-8.7+beta1-8.7~beta1/test-suite'
+Makefile:176: warning: undefined variable `TRAVIS'
+Makefile:176: warning: undefined variable `APPVEYOR'
+./save-logs.sh: line 15: rsync: command not found
+FAILURES
+    coq-makefile/arg/run.sh...Error!
+    coq-makefile/compat-subdirs/run.sh...Error!
+    coq-makefile/coqdoc1/run.sh...Error!
+    coq-makefile/coqdoc2/run.sh...Error!
+    coq-makefile/extend-subdirs/run.sh...Error!
+    coq-makefile/latex1/run.sh...Error!
+    coq-makefile/merlin1/run.sh...Error!
+    coq-makefile/mlpack1/run.sh...Error!
+    coq-makefile/mlpack2/run.sh...Error!
+    coq-makefile/multiroot/run.sh...Error!
+    coq-makefile/native1/run.sh...Error!
+    coq-makefile/only/run.sh...Error!
+    coq-makefile/plugin1/run.sh...Error!
+    coq-makefile/plugin2/run.sh...Error!
+    coq-makefile/plugin3/run.sh...Error!
+    coq-makefile/timing/run.sh...Error!
+    coq-makefile/uninstall1/run.sh...Error!
+    coq-makefile/uninstall2/run.sh...Error!
+    coq-makefile/validate1/run.sh...Error!
+make[5]: *** [report] Error 1
+make[5]: Leaving directory 
+`/build/coq-8.7+beta1-PAMo24/coq-8.7+beta1-8.7~beta1/test-suite'
+make[4]: *** [all] Error 2
+make[4]: Leaving directory 
+`/build/coq-8.7+beta1-PAMo24/coq-8.7+beta1-8.7~beta1/test-suite'
+make[3]: *** [test-suite] Error 2
+make[3]: Leaving directory `/build/coq-8.7+beta1-PAMo24/coq-8.7+beta1-8.7~beta1'
+make[2]: *** [submake] Error 2
+make[2]: Leaving directory `/build/coq-8.7+beta1-PAMo24/coq-8.7+beta1-8.7~beta1'
+make[1]: *** [override_dh_auto_test] Error 2
+make[1]: Leaving directory `/build/coq-8.7+beta1-PAMo24/coq-8.7+beta1-8.7~beta1'
+make: *** [build] Error 2
+dpkg-buildpackage: error: debian/rules build gave error exit status 2
+
+
+Comment author: @ejgallego
+
+Well it looks like you'll need to add rsync to the build depends.
+
+I am not sure if that is a bug thou.
+
+
+Comment author: @JasonGross
+
+Build still fails even with rsync: 
+https://launchpadlibrarian.net/336610265/buildlog_ubuntu-precise-i386.coq-8.7+beta1_8.7~beta1-1~precise~ppa71_BUILDING.txt.gz
+
+make[5]: Entering directory 
+`/build/coq-8.7+beta1-5uOLeu/coq-8.7+beta1-8.7~beta1/test-suite'
+Makefile:176: warning: undefined variable `TRAVIS'
+Makefile:176: warning: undefined variable `APPVEYOR'
+FAILURES
+    coq-makefile/arg/run.sh...Error!
+    coq-makefile/compat-subdirs/run.sh...Error!
+    coq-makefile/coqdoc1/run.sh...Error!
+    coq-makefile/coqdoc2/run.sh...Error!
+    coq-makefile/extend-subdirs/run.sh...Error!
+    coq-makefile/latex1/run.sh...Error!
+    coq-makefile/merlin1/run.sh...Error!
+    coq-makefile/mlpack1/run.sh...Error!
+    coq-makefile/mlpack2/run.sh...Error!
+    coq-makefile/multiroot/run.sh...Error!
+    coq-makefile/only/run.sh...Error!
+    coq-makefile/plugin1/run.sh...Error!
+    coq-makefile/plugin2/run.sh...Error!
+    coq-makefile/plugin3/run.sh...Error!
+    coq-makefile/timing/run.sh...Error!
+    coq-makefile/uninstall1/run.sh...Error!
+    coq-makefile/uninstall2/run.sh...Error!
+    coq-makefile/validate1/run.sh...Error!
+make[5]: *** [report] Error 1
+
+
+Comment author: @JasonGross
+
+The test-suite seems to require that `git` be installed to succeed.  I don't 
+think this should be the case
+
+
+Comment author: @Zimmi48
+
+Thanks Jason, for reminding this to our attention. I also think it is bad that the test-suite is dependent on git.
+
+More generally, lots and lots of dependencies were added to the test-suite without care during this release. For instance, the test-suite is also dependent on python. It should probably be made into an optional dependency, that is if python is available the tests should run, if it is not, the tests should be skipped with a warning.
+
+In the case of the coq_makefile tests though, I don't see how the use of git can be so important that it cannot be avoided.
+
+
+Re-targeting to 8.8 as in fact I believe that the test-suite was *not* dependent on git in 8.7, as the only occurrence of `git` in the test-suite is `git clean -dfx || true`. However, seeing `git: command not found` can be quite confusing (especially when the test-suite fails for other reasons as in #5975) and I believe we should get rid of this line anyways.

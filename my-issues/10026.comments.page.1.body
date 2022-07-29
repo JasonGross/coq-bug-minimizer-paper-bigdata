@@ -1,0 +1,75 @@
+This looks like @ppedrot 's turf:
+```
+Please report at http://coq.inria.fr/bugs/.
+frame @ file "toplevel/coqloop.ml", line 402, characters 19-59
+raise @ file "clib/exninfo.ml", line 65, characters 2-15
+frame @ file "stm/stm.ml", line 631, characters 28-63
+raise @ file "stdlib.ml", line 33, characters 17-33
+frame @ file "stm/stm.ml", line 2772, characters 4-60
+frame @ file "stm/stm.ml", line 2644, characters 4-105
+raise @ file "clib/exninfo.ml", line 65, characters 2-15
+frame @ file "stm/stm.ml", line 1006, characters 6-10
+frame @ file "stm/stm.ml", line 2508, characters 16-43
+raise @ file "clib/exninfo.ml", line 65, characters 2-15
+frame @ file "stm/stm.ml", line 1178, characters 12-91
+raise @ file "clib/exninfo.ml", line 65, characters 2-15
+frame @ file "vernac/vernacentries.ml", line 2627, characters 6-298
+frame @ file "vernac/vernacentries.ml", line 2629, characters 19-56
+raise @ file "clib/exninfo.ml", line 65, characters 2-15
+frame @ file "lib/flags.ml", line 17, characters 14-17
+frame @ file "vernac/vernacentries.ml", line 2478, characters 6-47
+frame @ file "vernac/vernacentries.ml", line 1780, characters 17-48
+frame @ file "pretyping/pretyping.ml", line 1142, characters 20-71
+frame @ file "pretyping/pretyping.ml", line 1094, characters 21-97
+frame @ file "pretyping/pretyping.ml", line 481, characters 16-57
+frame @ file "pretyping/pretyping.ml", line 699, characters 22-60
+frame @ file "pretyping/pretyping.ml", line 673, characters 26-88
+raise @ unknown
+frame @ file "pretyping/coercion.ml", line 420, characters 6-46
+frame @ file "pretyping/coercion.ml", line 397, characters 10-35
+frame @ file "pretyping/reductionops.ml", line 1270, characters 18-43
+frame @ file "pretyping/reductionops.ml", line 1252, characters 22-138
+frame @ file "pretyping/reductionops.ml", line 1171, characters 25-71
+frame @ file "pretyping/reductionops.ml", line 934, characters 19-64
+frame @ file "printing/printer.ml", line 145, characters 48-91
+frame @ file "interp/constrextern.ml", line 889, characters 6-57
+frame @ file "interp/constrextern.ml", line 1007, characters 14-38
+raise @ unknown
+frame @ file "interp/constrextern.ml", line 790, characters 4-113
+frame @ file "interp/constrextern.ml", line 735, characters 10-34
+raise @ unknown
+frame @ file "interp/constrextern.ml", line 732, characters 11-21
+raise @ unknown
+frame @ file "interp/constrextern.ml", line 1135, characters 20-205
+frame @ file "clib/cList.ml", line 413, characters 21-24
+raise @ unknown
+frame @ file "interp/constrextern.ml", line 790, characters 4-113
+frame @ file "interp/constrextern.ml", line 735, characters 10-34
+raise @ unknown
+frame @ file "interp/constrextern.ml", line 732, characters 11-21
+raise @ unknown
+frame @ file "interp/constrextern.ml", line 1135, characters 20-205
+frame @ file "clib/cList.ml", line 414, characters 4-18
+frame @ file "clib/cList.ml", line 406, characters 21-24
+raise @ unknown
+frame @ file "interp/constrextern.ml", line 790, characters 4-113
+frame @ file "interp/constrextern.ml", line 735, characters 10-34
+raise @ unknown
+frame @ file "interp/constrextern.ml", line 732, characters 11-21
+raise @ unknown
+frame @ file "interp/constrextern.ml", line 1135, characters 20-205
+frame @ file "clib/cList.ml", line 413, characters 21-24
+frame @ file "interp/constrextern.ml", line 818, characters 20-71
+frame @ file "clib/cList.ml", line 413, characters 21-24
+frame @ file "lib/util.ml", line 14, characters 24-27
+frame @ file "interp/constrextern.ml", line 782, characters 11-35
+frame @ file "interp/constrextern.ml", line 685, characters 8-28
+frame @ file "interp/constrextern.ml", line 676, characters 33-43
+raise @ file "camlinternalLazy.ml", line 34, characters 4-11
+frame @ file "camlinternalLazy.ml", line 27, characters 17-27
+raise @ unknown
+frame @ file "pretyping/detyping.ml", line 736, characters 22-43
+raise @ file "lib/loc.ml", line 95, characters 16-23
+```
+Note that if I change `fun _ => ` to `fun XXX =>`, then it goes through fine, and the output of uses `XXX` at the end of the log.  So probably the issue is that there's a "print this thing if in debug mode somewhere" that neglects to handle the case of an anonymous binder?
+That's probably just a matter of a wrong environment passed to the debug printer.

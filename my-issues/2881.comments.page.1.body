@@ -1,0 +1,49 @@
+Comment author: @JasonGross
+
+The code
+```coq
+  Goal forall T1 T2 (f : T1 -> T2), (fun x => f x) = f.
+    intros.
+    change (fun a => ?f0 a) with f0.
+```
+works as expected, but the code
+```coq
+  Goal forall T1 T2 (f : T1 -> T2), (fun x => f x) = f.
+    intros.
+    Ltac eta_red :=
+      change (fun a => ?f0 a) with f0.
+```
+fails with
+```
+  Error: The reference f0 was not found in the current environment.
+```
+
+Comment author: @aspiwack
+
+I'm afraid the implementation of [change] is somewhat hackish. It's not entirely surprising it goes bonkers occasionally. It's even documented in the code that [change] is incorrect… It's a poor answer, but you shouldn't count on this one being solved quickly.
+
+Nonetheless, thanks for the excellent test-case.
+
+
+Comment author: @ppedrot
+
+I think this is much more trivial, and related to the way Ltac definitions are interpreted: patterns in change do not provide new binders in the right hand side, hence the unboundedness of f0.
+
+Why it works when writing it directly is a mistery, but I suspect that evaluation takes place at another time, which precludes the raising of the exception.
+
+
+Comment author: @ppedrot
+
+Indeed. The direct definition uses [Constrintern.for_grammar], which sets an [interning_grammar] flag in Constrintern allowing the unboundedness of variables at interning time. See [Constrintern.intern_applied_reference] for more details.
+
+We can fix this by adding the variables of the change pattern into the interning environment, but I do not know if this is the expected behaviour. (For reminder: yet another intro-like half-static half-dynamic binder)...
+
+
+Comment author: @mattam82
+
+I think it is the intended behavior, change takes a pattern that should match a subterm, and that subterm should be convertible with the substituted right hand side.
+
+
+@ppedrot https://github.com/coq/coq/issues/2881#issuecomment-337512022 suggests this has a simple fix.  Is this accurate?
+Fixed by the merge of #6021.
+BTW @herbelin please use "Fix" or "Fixes" or "Closes" in your commit messages instead of "Fixing". GitHub isn't smart enough to understand that these are synonymous and doesn't close issues automatically with the latter.

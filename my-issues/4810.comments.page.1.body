@@ -1,0 +1,302 @@
+Comment author: @JasonGross
+
+If the type of the field is a projection from a record, then the performance of [field_simplify_eq] is linear in the *number of record fields of that record*.  This number is completely irrelevant to the intended behavior of [field_simplify_eq].  Fixing this would remove the need for the variant of [field_simplify_eq] mentioned in bug [BZ#4809](https://github.com/coq/coq/issues?q=is%3Aissue%20%22Original%20bug%20ID%3A%20BZ%234809%22).  (The constant coefficient in trunk is around 1.3 s rather than 5 s, which is better, but still entirely unacceptable, given that we need records with 11 fields.)
+
+Axiom proof_admitted : False.
+Tactic Notation "admit" := abstract case proof_admitted.
+Require Coq.nsatz.Nsatz.
+Import Coq.ZArith.BinInt.
+Import Coq.ZArith.Znumtheory.
+
+Definition OpaqueF (modulus : BinInt.Z) : Set.
+exact { z : BinInt.Z | z = z mod modulus }.
+Defined.
+Export Coq.setoid_ring.Field_tac.
+Export Coq.ZArith.ZArith.
+Axiom pow : forall {m}, OpaqueF m -> BinNums.N -> OpaqueF m.
+Axiom Opaqueadd : forall {p}, OpaqueF p -> OpaqueF p -> OpaqueF p.
+Axiom Opaquemul : forall {p}, OpaqueF p -> OpaqueF p -> OpaqueF p.
+Axiom Opaquesub : forall {p}, OpaqueF p -> OpaqueF p -> OpaqueF p.
+Axiom Opaquediv : forall {p}, OpaqueF p -> OpaqueF p -> OpaqueF p.
+Axiom Opaqueopp : forall {p}, OpaqueF p -> OpaqueF p.
+Axiom Opaqueinv : forall {p}, OpaqueF p -> OpaqueF p.
+Axiom OpaqueZToField : forall {p}, BinInt.Z -> OpaqueF p.
+
+Axiom OpaqueFieldTheory : forall p, @ field_theory (OpaqueF p) (OpaqueZToField 0%Z) (OpaqueZToField 1%Z) Opaqueadd Opaquemul Opaquesub\
+ Opaqueopp Opaquediv Opaqueinv eq.
+
+Module Type params.
+  Parameter TwistedEdwardsParams : Set.
+  Parameter q : forall {_ : TwistedEdwardsParams}, BinInt.Z.
+End params.
+Module gen (Import P : params).
+  Existing Class TwistedEdwardsParams.
+
+  Context {prm:TwistedEdwardsParams}.
+
+  Add Field Ffield_notConstant : (OpaqueFieldTheory q).
+
+  Notation qq := (@ q prm).
+
+  Infix "*" := (@ Opaquemul qq).
+  Infix "+" := (@ Opaqueadd qq).
+  Infix "-" := (@ Opaquesub qq).
+  Infix "/" := (@ Opaquediv qq).
+  Notation "1" := (@ OpaqueZToField qq 1%Z).
+  Infix "^" := (@ pow qq).
+
+  Axiom d : OpaqueF qq.
+  Axiom a : OpaqueF qq.
+
+  Definition GT := forall xA yA : OpaqueF qq,
+   a * xA ^ 2%N + yA ^ 2%N = 1 + d * xA ^ 2%N * yA ^ 2%N ->
+   forall xB yB : OpaqueF qq,
+   a * xB ^ 2%N + yB ^ 2%N = 1 + d * xB ^ 2%N * yB ^ 2%N ->
+   forall xC yC : OpaqueF qq,
+   a * xC ^ 2%N + yC ^ 2%N = 1 + d * xC ^ 2%N * yC ^ 2%N ->
+   (xA * ((yB * yC - a * xB * xC) / (1 - d * xB * xC * yB * yC)) + yA * ((xB * yC + yB * xC) / (1 + d * xB * xC * yB * yC))) /
+   (1 + d * xA * ((xB * yC + yB * xC) / (1 + d * xB * xC * yB * yC)) * yA * ((yB * yC - a * xB * xC) / (1 - d * xB * xC * yB * yC))) \
+=
+   ((xA * yB + yA * xB) / (1 + d * xA * xB * yA * yB) * yC + (yA * yB - a * xA * xB) / (1 - d * xA * xB * yA * yB) * xC) /
+   (1 + d * ((xA * yB + yA * xB) / (1 + d * xA * xB * yA * yB)) * xC * ((yA * yB - a * xA * xB) / (1 - d * xA * xB * yA * yB)) * yC).
+
+  Ltac t0 := unfold GT; intros.
+End gen.
+
+Record TwistedEdwardsParams0 := { q0 : BinInt.Z }.
+Module P0 <: params. Definition TwistedEdwardsParams := TwistedEdwardsParams0. Definition q := @ q0. End P0.
+Module Import Show0 := gen P0.
+Goal GT. t0. Time field_simplify_eq. (* Finished transaction in 0. secs (0.324u,0.004s) *) Admitted.
+
+Record TwistedEdwardsParams1 := { q1 : BinInt.Z ; a1 : OpaqueF q1 }.
+Module P1 <: params. Definition TwistedEdwardsParams := TwistedEdwardsParams1. Definition q := @ q1. End P1.
+Module Import Show1 := gen P1.
+Goal GT. t0. Time field_simplify_eq. (* Finished transaction in 5. secs (4.76u,0.028s) *) Admitted.
+
+Record TwistedEdwardsParams2 := { q2 : BinInt.Z ; a2 : OpaqueF q2 ; b2 : OpaqueF q2 }.
+Module P2 <: params. Definition TwistedEdwardsParams := TwistedEdwardsParams2. Definition q := @ q2. End P2.
+Module Import Show2 := gen P2.
+Goal GT. t0. Time field_simplify_eq. (* Finished transaction in 11. secs (10.12u,0.096s) *) Admitted.
+
+
+Comment author: @ppedrot
+
+It looks like the linear cost comes from the protect_tac function in Newring,  but I do not really understand what is going on. Some fancy interaction is happening between the fields of the record and the type of elements, both being OpaqueF. When turning OpaqueF to a Qed-definition, the function performs in constant time.
+
+Matthieu rewrote it recently (and thus had to get the semantics), he may know better what to do.
+
+
+Comment author: @ppedrot
+
+FYI, setting primitive projections also restore linear time computation...
+
+
+Comment author: @mattam82
+
+It's hard to see why, because the type and all ring operations provided should be protected during computations... but this must not always be the case if the Qed'ed version is instantaneous or primitive projections make computation faster. Apparently my patch is not at fault. Maybe Bruno has an idea, cc-ing.
+
+
+Comment author: @mattam82
+
+I have doubts about the protected arguments of PEeval and FEeval and PCond (defined in newring.ml) which should rather be:
+
+    pol_cst "PEeval", (function -1|8|10|13->Eval|12->Rec|_->Prot);
+    (* FEeval: evaluate morphism, protect field
+       operations and make recursive call on the var map *)
+    my_reference "FEeval", (function -1|10|15->Eval|14->Rec|_->Prot)]);;
+     my_reference "PCond", (function -1|9|11|14->Eval|13->Rec|_->Prot)]);;
+
+But that doesn't seem to make a difference.
+
+
+Comment author: @mattam82
+
+It could just be a conversion test using the "wrong" strategy and unfolding OpaqueF when it's not Qed.d or being much faster converting P2.q Show2.prm with itself with primitive projections...
+
+
+Comment author: @ppedrot
+
+Created attachment 753
+Dump of the implicit argument
+
+> Attached file: [dump.tar.gz](https://coq.inria.fr/bugfiles/attachment.cgi?id=753) (application/gzip, 207978 bytes)
+> Description:   Dump of the implicit argument
+
+
+Comment author: @ppedrot
+
+I've just discovered that the implicit argument of ZToField (a Z) is really HUGE.
+
+When printed normally, this is:
+
+let (q, a, d, _, _, _, _, _) := Show7.prm in q : Z
+
+When dumped in debug mode, well, just have a look at the attached archive...
+
+Matthieu, do you know how such a huge term can be constructed with historical projections?
+
+
+Comment author: @ppedrot
+
+The problem ultimately comes from the protect_fv tactic that turns out not to protect the branches of a pattern-matching. Any reduction expert out there?
+
+
+Comment author: @ppedrot
+
+Here is a reduced test case generating a huge goal, even though it does not appear without debug printing (i.e. it remains small even with the print all flag, as the internal pattern matching functions are never displayed to the user ever).
+
+Require Import ZArith.
+
+Definition F (modulus : BinInt.Z) : Set := { z : BinInt.Z | z = z + z }%Z.
+
+Axiom add : forall {p}, F p -> F p -> F p.
+Axiom mul : forall {p}, F p -> F p -> F p.
+Axiom sub : forall {p}, F p -> F p -> F p.
+Axiom opp : forall {p}, F p -> F p.
+Axiom ZToField : forall {p}, BinInt.Z -> F p.
+
+Record TwistedEdwardsParams := { q : BinInt.Z ; a1 : F q }.
+
+Axiom prm : TwistedEdwardsParams.
+
+Notation "1" := (@ ZToField (q prm) 1%Z).
+
+Goal
+ 1 = Ring_polynom.Pphi_dev (ZToField 0) 1 add mul sub opp 0%Z 1%Z Zeq_bool
+   (gen_phiZ (ZToField 0) 1 add mul opp) get_signZ nil (Ring_polynom.Pc 2%Z).
+Proof.
+protect_fv "ring".
+
+
+Comment author: @ppedrot
+
+Gotcha. The problem is that the computing function of ring/field is marked fully reducible by protect_fv. That is, in
+
+Ring_polynom.Pphi_dev (ZToField 0) 1 add mul sub opp 0%Z 1%Z Zeq_bool
+   (gen_phiZ (ZToField 0) 1 add mul opp) get_signZ nil (Ring_polynom.Pc 2%Z).
+
+the "gen_phiZ (ZToField 0) 1 add mul opp" term is fully normalized by the invokation of protect_fv. This is where things start to go awry, as the implicit argument "q prm" of "ZToField 0" is thus fully normalized as well. I don't really know why the internal representation of patterns is done that way, but it leads to the computation of a huge term. This obviously does not appear with primitive projections as there is no such pattern-matching.
+
+I think we can fix this by changing the implementation of Newring to recognize constants that are computing functions and marking the corresponding field of Pphi_dev to be Rec. But that's not easy...
+
+
+Comment author: @herbelin
+
+> I don't really know why the internal representation of patterns is done that
+> way, but it leads to the computation of a huge term. This obviously does not
+> appear with primitive projections as there is no such pattern-matching.
+
+If I understand your point clearly, you are taking about the internal types of the pattern variables in "match", as was discussed in a couple of bugs with simpl or maybe rewrite in those types.
+
+The notion of "pattern" in match was not in the early presentation of CoC and CIC. Reasoning in terms of pattern arrived progressively with Cristina's "Cases" ML-style pattern-matching. It took its current form, where the internal types are invisible in the concrete syntax only in 8.0.
+
+If ever relevant to the current thread, there are some discussions around to remove these internal types, keeping only the names of variables, and to canonically reconstruct the types on demand.
+
+
+Comment author: @ppedrot
+
+(In reply to Hugo Herbelin from comment [BZ#11](https://github.com/coq/coq/issues?q=is%3Aissue%20%22Original%20bug%20ID%3A%20BZ%2311%22))
+> If I understand your point clearly, you are taking about the internal types
+> of the pattern variables in "match", as was discussed in a couple of bugs
+> with simpl or maybe rewrite in those types.
+
+Indeed. Actually, I'm wondering whether we can even derive some inconsistency from this. There is a discrepancy between the kernel lazy reduction and vm / native_compute in so far as the former normalizes the types of the patterns while the latter do not. Maxime, any idea?
+
+
+Comment author: @herbelin
+
+I suspect that Maxime would say that terms are up to reduction and that no inconsistency can be derived from choosing a different representative in a class of equivalent types. The vm_compute and native_compute reductions are to me reasonable here, lazy is not. By stopping reducing in lazy, the only risks I see is in falling in one of these cases where a syntactic subterm matching (e.g. rewrite) or subterm selection (e.g. pattern) stops to work. But, anyway, I'm more and more convinced that the clean approach is eventually to have these types canonically reconstructed from the parameters of the term to match, even if this would probably introduce some (hopefully) rare incompatibilities (e.g. less occurrences to count, or a variable getting a different name from named_hd).
+
+By the way, another discrepancy between vm, native and the other machines is that the formers eta-expand the constructors when they are not fully applied while the latters don't. Now that eta is supported this is not a big deal, but it is another example where the normal forms produced are not syntactically the same.
+
+Eval vm_compute in S.
+     = fun x : nat => S x
+     : nat -> nat
+
+
+Comment author: @maximedenes
+
+(In reply to Hugo Herbelin from comment [BZ#13](https://github.com/coq/coq/issues?q=is%3Aissue%20%22Original%20bug%20ID%3A%20BZ%2313%22))
+> I suspect that Maxime would say that terms are up to reduction and that no
+> inconsistency can be derived from choosing a different representative in a
+> class of equivalent types.
+
+Indeed, I don't think anything will break here. I wouldn't say the same of PMP's [BZ#5042](https://github.com/coq/coq/issues?q=is%3Aissue%20%22Original%20bug%20ID%3A%20BZ%235042%22) :) (I'm trying to fix it)
+
+> The vm_compute and native_compute reductions are
+> to me reasonable here, lazy is not. By stopping reducing in lazy, the only
+> risks I see is in falling in one of these cases where a syntactic subterm
+> matching (e.g. rewrite) or subterm selection (e.g. pattern) stops to work.
+> But, anyway, I'm more and more convinced that the clean approach is
+> eventually to have these types canonically reconstructed from the parameters
+> of the term to match, even if this would probably introduce some (hopefully)
+> rare incompatibilities (e.g. less occurrences to count, or a variable
+> getting a different name from named_hd).
+
+That may be a better solution than the current solution indeed. I think the incompatibilities (do to counting occurrences) will be fairly common, but maybe we have to do it anyway.
+
+> 
+> By the way, another discrepancy between vm, native and the other machines is
+> that the formers eta-expand the constructors when they are not fully applied
+> while the latters don't. Now that eta is supported this is not a big deal,
+> but it is another example where the normal forms produced are not
+> syntactically the same.
+> 
+> Eval vm_compute in S.
+>      = fun x : nat => S x
+>      : nat -> nat
+
+Indeed. I believe there was an ad-hoc treatment of constructors before we had eta, but it is easier to do as it is now, since constructors are always represented fully applied in OCaml.
+
+
+Comment author: @mattam82
+
+Changing the structure of match to not include the types of the patterns could be a costly operation implementation-wise and performance-wise I think, as you need type information to reconstruct the branches annotations, and for example something as basic as fold_constr_with_binders would need it. On the other hand, I have no idea how we could "fix" protect_fv to prevent this reduction from happening either...
+
+
+Comment author: @herbelin
+
+(In reply to Matthieu Sozeau from comment [BZ#15](https://github.com/coq/coq/issues?q=is%3Aissue%20%22Original%20bug%20ID%3A%20BZ%2315%22))
+> Changing the structure of match to not include the types of the patterns
+> could be a costly operation implementation-wise and performance-wise I
+> think, as you need type information to reconstruct the branches annotations,
+> and for example something as basic as fold_constr_with_binders would need
+> it.
+
+I fully agree and this is indeed my worry. The possible sources of slowdown are in reducing the type of the term to match to whd normal form (probably instantaneous in general but arbitrary long in theory), then in substituting the parameters in the type of the pattern variables (always in linear time). Maybe this substitution can be done lazily, or maybe, by just prepending the types with an appropriate bar of let-ins (or maybe it is a bad idea)?
+
+On the other side, we would gain on all operations which go through the hidden types since there would not be any such types to traverse any more.
+
+So, in a function in the style of fold_constr_with_binders, we would loose time in computing the env but gain time in not going through the types of binder. I'm unable to tell what the exact outcome would be.
+
+
+Comment author: @ppedrot
+
+An alternative solution that may actually be more efficient in general would be to restrict the kernel reduction so that it never reduces the types of patterns. Does it sound reasonable?
+
+
+Comment author: @herbelin
+
+(In reply to Pierre-Marie Pédrot from comment [BZ#17](https://github.com/coq/coq/issues?q=is%3Aissue%20%22Original%20bug%20ID%3A%20BZ%2317%22))
+> An alternative solution that may actually be more efficient in general would
+> be to restrict the kernel reduction so that it never reduces the types of
+> patterns. Does it sound reasonable?
+
+That could be tried. Incidentally, Benjamin Grégoire and Bruno Barras had a paper on the redundancy of conversion in types of binders, "On the Role of Type Decorations in the Calculus of Inductive Constructions" (but I don't remember the details).
+
+On the binders of "match" issue, another lighter approach than the one I proposed would be to accept Cast in patterns (as Daniel started to do). Then, "Set Printing All", or maybe an aggressive form of "Set Printing All", could print the types as casts. This would certainly make reading of terms painful but this would be a light way to make the specification language and the implementation match (refining the specification language into the implemented one rather than tranferring the level of abstraction of the specification language to the implemented one).
+
+
+Comment author: @silene
+
+Perhaps I am missing something, but I don't think it would work to not perform reduction in the pattern types. It is not a matter of consistency but more a matter of usability. For instance, the user would no longer be able to generalize some subterms away, since they would not have been reduced and thus would not have the form expected by the user.
+
+For instance, if you have
+
+  fun x : T (3 + 5) => match x with C (y (*: U (3 + 5)*)) => y end
+
+and you first reduce (3 + 5) and then generalize 8, you need the implicit (3 + 5) in the type of y to also have been reduced, otherwise you obtain the following ill-typed subterm:
+
+  fun x : T n => match x with C y (*: U (3 + 5)*) => y end.
+
+

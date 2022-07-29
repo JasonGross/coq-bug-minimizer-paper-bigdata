@@ -1,0 +1,5 @@
+That would be nice; however I'm not very fond of the current mess the timing output format is; I'd rather first allow for data to be output in a reasonable, machine-friendly format, then use standard tools  to process perf data.
+
+AFAICT there is a lot of existing tools that can indeed process this kind of data; we should investigate and use them [like we use browser's heat maps] instead of rolling our own. I'm far from happy with the amount of custom stuff we have in this area.
+Sorry for the tangent, going back to the original topic; the bench should produce a JSON/SEXP file with all the perf data recorded; users should download that and do the post-processing locally.
+@JasonGross would you like to transfer this issue to Coq's repos?

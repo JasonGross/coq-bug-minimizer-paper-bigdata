@@ -1,0 +1,86 @@
+Comment author: @JasonGross
+
+I want a way to say "unfold this constant only when some of its arguments have exposed constructors in the head positions, and *don't do any other unfolding*".  Neither [simpl @ fst] nor [cbn [fst]] nor [cbv [fst]] work; the first two simplify the arguments to [fst], while the third unfolds all instances of [fst].
+
+Example: I want a way to unfold the first [fst] but not the second one and not [twos] in the following, without needing to list occurrence numbers (and preferably without needing to walk the tactic myself).
+
+Fixpoint twos n (T : Set) := match n with
+                             | 0 => T
+                             | S n' => twos n' (T * T)
+                             end.
+
+Goal forall (x : Set * Set) (y : Set), fst (twos 15 nat * y, twos 15 nat)%type = fst x.
+
+
+Comment author: @JasonGross
+
+Created attachment 719
+development where `simpl @ snd` takes over 3 hours in src/Parsers/Refinement/SharpenedJSONDebug.v
+
+Here's a development (src/Parsers/Refinement/SharpenedJSONDebug.v) where I want this.  I have a `simpl @ snd` that is still running after 3 hours, and all I really want to do is change (snd (?x, ?y)) with y in *.
+
+> Attached file: [slow_simpl.zip](https://coq.inria.fr/bugfiles/attachment.cgi?id=719) (application/zip, 415441 bytes)
+> Description:   development where `simpl @snd` takes over 3 hours in src/Parsers/Refinement/SharpenedJSONDebug.v
+
+
+Comment author: @jonleivent
+
+I raised a somewhat related issue in 4916, then answered it myself in a way that perhaps answers this as well:
+
+Fixpoint twos n (T : Set) := match n with
+                             | 0 => T
+                             | S n' => twos n' (T * T)
+                             end.
+
+Definition fst' := Eval cbv delta [fst] in @ fst.
+Arguments fst' : simpl nomatch.
+
+Goal forall (x : Set * Set) (y : Set), fst (twos 15 nat * y, twos 15 nat)%type = fst x.
+cbv [fst].
+Undo.
+change @ fst with @ fst'.
+cbn [fst'].
+
+
+Comment author: @jonleivent
+
+Actually, it looks like in the small example you gave "cbn [fst]" already does what you want.
+
+However, the point is the same - define clones of the functions you want to selectively reduce with cbn/simpl rules like "Arguments fst' : simpl nomatch", and also with whatever transparent/opaque/strategy you want, change into them, reduce them with cbn [clone], then change any remaining ones back.
+
+Admittedly, it is cumbersome.  There's no way for a tactic to discover a constant it wants to selectively reduce and define such a clone for it within Ltac, because argument decorations and opacity only exist for top-level symbols.
+
+
+Comment author: @JasonGross
+
+So [cbn] is significantly better than [simpl].  Great!  This might be good enough for my purposes, though it's not quite what I actually want.  Here's a thing that [cbn] doesn't handle:
+
+Goal forall (x : Set * Set) (y : Set), fst (twos 15 nat * y, twos 15 nat)%type = fst x.
+  intros.
+  change (twos 15 nat) with (let v := twos 15 nat in match 0 with 0 => v | S _ => (v * v)%type end).
+  cbn [fst].
+
+(Note that it reduces the match and the [let].)
+
+The problem with your change/unfold suggestion is that I need to beta-iota reduce to figure out which ones disappear, and once I beta-reduce, I can't revert the ones under binders.
+
+Here's a hack to do things without cbn:
+
+Definition ufst {A B} x := Eval compute in @ fst A B x.
+Definition nfst := @ fst.
+
+Ltac unfold_fst :=
+  repeat (change @ fst with @ ufst at 1;
+          match goal with
+          | [ |- appcontext[@ ufst _ _ (_, _)] ]
+            => cbv beta iota delta [ufst]
+          | _ => change @ ufst with @ nfst
+          end);
+  change @ nfst with @ fst.
+
+
+Comment author: @jonleivent
+
+Well, I would probably be as grateful as you if someone developed something like a reduce_strat tactic with similar precise control as rewrite_strat, and somehow make it efficient.  I've written several different attempts at precision-reducers using various hacks, include exactly one step beta and zeta reducers (nice for those going-under-binders tactics that end up with a single beta or zeta addition to a term that one otherwise wishes not to disturb) - if those would help you I can send them along.  Unlike most of my hacks, they got an actual developer's seal of approval (Arnaud, IIRC).
+
+

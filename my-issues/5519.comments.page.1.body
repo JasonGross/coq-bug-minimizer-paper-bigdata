@@ -1,0 +1,14 @@
+Comment author: @JasonGross
+
+Passing -w '-deprecated-appcontext -notation-overridden' no longer works; I get:
+Warning: Unknown warning name: deprecated-appcontext
+[unknown-warning,toplevel]
+
+
+Comment author: @JasonGross
+
+Oops, I missed 5392.
+
+*** This bug has been marked as a duplicate of bug [BZ#5392](https://github.com/coq/coq/issues?q=is%3Aissue%20%22Original%20bug%20ID%3A%20BZ%235392%22) ***
+
+

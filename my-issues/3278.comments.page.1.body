@@ -1,0 +1,30 @@
+Comment author: @JasonGross
+
+Check let x' := _ in
+      $(exact x')$. (* success *)
+
+Notation foo x := (let x' := x in $(exact x')$).
+
+Check foo _. (* Error:
+Cannot infer an internal placeholder of type "Type" in environment:
+
+x' := ?42 : ?41
+. *)
+
+
+Comment author: @JasonGross
+
+Even worse, it breaks underscores in notations in unrelated places in the presence of tactics in those notations:
+
+Notation foo x := (let x' := x in let y := ($(exact I)$ : True) in I).
+Notation bar x := (let x' := x in let y := (I : True) in I).
+
+Check let x' := _ in $(exact I)$. (* let x' := ?5 in I *)
+Check bar _. (* let x' := ?9 in let y := I in I *)
+Fail Check foo _. (* Error:
+Cannot infer an internal placeholder of type "Type" in environment:
+
+x' := ?42 : ?41
+. *)
+
+

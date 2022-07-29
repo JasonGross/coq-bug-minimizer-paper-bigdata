@@ -1,0 +1,37 @@
+Comment author: @JasonGross
+
+Using coq trunk 8287733d5df1bd673a38e92f23c47e95d1bb7a91
+
+$ cat _CoqProject
+-R . Foo
+foo.v
+bar.v
+$ cat foo.v
+Axiom A : Type.
+$ cat bar.v
+Require Import foo.
+$ rm -f *.vo && $ /path/to/coq-trunk/bin/coq_makefile -f _CoqProject COQBIN = "/path/to/coq-trunk/bin/" | make -f - COQBIN="/path/to/coq-trunk/bin/"
+...
+$ /path/to/coq-trunk/bin/coqide.exe bar.v &
+
+<evaluate the first line>
+
+Error: The file D:\Downloads\coq\foo\foo.vo contains library Foo.foo
+and not library foo
+
+
+Comment author: @JasonGross
+
+I have discovered the "Project File Options are ignored" setting in customizations.  Perhaps we should make the default be something other than ignored, and/or mention this as a possible reason for library file mismatch if the project file exists but is ignored.
+
+
+Comment author: @ppedrot
+
+So that's not a bug then, at most a request for a change in the default configuration, right?
+
+
+Comment author: @pirbo
+
+The default behavior was Project File Options are ignored because I did not implement anything to say to the user that a project file has been found. I would have like that coqide informs somehow "/users/users/toto/_CoqProjet has been loaded" in order to not do thing in the back of the users ...
+
+

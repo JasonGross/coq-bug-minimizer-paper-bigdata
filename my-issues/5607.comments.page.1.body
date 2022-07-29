@@ -1,0 +1,30 @@
+Comment author: @JasonGross
+
+*No description provided.*
+
+
+Comment author: @Zimmi48
+
+This should be easy to fix I guess. A few Require Export need to go in https://github.com/coq/coq/blob/trunk/theories/Compat/Coq86.v
+
+
+Comment author: @ejgallego
+
+Also note that 8.6.1 will provide an 8.7-compatible module layout.
+
+
+Comment author: @psteckler
+
+Is there a description of the differences?
+
+
+Comment author: @Zimmi48
+
+Jason already opened a PR for this: https://github.com/coq/coq/pull/800
+
+
+Comment author: @JasonGross
+
+Fixed by [BZ#826](https://github.com/coq/coq/issues?q=is%3Aissue%20%22Original%20bug%20ID%3A%20BZ%23826%22)
+
+

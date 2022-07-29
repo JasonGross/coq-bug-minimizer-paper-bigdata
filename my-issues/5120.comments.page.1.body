@@ -1,0 +1,339 @@
+Comment author: @JasonGross
+
+Evaluate this to the end in PG, and then spam C-c in the middle of it
+```coq
+Require Coq.ZArith.BinInt Coq.Lists.List.
+Definition foo0 := Eval vm_compute in Coq.ZArith.BinInt.Z.div_eucl. Print foo0.
+Definition foo1 := Eval vm_compute in Coq.ZArith.BinInt.Z.div_eucl. Print foo1.
+Definition foo2 := Eval vm_compute in Coq.ZArith.BinInt.Z.div_eucl. Print foo2.
+Definition foo3 := Eval vm_compute in Coq.ZArith.BinInt.Z.div_eucl. Print foo3.
+Definition foo4 := Eval vm_compute in Coq.ZArith.BinInt.Z.div_eucl. Print foo4.
+Definition foo5 := Eval vm_compute in Coq.ZArith.BinInt.Z.div_eucl. Print foo5.
+Definition foo6 := Eval vm_compute in Coq.ZArith.BinInt.Z.div_eucl. Print foo6.
+Definition foo7 := Eval vm_compute in Coq.ZArith.BinInt.Z.div_eucl. Print foo7.
+Definition foo8 := Eval vm_compute in Coq.ZArith.BinInt.Z.div_eucl. Print foo8.
+Definition foo9 := Eval vm_compute in Coq.ZArith.BinInt.Z.div_eucl. Print foo9.
+Definition foo10 := Eval vm_compute in Coq.ZArith.BinInt.Z.div_eucl. Print foo10.
+Definition foo11 := Eval vm_compute in Coq.ZArith.BinInt.Z.div_eucl. Print foo11.
+Definition foo12 := Eval vm_compute in Coq.ZArith.BinInt.Z.div_eucl. Print foo12.
+Definition foo13 := Eval vm_compute in Coq.ZArith.BinInt.Z.div_eucl. Print foo13.
+Definition foo14 := Eval vm_compute in Coq.ZArith.BinInt.Z.div_eucl. Print foo14.
+Definition foo15 := Eval vm_compute in Coq.ZArith.BinInt.Z.div_eucl. Print foo15.
+Definition foo16 := Eval vm_compute in Coq.ZArith.BinInt.Z.div_eucl. Print foo16.
+Definition foo17 := Eval vm_compute in Coq.ZArith.BinInt.Z.div_eucl. Print foo17.
+Definition foo18 := Eval vm_compute in Coq.ZArith.BinInt.Z.div_eucl. Print foo18.
+Definition foo19 := Eval vm_compute in Coq.ZArith.BinInt.Z.div_eucl. Print foo19.
+Definition foo20 := Eval vm_compute in Coq.ZArith.BinInt.Z.div_eucl. Print foo20.
+Definition foo21 := Eval vm_compute in Coq.ZArith.BinInt.Z.div_eucl. Print foo21.
+Definition foo22 := Eval vm_compute in Coq.ZArith.BinInt.Z.div_eucl. Print foo22.
+Definition foo23 := Eval vm_compute in Coq.ZArith.BinInt.Z.div_eucl. Print foo23.
+Definition foo24 := Eval vm_compute in Coq.ZArith.BinInt.Z.div_eucl. Print foo24.
+Definition foo25 := Eval vm_compute in Coq.ZArith.BinInt.Z.div_eucl. Print foo25.
+Definition foo26 := Eval vm_compute in Coq.ZArith.BinInt.Z.div_eucl. Print foo26.
+Definition foo27 := Eval vm_compute in Coq.ZArith.BinInt.Z.div_eucl. Print foo27.
+Definition foo28 := Eval vm_compute in Coq.ZArith.BinInt.Z.div_eucl. Print foo28.
+Definition foo29 := Eval vm_compute in Coq.ZArith.BinInt.Z.div_eucl. Print foo29.
+Definition foo30 := Eval vm_compute in Coq.ZArith.BinInt.Z.div_eucl. Print foo30.
+Definition foo31 := Eval vm_compute in Coq.ZArith.BinInt.Z.div_eucl. Print foo31.
+Definition foo32 := Eval vm_compute in Coq.ZArith.BinInt.Z.div_eucl. Print foo32.
+Definition foo33 := Eval vm_compute in Coq.ZArith.BinInt.Z.div_eucl. Print foo33.
+Definition foo34 := Eval vm_compute in Coq.ZArith.BinInt.Z.div_eucl. Print foo34.
+Definition foo35 := Eval vm_compute in Coq.ZArith.BinInt.Z.div_eucl. Print foo35.
+Definition foo36 := Eval vm_compute in Coq.ZArith.BinInt.Z.div_eucl. Print foo36.
+Definition foo37 := Eval vm_compute in Coq.ZArith.BinInt.Z.div_eucl. Print foo37.
+Definition foo38 := Eval vm_compute in Coq.ZArith.BinInt.Z.div_eucl. Print foo38.
+Definition foo39 := Eval vm_compute in Coq.ZArith.BinInt.Z.div_eucl. Print foo39.
+Definition foo40 := Eval vm_compute in Coq.ZArith.BinInt.Z.div_eucl. Print foo40.
+Definition foo41 := Eval vm_compute in Coq.ZArith.BinInt.Z.div_eucl. Print foo41.
+Definition foo42 := Eval vm_compute in Coq.ZArith.BinInt.Z.div_eucl. Print foo42.
+Definition foo43 := Eval vm_compute in Coq.ZArith.BinInt.Z.div_eucl. Print foo43.
+Definition foo44 := Eval vm_compute in Coq.ZArith.BinInt.Z.div_eucl. Print foo44.
+Definition foo45 := Eval vm_compute in Coq.ZArith.BinInt.Z.div_eucl. Print foo45.
+Definition foo46 := Eval vm_compute in Coq.ZArith.BinInt.Z.div_eucl. Print foo46.
+Definition foo47 := Eval vm_compute in Coq.ZArith.BinInt.Z.div_eucl. Print foo47.
+Definition foo48 := Eval vm_compute in Coq.ZArith.BinInt.Z.div_eucl. Print foo48.
+Definition foo49 := Eval vm_compute in Coq.ZArith.BinInt.Z.div_eucl. Print foo49.
+Definition foo50 := Eval vm_compute in Coq.ZArith.BinInt.Z.div_eucl. Print foo50.
+```
+The *coq-log* ends with
+```coq
+                           for Ffix0) x4 BinNums.xH)
+                   | BinNums.Zneg x4 =>
+                       (fix Ffix0 (x5 x6 : BinNums.positive) {struct x6} : 
+BinNums.Z :=
+                          match x5 with
+                          | BinNums.xI x7 =>
+                              match x6 with
+                              | BinNums.xI x8 =>
+                                  match Ffix0 x7 x8 with
+                                  | BinNums.Z0 => BinNums.Z0
+                                  | BinNums.Zpos x9 => BinNums.Zpos (BinNums.xO 
+x9)
+                                  | BinNums.Zneg x9 => BinNums.Zneg (BinNums.xO 
+x9)
+                                  end
+                              | BinNums.xO x8 =>
+                                  match Ffix0 x7 x8 with
+                                  | BinNums.Z0 => BinNums.Zpos 1
+                         �Error: Anomaly: main loop exited with exception: 
+Sys.Break
+ Please report at http://coq.inria.fr/bugs/.�
+
+<prompt>Coq < 25 || 0 < </prompt>
+```
+Comment author: @JasonGross
+
+Note that in the xml protocol, this can lead to mal-formed xml, because you get 
+an anomaly message in the middle of an ill-balanced xml printout
+
+
+Comment author: @silene
+
+I guess no one ever thought a user would be C-c-ing right in the middle of the pretty-printing of a constr.
+
+
+Comment author: @ejgallego
+
+Indeed Coq is fragile wrt signal protection, however this is a delicate topic and IMVHO the strategy should be carefully designed, not patched around.
+
+For a start, I could identify two critical paths where signals should be protected:
+
+- message delivery (as in this case).
+- stm commit + notification: the rationale for this is that Coq should ensure atomicity on STM commit. That is to say, it should never be the case that a STM transaction has been commited but the commit message not delivered to the user, as this will make user-side interruption recovery impossible.
+
+
+Comment author: @ejgallego
+
+Hi Jason, does this patch help https://github.com/ejgallego/coq/tree/protect_pp_p1 ?
+
+
+Comment author: @ejgallego
+
+I could also try to improve the problem in the XML protocol, how can I reproduce there?
+
+[We have too many "printing" codepaths, work in the pp_new branch unifies all of them so blocking could be improved in 8.7 I hope]
+
+
+Comment author: @herbelin
+
+Shouldn't the protection be put at a much higher level? By working at a too low level, there would still be code executed interleaved with the gen_logger which would not be protected, right?
+
+
+Comment author: @ejgallego
+
+Note however than I can't reproduce your bug, even without the patch I never get the Anomaly.
+
+
+Comment author: @ejgallego
+
+(In reply to Hugo Herbelin from comment [BZ#6](https://github.com/coq/coq/issues?q=is%3Aissue%20%22Original%20bug%20ID%3A%20BZ%236%22))
+> Shouldn't the protection be put at a much higher level? By working at a too
+> low level, there would still be code executed interleaved with the
+> gen_logger which would not be protected, right?
+
+I don't think so.
+
+IMO blocking should happen for the shortest time possible, and indeed, we just make flushing to the console atomic so it will always print a full message.
+
+I don't see what code could be interleaved with gen_logger, do you have an example?
+
+
+Comment author: @herbelin
+
+If my understanding is right, Sys.Break stops to be caught in the last "with" branch of Coqloop.do_vernac. So, all code in there is currently unprotected. (And moreover, this code does not apparently call Feedback.)
+
+
+Comment author: @ejgallego
+
+ (In reply to Hugo Herbelin from comment [BZ#9](https://github.com/coq/coq/issues?q=is%3Aissue%20%22Original%20bug%20ID%3A%20BZ%239%22))
+> If my understanding is right, Sys.Break stops to be caught in the last
+> "with" branch of Coqloop.do_vernac.
+
+IMO that should really happen in the STM to perform transaction cleanup (dunno if it does it now).
+
+> So, all code in there is currently
+> unprotected. (And moreover, this code does not apparently call Feedback.)
+
+What do you mean by "unprotected".
+
+The code indeed will call Feedback.gen_logger if any printing is done. 
+
+If we disregard for a moment transactional semantics (a orthogonal issue to this bug) we only want to guard the call console code.
+
+Note that in XML case the codepath is totally different, there we'd like to guard the whole write to the socket / feedback.
+
+
+Comment author: @herbelin
+
+I actually don't know if Jason's report refers to asynchronous PG or not. I assumed the latter, and, based on the error message, this would come from Coqloop.do_vernac after succeeding in sending two consecutive Ctrl-C quickly enough so that the Print is interrupted, going to the Coqloop.do_vernac "with", being again interrupted and going to the Coqloop.loop "with". This is why I said the protection should be at a higher level (i.e. in Coqloop). For the stm path, I don't know where it should be, but I guess it should also be at a high level so that the whole path is protected (where by protected I mean protected by a "try ... with Sys.Break -> ..." or a deactivation of the Ctrl-C).
+
+Note: I don't know well how Sys.Break works in OCaml, if a second Ctrl-C arrives while the Sys.Break is matched by the surrounding "try ... with Sys.Break -> ...", can a second Sys.Break arrive again? I guess so, otherwise the bug would not happen. But then, this would mean that there is a gray zone in the internal OCaml path to protect, no?
+
+Now, what to do? If my analysis is correct, and that it is moreover hardly reproducible, maybe we should simply take it lightly and let it like that (or replace the anomaly by a congratulation for having succeeded to send successive Ctrl-C quickly enough!).
+
+As for the stm, how are the writes to sockets working? Are there under control of OCaml (in the sense of not escaping the protection of a surrounding "try ... with Sys.Break -> ...")? If not, they should indeed be protected.
+
+Emilio, I hope that what I'm writing is clear and that I understood correctly all your concerns. In any case, there is indeed a lot to do to improve Coq.
+
+
+Comment author: @ejgallego
+
+Hi Hugo,
+
+you are correct, there seem to be two issues here:
+
+ - protecting the print path so that no message is half sent (this is an issue in the XML protocol, not so much here I'd guess).
+ - protecting the exception handler in do_vernac.
+
+AFAIK the status of exception handler in ocaml wrt signals is a bit strange in the sense that signals are not processed synchronously.
+
+My guess is that we should ignore SIGINT in do_vernac as you propose and mask the signal in the first case to avoid incomplete input/output (we may need to use the unix module for this).
+
+
+Comment author: @ejgallego
+
+I think an Ocaml expert should comment on signal behavior, but here are some further thoughts:
+
+- coqloop.ml:loop should run with sigint disabled, otherwise you always have the window between do_vernac and flush where sigint could arrive.
+- thus, do_vernac should enable sigint as it is prepared to handle, and disable it on exit or on the exception handler.
+
+I think that should work but I am not sure.
+
+Here's a patch implementing that proposal:
+
+https://github.com/ejgallego/coq/tree/protect_coqloop_p1
+
+The general loop code could maybe be tweaked for the signal handling to be cleaner, but I didn't want to mess too much with the loop at this stage.
+
+
+Comment author: @herbelin
+
+Your patch looks good to me, as far as I can say.
+
+"Sys.set_signal Sys.sigint Sys.Signal_ignore" can just be "Sys.catch_break false" I think.
+
+
+Comment author: @JasonGross
+
+The anomaly is visible in synchronous PG.  Async PG has slightly different behavior, see https://github.com/psteckler/ProofGeneral/issues/48
+
+
+Comment author: @JasonGross
+
+If this patch means that printing is no longer interruptible, then I don't like it.  Printing a term can take arbitrarily long, and if I have a long file, I'm going to be very sad if I have to force-kill Coq and restart it because I ended up with a goal that took an hour to print.  The anomaly is better, in this case.
+
+
+Comment author: @ejgallego
+
+(In reply to Hugo Herbelin from comment [BZ#14](https://github.com/coq/coq/issues?q=is%3Aissue%20%22Original%20bug%20ID%3A%20BZ%2314%22))
+> Your patch looks good to me, as far as I can say.
+> 
+> "Sys.set_signal Sys.sigint Sys.Signal_ignore" can just be "Sys.catch_break
+> false" I think.
+
+I think this will make Coq abort on SIGINT, based on the code on Ocaml's sys.mlp
+
+
+Comment author: @ejgallego
+
+(In reply to Jason Gross from comment [BZ#16](https://github.com/coq/coq/issues?q=is%3Aissue%20%22Original%20bug%20ID%3A%20BZ%2316%22))
+> If this patch means that printing is no longer interruptible, then I don't
+> like it.  Printing a term can take arbitrarily long, and if I have a long
+> file, I'm going to be very sad if I have to force-kill Coq and restart it
+> because I ended up with a goal that took an hour to print.  The anomaly is
+> better, in this case.
+
+These are two orthogonal issues as Hugo discovered. The second patch still allows for printing to be interrupted. The first one deals with printing.
+
+Would you mind testing the second patch?
+
+Regarding printing, note that what is protected is the actual IO, which takes in general negligible time wrt to the Print command itself.
+
+I don't have stronger views here either way, but for instance in SerAPI SEXP IO will be indeed non-interruptible with SIGINT, I don't want clients to have to deal with possibly malformed answers and re-synchronization. IMO the benefits of a more reliable interruption behavior outdo the downsides of some IO wait.
+
+You could still kill Coq if the IO goes mad, of course (but if you reach this case then you got bigger problems that that given that IO can easily do a few dozen MiB/s)
+
+This could be alleviated in the far future by introducing multiplexing, however I'd like to have a use case first.
+
+
+Comment author: @herbelin
+
+(In reply to Emilio J. Gallego Arias from comment [BZ#17](https://github.com/coq/coq/issues?q=is%3Aissue%20%22Original%20bug%20ID%3A%20BZ%2317%22))
+> (In reply to Hugo Herbelin from comment [BZ#14](https://github.com/coq/coq/issues?q=is%3Aissue%20%22Original%20bug%20ID%3A%20BZ%2314%22))
+> > Your patch looks good to me, as far as I can say.
+> > 
+> > "Sys.set_signal Sys.sigint Sys.Signal_ignore" can just be "Sys.catch_break
+> > false" I think.
+> 
+> I think this will make Coq abort on SIGINT, based on the code on Ocaml's
+> sys.mlp
+
+OK, I see. So, how to proceed? You submit it as a pull request?
+
+
+Comment author: @ejgallego
+
+I suggest we first let Jason test the patch and see if they witnes some improvement.
+
+
+Comment author: @JasonGross
+
+The way that I reliably reproduce it is that I wait until it's just finished 
+evaluating a Definition / just started evaluating a Print, and then I hold down 
+Ctrl+c until Coq stops processing.
+
+Emilio, your https://github.com/ejgallego/coq/tree/protect_coqloop_p1 patch 
+seems to reliably fix the anomaly.  (That is, I get a partial print-out 
+interrupted by the text "User interrupt" rather than an anomaly.)  Thanks!
+
+Your patch in https://github.com/ejgallego/coq/tree/protect_pp_p1 is one I'd 
+rather not see applied.  It makes it impossible to kill Coq from PG while it's 
+busy printing, and impossible to interrupt printing.  For example, try 
+interrupting the [Print foo0] in this:
+```coq
+Require Coq.ZArith.BinInt Coq.Lists.List.
+Definition foo0 := Eval vm_compute in let x := Coq.ZArith.BinInt.Z.div_eucl in 
+(x::x::x::x::x::x::x::x::x::nil)%list.
+Print foo0.
+```
+
+Comment author: @ejgallego
+
+Thanks for the feedback Jason, I'll investigate a bit more. Indeed, the print locking patch behavior is as intended, you need to use C-c C-x to kill Coq in this case. "Perform a full reset". Anyways the print shouldn't take so much so I want to take another look.
+
+(Maybe blocking instead of ignoring the signal will work better)
+
+I also agree on not to applying this patch for emacs as it anyways has to re-synchronize so the patch is not needed.
+
+However, in the case of the XML/SerAPI protocol, some measures have to be taken to protect the control protocol as, contrary to the emacs case, this protocol has no resync system put in place.
+
+This may indeed involve some tradeoff between interrupt flexibility and safety.
+
+
+Comment author: @JasonGross
+
+C- c C-x doesn't work when I've applied your patch; I've often found that killing Coq when C-c C-c fails just makes emacs hang.
+
+
+Comment author: @ejgallego
+
+Thanks for the feedback Jason. I'll do some more experiments and submit a PR next week. Regarding the printing stuff, with the current design we face a tradeoff between robustness and responsiveness.
+
+I'd personally favor robustness in the PG-XML branch, IMHO it should be possible to make C-c C-x to work well for the rare cases of massive IO waiting.
+
+Hopefully in future protocol improvements we can have both.
+
+
+Comment author: @psteckler
+
+What if Coq inserted a special end-of-transmission marker in the XML stream after an interrupt? That would allow long prints to be interrupted, and an IDE would know not to try to parse the result as XML, and possibly recover.
+
+
+Comment author: @ejgallego
+
+IMO this special marker is what we have called sometimes "a resync protocol". It would be fine, but I think it is overkill. In particular the marker doesn't suffice alone, you need also to query Coq for state consistency status.
+
+I would prefer to have separate control/printing channels, and have a simpler interruption protocol where IDEs assume transaction consistency until the interrupt, but of course we have to discuss.
+
+
+Sadly I don't plan to address this in 8.9, hoping to be better for 8.10.

@@ -1,0 +1,32 @@
+Comment author: @JasonGross
+
+This code worked in 8.6, but fails in trunk with -compat 8.6 (or with [Require 
+Import FunInd]):
+
+(* -*- coq-prog-args: ("-compat" "8.6") -*- *)
+
+Function test {T} (v : T) (x : nat) : nat :=
+  match x with
+  | 0 => 0
+  | S x' => test v x'
+  end. (* Error:
+In environment
+test : forall T : Type, T -> nat -> nat
+T : Type
+v : T
+x : nat
+x' : nat
+The term "v" has type "T" while it is expected to have type "Type".
+*)
+
+
+Comment author: @forestjulien
+
+Should by closed by PR [BZ#843](https://github.com/coq/coq/issues?q=is%3Aissue%20%22Original%20bug%20ID%3A%20BZ%23843%22)
+
+
+Comment author: @ejgallego
+
+Fixed by such PR
+
+

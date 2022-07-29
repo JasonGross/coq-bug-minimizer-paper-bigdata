@@ -1,0 +1,5 @@
+I think it's not related to #15964, which is only 4 lines and doesn't use any new calls from GTK. Take a look at it.
+Ah, you're right, I was too quick to assume that because the most recently merged PR was about CoqIDE and the problem was not present the previous day, it was about this PR.  But the line of code was added 9 months ago...
+This is more likely a consequence of #15399, which requires lablgtk 3.1.2, while Ubuntu Impish only provides 3.1.1.
+This should be fixed by #15967, that is, `configure` will then fail.
+ #15967 merged

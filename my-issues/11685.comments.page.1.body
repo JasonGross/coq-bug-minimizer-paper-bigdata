@@ -1,0 +1,15 @@
+The syntax for abbreviations is supposed to be in the [abbreviations](https://coq.inria.fr/refman/user-extensions/syntax-extensions.html#abbreviations) section.
+
+But indeed, that's confusing. Maybe @jfehrle and @zimmi48 would share your concern.
+Note also that the syntax in that section is wrong:
+![Command Local? Notation ident ident+ := term (only parsing)?.](https://user-images.githubusercontent.com/396076/76648326-e1401700-6534-11ea-942d-afe96c195844.png)
+The first `+` in this syntax (on the second `ident`) implies that all abbreviations must take at least one argument, while in fact abbreviations can take zero arguments.
+I only saw this today.
+
+We're correcting the syntax across many PRs, mostly on a per-chapter basis.  We haven't updated the Syntax Extensions chapter yet, but we will get to it soon.  See #11718 (a work in progress, review has not begun).  Nor has the User Extensions chapter been updated.
+
+> The syntax for abbreviations is supposed to be in the abbreviations section.
+
+We may be able to move this in #11718.  And if not, may be best to wait on moving it until  #11718 is merged.
+
+@jfehrle: OK, thanks.

@@ -1,0 +1,19 @@
+GitHub API doesn't support uploading attachments, so unless some people are willing to do this by hand, I guess this issue is going to be a "won't fix".
+
+Note that currently the bugs link to attachments on Bugzilla but the plan is to preserve the attachments beyond the Bugzilla take-down (as static assets).
+Maybe though, I should have documented this in the blog post I published about the migration.
+If we do want to migrate the attachments, rather than leaving them as static content elsewhere, if someone attaches to this issue a zipfile which contains, for each bug with attachments, a zipfile named `<github issue number>.zip` which contains the attachments, I can write an autohotkey script that uploads them to the correct issues.  If there's a plan to preserve them elsewhere as static assets, though, is this desired?
+I'm going to leave it to @letouzey to decide what he thinks of this issue. Should we follow the initial plan of letting https://coq.inria.fr/bugfiles/ (where attachments live) survive the take down of https://coq.inria.fr/bugs/ as static assets or should we try the approach suggested by @JasonGross of uploading attachments on GitHub using a [autohotkey script](https://autohotkey.com/)?
+Here come our 776 attachment numbers with their various metadata :
+[attachments.txt](https://github.com/coq/coq/files/1458469/attachments.txt). It is actually a csv file with `|` as separator, and a header row. Beware that the `bug_id` fields refer to the bug number **before** the transition to github, so this should be combined with @Zimmi48 mapping.
+
+If it is actually doable to upload all the corresponding files to github, I'm rather in favor of that. But beware of github : if you do something too automatic with their web interface, you'll probably be flagged as a spammer real quick...
+
+As discussed with @Zimmi48 today, ideally the short `.v` attachments should rather be put into a code block inside an extra comment or be added as gist links. And it seems that `.tgz` are allowed, not only `.zip` files.
+I've put today the old bugzilla definitively offline. The attachments are now static files such as [this one](https://coq.inria.fr/bugfiles/785), with a redirect for compatibility urls such as [this one](https://coq.inria.fr/bugfiles/attachment.cgi?id=785). Mime type and download file name should be preserved thanks to an ad-hoc `.htaccess`.
+And if somebody wants to play more with these bug attachments, here comes the whole bunch of them : 
+[bugfiles.zip](https://github.com/coq/coq/files/1739583/bugfiles.zip) (23Mb). The file names inside the archive are the `attach_id`, see above the [attachment list](https://github.com/coq/coq/files/1458469/attachments.txt).
+
+@letouzey You should change this page https://coq.inria.fr/bugs/ now that the old bugzilla is offline. Probably a simple redirect to https://github.com/coq/coq/issues would be enough.
+@ZImmi48 : done. I've also placed a redirect from `https://coq.inria.fr/bugs/show_bug.cgi?id=NNN` to `http://github.com/coq/coq/issues/NNN`, since there may remain some of these old urls in obscure places. For the moment this redirect is incorrect for bugs that were renumbered during the transition, I'll fix that later today.
+@vbgl It is possible that this issue becomes relevant with the website migration.

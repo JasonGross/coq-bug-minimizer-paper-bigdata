@@ -1,0 +1,37 @@
+Comment author: @JasonGross
+
+Adapted from https://github.com/coq/coq/pull/664/:
+```coq
+Inductive A : (Type->Type) -> Type := J : A (fun x => x).
+Definition ret (x : nat * A (fun x => x))
+  := match x return Type with
+     | (y,z) => match z in A f return f Type with
+                | J => bool
+                end
+     end.
+Definition foo : forall x, ret x.
+Proof.
+  refine (fun x
+          => match x return ret x with
+             | (y,J) => true
+             end
+         ).
+Defined. (* Error: Illegal application:
+The term "@ pair" of type "forall A B : Type, A -> B -> A * B"
+cannot be applied to the terms
+ "nat" : "Set"
+ "A (fun x : Type => x)" : "Prop"
+ "y" : "nat"
+ "a0" : "A T"
+The 4th term has type "A T" which should be coercible to "A (fun x : Type => 
+x)". *)
+```
+Note that this does not seem to be fixed by pr [BZ#664](https://github.com/coq/coq/issues?q=is%3Aissue%20%22Original%20bug%20ID%3A%20BZ%23664%22).
+
+
+Comment author: @herbelin
+
+I extended PR [BZ#664](https://github.com/coq/coq/issues?q=is%3Aissue%20%22Original%20bug%20ID%3A%20BZ%23664%22) to fix this second problem too. Thanks a lot.
+
+
+Hum, github mispelling: "fixes #5547", not "fixing #5547". So, being explicit: now fixed by #664.

@@ -1,0 +1,111 @@
+Comment author: @JasonGross
+
+Notation S² := S2. (* Lexer: Undefined Token?! *)
+Notation "'S²'" := S2.
+Check S².
+Notation S² := S2. (* Syntax error: [obsolete_locality] expected after 'Notation' (in [vernac:syntax_command]). *)
+
+
+Comment author: @ppedrot
+
+The first line fails because of the unicode type of the character '²'. This is not a letter, so you cannot use it as-is in a (plain syntactic definition) notation. The second error is more tricky. I assume this is due to the fact the lexer was changed by your notation, transforming S² in some keyword, resulting in the undecipherable error you get.
+
+Overall, I may be wrong but I think there is not much to do. One day we should switch to another parsing engine, but until then we will have to live with the limited lexing power of CAMLP4/5.
+
+
+Comment author: @JasonGross
+
+If what you say is true, then why does
+
+Notation S¹ := S1.
+
+work fine?  (And, uh, you should replace [S2] and [S1] by things that are actually defined.)
+
+M-x describe-char says, for ¹:
+
+             position: 1923 of 2880 (67%), column: 10
+            character: ¹ (displayed as ¹) (codepoint 185, #o271, #xb9)
+    preferred charset: unicode-bmp (Unicode Basic Multilingual Plane (U+0000..U+FFFF))
+code point in charset: 0xB9
+               syntax: _        which means: symbol
+             category: .:Base, h:Korean, j:Japanese, l:Latin
+             to input: type "\^1" with Agda input method
+          buffer code: #xC2 #xB9
+            file code: #xC2 #xB9 (encoded by coding system utf-8-unix)
+              display: terminal code #xC2 #xB9
+
+Character code properties: customize what to show
+  name: SUPERSCRIPT ONE
+  old-name: SUPERSCRIPT DIGIT ONE
+  general-category: No (Number, Other)
+  decomposition: (super 49) (super '1')
+
+And for ²:
+
+             position: 2003 of 2880 (70%), column: 12
+            character: ² (displayed as ²) (codepoint 178, #o262, #xb2)
+    preferred charset: unicode-bmp (Unicode Basic Multilingual Plane (U+0000..U+FFFF))
+code point in charset: 0xB2
+ syntax: _        which means: symbol
+             category: .:Base, h:Korean, j:Japanese, l:Latin
+             to input: type "\^2" with Agda input method
+          buffer code: #xC2 #xB2
+            file code: #xC2 #xB2 (encoded by coding system utf-8-unix)
+              display: terminal code #xC2 #xB2
+
+Character code properties: customize what to show
+  name: SUPERSCRIPT TWO
+  old-name: SUPERSCRIPT DIGIT TWO
+  general-category: No (Number, Other)
+  decomposition: (super 50) (super '2')
+
+
+Comment author: @ppedrot
+
+Well, the unicode library used by Coq does not agree with the official unicode spec:
+
+# Unicode.classify 0xB2 (* ² *);;
+- : Unicode.status = Unicode.Symbol
+# Unicode.classify 0xB9 (* ¹ *);;
+- : Unicode.status = Unicode.IdentPart
+
+
+Comment author: @ppedrot
+
+Actually there seem to be some dedicated code in lib/unicode.ml:
+
+(* Exceptions (from a previous version of this function).           *)
+mk_lookup_table_from_unicode_tables_for Symbol
+  [
+    single 0x000B2;            (* Squared.                          *)
+    single 0x0002E;            (* Dot.                              *)
+  ];
+
+Why do we do this? That's a good question...
+
+
+Comment author: @ppedrot
+
+I think the correct patch should consist in moving the (Number, Other) category from IdentPart to Symbol. I can't figure how most of the characters of this category could be part of an identifier anyway... Some exceptions like subscripted numbers should be treated specially, but still...
+
+
+Comment author: @ppedrot
+
+Any comment?
+
+
+Comment author: @herbelin
+
+It is pretty common to use subscripts as parts of idents (and I have actually a patch for writing H₁, H₂, etc. instead of H1, H2). For superscripts, I'm not so sure it is useful, or even relevant to use them in idents. For ², it has been a notation for square for long, so it has to be a symbol. Maybe all superscripts could be symbol too, if ever not so many people already started to use superscripts in idents.
+
+
+Comment author: @ppedrot
+
+For the sake of uniformity, I put all superscript numbers in the symbol class. I think this bug is fixed then...
+
+
+Comment author: @JasonGross
+
+The n-spheres use them as parts of identifiers (S¹, S², etc), but I'm fine with having to quote these.
+
+

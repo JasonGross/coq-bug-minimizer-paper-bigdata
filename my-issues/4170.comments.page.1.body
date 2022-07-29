@@ -1,0 +1,41 @@
+Comment author: @JasonGross
+
+Two hints are needed to be able to do the desired rewrite.  They should be incorporated into the standard library.
+
+Require Import Coq.Arith.Arith Coq.Setoids.Setoid Coq.Classes.Morphisms Coq.Arith.Le Coq.Arith.Lt Coq.Program.Basics.
+
+Hint Extern 0 => solve [apply reflexivity] : typeclass_instances.
+
+Goal forall x y z, x <= y -> x < z.
+Proof.
+  intros x y z H.
+  Fail rewrite H.
+Admitted.
+
+Global Instance le_lt_Proper : Proper (ge ==> le ==> impl) lt.
+Proof.
+  repeat intro.
+  eapply lt_le_trans; [ | eassumption ].
+  eapply le_lt_trans; eassumption.
+Qed.
+
+Goal forall x y z, x <= y -> x < z.
+Proof.
+  intros x y z H.
+  rewrite H.
+Admitted.
+
+
+Comment author: @silene
+
+I am not an expert about generalized rewriting, but there are nonetheless two points that bother me here.
+
+First, why is the hint needed? Is it to paper over a bug somewhere in rewrite? I am surprised the hint was never needed before.
+
+Second, why does the instance have signature (ge ==> le ==> impl) rather than (le --> le ++> impl)? It seems a bit counter-intuitive (if not plain wrong) to say that "lt" is both covariant and contravariant in both arguments.
+
+By the way, using the signature with explicit variance make the need for the hint disappear. So I feel inclined to modify the standard library that way.
+
+Matthieu, any comment?
+
+

@@ -1,0 +1,9 @@
+Presumably this is due to #8743, switch to zarith; cc @ejgallego 
+`zarith` version _must_ be >= 1.10 , likely that's the issue.
+
+We should improve configure to check version numbers.
+```
+Unpacking libzarith-ocaml (1.5-1) ...
+```
+yeah, that's way too old and buggy.
+Okay, I'll backport a newer version of zarith, thanks.  And, indeed, the configure script should check the version number better.

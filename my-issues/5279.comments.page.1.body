@@ -1,0 +1,18 @@
+Comment author: @JasonGross
+
+Inductive A := B (T := unit) (_ : unit).
+Scheme Equality for A. (* Error: Unable to decide equality of type arguments. *)
+
+The [T := unit] isn't doing anything, so there shouldn't be any problem.
+
+
+Comment author: @herbelin
+
+I don't know how to fix Scheme Equality here, but I fixed injection, discriminate and decide equality (f557539325 in trunk) so that decide equality works in this example:
+
+Inductive A := B (T := unit) (_ : unit).
+Lemma eqdec : forall x y:A, {x=y}+{x<>y}.
+decide equality.
+decide equality.
+
+

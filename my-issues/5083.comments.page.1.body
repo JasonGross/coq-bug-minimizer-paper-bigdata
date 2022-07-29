@@ -1,0 +1,161 @@
+Comment author: @JasonGross
+
+Require Coq.ZArith.BinInt.
+Ltac sleep := idtac; let sleep := (eval vm_compute in 
+Coq.ZArith.BinInt.Z.div_eucl) in idtac.
+   
+Set Ltac Profiling.
+Definition foo : True.
+Proof.
+  Reset Ltac Profile.
+  do 10 sleep; tauto.
+  Show Ltac Profile. (* total time:      0.528s                                 
+                                                                                
+                                                  
+                                                                                
+                                                                                
+                                                  
+ tactic                                   local  total   calls       max        
+                                                                                
+                                                  
+────────────────────────────────────────┴──────┴──────┴───────┴─────────┘       
+                                                                                
+                                                  
+─sleep --------------------------------- 100.0% 100.0%      10    0.080s        
+                                                                                
+                                                  
+─t_tauto_intuit ------------------------   0.0%   0.0%       1    0.000s        
+                                                                                
+                                                  
+─constructor (int_or_var) --------------   0.0%   0.0%       1    0.000s        
+                                                                                
+                                                  
+─<Coq.Init.Tauto.with_uniform_flags> ---   0.0%   0.0%       1    0.000s        
+                                                                                
+                                                  
+─<Coq.Init.Tauto.tauto_intuitionistic> -   0.0%   0.0%       1    0.000s        
+                                                                                
+                                                  
+─<Coq.Init.Tauto.tauto_gen> ------------   0.0%   0.0%       1    0.000s        
+                                                                                
+                                                  
+─<Coq.Init.Tauto.simplif> --------------   0.0%   0.0%       1    0.000s        
+                                                                                
+                                                  
+─<Coq.Init.Tauto.not_dep_intros> -------   0.0%   0.0%       1    0.000s        
+                                                                                
+                                                  
+─<Coq.Init.Tauto.is_unit_or_eq> --------   0.0%   0.0%       1    0.000s        
+                                                                                
+                                                  
+─<Coq.Init.Tauto.is_conj> --------------   0.0%   0.0%       1    0.000s        
+                                                                                
+                                                  
+                                                                                
+                                                                                
+                                                  
+ tactic                                   local  total   calls       max        
+                                                                                
+                                                  
+────────────────────────────────────────┴──────┴──────┴───────┴─────────┘       
+                                                                                
+                                                  
+─sleep --------------------------------- 100.0% 100.0%      10    0.080s        
+                                                                                
+                                                  
+─<Coq.Init.Tauto.with_uniform_flags> ---   0.0%   0.0%       1    0.000s        
+                                                                                
+                                                  
+└<Coq.Init.Tauto.tauto_gen> ------------   0.0%   0.0%       1    0.000s        
+                                                                                
+                                                  
+└<Coq.Init.Tauto.tauto_intuitionistic> -   0.0%   0.0%       1    0.000s        
+                                                                                
+                                                  
+└t_tauto_intuit ------------------------   0.0%   0.0%       1    0.000s        
+                                                                                
+                                                  
+ ├─constructor (int_or_var) ------------   0.0%   0.0%       1    0.000s        
+                                                                                
+                                                  
+ ├─<Coq.Init.Tauto.simplif> ------------   0.0%   0.0%       1    0.000s        
+                                                                                
+                                                  
+ │ ├─<Coq.Init.Tauto.not_dep_intros> ---   0.0%   0.0%       1    0.000s        
+                                                                                
+                                                  
+ │ └─<Coq.Init.Tauto.is_conj> ----------   0.0%   0.0%       1    0.000s        
+                                                                                
+                                                  
+ └─<Coq.Init.Tauto.is_unit_or_eq> ------   0.0%   0.0%       1    0.000s        
+                                                                                
+                                                  
+                                                                                
+                                                                                
+                                                  
+ *)
+Qed.
+Show Ltac Profile.
+(* total time:      0.000s                                                      
+                                                                                
+                                                  
+                                                                                
+                                                                                
+                                                  
+ tactic                                   local  total   calls       max        
+                                                                                
+                                                  
+────────────────────────────────────────┴──────┴──────┴───────┴─────────┘       
+                                                                                
+                                                  
+                                                                                
+                                                                                
+                                                  
+ tactic                                   local  total   calls       max        
+                                                                                
+                                                  
+────────────────────────────────────────┴──────┴──────┴───────┴─────────┘       
+                                                                                
+                                                  
+                                                                                
+                                                                                
+                                                  
+ *)
+
+
+Comment author: @gares
+
+I guess the culprit is Reset Ltac Profile, not Qed.
+I can make it erase only data "older" than the command itself.
+
+I mean, if you place reset outside the proof, then things should work.
+
+
+Comment author: @gares
+
+I thought about that more, and no, it can't be fixed.
+
+Reset placed in the middle of a proof has 2 effects:
+- runs in the worker
+- runs in master
+
+Master accumulates results coming from the worker.
+Depending on the interleaving, the Reset on master may run before or
+after the results are received.  So I've no way to give a deterministic
+meaning to "Reset" in the middle of a proof with the current semantics of
+commands occurring into proofs.
+
+A semantics that is implementable (but not for 8.6) is that
+if you place it in a proof, then it only affects "Show Ltac..."
+that occur in the proof.
+
+
+Comment author: @JasonGross
+
+What about recording a set of state ids that had a [Reset Ltac Profile] 
+associated with them, in the same way that you record which state ids have 
+profiling data associated with them?  Then, in filtering, you could look only 
+at the profiling data of valid state ids which have no valid [Reset Ltac 
+Profile] which comes after them?
+
+

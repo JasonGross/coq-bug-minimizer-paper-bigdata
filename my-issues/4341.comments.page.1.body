@@ -1,0 +1,33 @@
+Comment author: @JasonGross
+
+Possibly disableable with a compatibility option, the following code should work:
+
+```coq
+Require Import Coq.Program.Program.
+Module Export Coq.
+Module Export Init.
+Module Specif.
+Set Implicit Arguments.
+Inductive sig (A:Type) (P:A -> Prop) : Type :=
+    exist : forall x:A, P x -> sig P.
+Arguments sig (A P)%type.
+Notation "{ x  |  P }" := (sig (fun x => P)) : type_scope.
+Notation "{ x : A  |  P }" := (sig (fun x:A => P)) : type_scope.
+End Specif.
+End Init.
+End Coq.
+
+Class Foo := { Bar : Type }.
+
+Axiom k : { x : Type | True }.
+Program Instance foo : Foo
+  := { Bar := k }. (* success *)
+Import Specif.
+Axiom k' : { x : Type | True }.
+Program Instance foo' : Foo
+  := { Bar := k' }. (* Toplevel input, characters 57-59:
+Error: The term "k'" has type "{_ : Type | True}"
+ while it is expected to have type "Type". *)
+```
+
+

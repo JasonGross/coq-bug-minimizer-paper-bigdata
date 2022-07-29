@@ -1,0 +1,49 @@
+Comment author: @JasonGross
+
+$ echo 'Time Theorem a : True.' | ~/.local64/coq/coq-trunk/bin/coqtop -emacs -q
+Welcome to Coq jgross-Leopard-WS:/home/jgross/Downloads/coq/coq-trunk,trunk 
+(fd36c0451c26e44b1b7e93299d3367ad2d35fee3)
+<infomsg>Skipping rcfile loading.</infomsg>
+
+<prompt>Coq < 1 || 0 < </prompt><infomsg>Finished transaction in 0. secs 
+(0.u,0.s) (successful)</infomsg>
+1 subgoal (ID 1)
+
+  ============================
+  True
+
+(dependent evars: (printing disabled) )
+
+<prompt>a < 2 |branch| 0 < </prompt>
+
+
+vs
+
+$ echo 'Theorem a : True.' | ~/.local64/coq/coq-trunk/bin/coqtop -emacs -q
+Welcome to Coq jgross-Leopard-WS:/home/jgross/Downloads/coq/coq-trunk,trunk 
+(fd36c0451c26e44b1b7e93299d3367ad2d35fee3)
+<infomsg>Skipping rcfile loading.</infomsg>
+
+<prompt>Coq < 1 || 0 < </prompt>1 subgoal (ID 1)
+
+  ============================
+  True
+
+(dependent evars: (printing disabled) )
+
+<prompt>a < 2 |a| 0 < </prompt>
+
+
+Notice the name between the vertical bars.
+
+
+Comment author: @ejgallego
+
+https://github.com/coq/coq/pull/726
+
+
+Comment author: @maximedenes
+
+Fix merged, thanks!
+
+

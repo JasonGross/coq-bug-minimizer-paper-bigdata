@@ -1,0 +1,36 @@
+Comment author: @JasonGross
+
+The following works (with 1d6c4f135d42a008b21d86d8ecd8b329405d8d7c):
+$ rm -rf foo
+$ mkdir -p foo/bar
+$ cd foo
+$ echo "Require Import Baz." > foo.v
+$ touch bar/Baz.v
+$ coqc bar/Baz.v
+$ COQPATH="bar" coqc foo.v; echo $? # 0
+$ COQPATH="bar" coqdep foo.v
+# foo.vo foo.glob foo.v.beautified: foo.v
+# foo.vio: foo.v
+
+But the following does not:
+$ rm -rf foo
+$ mkdir -p foo/bar
+$ cd foo
+$ echo "Require Import Baz." > foo.v
+$ touch bar/Baz.v
+$ coqc -quick bar/Baz.v
+$ COQPATH="bar" coqc foo.v; echo $? # 0
+$ COQPATH="bar" coqdep foo.v
+# *** Warning: in file foo.v, library Baz is required and has not been found in the loadpath!
+# *** Warning: in file foo.v, library Baz is required and has not been found in the loadpath!
+# foo.vo foo.glob foo.v.beautified: foo.v
+
+(Also, why is the warning doubled?)
+# foo.vio: foo.v
+
+
+Comment author: @ppedrot
+
+Fixed by f17096f.
+
+

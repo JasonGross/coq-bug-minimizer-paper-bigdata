@@ -1,0 +1,65 @@
+Comment author: @JasonGross
+
+(* -*- mode: coq; coq-prog-args: ("-emacs" "-R" "." "Fiat") -*- *)
+(* File reduced by coq-bug-finder from original input, then from 83 lines to 70 lines *)
+(* coqc version 8.5beta1 (April 2015) compiled on Apr 9 2015 15:39:28 with OCaml 4.01.0
+   coqtop version cagnode13:/afs/csail.mit.edu/u/j/jgross/coq-8.5,v8.5 (33650e275a4b3f00541ea87ee4b39892be5fdb2f) *)
+Axiom proof_admitted : False.
+Tactic Notation "admit" := case proof_admitted.
+Require Coq.Setoids.Setoid.
+
+Local Coercion is_true : bool >-> Sortclass.
+Class StringLike {Char : Type} :=
+  {
+    String :> Type;
+    take : nat -> String -> String;
+    drop : nat -> String -> String
+  }.
+
+Arguments StringLike : clear implicits.
+
+Section forall_chars.
+  Context {Char} {HSL : StringLike Char}.
+
+  Definition forall_chars (str : String) (P : Char -> Prop) : Prop.
+    admit.
+  Defined.
+
+  Lemma forall_chars__split (str : String) P n
+  : forall_chars str P
+    <-> (forall_chars (take n str) P /\ forall_chars (drop n str) P).
+    admit.
+  Defined.
+
+  Lemma forall_chars_take (str : String) P
+  : forall_chars str P <-> (forall n, forall_chars (take (S n) str) P).
+  Proof.
+    split.
+    {
+      intros H n.
+      rewrite forall_chars__split in H.
+      (pose proof (proj1 H); pose proof (proj2 H)) || fail 1 "too early".
+      destruct H. (* Error: Cannot create self-referring hypothesis H *)
+
+
+Comment author: @JasonGross
+
+Smaller example:
+
+Require Coq.Setoids.Setoid.
+Axiom trans : forall x y z : nat, x = y <-> x = z /\ y = z.
+Goal forall x y : nat, x = y -> False.
+  intros x y H.
+  rewrite trans in H.
+  destruct H.
+
+Note: this worked in 8.4, and does not work in 8.5.
+
+
+Comment author: @herbelin
+
+
+
+*** This bug has been marked as a duplicate of bug [BZ#4207](https://github.com/coq/coq/issues?q=is%3Aissue%20%22Original%20bug%20ID%3A%20BZ%234207%22) ***
+
+

@@ -1,0 +1,313 @@
+`recognize_3arg_2ref_ident` has weak type variables in its type (see https://caml.inria.fr/pub/docs/manual-ocaml/polymorphism.html). 
+Part of the arguments isn't used (eg the `_` in `let '((s, _), ((e1v, (e1, r1)), ((e2v, (e2, r2)), tt))) := args in`) so that part of the type is unconstrained, but it's blocked from generalizing by the letin in the parameters `(t:=(base.type.Z -> base.type.Z -> base.type.Z -> base.type.Z * base.type.Z)%etype)`.
+
+Extraction is printing the expected type
+~~~
+(** val recognize_3arg_2ref_ident :
+    Language.Compilers.Coq_ident.ident ->
+    (Coq_int.coq_type option * Coq_int.coq_type option)
+    -> (((Language.Compilers.Coq_base.Coq_type.coq_type,
+    Language.Compilers.Coq_ident.ident, var_data)
+    Language.Compilers.Coq_expr.expr * (arith_expr * Coq_int.coq_type
+    option)) * (((Language.Compilers.Coq_base.Coq_type.coq_type,
+    Language.Compilers.Coq_ident.ident, var_data)
+    Language.Compilers.Coq_expr.expr * (arith_expr * Coq_int.coq_type
+    option)) * (((Language.Compilers.Coq_base.Coq_type.coq_type,
+    Language.Compilers.Coq_ident.ident, var_data)
+    Language.Compilers.Coq_expr.expr * (arith_expr * Coq_int.coq_type
+    option)) * __))) -> (arith_expr -> expr, char list
+    list) sum **)
+~~~
+so you could just cast to that (add `let recognize_3arg_2ref_ident : ... = recognize_3arg_2ref_ident` after the definition, or use the `val` in a mli), I don't know why we don't do that automatically.
+
+Here's a simpler example:
+~~~coq
+Require Import Extraction.
+
+Definition id (A:Type) (x:A) := x.
+
+Definition foobar := id _ (@id nat).
+
+Recursive Extraction foobar.
+~~~
+produces 
+~~~ocaml
+type nat =
+| O
+| S of nat
+
+(** val id : 'a1 -> 'a1 **)
+
+let id x =
+  x
+
+(** val foobar : nat -> nat **)
+
+let foobar =
+  id id
+~~~
+and compilation says
+~~~
+File "foo.ml", line 12, characters 4-10:
+Error: The type of this expression, '_weak1 -> '_weak1,
+       contains type variables that cannot be generalized
+~~~
+> I don't know why we don't do that automatically.
+
+I think, at the very least, there should be an option to automatically annotate `let`s with their types in extracted code.
+I've just hit this again, and it's very frustrating.  I have a 73MB source file that fails to compile with
+```
+File "src/Experiments/NewPipeline/ExtractionOCaml/word_by_word_montgomery.ml", line 950242, characters 1-6324549:
+Error: The type of this module,
+       sig
+         val mul_gen :
+           (Compilers.Coq_base.Coq_type.coq_type, Compilers.Coq_ident.ident,
+            'a)
+           Compilers.Coq_expr.expr
+         val square_gen :
+           (Compilers.Coq_base.Coq_type.coq_type, 'a, '_b)
+           Compilers.Coq_expr.expr
+         val add_gen :
+           (Compilers.Coq_base.Coq_type.coq_type, Compilers.Coq_ident.ident,
+            'a)
+           Compilers.Coq_expr.expr
+         val sub_gen :
+           (Compilers.Coq_base.Coq_type.coq_type, Compilers.Coq_ident.ident,
+            'a)
+           Compilers.Coq_expr.expr
+         val opp_gen :
+           (Compilers.Coq_base.Coq_type.coq_type, Compilers.Coq_ident.ident,
+            'a)
+           Compilers.Coq_expr.expr
+         val from_montgomery_gen :
+           (Compilers.Coq_base.Coq_type.coq_type, 'a, '_b)
+           Compilers.Coq_expr.expr
+         val nonzero_gen :
+           (Compilers.Coq_base.Coq_type.coq_type, Compilers.Coq_ident.ident,
+            'a)
+           Compilers.Coq_expr.expr
+         val prime_bytes_bounds : z -> (z * z) list -> z -> 'a
+         val saturated_bounds : z -> z -> 'a
+         val m_enc : z -> (z * z) list -> z -> z list
+         val relax_zrange_of_machine_wordsize : z -> zrange -> zrange option
+         val relax_zrange_of_machine_wordsize_with_bytes :
+           z -> zrange -> zrange option
+         val bounds : z -> (z * z) list -> z -> 'a list
+         val check_args :
+           z ->
+           (z * z) list ->
+           z ->
+           (Pipeline.coq_ErrorMessage, 'a) errorT ->
+           (Pipeline.coq_ErrorMessage, 'a) errorT
+         val srmul :
+           z ->
+           (z * z) list ->
+           z ->
+           char list ->
+           char list *
+           (Pipeline.coq_ErrorMessage,
+            char list list * Coq3_Compilers.ToString.C.ident_infos)
+           errorT
+         val srsquare :
+           z ->
+           (z * z) list ->
+           z ->
+           char list ->
+           char list *
+           (Pipeline.coq_ErrorMessage,
+            char list list * Coq3_Compilers.ToString.C.ident_infos)
+           errorT
+         val sradd :
+           z ->
+           (z * z) list ->
+           z ->
+           char list ->
+           char list *
+           (Pipeline.coq_ErrorMessage,
+            char list list * Coq3_Compilers.ToString.C.ident_infos)
+           errorT
+         val srsub :
+           z ->
+           (z * z) list ->
+           z ->
+           char list ->
+           char list *
+           (Pipeline.coq_ErrorMessage,
+            char list list * Coq3_Compilers.ToString.C.ident_infos)
+           errorT
+         val sropp :
+           z ->
+           (z * z) list ->
+           z ->
+           char list ->
+           char list *
+           (Pipeline.coq_ErrorMessage,
+            char list list * Coq3_Compilers.ToString.C.ident_infos)
+           errorT
+         val srfrom_montgomery :
+           z ->
+           (z * z) list ->
+           z ->
+           char list ->
+           char list *
+           (Pipeline.coq_ErrorMessage,
+            char list list * Coq3_Compilers.ToString.C.ident_infos)
+           errorT
+         val srnonzero :
+           z ->
+           (z * z) list ->
+           z ->
+           char list ->
+           char list *
+           (Pipeline.coq_ErrorMessage,
+            char list list * Coq3_Compilers.ToString.C.ident_infos)
+           errorT
+         val srselectznz :
+           z ->
+           z ->
+           char list ->
+           char list *
+           (Pipeline.coq_ErrorMessage,
+            char list list * Coq3_Compilers.ToString.C.ident_infos)
+           errorT
+         val srto_bytes :
+           z ->
+           (z * z) list ->
+           z ->
+           char list ->
+           char list *
+           (Pipeline.coq_ErrorMessage,
+            char list list * Coq3_Compilers.ToString.C.ident_infos)
+           errorT
+         val srfrom_bytes :
+           z ->
+           (z * z) list ->
+           z ->
+           char list ->
+           char list *
+           (Pipeline.coq_ErrorMessage,
+            char list list * Coq3_Compilers.ToString.C.ident_infos)
+           errorT
+         val aggregate_infos :
+           ('a * ('b, 'c * Coq3_Compilers.ToString.C.ident_infos) errorT)
+           list -> Coq3_Compilers.ToString.C.ident_infos
+         val extra_synthesis :
+           z ->
+           char list ->
+           Coq3_Compilers.ToString.C.ident_infos ->
+           (char list * (Pipeline.coq_ErrorMessage, char list list) errorT)
+           list * PositiveSet.t
+         val known_functions :
+           z ->
+           (z * z) list ->
+           z ->
+           (char list *
+            (char list ->
+             char list *
+             (Pipeline.coq_ErrorMessage,
+              char list list * Coq3_Compilers.ToString.C.ident_infos)
+             errorT))
+           list
+         val synthesize_of_name :
+           z ->
+           (z * z) list ->
+           z ->
+           char list ->
+           char list ->
+           char list *
+           (Pipeline.coq_ErrorMessage,
+            char list list * Coq3_Compilers.ToString.C.ident_infos)
+           errorT
+         val coq_Synthesize :
+           z ->
+           (z * z) list ->
+           z ->
+           char list ->
+           char list list ->
+           (char list * (Pipeline.coq_ErrorMessage, char list list) errorT)
+           list * PositiveSet.t
+       end, contains type variables that cannot be generalized
+Command exited with non-zero status 2
+```
+and basically no idea why this is erroring like this >.<
+Is this related to #4875?
+Also, this continues to be frustrating.  A co-worker of mine just hit this.
+https://github.com/mit-plv/fiat-crypto/pull/686/checks?check_run_id=507813092
+> > I don't know why we don't do that automatically.
+> 
+> I think, at the very least, there should be an option to automatically annotate `let`s with their types in extracted code.
+
+I just hit this issue when trying to extract code from SSProve/ssprove, and most instances are indeed fixed by adding the type annotation from the comment to the `let`. Can Coq do this for me now?
+And I've now hit this again in fiat-crypto, this time with functors
+```
+File "src/ExtractionOCaml/bedrock2_base_conversion.ml", line 16297, characters 14-61:
+16297 | module NMap = IsoS(OptionPositiveMap)(NIsoOptionPositiveOrig)
+                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Error: The functor application is ill-typed.
+       These arguments:
+         OptionPositiveMap NIsoOptionPositiveOrig
+       do not match these parameters:
+         functor (S' : S) (E' : ...) -> ...
+       1. Modules do not match:
+            OptionPositiveMap :
+            sig
+              module Outer = OptionPositiveMap.Outer
+              module E = OptionPositiveMap.E
+              module ECompat = OptionPositiveMap.ECompat
+              module Inner = OptionPositiveMap.Inner
+              module E' = Inner.E'
+              type key = E.t
+              type 'elt t = 'elt Outer.OptionWSfun.M1.t * 'elt PositiveMap.t
+              module Coq__Extra1 = Inner.Coq__Extra1
+              val empty : 'a option * '_weak1 PositiveMap.t
+              val is_empty : 'a option * 'b PositiveMap.t -> bool
+              val add :
+                PositiveMap.key option ->
+                'a ->
+                'a option * 'a PositiveMap.t -> 'a option * 'a PositiveMap.t
+              val find :
+                PositiveMap.key option ->
+                'a option * 'a PositiveMap.t -> 'a option
+              val remove :
+                PositiveMap.key option ->
+                'a option * 'b PositiveMap.t -> 'a option * 'b PositiveMap.t
+              val mem :
+                PositiveMap.key option ->
+                'a option * 'b PositiveMap.t -> bool
+              val map :
+                ('a -> 'b) ->
+                'a option * 'a PositiveMap.t -> 'b option * 'b PositiveMap.t
+              val mapi :
+                (PositiveMap.key option -> 'a -> 'b) ->
+                'a option * 'a PositiveMap.t -> 'b option * 'b PositiveMap.t
+              val map2 :
+                ('a option -> 'b option -> 'c option) ->
+                'a option * 'a PositiveMap.t ->
+                'b option * 'b PositiveMap.t -> 'c option * 'c PositiveMap.t
+              val elements :
+                'a option * 'a PositiveMap.t ->
+                (PositiveMap.key option * 'a) list
+              val cardinal : 'a option * 'b PositiveMap.t -> nat
+              val fold :
+                (PositiveMap.key option -> 'a -> 'b -> 'b) ->
+                'a option * 'a PositiveMap.t -> 'b -> 'b
+              val equal :
+                ('a -> 'a -> bool) ->
+                'a option * 'a PositiveMap.t ->
+                'a option * 'a PositiveMap.t -> bool
+              module Coq__Extra2 = Inner.Coq__Extra2
+            end
+          is not included in
+            S
+          Values do not match:
+            val empty : 'a option * '_weak1 PositiveMap.t
+          is not included in
+            val empty : 'a1 t
+          File "src/ExtractionOCaml/bedrock2_base_conversion.ml", line 13726, characters 2-19:
+            Expected declaration
+          File "src/ExtractionOCaml/bedrock2_base_conversion.ml", line 16098, characters 6-11:
+            Actual declaration
+       2. Module NIsoOptionPositiveOrig matches the expected module type
+```
+(Full code [here](https://github.com/mit-plv/fiat-crypto/tree/asm-more-efficient), build target `standalone-ocaml`) 
+These extraction bugs do affect a lot of users with large projects, IMHO we should make fixing them a priority.

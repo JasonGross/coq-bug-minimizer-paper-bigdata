@@ -1,0 +1,18 @@
+Comment author: @JasonGross
+
+Consider the following:
+```
+Goal (forall x : { a : nat | 0 < a }, proj1_sig x = 0 -> False) -> True.
+Proof.
+  cbv [proj1_sig].
+  intro H.
+  specialize (fun x pf H' => H (exist _ x pf) H').
+  specialize (fun x H' pf => H x pf H').
+  (* The term "H'" has type "?T" while it is expected to have type
+"x = 0" (cannot instantiate "?T" because "pf" is not in its scope: available
+arguments are "H" "x"). *)
+```
+The error message is displayed up to beta-iota, even though the `specialize`
+tactic is (apparently) not done up to beta-iota.
+
+

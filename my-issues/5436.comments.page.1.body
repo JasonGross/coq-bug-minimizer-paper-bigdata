@@ -1,0 +1,19 @@
+Comment author: @JasonGross
+
+Ltac foo := match goal with
+            | [ |- @ id nat _ = _ ] => idtac
+            end.
+Print Ltac foo.
+(* Ltac foo := match goal with
+            | |- id _ = _ => idtac
+            end *)
+
+I think it should give
+Ltac foo := match goal with
+            | |- id (A:=nat) _ = _ => idtac
+            end
+or, more generally, when the default display of a notation or constant does not 
+reparse to the given Ltac, [Print Ltac] could (perhaps should) deactivate that 
+printing notation / deactivate hiding implicits for that constant.
+
+

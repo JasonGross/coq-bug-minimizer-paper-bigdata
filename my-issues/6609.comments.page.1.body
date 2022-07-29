@@ -1,0 +1,15 @@
++1.
+
+This will also be a good opportunity to debug primitive projections carefully.
+
+A while ago, we tried enabling primitive projections in Iris, and ran into quite some troubles. Many of these issues have been fixed (see e.g. #1006 and #984), and that allowed us to enable primitive projections at least for some parts of Iris. There are still issues related to `simpl` (#5708) and ssr's rewrite (#5699), and probably more to come. I believe such issues need to be fixed before we ship a standard library with primitive projections enabled by default.
+#3301 seems to be closely related to this issue
+I'd really like to see this in 8.8. However, why don't we just add a new overlay of the library that imports the new constructions?
+
+That is to say, if you do:
+```
+Require Import PrimitivePrelude.
+```
+All the default types in scope are binded to the their primitive records form.
+
+Here users have to pay the price of co-existence, but on the other hand it allows for theories to be migrated bit by bit.

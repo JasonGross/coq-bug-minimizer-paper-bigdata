@@ -1,0 +1,4 @@
+Furthermore, `eauto` doesn't even seem to respect `Hint Opaque`, so I'm forced to use `typeclasses eauto`
+This does not look like a bug to me. By definition, `auto` does not instantiate binders not appearing in the conclusion when applying lemmas from the database. Here `p` is clearly not part of the conclusion so it'd need `eauto` to succeed instead. Maybe your bug about `eauto` unfolding stuff it shouldn't is the real one, although this might (?) have been solved by the recent changes around the dnet matching algorithm in 8.15.
+
+I think that this report is INVALID.

@@ -1,0 +1,40 @@
+Comment author: @JasonGross
+
+I see
+
+Writing on file "misc/xml/berardi_test/classical_proof_irrelevence.con.xml" was successful
+
+Writing on file "misc/xml/berardi_test/classical_proof_irrelevence.con.body.xml" was successful
+
+Writing on file "misc/xml/berardi_test/classical_proof_irrelevence.con.types.xml" was successful
+coqdoc: you: no such file
+Anomaly: Error executing "/afs/csail.mit.edu/u/j/jgross/coq-trunk/bin/coqdoc --html -s --body-only --no-index --latin1 --raw-comments -o misc/xml/If you see this, it's a bug.theory.xml misc/xml/If you see this, it's a bug.theory.v".
+Please report.
+0m0.000s 0m0.020s
+0m0.252s 0m4.172s
+==========> SUCCESS <==========
+    misc/xml...apparently ok
+
+
+My tip is:
+
+commit 9d2b4f62ed6faa01c94945b35087cda47f1b1570
+Author: Enrico Tassi <Enrico.Tassi@ inria.fr>
+Date:   Tue Apr 8 11:01:52 2014 +0200
+
+    Fix universe handling (bug introduced in vi2vo commit)
+
+    Inside a section, Let followed by a Proof. Qed. are handled as regular
+    definitions, hence they have universe constraints coming from the type
+    and from the body.  Only the former set was returned to libstack, but
+    both sets were added to the global universe graph.  Hence, at section
+    closing time, an incomplete set of universe constraints was added back
+    to the global graph (End Section replays the libstack) and hence saved
+    in the .vo file.  coqchk was right in reporting missing constraints.
+
+
+Comment author: @ppedrot
+
+This test was actually removed, after unplugging the XML printer.
+
+

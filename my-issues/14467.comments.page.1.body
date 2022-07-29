@@ -1,0 +1,17 @@
+cc @ejgallego 
+This doesn't look like a bug in Coq, but in your dune setup, which seems to be incorrectly configured.
+This is the standard system dune on Ubuntu from the apt packages, how do I check if it's properly configured?
+Oh, actually I looked at the source code and I got a different picture from what I had read in the issues / PRs, sorry, I got it wrong.
+Indeed it is a long story but dune install has a bit of messy history.
+
+See the code here https://github.com/ocaml/dune/blob/66982576945ca3e61ee7ac87f927bebcc17b271e/src/dune_engine/install.ml#L146-L167
+
+So this is a dune bug, as it doesn't allow to set the docdir properly, bug report filed , I intend to fix this for 2.9 https://github.com/ocaml/dune/issues/4723
+
+Meanwhile, the easiest thing for Debian packages to workaround this is to use opam-installer, or to fixup this file manually:
+```
+dune build -p coq-core,coq-stdlib,coq,coqide-server,coqide`
+sudo opam installer --prefix=.... --docdir=... coqide.install
+....
+```
+Duplicate of #14232

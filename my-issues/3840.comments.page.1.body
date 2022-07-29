@@ -1,0 +1,50 @@
+Comment author: @JasonGross
+
+Goal exists x : option Type, match x with Some y => True | None => False end.
+  eexists.
+  refine (_ : match Some _ with None => _ | _ => _ end).
+
+(* Anomaly: Uncaught exception Not_found. Please report. *)
+
+This only happens in 8.4, though the behavior in trunk is unsatisfactory in its own way, since what I'm really trying to do is the equivalent of [instantiate (1 := Some _)].  (In trunk (f839f718fc6271aeb014c9cb5abdf9106b1c26be), it first reduces the match, and then unifies the [Some] branch with the preexisting goal.  I think it should instead first try syntactic unification, and only reduce to whnf if that fails.)
+
+
+Comment author: @ppedrot
+
+I highly doubt that the 8.4 refine will be ever fixed, it was a real mess. As for the trunk behaviour, why don't you just use the [instantiate] tactic you mention? The [refine] tactic does not seem fit to do what you intended to...
+
+
+Comment author: @JasonGross
+
+Because [instantiate] uses numbers, and I want to use shape, e.g., for tactic scripts.
+
+I could do something like
+
+Goal exists x : option Type, match x with Some y => True | None => False end.
+  eexists.
+  match goal with
+    | [ |- match ?x with None => False | _ => _ end ]
+      => is_evar x; refine (let k := eq_refl : x = Some _ in _)
+  end.
+
+
+Comment author: @aspiwack
+
+As Pierre-Marie sort of implied, one of the reason that the new implementation of refine exists is to fix many bugs of the previous implementation (which was quite ad hoc). I don't think anyone is willing to spend the time for a fix in v8.4.
+
+For the trunk version, I'm afraid I can't do much: unification is performed by the type inference mechanism (pretyper). It follows many heuristics which are bound not to be satisfactory in every cases.
+
+I agree that the use case you present needs a solution. But I don't have a good one just yet.
+
+
+Comment author: @herbelin
+
+Hi Jason,
+
+By the way, there is no more an uncaught "Not_found" in 8.4pl5... (though the cast has no interesting effect).
+
+Please refer to this version to report bugs on 8.4!
+
+Hugo
+
+

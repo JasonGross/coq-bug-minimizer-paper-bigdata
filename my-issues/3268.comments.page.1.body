@@ -1,0 +1,36 @@
+Comment author: @JasonGross
+
+I would like to be able to declare that [eauto] should do a bfs (or, perhaps, have a bfs_eauto variant), much like the [Typeclasses eauto := bfs] (but for regular [eauto]).
+
+
+Comment author: @forestjulien
+
+The functionnality already exists. 
+use eauto <non_important_integer> <max_depth> .... to use  bfs instead of dfs.
+
+
+Comment author: @JasonGross
+
+Fascinating.  Thanks!
+
+Is it documented anywhere?  Is there a reason [eauto] supports this syntax, but [auto] doesn't?
+
+
+Comment author: @forestjulien
+
+As far as I know this is not documented. 
+It is just an hack I asked many years ago. 
+Beware that bfs can consumes quite huge amount of memory.
+
+
+Comment author: @forestjulien
+
+Maybe we can close this one if Jason agrees
+
+
+Comment author: @Zimmi48
+
+Actually there are plans to provide a saner syntax for a saner implementation of breadth-first search eauto. See https://github.com/coq/coq/pull/721.
+
+
+This was implemented, never used and removed in 8.15. The documentation recommends using the bfs flag for typeclass eauto instead. I think we can safely close this.

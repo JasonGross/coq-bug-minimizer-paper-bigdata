@@ -1,0 +1,22 @@
+Comment author: @JasonGross
+
+The ./configure file has a simple heuristic for figuring out whether to use .so or .dll in make install.  However, some cygwin builds result in .so files rather than .dll files, and make install will then fail.  The ./configure script should be smarter.  Either it should try both .so and .dll, and fail whenever neither exists, or it should do some trial computation at when configuring to see whether the tools actually make .so or .dll (and similarly for .exe), like autotools does.
+
+
+Comment author: @pirbo
+
+Is the configure.ml smarter ?
+
+
+Comment author: @JasonGross
+
+A quick glance suggests that it is not.  As I understand it, configure.ml unconditionally chooses .dll for cygwin.  Thus it thinks that DLLCOQRUN should be dllcoqrun.dll.  But my cygwin makes dllcoqrun.so, so the install (and maybe other parts) would fail.  Perhaps cygwin always uses .so, or perhaps it sometimes uses .so and sometimes .dll.
+
+I would suggest adding some code to configure that actually builds a dummy executable and a dummy library, and determines the extensions from that.  (This is how things are done in autotools-generated configure scripts.)
+
+
+Comment author: @JasonGross
+
+I think Xavier's patch on bug [BZ#3843](https://github.com/coq/coq/issues?q=is%3Aissue%20%22Original%20bug%20ID%3A%20BZ%233843%22) will fix this problem.
+
+

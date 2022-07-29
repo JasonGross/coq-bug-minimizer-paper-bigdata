@@ -1,0 +1,53 @@
+Comment author: @JasonGross
+
+Fixpoint foo (x:=Set) (y : nat) : nat. (* Error: Not enough products. *)
+
+
+Comment author: @ppedrot
+
+Indeed, mixing fix and let leads to peculiar results. Another example:
+
+Definition foo' : forall (x := unit) (y : nat), nat.
+Proof.
+fix foo' 2; intros x y.
+destruct y as [|y].
++ exact 0.
++ refine (foo' y).
+Show Proof.
+(** Uncaught exception Failure("nth"). Please report at http://coq.inria.fr/bugs/. Detyping.detype: cannot factorize fix enough **)
+
+
+Comment author: @herbelin
+
+(In reply to Pierre-Marie Pédrot from comment [BZ#1](https://github.com/coq/coq/issues?q=is%3Aissue%20%22Original%20bug%20ID%3A%20BZ%231%22))
+> Indeed, mixing fix and let leads to peculiar results. Another example:
+> 
+> Definition foo' : forall (x := unit) (y : nat), nat.
+> Proof.
+> fix foo' 2; intros x y.
+> destruct y as [|y].
+> + exact 0.
+> + refine (foo' y).
+> Show Proof.
+> (** Uncaught exception Failure("nth"). Please report at
+> http://coq.inria.fr/bugs/. Detyping.detype: cannot factorize fix enough **)
+
+I cannot reproduce with neither today's trunk nor PR [BZ#531](https://github.com/coq/coq/issues?q=is%3Aissue%20%22Original%20bug%20ID%3A%20BZ%23531%22) which fixes this bug (as well as many other related bugs).
+
+In both cases, I get "Not enough products." which is correct because there is only one product.
+
+
+Comment author: @ppedrot
+
+(In reply to Hugo Herbelin from comment [BZ#2](https://github.com/coq/coq/issues?q=is%3Aissue%20%22Original%20bug%20ID%3A%20BZ%232%22))
+> I cannot reproduce with neither today's trunk nor PR [BZ#531](https://github.com/coq/coq/issues?q=is%3Aissue%20%22Original%20bug%20ID%3A%20BZ%23531%22) which fixes this
+> bug (as well as many other related bugs).
+
+Oops, sorry for the noise, you're right, I was not in a clean state.
+
+
+Comment author: @JasonGross
+
+Fixed in trunk
+
+

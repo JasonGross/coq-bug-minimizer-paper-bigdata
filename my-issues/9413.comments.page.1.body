@@ -1,0 +1,6 @@
+What you want to achieve is some kind of caching, and for this, having write-access to a global state like a hint database would make sense. However, in full generality, write-access to a global state could make tactics change semantics depending on the previous calls, and this would break parallel proof checking. Thus, I wouldn't export primitives that have this general write access to Ltac...
+I am fine with a version whose modifications to the hint db go away after the current proof ends.  Is this doable?
+
+(Alternatively, it might be nice to have a vernacular "WithWriteAccess global-object tactic" that permitted modifications to the declared global object in the tactic or something.)
+In my opinion quite fancy things should be doable once we get the new vernacular execution model in place; however most changes of this kind may have to wait for that refactoring to happen.
+Given that it was suggested before that side effects done inside a proof always go away after a proof ends, the semantics of this tactic would also be the new semantics of the `Hint Resolve` command inside a proof, so yes, it would be doable.

@@ -1,0 +1,29 @@
+Comment author: @JasonGross
+
+Created attachment 508
+file generating anomaly
+
+The attached file generates this error in 8.4pl3.  I haven't tested 8.4pl4.  It's fixed in trunk.
+
+> Attached file: [bug_unknown_meta_21.v](https://coq.inria.fr/bugfiles/attachment.cgi?id=508) (application/octet-stream, 23650 bytes)
+> Description:   file generating anomaly
+
+
+Comment author: @herbelin
+
+Hi Jason,
+
+Thanks for helping us in pointing out bugs. Would you be willing to help us a bit more by installing 8.4pl4 on your computer, as well as the current 8.4 version, so as to have reports even more informative?
+
+To avoid having different coqtop/coqc/coqide in your path, you can configure with option -local, so that you can then just directly refer to coqc/coqtop in the bin subdirectory of the compilation directory.
+
+Thanks for helping.
+
+Hugo
+
+
+Comment author: @herbelin
+
+Fixed in trunk and branch 8.4.
+
+

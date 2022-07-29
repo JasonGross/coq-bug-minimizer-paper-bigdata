@@ -1,0 +1,43 @@
+Comment author: @JasonGross
+
+It's not clear to me that the 8.5 behavior of [intros] to not perform [cbv zeta] is wrong, given that removing the unused argument causes the code below to fail in 8.4, too.
+
+In any case, here is code that works in 8.4pl6, but fails in 8.5rc1, and at the very least, this should be documented in CHANGES.  (A compatibility flag might be nice, too.)
+```coq
+Definition split_list_is_complete' {x : nat}
+  : Prop
+    := True
+       -> let str := I in
+          forall it : Type,
+            Set = it
+            -> True.
+
+Goal forall a, @ split_list_is_complete' a.
+Proof.
+  intros.
+  intros ?? H; destruct H.
+```
+
+Comment author: @herbelin
+
+It is not clear to me either what should be the most useful behavior. Somehow, since "intros" introduces let-in, I would say that neither 8.4 nor current 8.5 behavior are the expected ones and I would use a reduction which does not zeta-reduces. I don't know what others think.
+
+The change is however documented in CHANGES:
+
+- Tactic "intro H" now reduces beta-iota redexes if these hide a product
+  (potential source of rare incompatibilities).
+
+
+Comment author: @silene
+
+Why do you say that the 8.5 behavior is unexpected? As a user, it seems the most sensible one. I would describe it as follows: if the head construct is a dependent product, introduce its variable; if it is a let-in, introduce its variable; otherwise, perform a beta-iota-delta reduction on the head until it is in one of the previous forms; complain if none is reached. In particular, zeta should not be part of the reduction, since both "intro" and "intros" respect let-ins, as you said.
+
+
+Comment author: @JasonGross
+
+Ah, I missed the entry in CHANGES because I was searching for [intros], not [intro].  Maybe update it to say "Tactics "intro H" and "intros H" ..."?
+
+Is it worth adding the change in behavior to -compat 8.4?
+
+
+This is a very old incompatibility, better close it.

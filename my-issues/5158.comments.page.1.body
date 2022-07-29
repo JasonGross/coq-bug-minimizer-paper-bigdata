@@ -1,0 +1,30 @@
+Comment author: @JasonGross
+
+I expect all of the following examples to work.
+
+```coq
+Goal True.
+  let v := let y := constr:(Type) in constr:(ltac:(exact y)) in
+  pose v. (* success *)
+  let v := let y := constr:(Type) in uconstr:(match y with v => ltac:(exact v) 
+end) in
+  pose v. (* success *)
+  let v := let y := constr:(Type) in uconstr:(ltac:(exact y)) in
+  idtac. (* success *)
+  let v := let y := constr:(Type) in uconstr:(ltac:(exact y)) in
+  let y := constr:(nat) in
+  pose v. (* Error: The reference y was not found in the current environment. *)
+  let v := let y := constr:(Type) in uconstr:(ltac:(exact y)) in
+  pose v. (* Error: The reference y was not found in the current environment. *)
+```
+Comment author: @JasonGross
+
+Here's another one that should work, but doesn't:
+
+```coq
+  let v := let v := fresh in let y := constr:(Type) in uconstr:(match y with v 
+=> ltac:(exact v)  end) in
+  pose v. (* failure *)
+```
+
+Duplicate of #15177 and thus already fixed.

@@ -1,0 +1,25 @@
+I'm not a subject matter expert on this, so I don't have an opinion.  Is it a code issue or a doc issue, i.e., should `rewrite` behave this way for your example?  (BTW, there's an extraneous comma in the example.)
+This is a doc issue.  The example I gave here has the correct behavior.  There's a code issue at https://github.com/coq/coq/issues/15592, which is about subtleties in interactions between occurrences and multiple expressions.
+
+Where's the extra comma?
+> This is a doc issue. The example I gave here has the correct behavior.
+
+@SkySkimmer do you agree?
+
+@JasonGross Then what should the doc say?  
+
+The extra comma is from @SkySkimmer's edit:
+
+![image](https://user-images.githubusercontent.com/1253341/152559165-e9c3b970-33a0-44ae-9c23-7abe52f30616.png)
+
+>The extra comma is from @SkySkimmer's edit:
+
+fixed
+> @JasonGross Then what should the doc say?
+
+I think if you replace "any" with "all", then it at least becomes more correct.  It's still under-documented, and the behavior is subtle and intricate enough (cf #15592) that it's not clear to me what to say to fully explain the behavior.
+Why don't you submit the one-word change you suggest as a PR and cut out the middleman (i.e. me)?  That's less effort for everyone.
+
+`rewrite` is used so frequently that the doc should have a precise and complete description, including for `occurrences`.  If there's not a simple, relatively intuitive description (a couple sentences) and there aren't excellent reasons for it to be complicated, then we should look at changing the behavior to make it simple.  We'd need to consider the compatibility impact.  It might need a compatibility flag (if feasible to support) or it may affect too much user code to be a viable change.
+
+Shouldn't it be relatively easy to figure out the behavior by examining the source code for the tactic?

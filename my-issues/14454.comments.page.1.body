@@ -1,0 +1,3 @@
+For the record, the `nat_ind` case is addressed in #12996 which requires some time though.
+I'm not sure more flexibility is what we need, as opposed to more consistency and complete docs...
+I.e., it's already pretty hard to document the current state and it feels like it is going to be even harder if we introduce more flexibility.

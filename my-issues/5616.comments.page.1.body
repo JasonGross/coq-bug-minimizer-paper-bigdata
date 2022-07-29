@@ -1,0 +1,21 @@
+Comment author: @JasonGross
+
+Goal False.
+Proof.
+  pose True as F.
+  let c := constr:(I : F) in
+  clear F; pose False as F;
+    pose proof c.
+  assumption.
+Defined.
+(* Error:
+In environment
+F := True : Prop
+F0 := False : Prop
+The term "I" has type "True" while it is expected to have type "F0". *)
+
+I'd prefer if any fix for this doesn't incur an time overhead on [pose] / [pose 
+proof]
+
+
+Doing evil with `clear` and ltac bindings is already reported in a bunc of other places.

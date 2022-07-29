@@ -1,0 +1,231 @@
+See also #12487
+Are your statistics from some time ago, before the mem-use performance improvements @ppedrot and @SkySkimmer made over the summer?  If so, perhaps I can get some updated statistics in my copious free time--for which I'll be more motivated if one of them expresses interest in working on the problem soon.  Gentlemen?
+
+I only have 32GB on my laptop.  Is that enough for n=1 and n=2?  The 60GB value is reported by Gc after a major garbage collection?
+Statistics are from 8.12.0.  But I was under the impression that the memory improvements were about reachable evars saved after Qed, whereas the memory issue here is about monotonically increasing memory usage during proof construction.
+
+32 GB should be more than enough for n=1 and probably n=2 as well.  Running `Optimize Heap` seemed to have basically no effect on memory usage, and basically no effect on how many iterations of the tactic ran for n=3 before exhausting memory (IIRC, it was around 1200 or something like that).  I expect the memory will either be consumed by defined evars, by evar contexts, or by the size of the proof term itself.
+> But I was under the impression that the memory improvements were about reachable evars saved after Qed, whereas the memory issue here is about monotonically increasing memory usage during proof construction.
+
+I thought we did some of both.  The details fade from memory so quickly, though.  Easy enough to measure.
+The script produces a huge amount of output.  I commented out `Set Ltac Profiling` and `Set Typeclasses Debug` but it still spews many thousands of lines.  What else should I disable?
+
+Also, how do I set the size? as in:
+
+```
+    (* size 1: Finished transaction in 100.141 secs (99.967u,0.171s) (successful) *)
+    (* Size 2: Finished transaction in 607.765 secs (606.448u,1.267s) (successful), Finished: 1269%nat *)
+    (* size 3: Finished transaction in 8706.089 secs (8692.561u,13.515s) (successful), Finished: 2398%nat, src/Rewriter/PerfTesting/fiat_crypto_via_rewrite_strat.vo (real: 8711.19, user: 8695.54, sys: 15.63, mem: 58206840 ko) *)
+    (* size 4: Fatal error: out of memory.
+```
+
+Here's the very end of the `coqc` output.  I'd guess that the 186 seconds corresponds to size 1.  But there's so much output, that may be dominating.
+
+```
+Finished: 495%nat
+Finished transaction in 186.847 secs (186.835u,0.01s) (successful)
+Evars: 14302 -> 2
+
+Finished transaction in 0.715 secs (0.715u,0.s) (successful)
+Finished transaction in 4.187 secs (4.177u,0.009s) (successful)
+1 subgoal
+
+  f, g : list Z
+  ============================
+  (dlet y' : Z := 1 * (nth_default 0 f 0 * nth_default 0 g 0) in
+   dlet x' : Z := y' + 0 in
+   dlet x'0 : Z := x' / 2305843009213693952 in
+   dlet x'1 : Z := x' mod 2305843009213693952 in
+   dlet y'0 : Z := 1 * x'0 in
+   dlet y'1 : Z := 1 * x'1 in
+   dlet x'2 : Z := 1 * (y'1 + 0) in
+   dlet x'3 : Z := 1 * (1 * (y'0 + 0)) in
+   dlet x'4 : Z := x'2 + (x'3 + 0) in
+   dlet x'5 : Z := x'4 / 2305843009213693952 in
+   dlet x'6 : Z := x'4 mod 2305843009213693952 in
+   dlet y'2 : Z := 1 * x'5 in
+   dlet y'3 : Z := 1 * x'6 in
+   dlet x'7 : Z := 1 * (y'3 + 0) in
+   dlet x'8 : Z := 1 * (1 * (y'2 + 0)) in
+   dlet y'4 : Z := 1 * (x'7 + (x'8 + 0)) in
+   dlet y'5 : Z := 1 * (y'4 + 0) in
+   dlet x'9 : Z := 0 in
+   [y'5 + (x'9 + 0)]) = f
+
+real    3m18.961s
+user    3m11.488s
+sys     0m1.015s
+```
+At the top of `go_step`, there's `match goal with |- ?G => idtac "Goal:" G end;`.  Commenting this out will remove most of the output.  If you want to also remove the count of lines, you can comment out the arguments passed to the `idtac`s in `Ltac go_count_max`.    If you want to remove all the intermediate `Finished transaction` lines, you can comment out the `time` invocations in `go_step`.
+
+> Also, how do I set the size? 
+
+There's a `Notation size_of_problem := 1%nat (only parsing).` which you can change to other `nat`s (the `Definition p` matches on this notation, and I've hardcoded branches for 1,2,3,4; I can construct branches for other sizes if you want them).
+
+> I'd guess that the 186 seconds corresponds to size 1. But there's so much output, that may be dominating.
+
+Yes.  The way to determine the size from the goal left at the end is that the size should equal the length of the list at the bottom of all the `dlet`s.  Most of the file takes essentially no time to run, so it's a good enough approximation to consider the entire running time of the file.
+Were you running these tests on a faster processor than in #12487?  IIRC my runs for that PR were faster than what you reported, whereas my runs for these are taking about twice as the numbers in your comments.
+
+Finished transaction in 186.847 secs (186.835u,0.01s) (successful)
+Finished transaction in 1211.509 secs (1209.338u,2.159s) (successful)
+
+(* size 1: Finished transaction in 100.141 secs (99.967u,0.171s) (successful) *)
+(* Size 2: Finished transaction in 607.765 secs (606.448u,1.267s) (successful), Finished: 1269%nat *)
+    
+
+The processor was the same.  It's possible that by chance I had hyperthreading on for the #12487 and off here, and that would account for a roughly 2x difference.
+I don't see how hyperthreading would make much difference, unless you had a bunch of other things running during #12487.  Coq is single-threaded, right?  Something to look at
+
+Here's the memory use after `Optimize Heap`.  (`Optimize Proof` doesn't seem to help--how many of the evars are resolved?):
+
+```
+size = 1
+live_words: 124617516
+top_heap_words: 176734208
+
+size = 2
+
+live_words: 1018427171
+top_heap_words: 1438109696
+
+size = 3
+
+Cur: 1446%nat
+Tactic call ran for 1.742 secs (1.636u,0.029s) (failure)
+Tactic call ran for 0.009 secs (0.009u,0.s) (failure)
+Fatal error: out of memory.
+
+real    52m24.655s
+user    49m41.265s
+sys     1m32.430s
+```
+
+What is the `2` in `Evars` below?  Is the `Finished` number closely related to the `Evars` number?
+
+```
+Finished: 495%nat
+Evars: 14302 -> 2
+```
+>What is the 2 in Evars below? Is the Finished number closely related to the Evars number?
+
+IIRC it means we go from having 14302 evars in the evar map to having 2.
+Here's the memory use for size = 1 for fields with >= 400 000 reachable words.  `camlSummary__gc_roots` corresponds to `Summary.ml`, for example.  The rightmost column identifies the field within the file.  `??` means I didn't figure it out.  Others I didn't try to figure out.
+
+```
+Globals:
+   4150729 field  19 camlSummary__gc_roots
+    741226 field  53 camlNametab__gc_roots
+   7537283 field  80 camlGlobal__gc_roots      ??
+  10110996 field  59 camlLib__gc_roots      lib_state
+    676346 field 179 camlNotation__gc_roots
+    452604 field  62 camlImpargs__gc_roots
+    507830 field  63 camlHints__gc_roots
+   2293159 field  82 camlDeclaremods__gc_roots
+   2351257 field  87 camlDeclaremods__gc_roots
+  12647607 field   9 camlVernacstate__gc_roots   s_cache
+ 118179962 field  10 camlVernacstate__gc_roots   s_lemmas
+  13389295 field  61 camlStm__gc_roots
+
+Called from file "vernac/vernacinterp.ml", line 28, characters 19-23
+ 118179960 field   0 (frame 0)
+Called from file "stm/stm.ml", line 2477, characters 4-60
+  13388112 field   0 (frame 1)
+ 118179675 field   2 (frame 1)
+```
+
+Stack frames are for these source lines:
+
+```
+  | VtDefault f -> f (); stack, pm
+    Reach.known_state ~doc ~cache:(VCS.is_interactive ()) id;
+
+```
+
+For size = 2: 8GB in the s_lemmas field!  Everything else is (almost) exactly the same.
+
+```
+Globals:
+   4150739 field  19 camlSummary__gc_roots
+    741226 field  53 camlNametab__gc_roots
+   7537285 field  80 camlGlobal__gc_roots
+  10111006 field  59 camlLib__gc_roots
+    676346 field 179 camlNotation__gc_roots
+    452604 field  62 camlImpargs__gc_roots
+    507830 field  63 camlHints__gc_roots
+   2293159 field  82 camlDeclaremods__gc_roots
+   2351257 field  87 camlDeclaremods__gc_roots
+  12647619 field   9 camlVernacstate__gc_roots
+1041504574 field  10 camlVernacstate__gc_roots
+  13389307 field  61 camlStm__gc_roots
+
+Called from file "vernac/vernacinterp.ml", line 28, characters 19-23
+1041504572 field   0 (frame 0)
+Called from file "stm/stm.ml", line 2477, characters 4-60
+  13388124 field   0 (frame 1)
+1041504287 field   2 (frame 1)
+```
+
+These are using an instrumented OCaml 4.10; the numbers I posted here earlier were 4.06.  There are some small differences.
+The numbers shown above are after the Ltac tactic completes (one tactic does all the work).  If I gather the stats before the tactic completes, the memory use is in the stack rather than in the global roots--almost 1000 stack frames for size=1 with huge amounts of memory reachable from each frame.
+
+@JasonGross How can I make the tactic terminate on a given iteration number?  I tried changing one line to  `... tryif guard n < 3; go_step ...` but that didn't work.  I wanted to do a `Show Proof` and `Show Existentials` at various points in the iteration--it could be that these are getting enormous.
+
+@SkySkimmer Are you planning to look at this?  You know this stuff far better than I do.
+The stack is expected to be roughly size 1000 for size = 1, because the tactic is recursive rather than loopy and the number of recursive calls is roughly 1000.  If you want to cut it off after `n` iterations, replace `Time go.` with `Time go_count_max O constr:(n%nat).`
+I'd be interested to know how much of the memory is in the proof term itself vs the overhead incurred by using evars.  I'd also be interested in the diff between the proof term size in memory and the proof term size stored in the vo file (after `Abort` is changed to `Qed` or something --- I didn't check how big the .vo files get, but I guess if they get very big then there's a different inefficiency that we're hitting here).
+I can't QED because there are still 2 open evars.  The proof term (`Show Proof`) is about 1.4 million lines, though with the pretty-printing, most lines average about 20 nonblank characters on them, whereas `Show Existentials` is only about 30 lines.  `Obj.reachable_words (Proof.partial_proof p)` is 110 263 120 words.  (That's what `Show Proof` prints, not exactly the same as the kernel data structure but I believe the size is similar.)  So it appears the proof term itself is the size issue.
+
+(also env size = 7525651 and sigma size = 118179610.  Not sure how to interpret those.)
+You can fix the open evars with `Axiom admit : forall {T}, T` and `Unshelve. all: exact admit.`
+Doesn't work.  I added a period at the end of the axiom and replaced `Abort.` with `Qed.` after the `Unshelve. all: exact admit.`
+
+```
+File "./Jason13576.v", line 631, characters 2-6:
+Error:  (in proof Unnamed_thm): Attempt to save an incomplete proof
+```
+I had a look at the runtime, and it seems there are a lot of factors implied. A few specific spots seem to be caused by either quadratic typechecking of applications in the upper strata, or a generally costly implementation of evar clenvs (renames stuff on the fly, checks for dependency, etc.). The first one could be solved as done in the kernel at the cost of an ugly implementation, but the other one is really tied to the way we handle clenvs. 
+
+I will have a look at the memory allocation with memtrace.
+Memtrace shows very suspicious results. Most of the allocated memory seems to come from the call to `Typing.check` in `Refine.generic_refine`, but I don't understand how this can keep live memory around. If I had to guess, I'd say it's likely that unification is somehow storing these terms in the evarmap but I have no clue how.
+> or a generally costly implementation of evar clenvs (renames stuff on the fly, checks for dependency, etc.). The first one could be solved as done in the kernel at the cost of an ugly implementation, but the other one is really tied to the way we handle clenvs.
+
+What's the backtrace for these evars?  Are they generated by the `setoid_rewrite`/`rewrite` machinery (in such a way that the problem would be fixed if pattern matching didn't use named contexts), or are they goal evars? 
+@jfehrle 
+
+> Doesn't work. I added a period at the end of the axiom and replaced `Abort.` with `Qed.` after the `Unshelve. all: exact admit.`
+
+Sorry for the delays.  Turns out you need (in addition to the axiom)
+```coq
+    Unshelve.
+    all: exact admit.
+  }
+  exact I.
+Qed.
+```
+instead of `Abort.`
+For size = 1, the vo file is 1 458 419 bytes.  Loading that file in a new process and compacting increases memory use by 11 945 752 words, or ~95 MB.
+
+For size = 2, the vo file is 3 524 361 bytes.  Loading that file in a new process and compacting increases memory use by 11 950 571 words, also ~95 MB.
+It's rather odd that the vo files differ by more than 2MB but the process memory only differs by 5KB.  A factor of 500.
+If you end proofs with Qed rather than Defined, I think the proofs are loaded lazily?
+With Defined:
+size = 1: vo vile = 1 461 313 bytes, delta memory = 12 202 878 words, ~98MB
+size = 2:  vo file = 3 539 459 bytes, delta memory = 12 968 958 words, ~103MB
+Btw, `rewrite_strat` is significantly better: You can see some numbers at https://github.com/coq-community/coq-performance-tests/blob/aedb0bab5042af75c65a425d8c9584fd01f8c64e/src/fiat_crypto_via_setoid_rewrite_standalone.v#L652-L662  However, the performance is still exponential, and my estimate is that 5 limbs would take 11-12 hours if it didn't stack overflow after 8, 6 limbs would take 10--11 days, 7 would will take 31--32 weeks, 8 limbs would take 13--14 years, 9 limbs would take 2--3 centuries, 10 limbs would take 6--7 millennia, and 15 limbs would take 2--3 times the age of the universe.  (The number of limbs is the argument passed to `goal_of_size`.)  Note also that 4 limbs takes around 10 GB, and 5 limbs took around 17 GB before stack overflowing.
+For reference, the numbers here are:
+
+\# limbs | time to solve goal with `rewrite_strat` 
+--|--
+1 | 11.346 secs
+2 | 93.915 secs
+3 | 559.433 secs
+4 | 4363.725 secs
+
+(The exponential fit here is only *e*<sup>2 * (# limbs)</sup>; the estimates above come from fitting the time of the fastest-growing subcall to `rewrite_strat` which grows as roughly *e*<sup>3 * (# limbs)</sup>
+
+I'd be interested in knowing the performance bottlenecks here, too.
+Better open a new issue for rewrite_strat.  It would be confusing to
+discuss 2 different problems in one issue.
+
+Created #13708

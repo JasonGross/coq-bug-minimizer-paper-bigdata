@@ -1,0 +1,19 @@
+Comment author: @JasonGross
+
+I expect the two tactics here to succeed, but they fail.
+
+```coq
+Require Import Coq.Setoids.Setoid.
+Definition silly (n : nat) := True.
+Ltac silly :=
+  lazymatch goal with
+  | [ |- silly 1 ] => constructor
+  end.
+Axiom sillyL : forall x, silly x -> x = 0 + 0.
+Hint Rewrite sillyL using solve [ silly ] : silly.
+Goal 1 + 0 = 0.
+Proof.
+  progress autorewrite with silly.
+  rewrite sillyL by silly. (* no matching clauses for match *)
+```
+(rewrite matched `x := 0` (with the right hand side 0) and ran the tactic on goal `silly 0` which fails)

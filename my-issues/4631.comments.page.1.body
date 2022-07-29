@@ -1,0 +1,156 @@
+Comment author: @JasonGross
+
+Sometimes when I use [refine] to switch the order of arguments, Coq 8.5 stack overflows.
+```coq
+(* -*- mode: coq; coq-prog-args: ("-emacs" "-R" "." "Fiat" "-top" "IndexedAndAtMostOneNonTerminalReflective") -*- *)
+(* File reduced by coq-bug-finder from original input, then from 1373 lines to 16 lines *)
+(* coqc version 8.5 (March 2016) compiled on Mar 20 2016 12:6:5 with OCaml 4.02.3
+   coqtop version jgross-Leopard-WS:/home/jgross/Downloads/coq/coq-v8.5,v8.5 (09c2011fbdbb2ac1ce33e5abe52d93b907b21a3c) *)
+Require Coq.Sets.Ensembles.
+
+Goal forall (T : Type) (computes_to'' : Ensembles.Ensemble T -> T -> Prop) (U : Set) (v : T * U)
+            (bind : Ensembles.Ensemble T -> (T -> Ensembles.Ensemble (T * U)) -> Ensembles.Ensemble (T * U))
+            (computes_to' : Ensembles.Ensemble (T * U) -> T * U -> Prop),
+    (forall (ca : Ensembles.Ensemble T) (f : T -> Ensembles.Ensemble (T * U)) (a : T) (b : T * U),
+        computes_to'' ca a -> computes_to' (f a) b -> computes_to' (bind ca f) b) ->
+    exists k : T * U, computes_to' (bind (fun r_n : T => fst k = r_n) (fun r_n' : T => Ensembles.Singleton (T * U) (r_n', snd k))) v.
+  intros ?????? bind_computes.
+  eexists.
+  Timeout 1 match goal with
+            | [ |- computes_to' (bind _ _) _ ]
+              => refine ((fun H0 H1 => bind_computes _ _ _ _ H1 H0) _ _)
+            end.
+```
+Comment author: @JasonGross
+
+Slightly simpler version:
+```coq
+(* -*- mode: coq; coq-prog-args: ("-emacs" "-nois") -*- *)
+(* File reduced by coq-bug-finder from original input, then from 1373 lines to 16 lines *)
+(* coqc version 8.5 (March 2016) compiled on Mar 20 2016 12:6:5 with OCaml 4.02.3
+   coqtop version jgross-Leopard-WS:/home/jgross/Downloads/coq/coq-v8.5,v8.5 (09c2011fbdbb2ac1ce33e5abe52d93b907b21a3c) *)
+Require Import Coq.Init.Notations.
+Notation "A -> B" := (forall (_ : A), B) : type_scope.
+
+Inductive ex {A:Type} (P:A -> Prop) : Prop :=
+  ex_intro : forall x:A, P x -> ex (A:=A) P.
+
+Goal forall (T : Type) (computes_to'' : (T -> Prop) -> T -> Prop) (v : T) (bind : (T -> Prop) -> (T -> T -> Prop) -> T -> Prop)
+            (computes_to' : (T -> Prop) -> T -> Prop) (R : T -> T -> Prop),
+    (forall (ca : T -> Prop) (f : T -> T -> Prop) (a b : T), computes_to'' ca a -> computes_to' (f a) b -> computes_to' (bind ca f) b) ->
+    ex (fun k : T => computes_to' (bind (fun r_n : T => R k r_n) (fun r_n' _ : T => R k r_n')) v).
+  intros ?????? bind_computes.
+  eexists.
+  Timeout 1 match goal with
+            | [ |- computes_to' (bind _ _) _ ]
+              => refine ((fun H0 H1 => bind_computes _ _ _ _ H1 H0) _ _)
+            end
+```
+Comment author: @JasonGross
+
+My coq-bisect script (https://github.com/JasonGross/coq-bisect) says:
+```
+259ec71685cf2180403e35acea32cb42ba6b761b is the first bad commit
+commit 259ec71685cf2180403e35acea32cb42ba6b761b
+Author: Pierre-Marie Pédrot <pierre-marie.pedrot@ inria.fr>
+Date:   Fri May 23 18:41:47 2014 +0200
+
+    The tactic interpreter now uses a new type of tactics, through
+    the GTac module. A ['a Gtac.t] is a special case of tactic that
+    may depend on the current goals, or not. Internally, it construct
+    a list of results, one for each focussed goal, if the tactic is
+    actually dependent.
+
+    This allows for an interpretation of whole-goal tactic that does
+    work, which was not the case for the previous implementation,
+    which did to many Proofview.Goal.enter.
+
+:040000 040000 2a5297ce861f1c8cc938a744e38c5db0686b8d79 e7ed7cdb96c329972b1bfaad98836374e717e455 M      proofs
+:040000 040000 05df646440fd521ca0e48756416e0f0314ef44bb e747be44d6816f5aac5b68623599f30dc7bcf2bc M      tactics
+```
+Comment author: @ppedrot
+
+It looks like there is a cycle in the evar dependency of the term created by the refine tactic, leading to the stack overflow.
+
+
+Comment author: @ppedrot
+
+OK, I think I found the error. The `Evarutil.occur_evar_upto` function does not do what it claims. If an evar is undefined, it simply ignores its arguments for the occurs check. Fixing this bug makes your example fail. Was that the expected behaviour?
+
+
+Comment author: @maximedenes
+
+This is a part of the code base I don't know at all, but already for Termops.occur_evar, is it ok not to look into the arguments of evars? I understand it doesn't recursively check the evar_map, but still. For instance, Termops.occur_var does check evars arguments through Constr.iter.
+
+
+Comment author: @ppedrot
+
+Checking the arguments in case of an undefined evar is an overapproximation, as the argument may not be used by the body of the evar when it is instantiated. Yet, it is the only sound behaviour I can think of, as witnessed by the current bug. We could try to weaken the environment, but that would require typing and it may break things in a way difficult to predict.
+
+
+Comment author: @JasonGross
+
+> Fixing this bug makes your example fail. Was that the expected behaviour?
+
+No, the example goes through fine in 8.4pl6
+
+
+Comment author: @gares
+
+> Checking the arguments in case of an undefined evar is an overapproximation,
+> as the argument may not be used by the body of the evar when it is
+> instantiated. Yet, it is the only sound behaviour I can think of
+
+I did no look at the example, but it is not the only sound solution as far as I can tell from your message.  Evars can be pruned (the Coq codebase calls restriction this way).
+In particular you can say the evar cannot use its, say, second argument.
+The "filter" data structure serves this purpose.
+
+Eg.  occur_check  Y   (f (X a Y b))  -->  success, but X filtered on 2nd arg
+
+
+Comment author: @ppedrot
+
+> In particular you can say the evar cannot use its, say, second argument.
+> The "filter" data structure serves this purpose.
+
+Indeed, this is what I meant by "weakening the environment". But I think we start to wander on the fringes of heuristics with this approach. Where do we cut the cycle? How do we ensure that typing of the type of the evar is preserved? There may be several choices, leading to different solutions.
+
+
+Comment author: @gares
+
+> > In particular you can say the evar cannot use its, say, second argument.
+> > The "filter" data structure serves this purpose.
+> 
+> Indeed, this is what I meant by "weakening the environment". But I think we
+> start to wander on the fringes of heuristics with this approach. Where do we
+> cut the cycle? How do we ensure that typing of the type of the evar is
+> preserved? There may be several choices, leading to different solutions.
+
+Yes, IIRC Matita was recursively restricting the type of the evar... and I had the impression Coq was doing the same.  But AFAICT evarconv did not change much, so it must be refine calling unification on a "harder" problem than before.
+In any case we (Maxime and myself) plan to look at the code of refine this afternoon to understand how things are.
+
+
+Comment author: @JasonGross
+
+Enrico, Maxime, any further insights?
+
+
+Comment author: @SkySkimmer
+
+*** #5468 has been marked as a duplicate of this bug. ***
+
+
+I just stumbled on what looks like an instance of this issue:
+
+```coq
+Goal exists x, x = 0.
+  eexists.
+  match goal with |- ?x = _ =>
+    refine ((fun (_ : x = x) => _) _)
+  end.
+(* Error: Stack overflow *)
+```
+
+Could someone confirm whether this is actually the same issue?
+Note: the snippet above is derived from an attempt at doing what `eassert` does using `refine`, before finding out that `eassert` exists. However, `eassert` seems to behave correctly, as opposed to refine...
+It seems all these examples are fixed by #7825.

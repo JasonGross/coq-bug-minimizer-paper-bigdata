@@ -1,0 +1,21 @@
+Comment author: @JasonGross
+
+Reserved Notation "'a' { x }" (at level 0, format "'a' { x }"). (* Error: The 
+format does not match the notation. *)
+
+
+Comment author: @herbelin
+
+Fixed in branch v8.6.
+
+
+Comment author: @JasonGross
+
+Thanks!
+
+
+Comment author: @herbelin
+
+BTW and to do: testing camlp5 with backtractking in the presence of notations involving "{ }" (sumor, sumbool, sig, sigT, ...). If it works, that shall be better than the current ad hoc hacks.
+
+

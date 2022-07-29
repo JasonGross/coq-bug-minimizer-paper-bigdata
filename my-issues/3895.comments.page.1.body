@@ -1,0 +1,44 @@
+Comment author: @JasonGross
+
+(* File reduced by coq-bug-finder from original input, then from 6046 lines to 37 lines, then from 34 lines to 19 lines *)
+(* coqc version trunk (December 2014) compiled on Dec 23 2014 22:6:43 with OCaml 4.01.0
+   coqtop version cagnode15:/afs/csail.mit.edu/u/j/jgross/coq-trunk,trunk (90ed6636dea41486ddf2cc0daead83f9f0788163) *)
+
+Notation pr1 := (@ projT1 _ _).
+Notation compose := (fun g' f' x => g' (f' x)).
+Notation "g 'o' f" := (compose g f) (at level 40, left associativity) : function_scope.
+Open Scope function_scope.
+Definition ap {A B:Type} (f:A -> B) {x y:A} (p:x = y) : f x = f y := match p with eq_refl => eq_refl end.
+Definition pointwise_paths {A} {P:A->Type} (f g:forall x:A, P x) := forall x:A, f x = g x.
+Notation "f == g" := (pointwise_paths f g) (at level 70, no associativity) : type_scope.
+Theorem Univalence_implies_FunextNondep (A B : Type)
+: forall f g : A -> B, f == g -> f = g.
+Proof.
+  intros f g p.
+  pose (d := fun x : A => existT (fun xy => fst xy = snd xy) (f x, f x) (eq_refl (f x))).
+  pose (e := fun x : A => existT (fun xy => fst xy = snd xy) (f x, g x) (p x)).
+  change f with ((snd o pr1) o d).
+  change g with ((snd o pr1) o e).
+  apply (ap (fun g => snd o pr1 o g)).
+
+
+Comment author: @ppedrot
+
+Looks like yet-another evar lost by change...
+
+
+Comment author: @aspiwack
+
+If it's changed it is unrelated to the usual issue, because I fixed that one for good. There may be another part, in the code of [change], which doesn't thread the [evar_map] properly, though.
+
+
+Comment author: @ppedrot
+
+Upon debugging, it is actually due to a misuse of the Evd.downcast primitive in evar-evar unification, thus probably due to Hugo's modifications. In Evarsolve.solve_evar_evar, this functions is used without checking that the downcasted evar is not already solved, which is a precondition of the downcasting. I am not competent enough to know what to do in this case though...
+
+
+Comment author: @herbelin
+
+Fixed (c42b0966dfbc6).
+
+

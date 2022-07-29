@@ -1,0 +1,14 @@
+Comment author: @JasonGross
+
+Often, there are instances are hints that we only want to trigger if they're filling in an already constrained class/goal.  It would be nice to be able to declare a variant of hint that automatically ran something equivalent to [match goal with |- ?G => try (has_evar G; fail 1) end] before using the hint.
+
+
+Comment author: @mikeshulman
+
+If you'd like a specific example, there are some instances of IsEquiv in the HoTT library that should not trigger in this way.  For instance, `transport idmap` is an equivalence, but if this is an ordinary instance then `refine (BuildEquiv _ _ _ _)` guesses it and presents the user with the goal to prove an equality of types, which is very confusing.
+
+For maximum configurability, one could imagine (1) a different sort of Instance declaration that makes this happen, e.g. `Instance NoEvar`, (2) a setting on a class definition, like `Class NoEvar` which makes all of its instances behave this way (at least by default), and (3) a global setting like `Set NoEvar` which makes all instances behave this way (by default).  But a way to mark individual instances for this behavior would be a good start, and as Jason points out it might be almost as easy as modifying the hints that `Instance` adds to the database.
+
+
+This was solved by modes, AFAICT.
+Can modes be configured on a per-instance basis?  I thought they were per-class.

@@ -1,0 +1,211 @@
+Comment author: @JasonGross
+
+Created attachment 685
+`make src/Parsers/Refinement/SharpenedJSON.vo`
+
+In the attached code (same as bug [BZ#4642](https://github.com/coq/coq/issues?q=is%3Aissue%20%22Original%20bug%20ID%3A%20BZ%234642%22)), in Coq 8.4, in src/Parsers/Refinement/SharpenedJSON.v, the first [Defined] takes about 2 minutes, which seems rather unfortunate.
+
+> Attached file: [bug_4643.zip](https://coq.inria.fr/bugfiles/attachment.cgi?id=685) (application/x-zip-compressed, 953061 bytes)
+> Description:   `make src/Parsers/Refinement/SharpenedJSON.vo`
+
+
+Comment author: @JasonGross
+
+Created attachment 693
+`make src/Parsers/Refinement/SharpenedJSON.vo`
+
+> Attached file: [bug_4643.zip](https://coq.inria.fr/bugfiles/attachment.cgi?id=693) (application/x-zip-compressed, 999072 bytes)
+> Description:   `make src/Parsers/Refinement/SharpenedJSON.vo`
+
+
+Comment author: @ppedrot
+
+I believe you're going to be a happy user of native_compute in 8.5. It seems that Coq is passing virtually all of its time in term reduction by the VM. If your tactics are not badly designed (e.g. recomputing several times the same result), I'm pretty much convinced that there is no solution. And thus, no problem.
+
+
+Comment author: @JasonGross
+
+Created attachment 716
+Slow Defined in src/Parsers/Refinement/SharpenedJSON{,Native}.v
+
+> I believe you're going to be a happy user of native_compute in 8.5
+
+I disagree.  When I use [native_compute], the [Defined] takes 818.476 s of user time rather than 94 s of user time.  Furthermore, there doesn't seem to be any easy way to specify that some files should get native code and others should not, and trying to compile the definition to native code (when I use vm_compute) blows through 64 GB of RAM.  (Alas, the proof is large and transparent, because [abstract] does not handle evars, and it's built up in parts.  I could possibly make it a [Let] rather than a [Definition], but that might cause issues with ending the section, which already takes 15-30 seconds)  Also, unless I'm doing something wrong, native_compute isn't any faster than vm_compute on my proof script (though I may very well be doing something wrong).
+
+With vm_compute:
+/usr/bin/time -f "src/Parsers/Refinement/SharpenedJSON (user: %U mem: %M ko)" "/home/jgross/.local64/coq/coq-8.5pl1/bin/coqc"  -q  -R "src" Fiat -compat 8.4 -native-compiler  src/Parsers/Refinement/SharpenedJSON
+Finished transaction in 0. secs (0.u,0.s) (successful)
+Finished transaction in 4.869 secs (4.864u,0.007s) (successful)
+Finished transaction in 1.958 secs (1.956u,0.s) (successful)
+Finished transaction in 115.912 secs (115.904u,0.004s) (successful)
+Finished transaction in 674.238 secs (674.144u,0.059s) (successful)
+Finished transaction in 39.47 secs (39.452u,0.016s) (successful)
+Finished transaction in 136.335 secs (136.312u,0.015s) (successful)
+Finished transaction in 41.486 secs (41.48u,0.004s) (successful)
+Finished transaction in 9.158 secs (9.159u,0.s) (successful)
+Finished transaction in 0.506 secs (0.504u,0.s) (successful)
+Finished transaction in 94.265 secs (94.207u,0.052s) (successful) <--- Defined.
+Finished transaction in 5.394 secs (5.039u,0.352s) (successful)
+Finished transaction in 0.055 secs (0.051u,0.s) (successful)
+Finished transaction in 17.007 secs (15.072u,1.936s) (successful)  <---- End IndexedImpl.
+Fatal error: out of memory.
+Error: Could not compile the library to native code.
+Command exited with non-zero status 1
+src/Parsers/Refinement/SharpenedJSON (user: 1197.02 mem: 6388704 ko)
+
+With native_compute:
+/usr/bin/time -f "src/Parsers/Refinement/SharpenedJSONNative (user: %U mem: %M ko)" "/home/jgross/.local64/coq/coq-8.5pl1/bin/coqc"  -q  -R "src" Fiat -compat 8.4 -native-compiler  src/Parsers/Refinement/SharpenedJSONNative
+Finished transaction in 0. secs (0.u,0.s) (successful)
+Finished transaction in 5.056 secs (4.864u,0.035s) (successful)
+Finished transaction in 1.982 secs (1.976u,0.008s) (successful)
+Finished transaction in 115.609 secs (115.556u,0.043s) (successful)
+Finished transaction in 608.772 secs (601.812u,1.636s) (successful)
+Finished transaction in 35.037 secs (34.543u,0.104s) (successful)
+Finished transaction in 122.969 secs (122.764u,0.076s) (successful)
+Finished transaction in 41.725 secs (41.716u,0.008s) (successful)
+Finished transaction in 9.226 secs (9.223u,0.s) (successful)
+Finished transaction in 0.503 secs (0.504u,0.s) (successful)
+Finished transaction in 1037.209 secs (818.476u,1.396s) (successful) <--- Defined.
+Finished transaction in 5.083 secs (5.028u,0.056s) (successful)
+Finished transaction in 0.054 secs (0.052u,0.s) (successful)
+Finished transaction in 14.39 secs (14.283u,0.108s) (successful)  <---- End IndexedImpl.
+^Cmake: *** Deleting file `src/Parsers/Refinement/SharpenedJSONNative.vo'
+Command terminated by signal 2
+src/Parsers/Refinement/SharpenedJSONNative (user: 1851.12 mem: 5288316 ko)
+make: *** [src/Parsers/Refinement/SharpenedJSONNative.vo] Interrupt
+
+(I killed the second one rather than let it thrash my machine.  The extra 200 s of non-user time in the second comes from when the first one was thrashing my machine; I had them running in parallel on a machine with 6 physical cores and 64 GB of RAM, and the vm_compute one died at the end of the file before the native_compute one managed to finish [Defined], even though I started them at the same time.)
+
+See README.md for more information in the attached archive, which should build with both 8.5pl1 (with -compat 8.4) and with 8.4pl{2,3,4,5,6}.
+
+> Attached file: [slow_defined.zip](https://coq.inria.fr/bugfiles/attachment.cgi?id=716) (application/zip, 420812 bytes)
+> Description:   Slow Defined in src/Parsers/Refinement/SharpenedJSON{,Native}.v
+
+
+Comment author: @ppedrot
+
+All right, this one took me a long time, but I think I nailed it.
+
+« TL;DR: programming in Coq does prevent you from using proper algorithms. »
+
+You have a hell of a lot of very inefficient computations due to the way you code the sequences of ASCII characters. In particular, the 'code_in_range' notation relies on 'opt.nat_of_ascii' which is terrible w.r.t. efficiency. You should rather use binpos integers.
+
+If the night is not too short, I may come up with a PR for your code to prove my point and hopefully close this bug report with a well-deserved INVALID qualifier!
+
+
+Comment author: @ppedrot
+
+BTW, if you wonder how I found this out: I simply perfed the Coq process while using the native_compute variant, and witnessed the actual costly backtrace. All hail to normalization by evaluation in your host language!
+
+
+Comment author: @ppedrot
+
+With a one-line change:
+
+-Notation code_le ch ch' := (Compare_dec.leb (opt.nat_of_ascii ch) (opt.nat_of_ascii ch')).
++Notation code_le ch ch' := (BinNat.N.leb (N_of_ascii ch) (N_of_ascii ch')).
+
+I get the following results in 8.6 + refold patch / native_compute:
+
+Finished transaction in 0. secs (0.u,0.s) (successful)
+Finished transaction in 3.392 secs (3.024u,0.144s) (successful)
+Finished transaction in 0.858 secs (0.819u,0.039s) (successful)
+Finished transaction in 20.449 secs (20.416u,0.016s) (successful)
+Finished transaction in 176.435 secs (158.56u,6.868s) (successful)
+Finished transaction in 12.081 secs (10.635u,0.575s) (successful)
+Finished transaction in 27.275 secs (26.539u,0.383s) (successful)
+Finished transaction in 24.793 secs (24.716u,0.04s) (successful)
+Finished transaction in 4.173 secs (4.164u,0.007s) (successful)
+Finished transaction in 0.067 secs (0.063u,0.s) (successful)
+(* Defined takes more time than I want to spend *)
+
+I had timings similar to you before the patch, so in particular, it means that the duration of the 5th instance has been divided by about 4 for the tactic calls.
+
+The Defined command still takes ages, but now the perf tool is hinting me at the Gensym function in this case... What do you think?
+
+
+Comment author: @JasonGross
+
+Oooh, thanks!  It'd be nice if there were some way to get this profiling data from inside of Coq, e.g., a [Set Native Profiling] and [Print Native Profile].  Any chance of that happening?
+
+Re gensym: ugh, really?  I use gensym to generate an "invalid string label" by, basically, concatenating all of the string labels together, sticking an "a" before each one.  I need an invalid label so that when I convert back and forth between numbers and labels, I can handle invalid numbers; I need my resulting code that I extract to use [int] and not [int option].  It should only ever be called with a single argument (at the top-level), and it should be possible to pre-compute it, but then it might be the case that we'll have a ~1000 character string showing up in a bunch of places in the code/proof.
+
+
+Comment author: @ppedrot
+
+(In reply to Jason Gross from comment [BZ#7](https://github.com/coq/coq/issues?q=is%3Aissue%20%22Original%20bug%20ID%3A%20BZ%237%22))
+> Oooh, thanks!  It'd be nice if there were some way to get this profiling
+> data from inside of Coq, e.g., a [Set Native Profiling] and [Print Native
+> Profile].  Any chance of that happening?
+
+I don't think so. This relies on OS-specific features.
+
+> Re gensym: ugh, really?  I use gensym to generate an "invalid string label"
+> by, basically, concatenating all of the string labels together, sticking an
+> "a" before each one.  I need an invalid label so that when I convert back
+> and forth between numbers and labels, I can handle invalid numbers; I need
+> my resulting code that I extract to use [int] and not [int option].  It
+> should only ever be called with a single argument (at the top-level), and it
+> should be possible to pre-compute it, but then it might be the case that
+> we'll have a ~1000 character string showing up in a bunch of places in the
+> code/proof.
+
+I'm not sure about it though. You should probably double-check your code and take asymptotic issues in consideration.
+
+On an unrelated note, rather than using N + native_compute, you may try to use Int31 + vm_compute. The VM uses retroknowledge, so that Int31 are actually compiled to machine integers, which may speed up your usecase a lot. Or not, but it may be worth the try.
+
+I'm not closing this bug yet because it's unclear whether what is taking ages in the Defined computation is due to your code or is some bug in Coq. I'll investigate a bit more.
+
+
+Comment author: @ppedrot
+
+The native_compute version seems to recompile code a lot of times, leading to a very bad overall complexity. I'm not sure whether this is a bug or a limitation of its architecture, but I'm now pretty much convinced that the current bug is invalid at least in its original form (i.e. using vm_compute and disabling native compilation).
+
+
+Comment author: @maximedenes
+
+(In reply to Pierre-Marie Pédrot from comment [BZ#8](https://github.com/coq/coq/issues?q=is%3Aissue%20%22Original%20bug%20ID%3A%20BZ%238%22))
+> (In reply to Jason Gross from comment [BZ#7](https://github.com/coq/coq/issues?q=is%3Aissue%20%22Original%20bug%20ID%3A%20BZ%237%22))
+> > Oooh, thanks!  It'd be nice if there were some way to get this profiling
+> > data from inside of Coq, e.g., a [Set Native Profiling] and [Print Native
+> > Profile].  Any chance of that happening?
+> 
+> I don't think so. This relies on OS-specific features.
+> 
+> > Re gensym: ugh, really?  I use gensym to generate an "invalid string label"
+> > by, basically, concatenating all of the string labels together, sticking an
+> > "a" before each one.  I need an invalid label so that when I convert back
+> > and forth between numbers and labels, I can handle invalid numbers; I need
+> > my resulting code that I extract to use [int] and not [int option].  It
+> > should only ever be called with a single argument (at the top-level), and it
+> > should be possible to pre-compute it, but then it might be the case that
+> > we'll have a ~1000 character string showing up in a bunch of places in the
+> > code/proof.
+> 
+> I'm not sure about it though. You should probably double-check your code and
+> take asymptotic issues in consideration.
+> 
+> On an unrelated note, rather than using N + native_compute, you may try to
+> use Int31 + vm_compute. The VM uses retroknowledge, so that Int31 are
+> actually compiled to machine integers, which may speed up your usecase a
+> lot. Or not, but it may be worth the try.
+> 
+> I'm not closing this bug yet because it's unclear whether what is taking
+> ages in the Defined computation is due to your code or is some bug in Coq.
+> I'll investigate a bit more.
+
+Note that native_compute also takes advantage of retroknowledge, so using int31 + native_compute makes sense. I even have an old branch of Coq with 63-bits integers which speeds up things very significantly when doing a lot of arithmetic.
+
+
+Comment author: @maximedenes
+
+(In reply to Pierre-Marie Pédrot from comment [BZ#9](https://github.com/coq/coq/issues?q=is%3Aissue%20%22Original%20bug%20ID%3A%20BZ%239%22))
+> The native_compute version seems to recompile code a lot of times, leading
+> to a very bad overall complexity. I'm not sure whether this is a bug or a
+> limitation of its architecture, but I'm now pretty much convinced that the
+> current bug is invalid at least in its original form (i.e. using vm_compute
+> and disabling native compilation).
+
+I'll try to have a look at the example to see if it is a native_compute bug ASAP, but we're attending ITP next week.
+
+

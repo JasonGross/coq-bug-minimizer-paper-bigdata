@@ -1,0 +1,7 @@
+So we currently have `Set Debug "Cbv"` and `Set Debug "RAKAM"`. Supposedly `RAKAM` prints debugging information for `simpl` and `cbn` but I am unable to understand what is going on.
+> but I am unable to understand what is going on.
+
+It prints the successive states of the abstract machine and requires to know the syntax of the machine. It could be changed to print a more intelligible syntax.
+
+As for doing something similar to `Set Debug "cbv"`, i.e. to prints something at unfolding of a constant, that'd be also possible.
+

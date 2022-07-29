@@ -1,0 +1,19 @@
+Comment author: @JasonGross
+
+The following should either work completely, or fail at the [Tactic Notation] line, but it should not fail with an "incomplete proof" message at [Qed], which is what it does now.
+
+Tactic Notation "symmetry" := reflexivity.
+Goal 1 = 1.
+  symmetry.
+Qed.
+
+I would prefer if it worked completely, and also allowed the following to work:
+
+Ltac symmetry := reflexivity.
+Goal 1 = 1.
+  symmetry.
+Qed.
+
+rather than failing with "Error: in Tacinterp.add_tacdef: Reserved Ltac name symmetry." as it does now.  This would be especially useful the HoTT library, where the internal [symmetry] tactic is too smart for its own good.
+
+

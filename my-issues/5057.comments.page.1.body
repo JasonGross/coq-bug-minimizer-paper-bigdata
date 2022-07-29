@@ -1,0 +1,218 @@
+Comment author: @JasonGross
+
+Goal True.
+  Info 1 refine I. (* refine I;<unknown>;shelve_unifiable *)
+
+
+Comment author: @silene
+
+I am not sure what should be done there. The "<unknown>" part corresponds to an actual tactic (meaning that it is a proper function in the new tactic monad). But since it does not have a user-accessible name, there is nothing meaningful to display here. I guess we could replace <unknown> with <implementation-detail>.
+
+
+Comment author: @herbelin
+
+My understanding is that the expected output should be "simple refine I; lazy beta iota; shelve_unifiable".
+
+In 8.6, Info 1 seems a bit broken as I get <extratactics::refine@ 0>, probably because of a new level of indirection between refine and what it calls. 
+
+Jason's message is relative to 8.5 I think. At this time, "lazy" was not fully in the monad, hence the <unknown>.
+
+In 8.6, Info 2 gives the more meaningful "refine I;shelve_unifiable" but the call to lazy is missing.
+
+My understanding  is that there should be a "lazy beta iota" to witness the call to the function Tactics.reduce_after_refine. I would suspect that some call to "Proofview.Trace.name_tactic" is missing somewhere, but I don't know what is the intent of Arnaud here. Should it be put at the level of "reduce" or at an other level in the sequence of calls going from reduce_after_refine to convert_concl? Maybe should it be put at both the reduce and convert_concl levels, so that increasing the level on reduce gives convert_concl??
+
+BTW, "refine" should be "simple refine" in Info 1 / Info 2, I just pushed a fix for it (in v8.5).
+
+
+Comment author: @herbelin
+
+I finally found a comment from Arnaud in tacinterp.ml (TacReduce) somehow telling how to attach Info on "lazy". I moved the code towards the more primitive location of Tactics.reduce, which allowed to find another bug of refine, calling "lazy in *" instead of "lazy".
+
+This is respectively pushed to v8.6 and v8.5. When merged, "Info 2" will give the following in v8.6, which I think is the exact reproducible output.
+
+simple refine I;lazy beta iota;shelve_unifiable
+
+Two coqdev questions:
+
+- should we log convert_concl too?
+- name_tactic worked before enter but not inside the scope of enter - did not try to understand why, but as the result I could not get the "official" env to pass to the tactic printer; what did I do wrong?
+
+
+Comment author: @ppedrot
+
+I'm pretty sure that we should not hardwire debugging information in ML-side tactics like Hugo did in 18046e2, for various reasons. The first one that comes to my mind is efficiency. Debugging has a cost, and it is not reasonable to expect that all users should pay for a unusual operation. The second one is that it is mostly meaningless, that is, it gives access to implementation details the Ltac user is not aware of, and should not anyway. I think that the granularity of the debugging trace should be defined by Ltac-side constructions, i.e. a proper Ltac definition, or a primitive TACTIC EXTEND, or a notation, but it should never ever mention ML functions.
+
+
+Comment author: @ppedrot
+
+In particular, in the provided example, one should get:
+
+Goal True.
+  Info 1 refine I. (* refine I *)
+
+as there is no underlying implementation bits that make sense to the tactic user.
+
+
+Comment author: @herbelin
+
+For efficiency, is it really noticeable? In the absence of Info, nothing is recorded, and, when recording, recording is moreover done lazily.
+
+The question of what is a meaningful information to give is however a key question. What to propose to address the current (unstable) situation?
+
+
+Comment author: @ppedrot
+
+(In reply to Hugo Herbelin from comment [BZ#6](https://github.com/coq/coq/issues?q=is%3Aissue%20%22Original%20bug%20ID%3A%20BZ%236%22))
+> For efficiency, is it really noticeable? In the absence of Info, nothing is
+> recorded, and, when recording, recording is moreover done lazily.
+
+It is true that it may be hardly noticeable by now, but I am afraid that adding debugging instructions in many basic tactics may end up accumulating and costing in the long run.
+
+> The question of what is a meaningful information to give is however a key
+> question. What to propose to address the current (unstable) situation?
+
+What do users think about my proposal above (definitions, notations and EXTEND)? I think it is easy to implement by instrumenting the relevant pieces of code.
+
+
+Comment author: @JasonGross
+
+I don't think I've ever had a tactic script where there were enough tactics run that the overhead of checking a boolean would be too costly, and I don't think a slowdown of a few percent matters much when I'm actually using [Info].  Perhaps typeclass instance search is an exception, but even there, trying to gain a few percent by not instrumenting low-level tactic formers seems silly when there is the potential for factors of 2 or more by being smarter about how to search.
+
+> The second one is that it is mostly meaningless, that is, it gives access to
+> implementation details the Ltac user is not aware of, and should not anyway.
+> I think that the granularity of the debugging trace should be defined by Ltac-side
+> constructions, i.e. a proper Ltac definition, or a primitive TACTIC EXTEND, or a 
+> notation, but it should never ever mention ML functions.
+
+I agree that it should not mention ML functions which cannot be called by the user, but I disagree that the bottom level should be defined by TACTIC EXTEND.  For example, in [autorewrite] and [rewrite_strat], I want to have access to the individual rewrites run, and the tactics called to solve the side-conditions.  In [eauto] and [auto] and [typeclasses eauto], I want to know what hints / lemmas were applied, and how.  Even in [rewrite], I think it would be interesting to see what [refine]s or [pattern]s were done.  If [refine term] does the equivalent of [simple refine term; lazy beta iota in *; shelve_unifiable], I think this is interesting and useful information, and should show up if you give [Info] the right arguments.  My model of Ltac is that everything bottoms out at [simple refine] and [clear] (and maybe [clearbody] and [move] and [shelve] and [cycle]) at the bottom, at it'd be nice to be able to use [Info] to get a good sense of how accurate this is.
+
+
+Comment author: @ppedrot
+
+The problem is that most of the time, the ML-facing tactics differ subtly from the user-facing ones, in the sense that, even assuming reparsability, there is a lot of case where the semantics of the info output is not the one of the whole tactic. And this is not a bug, because there is no reason for ML tactics to be in one-to-one correspondence with Ltac tactics, this is implementation details.
+
+I agree that we need to have a better debugging support for Ltac, but I believe it is nonsensical to forcibly write it in terms of Ltac primitives. In particular, inserting Ltac terms in ML traces is hardwiring the use of Ltac as the holy omnipresent tactic language, which is precisely what I'm currently struggling against. Would you be happy with a better debugger even though it doesn't pretend it is Ltac?
+
+
+Comment author: @JasonGross
+
+Sure, I'd be mostly happy with a good debugger that doesn't pretend to be Ltac.
+
+Until we have that, though, it'd be nice to be able to see, at least, what 
+decisions are made by things like [auto], [eauto], [autorewrite], [autounfold], 
+and [rewrite_strat], with something like Info
+
+
+Comment author: @herbelin
+
+(In reply to Pierre-Marie Pédrot from comment [BZ#9](https://github.com/coq/coq/issues?q=is%3Aissue%20%22Original%20bug%20ID%3A%20BZ%239%22))
+> The problem is that most of the time, the ML-facing tactics differ subtly
+> from the user-facing ones, in the sense that, even assuming reparsability,
+> there is a lot of case where the semantics of the info output is not the one
+> of the whole tactic. And this is not a bug, because there is no reason for
+> ML tactics to be in one-to-one correspondence with Ltac tactics, this is
+> implementation details.
+
+Isn't a compromise possible? At least in the current case, we are using the syntax of tactics (shelve_unifiable, lazy, simple_refine) for what seems to fit the ML implementation, no? Or are there details I'm overlooking?
+
+> In particular, inserting Ltac terms in ML traces is hardwiring the use of
+> Ltac as the holy omnipresent tactic language
+
+I don't see why inserting Ltac terms in ML traces is hardwiring the use of
+Ltac as the holy omnipresent tactic language. Would some or all tactics change, then Info will change too. The question of decomposing a complex tactic into more elementary components is different from the question of having components expressed in Ltac or in another language, no?
+
+
+Comment author: @ppedrot
+
+(In reply to Hugo Herbelin from comment [BZ#11](https://github.com/coq/coq/issues?q=is%3Aissue%20%22Original%20bug%20ID%3A%20BZ%2311%22))
+> Isn't a compromise possible? At least in the current case, we are using the
+> syntax of tactics (shelve_unifiable, lazy, simple_refine) for what seems to
+> fit the ML implementation, no? Or are there details I'm overlooking?
+
+This is what worries me, actually. Should we have to tell the users "look, this looks like regular Ltac invocations, but it is not"? If we start mixing Ltac and something-that-looks-like-it-but-is-not, I'm foreseeing a mess of miscomprehensions, and people starting asking for features I don't really wish to see landing in the proof engine.
+
+> I don't see why inserting Ltac terms in ML traces is hardwiring the use of
+> Ltac as the holy omnipresent tactic language. Would some or all tactics
+> change, then Info will change too. The question of decomposing a complex
+> tactic into more elementary components is different from the question of
+> having components expressed in Ltac or in another language, no?
+
+Yes, but in this case, we need to come up with a grammar that reflects the ML implementation, rather that piggybacking on an Ltac syntax that has a close but subtly distinct behaviour. In particular, we should not rely on Ltac printers. Remember, we want to make Coq Ltac-agnostic.
+
+
+Comment author: @herbelin
+
+(In reply to Pierre-Marie Pédrot from comment [BZ#12](https://github.com/coq/coq/issues?q=is%3Aissue%20%22Original%20bug%20ID%3A%20BZ%2312%22))
+> (In reply to Hugo Herbelin from comment [BZ#11](https://github.com/coq/coq/issues?q=is%3Aissue%20%22Original%20bug%20ID%3A%20BZ%2311%22))
+> > Isn't a compromise possible? At least in the current case, we are using the
+> > syntax of tactics (shelve_unifiable, lazy, simple_refine) for what seems to
+> > fit the ML implementation, no? Or are there details I'm overlooking?
+> 
+> This is what worries me, actually. Should we have to tell the users "look,
+> this looks like regular Ltac invocations, but it is not"? If we start mixing
+> Ltac and something-that-looks-like-it-but-is-not, I'm foreseeing a mess of
+> miscomprehensions, and people starting asking for features I don't really
+> wish to see landing in the proof engine.
+> 
+> > I don't see why inserting Ltac terms in ML traces is hardwiring the use of
+> > Ltac as the holy omnipresent tactic language. Would some or all tactics
+> > change, then Info will change too. The question of decomposing a complex
+> > tactic into more elementary components is different from the question of
+> > having components expressed in Ltac or in another language, no?
+> 
+> Yes, but in this case, we need to come up with a grammar that reflects the
+> ML implementation, rather that piggybacking on an Ltac syntax that has a
+> close but subtly distinct behaviour. In particular, we should not rely on
+> Ltac printers. Remember, we want to make Coq Ltac-agnostic.
+
+I don't see why we could not see Info as coming with the tactic language. Info for another tactic language will use printers of this other tactic language (and not give infos if there is no meaningful infos to give).
+
+
+Comment author: @ppedrot
+
+(In reply to Hugo Herbelin from comment [BZ#13](https://github.com/coq/coq/issues?q=is%3Aissue%20%22Original%20bug%20ID%3A%20BZ%2313%22))
+> I don't see why we could not see Info as coming with the tactic language.
+> Info for another tactic language will use printers of this other tactic
+> language (and not give infos if there is no meaningful infos to give).
+
+Which brings us back to the start of this discussion: tactic traces should be given at the level of the user-facing language (including subcalls like in auto, as discussed before), not at the level of primitive ML tactics.
+
+
+Comment author: @herbelin
+
+(In reply to Pierre-Marie Pédrot from comment [BZ#14](https://github.com/coq/coq/issues?q=is%3Aissue%20%22Original%20bug%20ID%3A%20BZ%2314%22))
+> (In reply to Hugo Herbelin from comment [BZ#13](https://github.com/coq/coq/issues?q=is%3Aissue%20%22Original%20bug%20ID%3A%20BZ%2313%22))
+> > I don't see why we could not see Info as coming with the tactic language.
+> > Info for another tactic language will use printers of this other tactic
+> > language (and not give infos if there is no meaningful infos to give).
+> 
+> Which brings us back to the start of this discussion: tactic traces should
+> be given at the level of the user-facing language (including subcalls like
+> in auto, as discussed before), not at the level of primitive ML tactics.
+
+So, your proposal would be that the Info tree is not built by simple_refine and co themselves but by refine at the time of calling simple_refine and co (assuming of course that this decomposition is interesting)? I think I'm fine with that.
+
+
+Comment author: @ppedrot
+
+(In reply to Hugo Herbelin from comment [BZ#15](https://github.com/coq/coq/issues?q=is%3Aissue%20%22Original%20bug%20ID%3A%20BZ%2315%22))
+> So, your proposal would be that the Info tree is not built by simple_refine
+> and co themselves but by refine at the time of calling simple_refine and co
+> (assuming of course that this decomposition is interesting)? I think I'm
+> fine with that.
+
+Your message is not really clear, but I think we do agree on the intended semantics.
+
+
+Comment author: @herbelin
+
+I mean having the Proofview.Trace.name_tactic not in Refine.refine but in the code of Extratactics.refine_tac surrounding the call to Refine.refine.
+
+What does Arnaud think about that?
+
+
+Comment author: @herbelin
+
+I'm personally satisfied with the current situation (as in comment 3), which "fixes" the "unknown". What was pending is not strictly speaking the resolution of the "unknown" but the granularity to give to Info in general. So, if PMP agrees, we can maybe close this bug, and open a discussion on Info on another medium.
+
+

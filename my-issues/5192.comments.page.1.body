@@ -1,0 +1,85 @@
+Comment author: @JasonGross
+
+Require Import Coq.ZArith.ZArith.
+Goal True.  
+    Timeout 1 Compute (Z.div_eucl, Z.div_eucl, Z.div_eucl).
+
+(You may have to adjust the number of Z.div_eucl.)  If the timeout comes in the 
+middle of printing, I believe you get malformed xml.
+
+
+Comment author: @JasonGross
+
+The observable behavior is that CoqIDE stops allowing interaction with coqtop.
+
+
+Comment author: @ejgallego
+
+Hi Jason this is the same instance than the other bugs on interrupt, and should be fixed similarly. I've been unusually busy but I'll try to get my patches in shape for merging next week.
+
+
+Comment author: @psteckler
+
+FWIW, with 8.5pl1, the timeout doesn't happen.
+
+I tried this with PG/xml and a trunk version from Not Long Ago. I reliably get a fail-value on the last line, which triggers an Edit_at from PG, and control goes back to the preceding line. PG is responsive after that.
+
+I can try with with 8.6beta2, but I think it will work the same.
+
+
+Comment author: @psteckler
+
+I meant I'll try with beta1.
+
+
+Comment author: @psteckler
+
+Same behavior in 8.6beta1: the timeout generates a fail-value. The XML is fine.
+
+But I'm not seeing the bad behavior in CoqIDE. I see a timeout message, and CoqIDE is responsive afterwards. I can insert "trivial." before the last line, and CoqIDE sends it to coqtop just fine.
+
+
+Comment author: @psteckler
+
+(In reply to Paul Steckler from comment [BZ#3](https://github.com/coq/coq/issues?q=is%3Aissue%20%22Original%20bug%20ID%3A%20BZ%233%22))
+> FWIW, with 8.5pl1, the timeout doesn't happen.
+
+To be clear, the timeout happens if I just cat this script to coqtop. If I run it via PG/xml, after the last statement is sent, a good-value is returned, PG then requests the current goal, and coqtop does not send back a value containing the goal. There are feedbacks indicating the penultimate statement has been processed, and the final statement is being processed. 
+
+There's no bad XML, though. The behavior is the same in 8.5pl2 and 8.5pl3.
+So the combination of timeout + 8.5 + XML protocol appears to be broken.
+
+
+Comment author: @psteckler
+
+(In reply to Paul Steckler from comment [BZ#6](https://github.com/coq/coq/issues?q=is%3Aissue%20%22Original%20bug%20ID%3A%20BZ%236%22))
+> (In reply to Paul Steckler from comment [BZ#3](https://github.com/coq/coq/issues?q=is%3Aissue%20%22Original%20bug%20ID%3A%20BZ%233%22))
+> > FWIW, with 8.5pl1, the timeout doesn't happen.
+> 
+> To be clear, the timeout happens if I just cat this script to coqtop. If I
+> run it via PG/xml, after the last statement is sent, a good-value is
+> returned, PG then requests the current goal, and coqtop does not send back a
+> value containing the goal. There are feedbacks indicating the penultimate
+> statement has been processed, and the final statement is being processed. 
+> 
+> There's no bad XML, though. The behavior is the same in 8.5pl2 and 8.5pl3.
+> So the combination of timeout + 8.5 + XML protocol appears to be broken.
+
+It's Heisen-broken. One time when I tried it, I apparently got a fail-value, because PG retracted to a previous statement.
+
+
+Comment author: @psteckler
+
+(In reply to Paul Steckler from comment [BZ#5](https://github.com/coq/coq/issues?q=is%3Aissue%20%22Original%20bug%20ID%3A%20BZ%235%22))
+> But I'm not seeing the bad behavior in CoqIDE. I see a timeout message, and
+> CoqIDE is responsive afterwards. I can insert "trivial." before the last
+> line, and CoqIDE sends it to coqtop just fine.
+
+I do see the bad behavior in PG if I change the timeout to 2. PG then reports that the XML is invalid.
+
+
+Comment author: @maximedenes
+
+Indeed, Coq is not protected against interruptions during printing. Doing so would be useful, but requires significant work so I'm marking this for 8.7.
+
+

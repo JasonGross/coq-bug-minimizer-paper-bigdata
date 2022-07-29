@@ -1,0 +1,23 @@
+Comment author: @JasonGross
+
+Set Implicit Arguments.
+Set Primitive Projections.
+Record prod A B := pair { fst : A ; snd : B }.
+
+Goal forall x y : prod Set Set, x.(@ fst) = y.(@ fst).
+  intros.
+  apply f_equal. (* Toplevel input, characters 21-28:
+Error: In environment
+x : prod Set Set
+y : prod Set Set
+Unable to unify "?192 ?193 = ?192 ?194" with "fst x = fst y".
+ *)
+
+
+Comment author: @xclerc
+
+
+
+*** This bug has been marked as a duplicate of bug [BZ#3625](https://github.com/coq/coq/issues?q=is%3Aissue%20%22Original%20bug%20ID%3A%20BZ%233625%22) ***
+
+

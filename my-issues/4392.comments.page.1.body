@@ -1,0 +1,119 @@
+Comment author: @JasonGross
+
+Here are some examples of code that works fine in 8.4, but does not work in 8.5 (a1b828d31c73d3342345243e9fb4af69610616a0):
+
+Module Example1.
+  Tactic Notation "auto" := auto.
+  Goal True.
+    auto with core.
+  Defined.
+End Example1.
+
+Module Example2.
+  Tactic Notation "auto" "~" := auto.
+  Tactic Notation "auto" "*" := auto.
+  Goal True.
+    auto.
+    Undo.
+    auto with core.
+  Defined.
+End Example2.
+
+
+Comment author: @silene
+
+Fixed by commit 7f8a31e. Thanks for the report.
+
+
+Comment author: @JasonGross
+
+Thanks for fixing those!  Here are some more broken ones:
+
+Module Example5.
+  Tactic Notation "left" "~" := left.
+  Goal True \/ True.
+    left ~; constructor.
+    Undo.
+    left; constructor. (* Syntax error: '~' or 'with' expected after 'left' (in [tactic:simple_tactic]). *)
+  Defined.
+End Example5.
+
+Module Example6.
+  Tactic Notation "right" "~" := right.
+  Goal True \/ True.
+    right ~; constructor.
+    Undo.
+    right; constructor. (* Syntax error: '~' or 'with' expected after 'right' (in [tactic:simple_tactic]). *)
+  Defined.
+End Example6.
+
+Module Example7.
+  Tactic Notation "split" "~" := split.
+  Goal True.
+    split ~.
+    Undo.
+    split. (* Syntax error: '~' or 'with' expected after 'split' (in [tactic:simple_tactic]). *)
+  Defined.
+End Example7.
+
+
+Comment author: @silene
+
+As surprising as it might seem, the case of "left", "right", and "split", is completely different. I don't even know if it can be fixed without dropping the whole parsing engine.
+
+
+Comment author: @JasonGross
+
+How did they work in 8.4?
+
+If nothing else, we should probably put
+  Tactic Notation "left" := left.
+  Tactic Notation "right" := right.
+  Tactic Notation "split" := split.
+in Coq84.v.  Would this break something else?
+
+
+Comment author: @silene
+
+They did work because tactics were not respecting namespaces in 8.4 (think about omega, for instance). You are right that adding a trivial notation should fix the issue. But there is not much point in doing that for "left", "right", and "split" only. It should be done for any tactic whose name also happens to be the first token of several tactic notations. And except perhaps for performance reasons, it could be done systematically for any tactic, so as to simplify the code logic.
+
+
+Comment author: @ppedrot
+
+One of the goal of the changes of the implementation of tactic parsing was precisely to reduce the number of grammar entries. Typically, left and the like were transformed into a plain Ltac reference (think of some Ltac left := external "left").
+
+The issue with grammar entries is that they display the "global" misdemeanour: you can break some code at great distance just because you messed up with the parsing engine, which is very sensitive to arcane details such as the keyword vs. identifier stuff. I have nothing against including those tactic notations in a compatibility file, but I believe we should refrain from creating global grammar entries in a systematic fashion exactly when they can be avoided.
+
+
+Comment author: @silene
+
+The thing is, these entries in the grammar cannot be avoided:
+
+Ltac foo := idtac.
+(* Tactic Notation "foo" := foo. *)
+Tactic Notation "foo" "bar" := idtac.
+Tactic Notation "foo" "baz" := idtac.
+Goal True. foo.
+(* Syntax error: 'baz' or 'bar' expected after 'foo' (in [tactic:simple_tactic]). *)
+
+Since the parser is LL(1), if no entry is created for "foo" in the grammar, the parser can no longer backtrack it encounters the divergence point "bar"/"baz". By adding an entry "foo" in the grammar, the divergence point becomes "bar"/"baz"/eps and the parser becomes able to backtrack.
+
+(Technically, the parser is more than LL(1), since it can backtrack more than one token. But it cannot backtrack more than one decision. So, for all intent and purpose, it is LL(1).)
+
+Or we should document that the user is no longer allowed to have an ltac tactic and a notation starting with the same string.
+
+
+Comment author: @ppedrot
+
+
+> Or we should document that the user is no longer allowed to have an ltac
+> tactic and a notation starting with the same string.
+
+As far as I understand, this has always been the case (and thus always been a mess). The issue is that now more primitives pertain to the Ltac world.
+
+
+Comment author: @ppedrot
+
+I believe this bug has been kind of solved by commit 5f8f9e5b. It is now sufficient to import the compatibility file to restore the old behaviour. Note that for any other instances of this issue, you can solve it manually by creating a Tactic Notation as described here, possibly invoking the qualified name of the tactic (e.g. any suffix of Coq.Init.Notations.left) if the short name has already been made unusable.
+
+

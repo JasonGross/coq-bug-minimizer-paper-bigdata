@@ -1,0 +1,25 @@
+Comment author: @JasonGross
+
+Vector binds [], list binds [ ].  I don't think this difference is intentional.
+
+Require Import Coq.Lists.List Coq.Vectors.Vector.
+Import ListNotations.
+Check [ ]%list : list _.
+Import VectorNotations ListNotations.
+Delimit Scope vector_scope with vector.
+Fail Check [ ]%vector : Vector.t _ _.
+Check []%vector : Vector.t _ _.
+Check [ ]%list : list _.
+Fail Check []%list : list _.
+
+I think the stdlibrary should have, in vectors:
+
+Notation " [ ] " := [] (format "[ ]") : vector_scope.
+Notation "[]" := [] (compat 8.4) : vector_scope.
+
+
+Comment author: @herbelin
+
+Fixed (see pull request 202, merged in v8.6 on 26 Sep 2016).
+
+

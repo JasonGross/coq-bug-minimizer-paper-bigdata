@@ -1,0 +1,38 @@
+Comment author: @JasonGross
+
+The following code produces "Anomaly: Uncaught exception Reductionops.NotASort. Please report." on the last line
+
+Set Implicit Arguments.
+Inductive telescope :=
+  | Base : forall A B : Type, (A -> B) -> (A -> B) -> telescope
+  | Quant : forall A : Type, (A -> telescope) -> telescope.
+
+Goal forall (f g : nat -> nat -> nat -> nat), (forall x y, f x y = g x y)
+  -> (forall x y z, f x y z = g x y z).
+  intros.
+  
+  Ltac reifyToTelescope H :=
+    match type of H with
+      | appcontext G [@ eq] => let H' := context G[fun A => @ Base A A] in let H'' := eval simpl in H' in idtac H''
+    end.
+  let r := reifyToTelescope H in idtac r.
+
+
+Comment author: @JasonGross
+
+The problem seems to be that [H'] has the type [forall _, x], where [x] is not a Sort, as seen in the following, simpler, example:
+
+Goal forall (H : forall x : nat, x = x), False.
+  intro.
+  let H :=
+    match goal with
+      | [ H : appcontext G [@ eq _ _] |- _ ] => let H' := context G[@ plus 2] in H'
+    end
+    in pose H.
+
+
+Comment author: @herbelin
+
+Cause for bug fixed in trunk and branches v8.1 to v8.4 (r16185 and following). Thanks for the report.
+
+

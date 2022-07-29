@@ -1,0 +1,117 @@
+Comment author: @JasonGross
+
+Yet it does, because Classical_Prop is required by Rtopology is required by MVT 
+is required by PSeries_reg is required by Rtrigo is required by Reals is 
+required by Nsatz, and Classical_Prop adds
+
+  Hint Unfold not: core.
+
+When we're willing to break backwards compatibility in the stdlib, this should 
+be fixed.
+
+
+Comment author: @JasonGross
+
+Test case:
+
+
+Goal forall (T : Type)
+            (eq : T -> T -> Prop)
+            (zero x y : T),
+    (not (eq x zero) -> eq y zero) <-> eq x zero \/ eq y zero.
+Proof.
+  Fail intros; tauto.
+Abort.
+Require Coq.nsatz.Nsatz.
+
+Goal forall (T : Type)
+            (eq : T -> T -> Prop)
+            (zero x y : T),
+    (not (eq x zero) -> eq y zero) <-> eq x zero \/ eq y zero.
+Proof.
+  intros; tauto.
+Qed.
+
+
+Comment author: @JasonGross
+
+Ugh, it's worse than just [Hint Unfold not : core]; apparently the [tauto] 
+plugin checks to see whether or not Classical_Prop has been *required*, and 
+behaves differently on depending on whether or not it has.
+
+
+Comment author: @herbelin
+
+Indeed, this is not related to the "Hint Unfold not" (which is actually also in Logic.v), but on "tauto" trying to use Classical_Prop.NNPP when the later is available.
+
+Maybe it is a bad idea that the intuitionistic vs classical effect of tauto is dependent on the existence of an axiom. I tried to circumvent this but did not find a way.
+
+Maybe providing explicitly some "itauto" and "ctauto"? Don't know what other think.
+
+
+Comment author: @JasonGross
+
+One option is to add an option to tauto, e.g., [Set Classical Tauto.], which will use [Classical_Prop.NNPP] if it exists.  Possibly have [Set Classical Tauto.] emit a warning if Classical_Prop is not required when it is set.  Then you can [Set Classical Tauto] in the Compat86 file.  You can possibly also have [tauto] emit a specialized error message to the effect of needing to [Set Classical Tauto] if it encounters a goal which it cannot prove, but which can be proven classically?
+
+
+Comment author: @JasonGross
+
+I think that, even if nothing else happens, there should be [Set Classical 
+Tauto] or [Set Constructive Tauto] or [Set Intuitionistic Tauto].  Having 
+classical assumptions creep into proofs is unfortunate, and hard to work 
+around.  (I just had to track down a case where [tauto] decided to use 
+classical axioms rather than contradicting a hypothesis [In x nil], when I 
+imported Lia.)
+
+
+Comment author: @JasonGross
+
+Er, that should say, when I imported Psatz, not Lia.
+
+
+This problem breaks the example in section 1.3.4 of this [tutorial](https://coq.inria.fr/tutorial/1-basic-predicate-calculus) which is the tutorial supplied by the `coq-doc` ubuntu package (page 19 of the pdf). 
+What do you mean exactly by "breaks"? Is it broken just in the pdf version but not in the web version? In that case, it would probably mean that the `coq-doc` package is simply out-of-date (the tutorial was seriously updated in Coq 8.7).
+The example on the web is the same as the example in the pdf supplied by `coq-doc`:
+```
+Coq < Require Import Classical.
+Coq < Lemma Peirce : ((A -> B) -> A) -> A.
+Coq < apply NNPP; tauto.
+```
+I'm using the standard coq package for Ubuntu 14.04:
+```
+> coqtop --version
+The Coq Proof Assistant, version 8.4pl3 (January 2014)
+compiled on Jan 19 2014 23:14:16 with OCaml 4.01.0
+```
+
+I still don't understand what you mean by "breaks". Is it that the `apply NNPP` step is actually optional and `tauto` will solve the goal as soon as `Classical` has been imported that bothers you?
+No, it doesn't solve it at all.
+I get the following message: `Error: Classical tauto failed.`
+with or without the `apply NNPP` step.
+The subsequent 'Scottish puzzle' works fine.
+
+Ah... OK, I found out what the problem was.
+I didn't have A & B defined as global variables.
+This works:
+```
+Coq < Variables A B : Prop.
+Coq < Require Import Classical.
+Coq < Lemma Peirce : ((A -> B) -> A) -> A.
+Coq < apply NNPP; tauto.
+```
+
+or this:
+```
+Coq < Require Import Classical.
+Coq < Lemma Peirce : forall A B : Prop, ((A -> B) -> A) -> A.
+Coq < apply NNPP; intros A0 B0; tauto.
+```
+
+Good.
+FTR, since the switch to the registering mechanism it is possible to deactivate the classical behaviour of `tauto` even after `Classical_Prop` is required. Albeit definitely hackish, it is indeed enough to overwrite `core.nnpp.type` with a dummy value to make the call to the classical axiom fail, just as when the reference is not available. For instance, this can be done with the following command:
+```
+Register tt as core.nnpp.type.
+```
+
+N.B.: registering is Require-bound, so expect modularity issues.
+

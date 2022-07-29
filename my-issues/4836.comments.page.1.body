@@ -1,0 +1,57 @@
+Comment author: @JasonGross
+
+Coq trunk can no longer build HoTT, nor Fiat.  Here's a test case:
+
+$ mkdir foo
+$ touch foo.v
+$ coqc foo -debug
+Anomaly: Uncaught exception Invalid_argument("Filename.chop_extension").
+Please report.
+frame @  file "toplevel/coqtop.ml", line 651, characters 6-22
+frame @  file "toplevel/vernac.ml", line 384, characters 2-13
+frame @  file "toplevel/vernac.ml", line 312, characters 25-45
+frame @  file "toplevel/vernac.ml", line 303, characters 46-73
+raise @  file "pervasives.ml", line 31, characters 25-45
+
+
+Comment author: @JasonGross
+
+The commit which introduced this bug is 
+
+commit 802366bdf00adf3849499f43ba07ee726da0668a
+Author: Enrico Tassi <Enrico.Tassi@ inria.fr>
+Date:   Thu May 19 07:41:09 2016 +0200
+
+    coqc: support -o option to specify output file name
+
+    The -o option lets one put .vo or .vio files in a directory of choice,
+    i.e. decouple the location of the sources and the compiled files.
+    This ease the integration of Coq in already existing IDEs that handle
+    the build process automatically (eg Eclipse) and also enables one to
+    compile/run at the same time 2 versions of Coq on the same sources.
+
+    Example: b.v depending on a.v
+
+      coq8.6/bin/coqc -R out8.6 Test src/a.v -o out8.6/a.vo
+      coq8.6/bin/coqc -R out8.6 Test src/b.v -o out8.6/b.vo
+
+      coq8.7/bin/coqc -R out8.7 Test src/a.v -o out8.7/a.vo
+      coq8.7/bin/coqc -R out8.7 Test src/b.v -o out8.7/b.vo
+
+I'm a bit confused how Coq builds at all, given that running
+
+  ./bin/coqtop -compile foo -nois -boot
+
+in the root of the coq source tree (with or without a foo.v file) is already enough to trigger the anomaly...
+
+
+Comment author: @ppedrot
+
+Fixed by 37ab4ff.
+
+
+Comment author: @JasonGross
+
+Thanks!
+
+

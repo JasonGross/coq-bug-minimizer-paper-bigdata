@@ -1,0 +1,291 @@
+Comment author: @JasonGross
+~~~coq
+Require Import Coq.NArith.NArith Coq.Arith.Div2.
+Set Implicit Arguments.
+Set Asymmetric Patterns.
+
+Inductive word : nat -> Set :=
+| WO : word O
+| WS : bool -> forall n, word n -> word (S n).
+
+Fixpoint mod2 (n : nat) : bool :=
+  match n with
+    | 0 => false
+    | 1 => true
+    | S (S n') => mod2 n'
+  end.
+
+Fixpoint wordToN sz (w : word sz) : N :=
+  match w with
+    | WO => 0
+    | WS false _ w' => 2 * wordToN w'
+    | WS true _ w' => Nsucc (2 * wordToN w')
+  end%N.
+
+Fixpoint natToWord (sz n : nat) : word sz :=
+  match sz with
+    | O => WO
+    | S sz' => WS (mod2 n) (natToWord sz' (div2 n))
+  end.
+
+Definition foo (n n0 : nat)
+           (_32 := 32)
+           (_4 : nat) (P : Set) (w : forall _ : N, P)
+  : @ eq P (w (@ wordToN _32 (natToWord _32 (n + n0)%nat))) (w (@ wordToN _32 (natToWord _32 (n * _4)%nat))).
+  Time Timeout 1 repeat esplit.
+~~~
+If you change [32] to [13], it'll take a bit under a second.  Increasing the value by 1 seems to double the time it takes for unification to fail.  In 8.4, it's instantaneous for [32].
+
+
+Comment author: @herbelin
+
+A bisection would be useful here. Could you?
+
+
+Comment author: @ppedrot
+
+Erm, it also diverges in 8.4 for me...
+
+
+Comment author: @mattam82
+
+Can't reproduce non-divergence with 8.4 either. Shall we close as invalid?
+
+
+Comment author: @JasonGross
+
+Let me see if I can reproduce...
+
+
+Comment author: @JasonGross
+
+I'm rather confused.  The code here, with 8.4pl6, if I remove the [Timeout 1], gives "Finished transaction in 0. secs (0.064u,0.004s)".  Here is proof (via cloud) that the code runs fine on 8.4pl1 (https://travis-ci.org/JasonGross/coq-bug-4901/jobs/166882238), 8.4pl3 (https://travis-ci.org/JasonGross/coq-bug-4901/jobs/166882241), and 8.4pl6 (https://travis-ci.org/JasonGross/coq-bug-4901/jobs/166882237), but fails on 8.5 (https://travis-ci.org/JasonGross/coq-bug-4901/jobs/166882236) and 8.5pl2 (https://travis-ci.org/JasonGross/coq-bug-4901/jobs/166882234).
+
+
+Comment author: @JasonGross
+
+Bisecting it with my coq-bisect script says:
+
+ed93de78345ecd93c4fd8cac0917f1fd34f51d44 is the first bad commit
+commit ed93de78345ecd93c4fd8cac0917f1fd34f51d44
+Author: Bruno Barras <bruno.barras@ inria.fr>
+Date:   Thu Nov 27 17:01:58 2014 +0100
+
+    improve efficiency of the reduction interpreter of coqtop
+
+    Conflicts:
+        kernel/closure.ml
+        kernel/closure.mli
+        kernel/reduction.ml
+
+
+The file I used to bisect on was:
+~~~coq
+(* -*- coq-prog-args: ("-emacs" "-nois" "-boot") -*- *)
+Set Implicit Arguments.
+Set Asymmetric Patterns.
+Reserved Notation "x -> y" (at level 99, right associativity, y at level 200).
+Notation "A -> B" := (forall (_ : A), B) : type_scope.
+Reserved Notation "x + y" (at level 50, left associativity).
+Reserved Notation "x - y" (at level 50, left associativity).
+Reserved Notation "x * y" (at level 40, left associativity).
+Reserved Notation "x / y" (at level 40, left associativity).
+Reserved Notation "- x" (at level 35, right associativity).
+Reserved Notation "/ x" (at level 35, right associativity).
+Reserved Notation "x ^ y" (at level 30, right associativity).
+Open Scope type_scope.
+Inductive nat : Set :=
+  | O : nat
+  | S : nat -> nat.
+
+Delimit Scope nat_scope with nat.
+Bind Scope nat_scope with nat.
+Arguments S _%nat.
+Open Scope nat_scope.
+Notation "'10'" := (S (S (S (S (S (S (S (S (S (S O)))))))))) : nat_scope.
+Notation add_16 n := (S (S (S (S (S (S (S (S (S (S (S (S (S (S (S (S n)))))))))))))))).
+Notation "'16'" := (add_16 O) : nat_scope.
+Notation "'32'" := (add_16 16%nat) : nat_scope.
+Notation "'48'" := (add_16 32%nat) : nat_scope.
+Notation "'64'" := (add_16 48%nat) : nat_scope.
+Inductive bool : Set :=
+  | true : bool
+  | false : bool.
+
+Add Printing If bool.
+
+Delimit Scope bool_scope with bool.
+
+Bind Scope bool_scope with bool.
+
+Inductive positive : Set :=
+  | xI : positive -> positive
+  | xO : positive -> positive
+  | xH : positive.
+
+Delimit Scope positive_scope with positive.
+Bind Scope positive_scope with positive.
+Arguments xO _%positive.
+Arguments xI _%positive.
+
+Inductive N : Set :=
+  | N0 : N
+  | Npos : positive -> N.
+
+Delimit Scope N_scope with N.
+Bind Scope N_scope with N.
+Arguments Npos _%positive.
+
+Notation "'2'" := (Npos (xO xH)) : N_scope.
+
+Module Import Pos.
+  Notation "'1'" := xH : positive_scope.
+  Notation "p ~ 1" := (xI p)
+ (at level 7, left associativity, format "p '~' '1'") : positive_scope.
+Notation "p ~ 0" := (xO p)
+ (at level 7, left associativity, format "p '~' '0'") : positive_scope.
+
+Local Open Scope positive_scope.
+Fixpoint succ x :=
+  match x with
+    | p~1 => (succ p)~0
+    | p~0 => p~1
+    | 1 => 1~0
+  end.
+Fixpoint add x y :=
+  match x, y with
+    | p~1, q~1 => (add_carry p q)~0
+    | p~1, q~0 => (add p q)~1
+    | p~1, 1 => (succ p)~0
+    | p~0, q~1 => (add p q)~1
+    | p~0, q~0 => (add p q)~0
+    | p~0, 1 => p~1
+    | 1, q~1 => (succ q)~0
+    | 1, q~0 => q~1
+    | 1, 1 => 1~0
+  end
+
+with add_carry x y :=
+  match x, y with
+    | p~1, q~1 => (add_carry p q)~1
+    | p~1, q~0 => (add_carry p q)~0
+    | p~1, 1 => (succ p)~1
+    | p~0, q~1 => (add_carry p q)~0
+    | p~0, q~0 => (add p q)~1
+    | p~0, 1 => (succ p)~0
+    | 1, q~1 => (succ q)~1
+    | 1, q~0 => (succ q)~0
+    | 1, 1 => 1~1
+  end.
+
+Infix "+" := add : positive_scope.
+Fixpoint mul x y :=
+  match x with
+    | p~1 => y + (mul p y)~0
+    | p~0 => (mul p y)~0
+    | 1 => y
+  end.
+
+Infix "*" := mul : positive_scope.
+
+End Pos.
+Module Import N.
+  Notation "'0'" := N0 : N_scope.
+  Notation "'1'" := (Npos xH) : N_scope.
+  Local Open Scope N_scope.
+Definition mul n m :=
+  match n, m with
+  | 0, _ => 0
+  | _, 0 => 0
+  | Npos p, Npos q => Npos (p * q)
+  end.
+
+Infix "*" := mul : N_scope.
+Definition succ n :=
+  match n with
+  | 0 => 1
+  | Npos p => Npos (Pos.succ p)
+  end.
+End N.
+
+Fixpoint div2 (n : nat) : nat :=
+  match n return nat with
+  | O => O
+  | S n0 => match n0 return nat with
+            | O => O
+            | S n' => S (div2 n')
+            end
+                end.
+Inductive eq (A : Type) (x : A) : forall _ : A, Prop :=  eq_refl : @ eq A x x.
+
+Module Import Nat.
+  Local Open Scope nat_scope.
+  Notation "'0'" := O : nat_scope.
+  Fixpoint add n m :=
+    match n with
+    | 0 => m
+    | S p => S (p + m)
+    end
+
+  where "n + m" := (add n m) : nat_scope.
+  Fixpoint mul n m :=
+  match n with
+  | 0 => 0
+  | S p => m + p * m
+  end
+
+where "n * m" := (mul n m) : nat_scope.
+End Nat.
+Inductive word : nat -> Set :=
+| WO : word O
+| WS : bool -> forall n, word n -> word (S n).
+
+Fixpoint mod2 (n : nat) : bool :=
+  match n with
+  | O => false
+  | S O => true
+  | S (S n') => mod2 n'
+  end.
+Fixpoint wordToN sz (w : word sz) : N :=
+  match w with
+  | WO => N0
+  | WS false _ w' => 2 * wordToN w'
+  | WS true _ w' => N.succ (2 * wordToN w')
+  end%N.
+
+Fixpoint natToWord (sz n : nat) : word sz :=
+  match sz with
+  | O => WO
+  | S sz' => WS (mod2 n) (natToWord sz' (div2 n))
+  end.
+
+Definition bar (n n0 : nat)
+           (_32 := 10)
+           (_4 : nat) (P : Set) (w : forall _ : N, P)
+  : @ eq P (w (@ wordToN _32 (natToWord _32 (n + n0)%nat))) (w (@ wordToN _32 (natToWord _32 (n * _4)%nat))).
+
+  Time Timeout 1 repeat apply eq_refl.
+Abort.
+
+Definition foo (n n0 : nat)
+           (_32 := 32)
+           (_4 : nat) (P : Set) (w : forall _ : N, P)
+  : @ eq P (w (@ wordToN _32 (natToWord _32 (n + n0)%nat))) (w (@ wordToN _32 (natToWord _32 (n * _4)%nat))).
+  Time Timeout 1 repeat apply eq_refl.
+Abort.
+
+Definition baz (n n0 : nat)
+           (_32 := 64)
+           (_4 : nat) (P : Set) (w : forall _ : N, P)
+  : @ eq P (w (@ wordToN _32 (natToWord _32 (n + n0)%nat))) (w (@ wordToN _32 (natToWord _32 (n * _4)%nat))).
+  Time Timeout 2 repeat apply eq_refl.
+Abort.
+~~~
+
+Comment author: @silene
+
+For the record, I get the same behavior as Jason: both scripts succeed with Coq 8.4pl6 and both scripts fail with Coq 8.5pl2.
+
+In the commit Jason points out, I fail to understand what the removal of "closure optimization" achieves. I am not saying this is responsible for the divergence (there is another likely candidate) but it is troubling.
+
+

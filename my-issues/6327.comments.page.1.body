@@ -1,0 +1,13 @@
+Seems to have something to do with Coq unfolding `Let_In_nat` and then matching it against the identity function applied to things.  
+`-debug` reveals this repeated pattern:
+```
+frame @ file "pretyping/evarconv.ml", line 887, characters 11-69
+frame @ file "pretyping/evarconv.ml", line 242, characters 14-18
+frame @ file "pretyping/evarconv.ml", line 233, characters 12-18
+raise @ unknown
+frame @ file "pretyping/evarconv.ml", line 811, characters 11-144
+frame @ file "pretyping/evarconv.ml", line 242, characters 14-18
+frame @ file "pretyping/evarconv.ml", line 346, characters 14-44
+frame @ file "pretyping/evarconv.ml", line 273, characters 23-42
+frame @ file "pretyping/evarconv.ml", line 233, characters 12-18
+```

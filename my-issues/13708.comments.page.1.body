@@ -1,0 +1,36 @@
+cc @jfehrle @mattam82 
+cc @ppedrot 
+I had a look already at that example, and most of the time is passed in typeclass resolution. To be more precise, the slowdown can be attributed to this line in Class_tactics:
+```
+    let dep = dep || Proofview.unifiable sigma (Goal.goal gl) gls in
+```
+Despite a cache, this keeps recomputing evars appearing in the list of hypotheses of the `gls` goals, which ends up costing a lot. The `dep` boolean is used to decide whether the tactic can backtrack. It's a fairly common source of slowness, but your examples are quite extreme in that respect.
+
+@ppedrot Are you sure?  I buy that for `goal_of_size 1` and maybe even `goal_of_size 2`, but I don't see how that can possibly be the dominating factor in exponential growth.  What's the asymptotic you estimate for this factor?
+
+In any case, this should not be a bottleneck in these examples because I've set up the typeclass instances so that in fact resolution never backtracks (and should also not exceed a depth of 2 or 3).  Can you make `dep` lazy so that it is only computed at the point where backtracking would actually occur?  Something like (pseudocode)
+```ocaml
+let tclLAZY_CONDITIONAL_PLUS (cond : unit -> bool) (tac : tactic) =
+  match <split successes of tactic> with
+  | nil -> nil
+  | success :: rest -> plus success (fun exn -> if cond () then rest exn else tclZERO exn)
+```
+
+Actually, hm, maybe what you're saying checks out.  On the example of size 5, it takes about 10 minutes before the code even gets to typeclass search, but then there's about a half-second pause between the success of one TC problem and the "looking for" of the next one in a log filled with entries like
+```
+<infomsg>Debug: 513: looking for (Transitive eq) without backtracking</infomsg>
+<infomsg>Debug: 513.1: simple apply @eq_Transitive on (Transitive eq), 0 subgoal(s)</infomsg>
+<infomsg>Debug: 514: looking for (Proper (eq ==> eq ==> ?r) Z.mul) with backtracking</infomsg>
+<infomsg>Debug: 514.1: simple apply @Proper_instance_12 on (Proper (eq ==> eq ==> ?r) Z.mul), 0 subgoal(s)</infomsg>
+```
+Btw, when looking for `Proper (@eq A ==> @eq B ==> ?r) f` for `f`, `A`, and `B` evar-free, is it ever possible for `?r` to be usefully resolved with a relation mentioning a local variable which does not appear in the terms `f`, `A`, nor `B` and also is not in scope at the time of `setoid_rewrite`?
+Jason, how much memory is being used for your test cases?  I.e., after a GC compaction and before Qed.  If memory use is an issue, perhaps it'sthe same issue seen for setoid_rewrite.
+
+> the slowdown can be attributed to this line in Class_tactics
+
+How would that produce exponential behavior?
+
+I'm interested in helping to fix the various performance problems affecting large automated proofs.  @ppedrot perhaps you would suggest some things for me to look at that would benefit from more tooling/custom analysis routines.  I'm also game to try and figure out possible fixes (e.g. the evar issues in #13576 and #13577).  Of course, I'm a beginner on this part of the code, indeed I don't even know where to find the important algorithms in the source.
+
+Also, perhaps it would be helpful to add tactics or commands to display additional performance-related info, such as the number of evars, their total memory use, the total number of evars that are backtracked, the average number of hypotheses in local context, the number of calls/time spent in a few critical algorithms, etc. which might give Jason or others quicker insight into the cause of performance issues.
+

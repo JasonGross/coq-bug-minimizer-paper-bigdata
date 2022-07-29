@@ -1,0 +1,4 @@
+Note, btw, that this came up in the wild in fiat-crypto: https://github.com/mit-plv/fiat-crypto/commit/e9ff2d0df975bf740a17fc103ecb22dac980e505
+When transcribing a `match` from a different file, we forgot to qualify `TT` into `IR.TT`, resulting in what was previously a constructor becoming a catch-all case.
+Note that this could have prevented #12483 
+Maybe the new warning should be clearer on its rationale. Two users were wondering about it in https://github.com/coq-community/hydra-battles/pull/18. Suggestions for improving the message are welcome!

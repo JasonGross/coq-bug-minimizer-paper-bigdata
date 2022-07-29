@@ -1,0 +1,82 @@
+Right click in Messages, "Select All", right click again and "Delete" to clear the messages window.
+Let me know if that seems to be it.
+
+![image](https://user-images.githubusercontent.com/1253341/118336861-615e6580-b4c7-11eb-9cf8-46ef7a6afac0.png)
+
+> Also, interaction is extremely sluggish while the debugger is running
+
+What sequence of operations and sluggish how?  Received messages are processed in a routine that's called every 300msec.  I'd like to refactor to drop the timer, but I could easily reduce the interval--or you could try it.  At the moment I can't send you any updates.  It's this link in `coqOps.ml`:
+
+```
+feedback_timer.Ideutils.run ~ms:300 ~callback:self#process_feedback;
+```
+periodically The message processing code in CoqIDE runs every 300 msec
+
+> and CoqIDE was using 2 GB of RAM when I killed it.
+
+CoqIDE doesn't have any big data structures.  It could be garbage collection or GTK bugs (our GUI package).
+> CoqIDE doesn't have any big data structures.
+
+From the zoom call: probably this is just the 90k lines of messages in XML format.  Perhaps also GC, I guess
+To never show the "Evaluated term" messages, change `if db` to `if false` in `Tactic_debug.db_constr`.  This is called directly from the Ltac interpreter, so might take some doing to only show it right before or right after the debugger stops.  `debug_prompt`, also called directly from the interpreter, prints the prompt and decides whether it should stop.
+
+You could also modify `wg_MessageView.ml` to limit the amount of output that's retained.  For that, modify `push` and `debug_prompt` to limit `msgs` to N entries, followed by a `self#refresh true`.  If you want compiled and tested code, that will take me longer.
+#14252 now limits how much output can appear in Messages.  Currently it's 1000 messages.  A single "Evaluated Term" is one message even though can be many lines.
+How does this sound for a way to reduce the number of "Evaluated term" messages?  If the user stopped at the point in the code immediately before the construct that generates the message, and the previous user action was StepIn or StepOver, print it.  Otherwise, don't.  Or maybe only consider the last user action.
+
+```
+Set Ltac Debug.
+Ltac do_stuff := let x :=
+  constr:(id ltac:(exact nat)) in idtac x.
+Goal True.
+  do_stuff.
+```
+
+Stop points using StepIn are at:
+- do_stuff
+- let
+- (not in source script)
+- idtac
+
+![image](https://user-images.githubusercontent.com/1253341/118415029-d2835180-b65c-11eb-920d-9511be82e19f.png)
+
+> How does this sound for a way to reduce the number of "Evaluated term" messages? If the user stopped at the point in the code immediately before the construct that generates the message, and the previous user action was StepIn or StepOver, print it. Otherwise, don't.
+
+That sounds like a good idea.  I think perhaps a better one is to consider the tactic that just finished: regardless of command, if evaluation stops immediately after a construct that emits this message, then the message should be emitted.  (Notably, I think "step out" should also be capable of triggering the message if you're inside a tactic that is evaluating.)
+Jason, I'd like to look at the memory usage and execution speed.  Can you tell me how to run this in CoqIDE (i.e. -Q, -R, and -I settings, directory setup, etc.), preferably from the source tree?  How do I build the libraries?  (I ran `dev/ci/ci-fiat_crypto.sh` in my source tree but not sure what to do next.)  And what top-level script should I run?
+
+Also, BTW, `ci-fiat_crypto.sh` fails if you haven't run `ci-rewriter.sh` first.  Is that worth fixing?  I can submit an issue for that if you like.
+@JasonGross Would you respond?  It's better if I try to reproduce the problem using your script.  I have no idea if I'm on the right track.
+
+After building ci-rewriter and ci-fiat_crypto,
+I tried `dune exec -- dev/shim/coqide-prelude -R _build_ci/fiat_crypto/src Crypto -R _build_ci/rewriter/src/Rewriter Rewriter`, which gives me an error on the fourth line of `ToFancyWithCasts.v`:
+`Unable to locate library Crypto.Language.API. (While searching for a .vos file.)`  I see the source file in the Crypto tree but I don't see an `API.vo` or `API.vos` anywhere in the build tree.
+
+Also I notice that the scrolling position in the buffer jumps around a bit erratically.
+
+
+Sorry for the delay, this had fallen off my to-do list, thanks for pinging me again .
+
+High-level suggestion: use `make ci-fiat_crypto` or the dune equivalent of there is one instead of running the CI scripts manually.
+
+> Also, BTW, ci-fiat_crypto.sh fails if you haven't run ci-rewriter.sh first. Is that worth fixing? I can submit an issue for that if you like.
+
+This is a question for @coq/ci-maintainers , as it applies to all CI targets with other dependencies, not just fiat-crypto.  But also I would think `make ci-fiat_crypto` is the more standard way to invoke things, and takes care of the dependencies.
+
+The way I build from not-the-source-tree is that I run `make` or, if I want to build only the dependencies of the one file I care about and that file itself, `make src/Rewriter/Passes/ToFancyWithCasts.vo SKIP_BEDROCK2=1`, passing `COQBIN=/path/to/coq/bin/` (trailing slash important) in either case.  Then (again passing `COQBIN`) I run `make printenv`.  There should be one line with the -R/-Q flags, one line with -I flags, and then there's also a printout of COQPATH which is important to set as an environment variable (though I suppose it can be replaced by appropriate -Q and -I flags.  My guess is that what you want is `-R _build_ci/fiat_crypto/src Crypto` and then set `COQPATH=_build_ci/rewriter/src` or pass both `-Q _build_ci/rewriter/src/Rewriter Rewriter` and `-I _build_ci/rewriter/src/Rewriter`
+
+>  I see the source file in the Crypto tree but I don't see an API.vo or API.vos anywhere in the build tree.
+
+Perhaps the build failed before getting far enough because it also depends on coqprime (ci-coqprime?), and you need to make that and pass paths for that?  Again, I think `make ci-fiat_crypto` takes care of this.
+
+> Also I notice that the scrolling position in the buffer jumps around a bit erratically
+
+I've never seen this, but then again I don't use CoqIDE much.
+I got it to work.
+
+If I disable generating all the messages on the Coq side, running `make_rewriter` with the debugger enabled and no breakpoints set is 13% slower than running with the debugger disabled.  That seems reasonable.  There may be ways to do better.
+The sluggishness is because CoqIDE is single threaded and printing some of the messages is slow, quite a few over 1 second, some over 2 seconds, the slowest I've seen 3.8 seconds.  I'll see what can be done.
+
+`Gc.stat` doesn't show a major memory leak even with lots of output, however I do see VSZ and RSS getting quite large after lots of output, e.g. 2442524 1312660  (in KB).  At CoqIDE startup I see 465832 49580; 465MB is significant but it is "virtual memory size", while RSS is "resident set size, the non-swapped physical memory that a task has used".
+Message printing seems a bit slow, although the messages are large.  For example, an XML message that is 287908 words in memory and 2713 lines (147603 chars) when rendered takes .24 seconds to render.
+I fixed this a while ago by only displaying debugger messages when the debugger stops at the step that generated them.

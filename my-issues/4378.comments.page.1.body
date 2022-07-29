@@ -1,0 +1,24 @@
+Comment author: @JasonGross
+
+Tactic Notation "epose" open_constr(a) :=
+  let a' := fresh in
+  pose a as a'.
+Tactic Notation "epose2" open_constr(a) tactic3(tac) :=
+  let a' := fresh in
+  pose a as a'.
+Goal True.
+  epose _. Undo.
+  epose2 _ idtac. (* Toplevel input, characters 0-14:
+In nested Ltac calls to "epose2'" and "a" (with a:=
+?869, a':=H), last term evaluation failed.
+Error: Cannot reinterpret "?869" in the current environment.
+ *)
+
+What is going on here?
+
+
+Comment author: @ppedrot
+
+Note that it does work on 8.5-dev.
+
+
